@@ -7,7 +7,7 @@ async function main() {
   
   console.log("---------------------------------------");
   console.log("[Main] Kernel en funcionamiento.");
-  console.log("Puedes agregar/quitar carpetas en /modules para ver la carga dinámica.");
+  console.log("Puedes agregar/quitar carpetas en /apps para ver la carga dinámica.");
   console.log("Presiona Ctrl+C para salir.");
   console.log("---------------------------------------");
 }
