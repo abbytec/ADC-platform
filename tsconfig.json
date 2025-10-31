@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"outDir": "./dist",
+		"rootDir": "./src",
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"types": ["node"],
+		"target": "ES2022",
+		"lib": ["es2022"],
+		"noEmit": false,
+		"declaration": true
+	},
+	"include": ["src", "globals.d.ts", "src/types"],
+	"exclude": ["node_modules", "**/*.spec.ts"]
+}
