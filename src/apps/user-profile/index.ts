@@ -16,8 +16,6 @@ interface UserProfile {
 export default class UserProfileApp extends BaseApp {
 	public readonly name = "user-profile";
 
-	protected requiredPresets = [JSON_FILE_CRUD_PRESET];
-
 	private crud!: IJsonFileCrud;
 	private readonly PROFILE_KEY = "main_user_profile";
 

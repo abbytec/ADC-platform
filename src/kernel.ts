@@ -108,16 +108,7 @@ export class Kernel implements IKernel {
     Logger.info(`Modo: ${this.isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
     Logger.debug(`Base path: ${this.basePath}`);
 
-    // 1. Cargar Providers (I/O)
-    await this.loadLayerRecursive(this.providersPath, this.loadProvider.bind(this));
-
-    // 2. Cargar Middlewares (Lógica/Transformación)
-    await this.loadLayerRecursive(this.middlewaresPath, this.loadMiddleware.bind(this));
-
-    // 3. Cargar Presets (Utilidades reutilizables)
-    await this.loadLayerRecursive(this.presetsPath, this.loadPreset.bind(this));
-
-    // 4. Cargar Apps (Negocio) excluyendo BaseApp.ts (la clase base)
+    // Solo cargar Apps (que cargarán sus propios módulos desde modules.json)
     await this.loadLayerRecursive(this.appsPath, this.loadApp.bind(this), ['BaseApp.ts']);
     
     // Iniciar watchers para carga dinámica (solo en desarrollo)
@@ -129,6 +120,67 @@ export class Kernel implements IKernel {
     }
 
     Logger.ok("En funcionamiento.");
+  }
+
+  /**
+   * Carga todos los providers de forma recursiva
+   * Usado por apps que lo necesiten
+   */
+  public async loadAllProviders(): Promise<void> {
+    await this.loadLayerRecursive(this.providersPath, this.loadProvider.bind(this));
+  }
+
+  /**
+   * Carga todos los middlewares de forma recursiva
+   * Usado por apps que lo necesiten
+   */
+  public async loadAllMiddlewares(): Promise<void> {
+    await this.loadLayerRecursive(this.middlewaresPath, this.loadMiddleware.bind(this));
+  }
+
+  /**
+   * Carga todos los presets de forma recursiva
+   * Usado por apps que lo necesiten
+   */
+  public async loadAllPresets(): Promise<void> {
+    await this.loadLayerRecursive(this.presetsPath, this.loadPreset.bind(this));
+  }
+
+  /**
+   * Carga un módulo específico de un tipo (provider, middleware o preset)
+   */
+  public async loadModuleOfType(
+    type: 'provider' | 'middleware' | 'preset',
+    moduleName: string,
+    version: string = 'latest',
+    language: string = 'typescript'
+  ): Promise<void> {
+    const basePath = {
+      'provider': this.providersPath,
+      'middleware': this.middlewaresPath,
+      'preset': this.presetsPath
+    }[type];
+
+    const loader = {
+      'provider': this.loadProvider.bind(this),
+      'middleware': this.loadMiddleware.bind(this),
+      'preset': this.loadPreset.bind(this)
+    }[type];
+
+    try {
+      // Buscar el módulo en el base path
+      const moduleDir = path.join(basePath, moduleName);
+      const indexFile = path.join(moduleDir, `index${this.fileExtension}`);
+      
+      try {
+        await fs.stat(indexFile);
+        await loader(indexFile);
+      } catch {
+        Logger.warn(`[Kernel] No se encontró ${type} '${moduleName}'`);
+      }
+    } catch (error) {
+      Logger.error(`[Kernel] Error cargando ${type} '${moduleName}': ${error}`);
+    }
   }
 
   // --- Lógica de Cierre ---
@@ -273,9 +325,10 @@ export class Kernel implements IKernel {
       const module = await import(`${filePath}?v=${Date.now()}`);
       const AppClass = module.default;
       if (!AppClass) return;
-
+      
       const app: IApp = new AppClass(this);
       Logger.debug(`Iniciando App ${app.name}`);
+      await app.loadModulesFromConfig();
       await app.start?.();
       await app.run();
       this.apps.set(filePath, app);

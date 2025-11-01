@@ -1,0 +1,10 @@
+{
+  "failOnError": false,
+  "presets": [
+    {
+      "name": "JsonFileCrud",
+      "version": "latest",
+      "language": "typescript"
+    }
+  ]
+}
