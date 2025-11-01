@@ -66,7 +66,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
     const isDevelopment = process.env.NODE_ENV === 'development';
     const presetName = this.constructor.name
       .replace(/Preset$/, '')
-      .replace(/([A-Z])/g, '-$1')
+      .replaceAll(/([A-Z])/g, '-$1')
       .toLowerCase()
       .replace(/^-/, '');
 

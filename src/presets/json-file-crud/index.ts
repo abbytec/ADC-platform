@@ -104,7 +104,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
  * Extiende BasePreset para heredar la lógica de carga de módulos
  */
 export default class JsonFileCrudPreset extends BasePreset<IJsonFileCrud> {
-  public readonly name = "json-file-crud-preset";
+  public readonly name = "json-file-crud";
   
   private instance!: JsonFileCrudImpl;
 

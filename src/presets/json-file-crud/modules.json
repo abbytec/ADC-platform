@@ -9,7 +9,7 @@
   ],
   "middlewares": [
     {
-      "name": "json-file-adapter",
+      "name": "adapters/json-file-adapter",
       "version": "latest",
       "language": "typescript"
     }

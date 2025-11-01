@@ -20,7 +20,7 @@ export default class UserProfileApp extends BaseApp {
 	private readonly PROFILE_KEY = "main_user_profile";
 
 	async start(){
-		this.crud = this.kernel.getPreset<IJsonFileCrud>("json-file-adapter");
+		this.crud = this.kernel.getPreset<IJsonFileCrud>("json-file-crud");
 	}
 
 	async run(): Promise<void> {
