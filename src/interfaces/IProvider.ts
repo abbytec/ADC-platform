@@ -1,6 +1,6 @@
 export interface IProvider<T> {
-	name: symbol;
-	type: symbol;
+	name: string;
+	type: string;
 	getInstance(options?: any): Promise<T> | T;
 	shutdown?(): Promise<void>;
 }

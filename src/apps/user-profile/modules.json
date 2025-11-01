@@ -2,7 +2,7 @@
   "failOnError": false,
   "presets": [
     {
-      "name": "JsonFileCrud",
+      "name": "json-file-crud",
       "version": "latest",
       "language": "typescript"
     }

@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { IFileAdapter, FILE_JSON_ADAPTER } from '../../../interfaces/middlewares/adapters/IFIleAdapter.js';
+import { IFileAdapter } from '../../../interfaces/middlewares/adapters/IFIleAdapter.js';
 import { IMiddleware } from '../../../interfaces/IMIddleware.js';
 import { Logger } from '../../../utils/Logger.js';
 
@@ -35,7 +35,7 @@ class JsonAdapter implements IFileAdapter<any> {
 
 export default class JsonAdapterMiddleware implements IMiddleware<IFileAdapter<any>> {
 
-  public name = FILE_JSON_ADAPTER;
+  public name = "json-file-adapter";
 
   getInstance(): IFileAdapter<any> {
     return new JsonAdapter();

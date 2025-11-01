@@ -52,7 +52,7 @@ class FileStorage implements IStorage {
 
 // 2. El Proveedor que la expone
 export default class FileStorageProvider implements IProvider<IStorage> {
-	public name = Symbol.for("FILE_STORAGE_PROVIDER");
+	public name = "file-storage-provider";
 	public type = STORAGE_PROVIDER;
 
 	private readonly fileStoragesMap = new Map<string, FileStorage>();

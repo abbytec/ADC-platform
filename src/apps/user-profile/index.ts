@@ -1,5 +1,5 @@
 import { BaseApp } from "../BaseApp.js";
-import { JSON_FILE_CRUD_PRESET, IJsonFileCrud } from "../../presets/JsonFileCrud/index.js";
+import { IJsonFileCrud } from "../../presets/json-file-crud/index.js";
 import { Logger } from "../../utils/Logger.js";
 
 // La estructura de datos que manejaremos
@@ -20,7 +20,7 @@ export default class UserProfileApp extends BaseApp {
 	private readonly PROFILE_KEY = "main_user_profile";
 
 	async start(){
-		this.crud = this.kernel.getPreset<IJsonFileCrud>(JSON_FILE_CRUD_PRESET);
+		this.crud = this.kernel.getPreset<IJsonFileCrud>("json-file-adapter");
 	}
 
 	async run(): Promise<void> {

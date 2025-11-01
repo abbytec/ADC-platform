@@ -1,8 +1,11 @@
 import * as path from 'node:path';
+import * as fs from 'node:fs/promises';
 import { IModuleConfig } from '../interfaces/IModule.js';
+import { IModulesDefinition } from '../interfaces/IModule.js';
 import { IProvider } from '../interfaces/IProvider.js';
 import { IMiddleware } from '../interfaces/IMIddleware.js';
 import { IPreset } from '../interfaces/IPreset.js';
+import { IKernel } from '../interfaces/IKernel.js';
 import { LoaderManager } from './LoaderManager.js';
 import { VersionResolver } from '../utils/VersionResolver.js';
 import { Logger } from '../utils/Logger.js';
@@ -16,6 +19,73 @@ export class ModuleLoader {
   private readonly providersPath = path.resolve(this.basePath, 'providers');
   private readonly middlewaresPath = path.resolve(this.basePath, 'middlewares');
   private readonly presetsPath = path.resolve(this.basePath, 'presets');
+
+  /**
+   * Carga todos los módulos (providers, middlewares, presets) desde un modules.json
+   */
+  async loadAllModulesFromConfig(
+    configPath: string,
+    kernel: IKernel
+  ): Promise<void> {
+    try {
+      try {
+        await fs.stat(configPath);
+      } catch {
+        return; // El archivo no existe, no hay nada que cargar
+      }
+
+      const configContent = await fs.readFile(configPath, 'utf-8');
+      const modulesConfig: IModulesDefinition = JSON.parse(configContent);
+
+      // Cargar providers
+      if (modulesConfig.providers && Array.isArray(modulesConfig.providers)) {
+        for (const providerConfig of modulesConfig.providers) {
+          try {
+            const provider = await this.loadProvider(providerConfig);
+            const instance = await provider.getInstance();
+            kernel.registerProvider(provider.name, instance, provider.type);
+          } catch (error) {
+            if (modulesConfig.failOnError) throw error;
+            Logger.warn(`Error cargando provider ${providerConfig.name}: ${error}`);
+          }
+        }
+      }
+
+      // Cargar middlewares
+      if (modulesConfig.middlewares && Array.isArray(modulesConfig.middlewares)) {
+        for (const middlewareConfig of modulesConfig.middlewares) {
+          try {
+            const middleware = await this.loadMiddleware(middlewareConfig);
+            const instance = await middleware.getInstance();
+            kernel.registerMiddleware(middleware.name, instance);
+          } catch (error) {
+            if (modulesConfig.failOnError) throw error;
+            Logger.warn(`Error cargando middleware ${middlewareConfig.name}: ${error}`);
+          }
+        }
+      }
+
+      // Cargar presets
+      if (modulesConfig.presets && Array.isArray(modulesConfig.presets)) {
+        for (const presetConfig of modulesConfig.presets) {
+          try {
+            const preset = await this.loadPreset(presetConfig, kernel);
+            if (preset.initialize) {
+              await preset.initialize();
+            }
+            const instance = preset.getInstance();
+            kernel.registerPreset(preset.name, instance);
+          } catch (error) {
+            if (modulesConfig.failOnError) throw error;
+            Logger.warn(`Error cargando preset ${presetConfig.name}: ${error}`);
+          }
+        }
+      }
+    } catch (error) {
+      Logger.error(`Error procesando modules.json: ${error}`);
+      throw error;
+    }
+  }
 
   /**
    * Carga un Provider usando modules.json
@@ -84,7 +154,7 @@ export class ModuleLoader {
   /**
    * Carga un Preset usando modules.json
    */
-  async loadPreset(config: IModuleConfig): Promise<IPreset<any>> {
+  async loadPreset(config: IModuleConfig, kernel: IKernel): Promise<IPreset<any>> {
     const language = config.language || 'typescript';
     const version = config.version || 'latest';
 
@@ -109,7 +179,7 @@ export class ModuleLoader {
     // Obtener el loader correcto
     const loader = LoaderManager.getLoader(language);
 
-    // Cargar el módulo
-    return await loader.loadPreset(resolved.path, config.config);
+    // Cargar el módulo pasando el kernel
+    return await loader.loadPreset(resolved.path, kernel, config.config);
   }
 }

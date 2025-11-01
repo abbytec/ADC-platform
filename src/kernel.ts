@@ -11,9 +11,9 @@ import { Logger } from './utils/Logger.js';
 
 export class Kernel implements IKernel {
   // --- Registros por categoría ---
-  private readonly providersRegistry = new Map<symbol, any>();
-  private readonly middlewaresRegistry = new Map<symbol, any>();
-  private readonly presetsRegistry = new Map<symbol, any>();
+  private readonly providersRegistry = new Map<string, any>();
+  private readonly middlewaresRegistry = new Map<string, any>();
+  private readonly presetsRegistry = new Map<string, any>();
   private readonly appsRegistry = new Map<string, IApp>();
   
   private readonly providers = new Map<string, IProvider<any>>();
@@ -35,53 +35,53 @@ export class Kernel implements IKernel {
   private readonly appsPath = path.resolve(this.basePath, 'apps');
 
   // --- API Pública del Kernel ---
-  public registerProvider<T>(name: symbol, instance: T, type?: symbol): void {
+  public registerProvider<T>(name: string, instance: T, type?: string): void {
     if (this.providersRegistry.has(name)) {
-      Logger.warn(`ADVERTENCIA: Provider ${name.description} sobrescrito.`);
+      Logger.warn(`ADVERTENCIA: Provider ${name} sobrescrito.`);
     }
     this.providersRegistry.set(name, instance);
     if (type && type !== name) {
       this.providersRegistry.set(type, instance);
     }
-    Logger.ok(`Provider registrado: ${name.description}`);
+    Logger.ok(`Provider registrado: ${name}`);
   }
 
-  public getProvider<T>(name: symbol): T {
+  public getProvider<T>(name: string): T {
     const instance = this.providersRegistry.get(name);
     if (!instance) {
-      throw new Error(`[Kernel] Provider ${name.description} no encontrado.`);
+      throw new Error(`[Kernel] Provider ${name} no encontrado.`);
     }
     return instance as T;
   }
 
-  public registerMiddleware<T>(name: symbol, instance: T): void {
+  public registerMiddleware<T>(name: string, instance: T): void {
     if (this.middlewaresRegistry.has(name)) {
-      Logger.warn(`ADVERTENCIA: Middleware ${name.description} sobrescrito.`);
+      Logger.warn(`ADVERTENCIA: Middleware ${name} sobrescrito.`);
     }
     this.middlewaresRegistry.set(name, instance);
-    Logger.ok(`Middleware registrado: ${name.description}`);
+    Logger.ok(`Middleware registrado: ${name}`);
   }
 
-  public getMiddleware<T>(name: symbol): T {
+  public getMiddleware<T>(name: string): T {
     const instance = this.middlewaresRegistry.get(name);
     if (!instance) {
-      throw new Error(`[Kernel] Middleware ${name.description} no encontrado.`);
+      throw new Error(`[Kernel] Middleware ${name} no encontrado.`);
     }
     return instance as T;
   }
 
-  public registerPreset<T>(name: symbol, instance: T): void {
+  public registerPreset<T>(name: string, instance: T): void {
     if (this.presetsRegistry.has(name)) {
-      Logger.warn(`ADVERTENCIA: Preset ${name.description} sobrescrito.`);
+      Logger.warn(`ADVERTENCIA: Preset ${name} sobrescrito.`);
     }
     this.presetsRegistry.set(name, instance);
-    Logger.ok(`Preset registrado: ${name.description}`);
+    Logger.ok(`Preset registrado: ${name}`);
   }
 
-  public getPreset<T>(name: symbol): T {
+  public getPreset<T>(name: string): T {
     const instance = this.presetsRegistry.get(name);
     if (!instance) {
-      throw new Error(`[Kernel] Preset ${name.description} no encontrado.`);
+      throw new Error(`[Kernel] Preset ${name} no encontrado.`);
     }
     return instance as T;
   }
@@ -204,7 +204,7 @@ export class Kernel implements IKernel {
       try {
         await preset.shutdown?.();
       } catch (e) {
-        Logger.error(`Error deteniendo preset ${preset.name.description}: ${e}`);
+        Logger.error(`Error deteniendo preset ${preset.name}: ${e}`);
       }
     }
     
@@ -214,7 +214,7 @@ export class Kernel implements IKernel {
       try {
         await middleware.shutdown?.();
       } catch (e) {
-        Logger.error(`Error deteniendo middleware ${middleware.name.description}: ${e}`);
+        Logger.error(`Error deteniendo middleware ${middleware.name}: ${e}`);
       }
     }
     
@@ -224,7 +224,7 @@ export class Kernel implements IKernel {
       try {
         await provider.shutdown?.();
       } catch (e) {
-        Logger.error(`Error deteniendo provider ${provider.name.description}: ${e}`);
+        Logger.error(`Error deteniendo provider ${provider.name}: ${e}`);
       }
     }
     
@@ -306,7 +306,7 @@ export class Kernel implements IKernel {
       const PresetClass = module.default;
       if (!PresetClass) return;
 
-      const preset: IPreset<any> = new PresetClass();
+      const preset: IPreset<any> = new PresetClass(this);
       if (preset.initialize) {
         await preset.initialize();
       }
@@ -327,11 +327,12 @@ export class Kernel implements IKernel {
       if (!AppClass) return;
       
       const app: IApp = new AppClass(this);
-      Logger.debug(`Iniciando App ${app.name}`);
+      Logger.debug(`Inicializando App ${app.name}`);
       await app.loadModulesFromConfig();
       await app.start?.();
-      await app.run();
       this.apps.set(filePath, app);
+      Logger.debug(`Ejecutando App ${app.name}`)
+      await app.run();
     } catch (e) {
       Logger.error(`Error ejecutando App ${filePath}: ${e}`);
     }
@@ -359,7 +360,7 @@ export class Kernel implements IKernel {
   private async unloadProvider(filePath: string) {
     const provider = this.providers.get(filePath);
     if(provider) {
-      Logger.debug(`Removiendo provider: ${provider.name.description}`);
+      Logger.debug(`Removiendo provider: ${provider.name}`);
       await provider.shutdown?.();
       this.providersRegistry.delete(provider.name);
       if (provider.type && provider.type !== provider.name) {
@@ -372,7 +373,7 @@ export class Kernel implements IKernel {
   private async unloadMiddleware(filePath: string) {
     const mw = this.middlewares.get(filePath);
     if(mw) {
-      Logger.debug(`Removiendo middleware: ${mw.name.description}`);
+      Logger.debug(`Removiendo middleware: ${mw.name}`);
       await mw.shutdown?.();
       this.middlewaresRegistry.delete(mw.name);
       this.middlewares.delete(filePath);
@@ -382,7 +383,7 @@ export class Kernel implements IKernel {
   private async unloadPreset(filePath: string) {
     const preset = this.presets.get(filePath);
     if(preset) {
-      Logger.debug(`Removiendo preset: ${preset.name.description}`);
+      Logger.debug(`Removiendo preset: ${preset.name}`);
       await preset.shutdown?.();
       this.presetsRegistry.delete(preset.name);
       this.presets.delete(filePath);

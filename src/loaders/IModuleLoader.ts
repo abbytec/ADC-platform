@@ -1,6 +1,7 @@
 import { IProvider } from '../interfaces/IProvider.js';
 import { IMiddleware } from '../interfaces/IMIddleware.js';
 import { IPreset } from '../interfaces/IPreset.js';
+import { IKernel } from '../interfaces/IKernel.js';
 import { IModuleConfig } from '../interfaces/IModule.js';
 
 /**
@@ -28,6 +29,7 @@ export interface IModuleLoader {
    */
   loadPreset(
     modulePath: string,
+    kernel: IKernel,
     config?: Record<string, any>
   ): Promise<IPreset<any>>;
 

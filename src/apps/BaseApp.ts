@@ -48,57 +48,7 @@ export abstract class BaseApp implements IApp {
         : path.resolve(process.cwd(), 'dist', 'apps', this.name);
 
       const modulesConfigPath = path.join(appDir, 'modules.json');
-
-      try {
-        await fs.stat(modulesConfigPath);
-      } catch {
-        return;
-      }
-
-      const configContent = await fs.readFile(modulesConfigPath, 'utf-8');
-      const modulesConfig: IModulesDefinition = JSON.parse(configContent);
-
-      if (modulesConfig.providers && Array.isArray(modulesConfig.providers)) {
-        for (const providerConfig of modulesConfig.providers) {
-          try {
-            const provider = await this.moduleLoader.loadProvider(providerConfig);
-            const instance = await provider.getInstance();
-            this.kernel.registerProvider(provider.name, instance, provider.type);
-          } catch (error) {
-            if (modulesConfig.failOnError) throw error;
-            Logger.warn(`Error cargando provider ${providerConfig.name}: ${error}`);
-          }
-        }
-      }
-
-      if (modulesConfig.middlewares && Array.isArray(modulesConfig.middlewares)) {
-        for (const middlewareConfig of modulesConfig.middlewares) {
-          try {
-            const middleware = await this.moduleLoader.loadMiddleware(middlewareConfig);
-            const instance = await middleware.getInstance();
-            this.kernel.registerMiddleware(middleware.name, instance);
-          } catch (error) {
-            if (modulesConfig.failOnError) throw error;
-            Logger.warn(`Error cargando middleware ${middlewareConfig.name}: ${error}`);
-          }
-        }
-      }
-
-      if (modulesConfig.presets && Array.isArray(modulesConfig.presets)) {
-        for (const presetConfig of modulesConfig.presets) {
-          try {
-            const preset = await this.moduleLoader.loadPreset(presetConfig);
-            if (preset.initialize) {
-              await preset.initialize();
-            }
-            const instance = preset.getInstance();
-            this.kernel.registerPreset(preset.name, instance);
-          } catch (error) {
-            if (modulesConfig.failOnError) throw error;
-            Logger.warn(`Error cargando preset ${presetConfig.name}: ${error}`);
-          }
-        }
-      }
+      await this.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
     } catch (error) {
       Logger.error(`Error procesando modules.json: ${error}`);
       throw error;

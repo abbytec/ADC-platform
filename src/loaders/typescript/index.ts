@@ -4,6 +4,7 @@ import { IModuleLoader } from '../IModuleLoader.js';
 import { IProvider } from '../../interfaces/IProvider.js';
 import { IMiddleware } from '../../interfaces/IMIddleware.js';
 import { IPreset } from '../../interfaces/IPreset.js';
+import { IKernel } from '../../interfaces/IKernel.js';
 import { Logger } from '../../utils/Logger.js';
 
 export class TypeScriptLoader implements IModuleLoader {
@@ -72,6 +73,7 @@ export class TypeScriptLoader implements IModuleLoader {
 
   async loadPreset(
     modulePath: string,
+    kernel: IKernel,
     config?: Record<string, any>
   ): Promise<IPreset<any>> {
     try {
@@ -86,7 +88,7 @@ export class TypeScriptLoader implements IModuleLoader {
         throw new Error(`No hay export default en ${indexFile}`);
       }
 
-      const preset: IPreset<any> = new PresetClass(config);
+      const preset: IPreset<any> = new PresetClass(kernel);
       return preset;
     } catch (error) {
       Logger.error(`[TypeScriptLoader] Error cargando Preset: ${error}`);
