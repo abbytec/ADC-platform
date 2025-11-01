@@ -1,9 +1,8 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { Buffer } from 'node:buffer';
 import { IPreset } from '../../interfaces/IPreset.js';
 
-export const JSON_FILE_CRUD_PRESET = Symbol.for('JsonFileCrud');
+export const JSON_FILE_CRUD_PRESET = Symbol.for('JSON_FILE_CRUD_PRESET');
 
 /**
  * Interfaz que define las operaciones CRUD para archivos JSON
@@ -23,7 +22,7 @@ export interface IJsonFileCrud {
 class JsonFileCrudImpl implements IJsonFileCrud {
   private readonly basePath: string;
 
-  constructor(basePath: string = './data') {
+  constructor(basePath: string = './temp/data') {
     this.basePath = basePath;
   }
 

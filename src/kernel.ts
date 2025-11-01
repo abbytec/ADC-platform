@@ -34,11 +34,14 @@ export class Kernel implements IKernel {
   private readonly appsPath = path.resolve(this.basePath, 'apps');
 
   // --- API Pública del Kernel ---
-  public registerProvider<T>(name: symbol, instance: T): void {
+  public registerProvider<T>(name: symbol, instance: T, type?: symbol): void {
     if (this.providersRegistry.has(name)) {
       console.warn(`[Kernel] ADVERTENCIA: Provider ${name.description} sobrescrito.`);
     }
     this.providersRegistry.set(name, instance);
+    if (type && type !== name) {
+      this.providersRegistry.set(type, instance);
+    }
     console.log(`[Kernel] Provider registrado: ${name.description}`);
   }
 
@@ -171,7 +174,7 @@ export class Kernel implements IKernel {
       const provider: IProvider<any> = new ProviderClass();
       const instance = await provider.getInstance();
       
-      this.registerProvider(provider.name, instance);
+      this.registerProvider(provider.name, instance, provider.type);
       this.providers.set(filePath, provider);
       
     } catch (e) {
@@ -222,8 +225,8 @@ export class Kernel implements IKernel {
       const AppClass = module.default;
       if (!AppClass) return;
 
-      const app: IApp = new AppClass();
-      await app.start(this); // Inicia la app (y su chequeo de dependencias)
+      const app: IApp = new AppClass(this);
+      await app.start()
       this.apps.set(filePath, app);
       
     } catch (e) {
@@ -257,6 +260,9 @@ export class Kernel implements IKernel {
       console.log(`Descargando provider: ${provider.name.description}`);
       await provider.shutdown?.();
       this.providersRegistry.delete(provider.name);
+      if (provider.type && provider.type !== provider.name) {
+        this.providersRegistry.delete(provider.type);
+      }
       this.providers.delete(filePath);
     }
   }

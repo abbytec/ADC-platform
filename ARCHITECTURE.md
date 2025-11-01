@@ -27,10 +27,10 @@ Lógica principal que consume Providers, Middlewares y Presets. Se ejecutan auto
 
 ## Sistema de Capacidades
 
-Cada componente registra una capacidad (Symbol único) que otros pueden consumir:
+Cada componente registra una capacidad (Symbol único) que otros pueden consumir, en especial los providers que se registran por nombre y por tipo:
 
 ```typescript
-const storage = kernel.getProvider(STORAGE_CAPABILITY);
+const storage = kernel.getProvider(STORAGE_PROVIDER);
 ```
 
 ## Inyección de Dependencias

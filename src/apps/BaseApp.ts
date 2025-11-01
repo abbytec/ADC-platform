@@ -30,23 +30,11 @@ export abstract class BaseApp implements IApp {
 
   protected kernel!: IKernel;
 
-  /**
-   * El Kernel llama a start()
-   */
-  public async start(kernel: IKernel): Promise<void> {
+  constructor(kernel: IKernel){
     this.kernel = kernel;
+  }
 
-    // 1. Validar que todas las dependencias existan
-    try {
-      this.checkDependencies();
-    } catch (e: any) {
-      console.error(e.message);
-      // Detenemos la carga de esta app si faltan dependencias
-      return; 
-    }
-
-    // 2. Si está OK, ejecutar la lógica principal de la app
-    console.log(`[App: ${this.name}] Iniciando...`);
+  public async start(): Promise<void> {
     await this.run();
   }
 
@@ -64,7 +52,7 @@ export abstract class BaseApp implements IApp {
    * Chequea el registro del Kernel por todas las dependencias requeridas.
    * Lanza un error si falta alguna.
    */
-  private checkDependencies(): void {
+  public checkDependencies(): void {
     console.log(`[App: ${this.name}] Validando dependencias...`);
 
     for (const name of this.requiredProviders) {

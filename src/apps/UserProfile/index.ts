@@ -1,5 +1,6 @@
 import { BaseApp } from "../BaseApp.js";
 import { JSON_FILE_CRUD_PRESET, IJsonFileCrud } from "../../presets/JsonFileCrud/index.js";
+import { IKernel } from "../../interfaces/IKernel.js";
 
 // La estructura de datos que manejaremos
 interface UserProfile {
@@ -17,12 +18,15 @@ export default class UserProfileApp extends BaseApp {
 
 	protected requiredPresets = [JSON_FILE_CRUD_PRESET];
 
-	private crud!: IJsonFileCrud;
+	private readonly crud!: IJsonFileCrud;
 	private readonly PROFILE_KEY = "main_user_profile";
 
-	async run(): Promise<void> {
-		this.crud = this.kernel.getPreset<IJsonFileCrud>(JSON_FILE_CRUD_PRESET);
+	constructor(kernel: IKernel){
+		super(kernel);
+		this.crud = kernel.getPreset<IJsonFileCrud>(JSON_FILE_CRUD_PRESET);
+	}
 
+	async run(): Promise<void> {
 		// Intentar cargar el perfil existente
 		let data = await this.crud.read<UserProfile>(this.PROFILE_KEY);
 

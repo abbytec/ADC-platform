@@ -5,7 +5,7 @@
 export const KERNEL_INJECTION = Symbol.for("IKernel");
 
 export interface IKernel {
-  registerProvider<T>(name: symbol, instance: T): void;
+  registerProvider<T>(name: symbol, instance: T, type: symbol): void;
   getProvider<T>(name: symbol): T;
 
   registerMiddleware<T>(name: symbol, instance: T): void;
