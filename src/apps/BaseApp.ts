@@ -22,6 +22,12 @@ export abstract class BaseApp implements IApp {
    */
   protected requiredMiddlewares: symbol[] = [];
 
+  /**
+   * Las 'Apps' hijas deben definir aquí las capacidades
+   * de utilidad que necesitan (ej: JSON_FILE_CRUD_CAPABILITY)
+   */
+  protected requiredPresets: symbol[] = [];
+
   /** El Kernel inyectado, disponible para las clases hijas */
   protected kernel!: IKernel;
 
@@ -61,7 +67,7 @@ export abstract class BaseApp implements IApp {
    */
   private checkDependencies(): void {
     console.log(`[App: ${this.name}] Validando dependencias...`);
-    const allDeps = [...this.requiredProviders, ...this.requiredMiddlewares];
+    const allDeps = [...this.requiredProviders, ...this.requiredMiddlewares, ...this.requiredPresets];
 
     for (const capabilitySymbol of allDeps) {
         this.kernel.get(capabilitySymbol);

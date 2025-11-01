@@ -6,12 +6,14 @@ import { IKernel, KERNEL_INJECTION } from './interfaces/IKernel.js';
 import { IApp } from './interfaces/IApp.js';
 import { IMiddleware } from './interfaces/IMIddleware.js';
 import { IProvider } from './interfaces/IProvider.js';
+import { IPreset } from './interfaces/IPreset.js';
 
 export class Kernel implements IKernel {
   // --- Registros ---
   private readonly capabilities = new Map<symbol, any>();
   private readonly providers = new Map<string, IProvider<any>>();
   private readonly middlewares = new Map<string, IMiddleware<any>>();
+  private readonly presets = new Map<string, IPreset<any>>();
   private readonly apps = new Map<string, IApp>();
 
   // --- Determinación de entorno ---
@@ -24,6 +26,7 @@ export class Kernel implements IKernel {
   // --- Rutas ---
   private readonly providersPath = path.resolve(this.basePath, 'providers');
   private readonly middlewaresPath = path.resolve(this.basePath, 'middlewares');
+  private readonly presetsPath = path.resolve(this.basePath, 'presets');
   private readonly appsPath = path.resolve(this.basePath, 'apps');
 
   constructor() {
@@ -54,67 +57,71 @@ export class Kernel implements IKernel {
     console.log(`[Kernel] Base path: ${this.basePath}`);
 
     // 1. Cargar Providers (I/O)
-    await this.loadLayer(this.providersPath, this.loadProvider.bind(this));
+    await this.loadLayerRecursive(this.providersPath, this.loadProvider.bind(this));
 
     // 2. Cargar Middlewares (Lógica/Transformación)
-    await this.loadLayer(this.middlewaresPath, this.loadMiddleware.bind(this));
+    await this.loadLayerRecursive(this.middlewaresPath, this.loadMiddleware.bind(this));
 
-    // 3. Cargar Apps (Negocio)
-    // Excluimos App.ts (la clase base)
-    await this.loadLayer(this.appsPath, this.loadApp.bind(this), ['App.ts']);
+    // 3. Cargar Presets (Utilidades reutilizables)
+    await this.loadLayerRecursive(this.presetsPath, this.loadPreset.bind(this));
+
+    // 4. Cargar Apps (Negocio) excluyendo BaseApp.ts (la clase base)
+    await this.loadLayerRecursive(this.appsPath, this.loadApp.bind(this), ['BaseApp.ts']);
     
     // Iniciar watchers para carga dinámica (solo en desarrollo)
     if (this.isDevelopment) {
       this.watchLayer(this.providersPath, this.loadProvider.bind(this), this.unloadProvider.bind(this));
       this.watchLayer(this.middlewaresPath, this.loadMiddleware.bind(this), this.unloadMiddleware.bind(this));
-      this.watchLayer(this.appsPath, this.loadApp.bind(this), this.unloadApp.bind(this), ['App.ts']);
+      this.watchLayer(this.presetsPath, this.loadPreset.bind(this), this.unloadPreset.bind(this));
+      this.watchLayer(this.appsPath, this.loadApp.bind(this), this.unloadApp.bind(this), ['BaseApp.ts']);
     }
 
     console.log("[Kernel] En funcionamiento.");
   }
 
-  // --- Métodos de Carga (Abstraídos) ---
-
   /**
-   * Carga recursivamente todos los 'index.ts'/'index.js' en una capa.
+   * Búsqueda recursiva ilimitada de todos los 'index.ts'/'index.js' en una capa.
    */
-  private async loadLayer(
+  private async loadLayerRecursive(
     dir: string, 
     loader: (entryPath: string) => Promise<void>,
     exclude: string[] = []
   ): Promise<void> {
     try {
+      // Primero, buscar si el mismo directorio tiene index
+      const indexPath = path.join(dir, `index${this.fileExtension}`);
+      try {
+        if ((await fs.stat(indexPath)).isFile()) {
+          await loader(indexPath);
+          return; // Si encontramos index aquí, no buscar más
+        }
+      } catch {
+        // No hay index en este nivel, continuar
+      }
+
+      // Luego, buscar recursivamente en subdirectorios
       const entries = await fs.readdir(dir, { withFileTypes: true });
       for (const entry of entries) {
-        const entryPath = path.join(dir, entry.name);
         if (exclude.includes(entry.name)) continue;
 
         if (entry.isDirectory()) {
-          // Asumimos que el punto de entrada es 'index.ts'/'index.js'
-          const indexPath = path.join(entryPath, `index${this.fileExtension}`);
-          try {
-            if ((await fs.stat(indexPath)).isFile()) {
-              await loader(indexPath);
-            }
-          } catch (e) {
-            // No hay index, seguir buscando recursivamente
-            await this.loadLayer(entryPath, loader, exclude);
-          }
+          const subDirPath = path.join(dir, entry.name);
+          await this.loadLayerRecursive(subDirPath, loader, exclude);
         }
       }
-    } catch (e) {
-      console.warn(`[Kernel] No se pudo leer la capa: ${dir}`);
+    } catch {
+      // El directorio no existe o no se puede leer, ignorar
     }
   }
 
-  private async loadProvider(filePath: string, options?: any): Promise<void> {
+  private async loadProvider(filePath: string): Promise<void> {
     try {
       const module = await import(`${filePath}?v=${Date.now()}`);
       const ProviderClass = module.default;
       if (!ProviderClass) return;
 
       const provider: IProvider<any> = new ProviderClass();
-      const instance = await provider.getInstance(options);
+      const instance = await provider.getInstance();
       
       this.register(provider.capability, instance);
       this.providers.set(filePath, provider);
@@ -138,6 +145,26 @@ export class Kernel implements IKernel {
       
     } catch (e) {
       console.error(`[Kernel] Error cargando Middleware ${filePath}:`, e);
+    }
+  }
+
+  private async loadPreset(filePath: string): Promise<void> {
+    try {
+      const module = await import(`${filePath}?v=${Date.now()}`);
+      const PresetClass = module.default;
+      if (!PresetClass) return;
+
+      const preset: IPreset<any> = new PresetClass();
+      if (preset.initialize) {
+        await preset.initialize();
+      }
+      
+      const instance = preset.getInstance();
+      this.register(preset.capability, instance);
+      this.presets.set(filePath, preset);
+      
+    } catch (e) {
+      console.error(`[Kernel] Error cargando Preset ${filePath}:`, e);
     }
   }
 
@@ -179,7 +206,6 @@ export class Kernel implements IKernel {
   private async unloadProvider(filePath: string) {
     const provider = this.providers.get(filePath);
     if(provider) {
-      // TODO: Des-registrar la capacidad y avisar a las apps que dependen de ella
       console.log(`Descargando provider: ${provider.capability.description}`);
       await provider.shutdown?.();
       this.capabilities.delete(provider.capability);
@@ -190,11 +216,20 @@ export class Kernel implements IKernel {
   private async unloadMiddleware(filePath: string) {
     const mw = this.middlewares.get(filePath);
     if(mw) {
-      // TODO: Des-registrar la capacidad
       console.log(`Descargando middleware: ${mw.capability.description}`);
       await mw.shutdown?.();
       this.capabilities.delete(mw.capability);
       this.middlewares.delete(filePath);
+    }
+  }
+
+  private async unloadPreset(filePath: string) {
+    const preset = this.presets.get(filePath);
+    if(preset) {
+      console.log(`Descargando preset: ${preset.capability.description}`);
+      await preset.shutdown?.();
+      this.capabilities.delete(preset.capability);
+      this.presets.delete(filePath);
     }
   }
   
