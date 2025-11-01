@@ -130,6 +130,53 @@ export class Kernel implements IKernel {
     console.log("[Kernel] En funcionamiento.");
   }
 
+  // --- Lógica de Cierre ---
+  public async stop(): Promise<void> {
+    console.log("\n[Kernel] Iniciando cierre ordenado...");
+    
+    // 1. Detener Apps
+    console.log("[Kernel] Deteniendo apps...");
+    for (const [, app] of this.apps) {
+      try {
+        await app.stop();
+      } catch (e) {
+        console.error(`[Kernel] Error deteniendo app ${app.name}:`, e);
+      }
+    }
+    
+    // 2. Detener Presets
+    console.log("[Kernel] Deteniendo presets...");
+    for (const [, preset] of this.presets) {
+      try {
+        await preset.shutdown?.();
+      } catch (e) {
+        console.error(`[Kernel] Error deteniendo preset ${preset.name.description}:`, e);
+      }
+    }
+    
+    // 3. Detener Middlewares
+    console.log("[Kernel] Deteniendo middlewares...");
+    for (const [, middleware] of this.middlewares) {
+      try {
+        await middleware.shutdown?.();
+      } catch (e) {
+        console.error(`[Kernel] Error deteniendo middleware ${middleware.name.description}:`, e);
+      }
+    }
+    
+    // 4. Detener Providers
+    console.log("[Kernel] Deteniendo providers...");
+    for (const [, provider] of this.providers) {
+      try {
+        await provider.shutdown?.();
+      } catch (e) {
+        console.error(`[Kernel] Error deteniendo provider ${provider.name.description}:`, e);
+      }
+    }
+    
+    console.log("[Kernel] Cierre completado.");
+  }
+
   /**
    * Búsqueda recursiva ilimitada de todos los 'index.ts'/'index.js' en una capa.
    */

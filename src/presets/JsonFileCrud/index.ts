@@ -141,7 +141,7 @@ export default class JsonFileCrudPreset implements IPreset<IJsonFileCrud> {
   private readonly basePath: string;
   private instance!: JsonFileCrudImpl;
 
-  constructor(basePath: string = './data') {
+  constructor(basePath: string = './temp/data') {
     this.basePath = basePath;
   }
 
