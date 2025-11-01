@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
-import { IFileAdapter, JSON_ADAPTER_CAPABILITY } from '../../interfaces/middlewares/adapters/IFIleAdapter.js';
-import { IMiddleware } from '../../interfaces/IMIddleware.js';
+import { IFileAdapter, JSON_ADAPTER_CAPABILITY } from '../../../interfaces/middlewares/adapters/IFIleAdapter.js';
+import { IMiddleware } from '../../../interfaces/IMIddleware.js';
 
 class JsonAdapter implements IFileAdapter<any> {
 

@@ -55,11 +55,12 @@ export default class FileStorageProvider implements IProvider<IStorage> {
 
 	private readonly fileStoragesMap = new Map<string, FileStorage>();
 
-	getInstance(basePath = "./file-storage"): IStorage {
+	getInstance(basePath = "./temp/file-storage"): IStorage {
 		if (this.fileStoragesMap.has(basePath)) {
 			return this.fileStoragesMap.get(basePath)!;
 		} else {
 			const newFileStorage = new FileStorage(basePath);
+			newFileStorage.init().catch(console.error);
 			this.fileStoragesMap.set(basePath, newFileStorage);
 			return newFileStorage;
 		}

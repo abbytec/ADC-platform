@@ -14,10 +14,17 @@ export class Kernel implements IKernel {
   private readonly middlewares = new Map<string, IMiddleware<any>>();
   private readonly apps = new Map<string, IApp>();
 
+  // --- Determinación de entorno ---
+  private readonly isDevelopment = process.env.NODE_ENV === 'development';
+  private readonly basePath = this.isDevelopment 
+    ? path.resolve(process.cwd(), 'src')
+    : path.resolve(process.cwd(), 'dist');
+  private readonly fileExtension = this.isDevelopment ? '.ts' : '.js';
+
   // --- Rutas ---
-  private readonly providersPath = path.resolve(process.cwd(), 'src/providers');
-  private readonly middlewaresPath = path.resolve(process.cwd(), 'src/middlewares');
-  private readonly appsPath = path.resolve(process.cwd(), 'src/apps');
+  private readonly providersPath = path.resolve(this.basePath, 'providers');
+  private readonly middlewaresPath = path.resolve(this.basePath, 'middlewares');
+  private readonly appsPath = path.resolve(this.basePath, 'apps');
 
   constructor() {
     this.register(KERNEL_INJECTION, this);
@@ -43,6 +50,8 @@ export class Kernel implements IKernel {
   // --- Lógica de Arranque ---
   public async start(): Promise<void> {
     console.log("[Kernel] Iniciando...");
+    console.log(`[Kernel] Modo: ${this.isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
+    console.log(`[Kernel] Base path: ${this.basePath}`);
 
     // 1. Cargar Providers (I/O)
     await this.loadLayer(this.providersPath, this.loadProvider.bind(this));
@@ -54,10 +63,12 @@ export class Kernel implements IKernel {
     // Excluimos App.ts (la clase base)
     await this.loadLayer(this.appsPath, this.loadApp.bind(this), ['App.ts']);
     
-    // Iniciar watchers para carga dinámica
-    this.watchLayer(this.providersPath, this.loadProvider.bind(this), this.unloadProvider.bind(this));
-    this.watchLayer(this.middlewaresPath, this.loadMiddleware.bind(this), this.unloadMiddleware.bind(this));
-    this.watchLayer(this.appsPath, this.loadApp.bind(this), this.unloadApp.bind(this), ['App.ts']);
+    // Iniciar watchers para carga dinámica (solo en desarrollo)
+    if (this.isDevelopment) {
+      this.watchLayer(this.providersPath, this.loadProvider.bind(this), this.unloadProvider.bind(this));
+      this.watchLayer(this.middlewaresPath, this.loadMiddleware.bind(this), this.unloadMiddleware.bind(this));
+      this.watchLayer(this.appsPath, this.loadApp.bind(this), this.unloadApp.bind(this), ['App.ts']);
+    }
 
     console.log("[Kernel] En funcionamiento.");
   }
@@ -65,7 +76,7 @@ export class Kernel implements IKernel {
   // --- Métodos de Carga (Abstraídos) ---
 
   /**
-   * Carga recursivamente todos los 'index.ts' en una capa.
+   * Carga recursivamente todos los 'index.ts'/'index.js' en una capa.
    */
   private async loadLayer(
     dir: string, 
@@ -79,14 +90,14 @@ export class Kernel implements IKernel {
         if (exclude.includes(entry.name)) continue;
 
         if (entry.isDirectory()) {
-          // Asumimos que el punto de entrada es 'index.ts'
-          const indexPath = path.join(entryPath, 'index.ts');
+          // Asumimos que el punto de entrada es 'index.ts'/'index.js'
+          const indexPath = path.join(entryPath, `index${this.fileExtension}`);
           try {
             if ((await fs.stat(indexPath)).isFile()) {
               await loader(indexPath);
             }
           } catch (e) {
-            // No hay 'index.ts', seguir buscando recursivamente
+            // No hay index, seguir buscando recursivamente
             await this.loadLayer(entryPath, loader, exclude);
           }
         }
@@ -153,7 +164,7 @@ export class Kernel implements IKernel {
     unloader: (p: string) => Promise<void>,
     exclude: string[] = []
   ) {
-    const watcher = chokidar.watch(path.join(dir, '**/index.ts'), { 
+    const watcher = chokidar.watch(path.join(dir, `**/index${this.fileExtension}`), { 
       ignoreInitial: true,
       ignored: exclude
     });
