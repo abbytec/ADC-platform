@@ -107,14 +107,14 @@ export class Kernel implements IKernel {
     }
   }
 
-  private async loadProvider(filePath: string): Promise<void> {
+  private async loadProvider(filePath: string, options?: any): Promise<void> {
     try {
       const module = await import(`${filePath}?v=${Date.now()}`);
       const ProviderClass = module.default;
       if (!ProviderClass) return;
 
       const provider: IProvider<any> = new ProviderClass();
-      const instance = await provider.getInstance();
+      const instance = await provider.getInstance(options);
       
       this.register(provider.capability, instance);
       this.providers.set(filePath, provider);
