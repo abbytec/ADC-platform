@@ -1,5 +1,6 @@
 // src/index.ts
 import { Kernel } from './kernel.js';
+import { Logger } from './utils/Logger.js';
 
 async function main() {
   const kernel = new Kernel();
@@ -11,11 +12,11 @@ async function main() {
     process.exit(0);
   });
   
-  console.log("---------------------------------------");
-  console.log("[Main] Kernel en funcionamiento.");
-  console.log("Puedes agregar/quitar carpetas en /apps para ver la carga dinámica.");
-  console.log("Presiona Ctrl+C para salir.");
-  console.log("---------------------------------------");
+  Logger.ok("---------------------------------------");
+  Logger.ok("Kernel en funcionamiento.");
+  Logger.info("Puedes agregar/quitar carpetas en /apps para ver la carga dinámica.");
+  Logger.info("Presiona Ctrl+C para salir.");
+  Logger.ok("---------------------------------------");
 }
 
 try {

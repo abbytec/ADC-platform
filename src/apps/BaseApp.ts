@@ -1,5 +1,6 @@
 import { IApp } from "../interfaces/IApp.js";
 import { IKernel } from "../interfaces/IKernel.js";
+import { Logger } from "../utils/Logger.js";
 
 
 /**
@@ -8,7 +9,7 @@ import { IKernel } from "../interfaces/IKernel.js";
  */
 export abstract class BaseApp implements IApp {
   /** El nombre único de la app */
-  abstract name: string;
+  abstract readonly name: string;
 
   /**
    * Las 'Apps' deben definir aquí los nombres
@@ -34,9 +35,10 @@ export abstract class BaseApp implements IApp {
     this.kernel = kernel;
   }
 
-  public async start(): Promise<void> {
-    await this.run();
-  }
+  /**
+   * Lógica de inicialización.
+   */
+  public async start() { /* noop */ };
 
   /**
    * La lógica de negocio de la app.
@@ -46,14 +48,14 @@ export abstract class BaseApp implements IApp {
   /**
    * Lógica de detención.
    */
-  abstract stop(): Promise<void>;
+  public async stop() { /* noop */ };
 
   /**
    * Chequea el registro del Kernel por todas las dependencias requeridas.
    * Lanza un error si falta alguna.
    */
   public checkDependencies(): void {
-    console.log(`[App: ${this.name}] Validando dependencias...`);
+    Logger.info(`[${this.name}] Validando dependencias...`);
 
     for (const name of this.requiredProviders) {
       this.kernel.getProvider(name);
@@ -67,6 +69,6 @@ export abstract class BaseApp implements IApp {
       this.kernel.getPreset(name);
     }
 
-    console.log(`[App: ${this.name}] Todas las dependencias fueron validadas.`);
+    Logger.ok(`[${this.name}] Todas las dependencias fueron validadas.`);
   }
 }

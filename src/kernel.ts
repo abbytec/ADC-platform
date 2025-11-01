@@ -7,6 +7,7 @@ import { IApp } from './interfaces/IApp.js';
 import { IMiddleware } from './interfaces/IMIddleware.js';
 import { IProvider } from './interfaces/IProvider.js';
 import { IPreset } from './interfaces/IPreset.js';
+import { Logger } from './utils/Logger.js';
 
 export class Kernel implements IKernel {
   // --- Registros por categoría ---
@@ -36,13 +37,13 @@ export class Kernel implements IKernel {
   // --- API Pública del Kernel ---
   public registerProvider<T>(name: symbol, instance: T, type?: symbol): void {
     if (this.providersRegistry.has(name)) {
-      console.warn(`[Kernel] ADVERTENCIA: Provider ${name.description} sobrescrito.`);
+      Logger.warn(`ADVERTENCIA: Provider ${name.description} sobrescrito.`);
     }
     this.providersRegistry.set(name, instance);
     if (type && type !== name) {
       this.providersRegistry.set(type, instance);
     }
-    console.log(`[Kernel] Provider registrado: ${name.description}`);
+    Logger.ok(`Provider registrado: ${name.description}`);
   }
 
   public getProvider<T>(name: symbol): T {
@@ -55,10 +56,10 @@ export class Kernel implements IKernel {
 
   public registerMiddleware<T>(name: symbol, instance: T): void {
     if (this.middlewaresRegistry.has(name)) {
-      console.warn(`[Kernel] ADVERTENCIA: Middleware ${name.description} sobrescrito.`);
+      Logger.warn(`ADVERTENCIA: Middleware ${name.description} sobrescrito.`);
     }
     this.middlewaresRegistry.set(name, instance);
-    console.log(`[Kernel] Middleware registrado: ${name.description}`);
+    Logger.ok(`Middleware registrado: ${name.description}`);
   }
 
   public getMiddleware<T>(name: symbol): T {
@@ -71,10 +72,10 @@ export class Kernel implements IKernel {
 
   public registerPreset<T>(name: symbol, instance: T): void {
     if (this.presetsRegistry.has(name)) {
-      console.warn(`[Kernel] ADVERTENCIA: Preset ${name.description} sobrescrito.`);
+      Logger.warn(`ADVERTENCIA: Preset ${name.description} sobrescrito.`);
     }
     this.presetsRegistry.set(name, instance);
-    console.log(`[Kernel] Preset registrado: ${name.description}`);
+    Logger.ok(`Preset registrado: ${name.description}`);
   }
 
   public getPreset<T>(name: symbol): T {
@@ -87,10 +88,10 @@ export class Kernel implements IKernel {
 
   public registerApp(name: string, instance: IApp): void {
     if (this.appsRegistry.has(name)) {
-      console.warn(`[Kernel] ADVERTENCIA: App '${name}' sobrescrita.`);
+      Logger.warn(`ADVERTENCIA: App '${name}' sobrescrita.`);
     }
     this.appsRegistry.set(name, instance);
-    console.log(`[Kernel] App registrada: ${name}`);
+    Logger.ok(`App registrada: ${name}`);
   }
 
   public getApp(name: string): IApp {
@@ -103,9 +104,9 @@ export class Kernel implements IKernel {
 
   // --- Lógica de Arranque ---
   public async start(): Promise<void> {
-    console.log("[Kernel] Iniciando...");
-    console.log(`[Kernel] Modo: ${this.isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
-    console.log(`[Kernel] Base path: ${this.basePath}`);
+    Logger.info("Iniciando...");
+    Logger.info(`Modo: ${this.isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
+    Logger.debug(`Base path: ${this.basePath}`);
 
     // 1. Cargar Providers (I/O)
     await this.loadLayerRecursive(this.providersPath, this.loadProvider.bind(this));
@@ -127,54 +128,55 @@ export class Kernel implements IKernel {
       this.watchLayer(this.appsPath, this.loadApp.bind(this), this.unloadApp.bind(this), ['BaseApp.ts']);
     }
 
-    console.log("[Kernel] En funcionamiento.");
+    Logger.ok("En funcionamiento.");
   }
 
   // --- Lógica de Cierre ---
   public async stop(): Promise<void> {
-    console.log("\n[Kernel] Iniciando cierre ordenado...");
+    Logger.info("\nIniciando cierre ordenado...");
     
     // 1. Detener Apps
-    console.log("[Kernel] Deteniendo apps...");
+    Logger.info("Deteniendo apps...");
     for (const [, app] of this.apps) {
       try {
-        await app.stop();
+        Logger.debug(`Deteniendo app ${app.name}`);
+        await app.stop?.();
       } catch (e) {
-        console.error(`[Kernel] Error deteniendo app ${app.name}:`, e);
+        Logger.error(`Error deteniendo app ${app.name}: ${e}`);
       }
     }
     
     // 2. Detener Presets
-    console.log("[Kernel] Deteniendo presets...");
+    Logger.info("Deteniendo presets...");
     for (const [, preset] of this.presets) {
       try {
         await preset.shutdown?.();
       } catch (e) {
-        console.error(`[Kernel] Error deteniendo preset ${preset.name.description}:`, e);
+        Logger.error(`Error deteniendo preset ${preset.name.description}: ${e}`);
       }
     }
     
     // 3. Detener Middlewares
-    console.log("[Kernel] Deteniendo middlewares...");
+    Logger.info("Deteniendo middlewares...");
     for (const [, middleware] of this.middlewares) {
       try {
         await middleware.shutdown?.();
       } catch (e) {
-        console.error(`[Kernel] Error deteniendo middleware ${middleware.name.description}:`, e);
+        Logger.error(`Error deteniendo middleware ${middleware.name.description}: ${e}`);
       }
     }
     
     // 4. Detener Providers
-    console.log("[Kernel] Deteniendo providers...");
+    Logger.info("Deteniendo providers...");
     for (const [, provider] of this.providers) {
       try {
         await provider.shutdown?.();
       } catch (e) {
-        console.error(`[Kernel] Error deteniendo provider ${provider.name.description}:`, e);
+        Logger.error(`Error deteniendo provider ${provider.name.description}: ${e}`);
       }
     }
     
-    console.log("[Kernel] Cierre completado.");
+    Logger.ok("Cierre completado.");
   }
 
   /**
@@ -225,7 +227,7 @@ export class Kernel implements IKernel {
       this.providers.set(filePath, provider);
       
     } catch (e) {
-      console.error(`[Kernel] Error cargando Provider ${filePath}:`, e);
+      Logger.error(`Error cargando Provider ${filePath}: ${e}`);
     }
   }
 
@@ -242,7 +244,7 @@ export class Kernel implements IKernel {
       this.middlewares.set(filePath, middleware);
       
     } catch (e) {
-      console.error(`[Kernel] Error cargando Middleware ${filePath}:`, e);
+      Logger.error(`Error cargando Middleware ${filePath}: ${e}`);
     }
   }
 
@@ -262,7 +264,7 @@ export class Kernel implements IKernel {
       this.presets.set(filePath, preset);
       
     } catch (e) {
-      console.error(`[Kernel] Error cargando Preset ${filePath}:`, e);
+      Logger.error(`Error cargando Preset ${filePath}: ${e}`);
     }
   }
 
@@ -273,16 +275,16 @@ export class Kernel implements IKernel {
       if (!AppClass) return;
 
       const app: IApp = new AppClass(this);
-      await app.start()
+      Logger.debug(`Iniciando App ${app.name}`);
+      await app.start?.();
+      await app.run();
       this.apps.set(filePath, app);
-      
     } catch (e) {
-      console.error(`[Kernel] Error cargando App ${filePath}:`, e);
+      Logger.error(`Error ejecutando App ${filePath}: ${e}`);
     }
   }
   
   // --- Lógica de Watchers y Descarga ---
-  
   private watchLayer(
     dir: string, 
     loader: (p: string) => Promise<void>, 
@@ -304,7 +306,7 @@ export class Kernel implements IKernel {
   private async unloadProvider(filePath: string) {
     const provider = this.providers.get(filePath);
     if(provider) {
-      console.log(`Descargando provider: ${provider.name.description}`);
+      Logger.debug(`Removiendo provider: ${provider.name.description}`);
       await provider.shutdown?.();
       this.providersRegistry.delete(provider.name);
       if (provider.type && provider.type !== provider.name) {
@@ -317,7 +319,7 @@ export class Kernel implements IKernel {
   private async unloadMiddleware(filePath: string) {
     const mw = this.middlewares.get(filePath);
     if(mw) {
-      console.log(`Descargando middleware: ${mw.name.description}`);
+      Logger.debug(`Removiendo middleware: ${mw.name.description}`);
       await mw.shutdown?.();
       this.middlewaresRegistry.delete(mw.name);
       this.middlewares.delete(filePath);
@@ -327,7 +329,7 @@ export class Kernel implements IKernel {
   private async unloadPreset(filePath: string) {
     const preset = this.presets.get(filePath);
     if(preset) {
-      console.log(`Descargando preset: ${preset.name.description}`);
+      Logger.debug(`Removiendo preset: ${preset.name.description}`);
       await preset.shutdown?.();
       this.presetsRegistry.delete(preset.name);
       this.presets.delete(filePath);
@@ -337,8 +339,8 @@ export class Kernel implements IKernel {
   private async unloadApp(filePath: string) {
     const app = this.apps.get(filePath);
     if(app) {
-      console.log(`Descargando app: ${app.name}`);
-      await app.stop();
+      Logger.debug(`Removiendo app: ${app.name}`);
+      await app.stop?.();
       this.appsRegistry.delete(app.name);
       this.apps.delete(filePath);
     }

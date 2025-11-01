@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { IPreset } from '../../interfaces/IPreset.js';
+import { Logger } from '../../utils/Logger.js';
 
 export const JSON_FILE_CRUD_PRESET = Symbol.for('JSON_FILE_CRUD_PRESET');
 
@@ -49,7 +50,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
     // Guardar el archivo
     const jsonString = JSON.stringify(data, null, 2);
     await fs.writeFile(filePath, jsonString, 'utf-8');
-    console.log(`[JsonFileCrud] Archivo creado: ${key}`);
+    Logger.ok(`[JsonFileCrud] Archivo creado: ${key}`);
   }
 
   async read<T>(key: string): Promise<T | null> {
@@ -58,11 +59,11 @@ class JsonFileCrudImpl implements IJsonFileCrud {
     try {
       const content = await fs.readFile(filePath, 'utf-8');
       const data = JSON.parse(content) as T;
-      console.log(`[JsonFileCrud] Archivo leído: ${key}`);
+      Logger.info(`[JsonFileCrud] Archivo leído: ${key}`);
       return data;
     } catch (err: any) {
       if (err.code === 'ENOENT') {
-        console.warn(`[JsonFileCrud] Archivo no encontrado: ${key}`);
+        Logger.warn(`[JsonFileCrud] Archivo no encontrado: ${key}`);
         return null;
       }
       throw new Error(`[JsonFileCrud] Error al leer ${key}: ${err.message}`);
@@ -85,7 +86,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
     // Actualizar el archivo
     const jsonString = JSON.stringify(data, null, 2);
     await fs.writeFile(filePath, jsonString, 'utf-8');
-    console.log(`[JsonFileCrud] Archivo actualizado: ${key}`);
+    Logger.ok(`[JsonFileCrud] Archivo actualizado: ${key}`);
   }
 
   async delete(key: string): Promise<void> {
@@ -93,7 +94,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
     
     try {
       await fs.unlink(filePath);
-      console.log(`[JsonFileCrud] Archivo eliminado: ${key}`);
+      Logger.ok(`[JsonFileCrud] Archivo eliminado: ${key}`);
     } catch (err: any) {
       if (err.code === 'ENOENT') {
         throw new Error(`[JsonFileCrud] El archivo '${key}' no existe.`);
@@ -103,16 +104,12 @@ class JsonFileCrudImpl implements IJsonFileCrud {
   }
 
   async exists(key: string): Promise<boolean> {
-    const filePath = this.getFilePath(key);
-    
     try {
+      const filePath = this.getFilePath(key);
       await fs.stat(filePath);
       return true;
-    } catch (err: any) {
-      if (err.code === 'ENOENT') {
-        return false;
-      }
-      throw err;
+    } catch (err) {
+      return false;
     }
   }
 
@@ -123,11 +120,8 @@ class JsonFileCrudImpl implements IJsonFileCrud {
       return files
         .filter(f => f.endsWith('.json'))
         .map(f => f.slice(0, -5)); // Remover .json
-    } catch (err: any) {
-      if (err.code === 'ENOENT') {
-        return [];
-      }
-      throw err;
+    } catch (err) {
+      return [];
     }
   }
 }
@@ -146,7 +140,7 @@ export default class JsonFileCrudPreset implements IPreset<IJsonFileCrud> {
   }
 
   async initialize(): Promise<void> {
-    console.log(`[JsonFileCrud] Inicializando con basePath: ${this.basePath}`);
+    Logger.info(`[JsonFileCrud] Inicializando con basePath: ${this.basePath}`);
     await fs.mkdir(this.basePath, { recursive: true });
   }
 
@@ -158,6 +152,6 @@ export default class JsonFileCrudPreset implements IPreset<IJsonFileCrud> {
   }
 
   async shutdown(): Promise<void> {
-    console.log(`[JsonFileCrud] Detenido.`);
+    Logger.ok(`[JsonFileCrud] Detenido.`);
   }
 }

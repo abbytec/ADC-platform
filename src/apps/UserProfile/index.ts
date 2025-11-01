@@ -1,6 +1,6 @@
 import { BaseApp } from "../BaseApp.js";
 import { JSON_FILE_CRUD_PRESET, IJsonFileCrud } from "../../presets/JsonFileCrud/index.js";
-import { IKernel } from "../../interfaces/IKernel.js";
+import { Logger } from "../../utils/Logger.js";
 
 // La estructura de datos que manejaremos
 interface UserProfile {
@@ -14,16 +14,15 @@ interface UserProfile {
  * usando el preset JsonFileCrud.
  */
 export default class UserProfileApp extends BaseApp {
-	public name = "user-profile";
+	public readonly name = "user-profile";
 
 	protected requiredPresets = [JSON_FILE_CRUD_PRESET];
 
-	private readonly crud!: IJsonFileCrud;
+	private crud!: IJsonFileCrud;
 	private readonly PROFILE_KEY = "main_user_profile";
 
-	constructor(kernel: IKernel){
-		super(kernel);
-		this.crud = kernel.getPreset<IJsonFileCrud>(JSON_FILE_CRUD_PRESET);
+	async start(){
+		this.crud = this.kernel.getPreset<IJsonFileCrud>(JSON_FILE_CRUD_PRESET);
 	}
 
 	async run(): Promise<void> {
@@ -31,12 +30,12 @@ export default class UserProfileApp extends BaseApp {
 		let data = await this.crud.read<UserProfile>(this.PROFILE_KEY);
 
 		if (data) {
-			console.log(`[${this.name}] Perfil cargado:`, data);
+			Logger.info(`[${this.name}] Perfil cargado:`, data);
 			data.age += 1;
 			data.lastUpdate = new Date().toISOString();
-			console.log(`[${this.name}] Perfil actualizado a edad ${data.age}.`);
+			Logger.info(`[${this.name}] Perfil actualizado a edad ${data.age}.`);
 		} else {
-			console.log(`[${this.name}] No se encontró perfil. Creando uno nuevo.`);
+			Logger.info(`[${this.name}] No se encontró perfil. Creando uno nuevo.`);
 			data = {
 				name: "Usuario ADC",
 				age: 25,
@@ -45,7 +44,7 @@ export default class UserProfileApp extends BaseApp {
 		}
 
 		await this.crud.update(this.PROFILE_KEY, data).then(()=>{
-            console.log(`[${this.name}] Perfil guardado con éxito.`);
+            Logger.ok(`[${this.name}] Perfil guardado con éxito.`);
         }).catch(async (err: any) => {
 			if (err.message.includes("no existe")) {
 				await this.crud.create(this.PROFILE_KEY, data);
@@ -53,9 +52,5 @@ export default class UserProfileApp extends BaseApp {
 				throw err;
 			}
 		});
-	}
-
-	async stop(): Promise<void> {
-		console.log(`[${this.name}] Detenida.`);
 	}
 }
