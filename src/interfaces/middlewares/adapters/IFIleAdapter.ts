@@ -5,4 +5,4 @@ export interface IFileAdapter<T> {
   fromBuffer(buffer: Buffer): T;
 }
 
-export const JSON_ADAPTER_CAPABILITY = Symbol.for("JSON_ADAPTER_CAPABILITY");
+export const FILE_JSON_ADAPTER = Symbol.for("FILE_JSON_ADAPTER");

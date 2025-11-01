@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { Buffer } from 'node:buffer';
 import { IPreset } from '../../interfaces/IPreset.js';
 
-export const JSON_FILE_CRUD_CAPABILITY = Symbol.for('JsonFileCrud');
+export const JSON_FILE_CRUD_PRESET = Symbol.for('JsonFileCrud');
 
 /**
  * Interfaz que define las operaciones CRUD para archivos JSON
@@ -21,7 +21,7 @@ export interface IJsonFileCrud {
  * Implementación del CRUD para JSON en archivos
  */
 class JsonFileCrudImpl implements IJsonFileCrud {
-  private basePath: string;
+  private readonly basePath: string;
 
   constructor(basePath: string = './data') {
     this.basePath = basePath;
@@ -137,10 +137,9 @@ class JsonFileCrudImpl implements IJsonFileCrud {
  * Preset que expone las operaciones CRUD para JSON
  */
 export default class JsonFileCrudPreset implements IPreset<IJsonFileCrud> {
-  public name = 'json-file-crud';
-  public capability = JSON_FILE_CRUD_CAPABILITY;
+  public name = JSON_FILE_CRUD_PRESET;
   
-  private basePath: string;
+  private readonly basePath: string;
   private instance!: JsonFileCrudImpl;
 
   constructor(basePath: string = './data') {
@@ -148,7 +147,7 @@ export default class JsonFileCrudPreset implements IPreset<IJsonFileCrud> {
   }
 
   async initialize(): Promise<void> {
-    console.log(`[${this.name}] Inicializando con basePath: ${this.basePath}`);
+    console.log(`[JsonFileCrud] Inicializando con basePath: ${this.basePath}`);
     await fs.mkdir(this.basePath, { recursive: true });
   }
 
@@ -160,6 +159,6 @@ export default class JsonFileCrudPreset implements IPreset<IJsonFileCrud> {
   }
 
   async shutdown(): Promise<void> {
-    console.log(`[${this.name}] Detenido.`);
+    console.log(`[JsonFileCrud] Detenido.`);
   }
 }

@@ -9,10 +9,7 @@ export const PRESET_INJECTION = Symbol.for("IPreset");
  */
 export interface IPreset<T = any> {
   /** Nombre único del preset */
-  name: string;
-  
-  /** Capacidad (símbolo) que expone este preset */
-  capability: symbol;
+  name: symbol;
   
   /** Obtener la instancia del preset */
   getInstance(): T;

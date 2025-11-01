@@ -1,4 +1,4 @@
-import { IStorage, STORAGE_CAPABILITY } from "../../interfaces/providers/IStorage.js";
+import { IStorage, STORAGE_PROVIDER } from "../../interfaces/providers/IStorage.js";
 import { IProvider } from "../../interfaces/IProvider.js";
 
 import * as fs from "node:fs/promises";
@@ -51,7 +51,7 @@ class FileStorage implements IStorage {
 
 // 2. El Proveedor que la expone
 export default class FileStorageProvider implements IProvider<IStorage> {
-	public capability = STORAGE_CAPABILITY;
+	public name = STORAGE_PROVIDER;
 
 	private readonly fileStoragesMap = new Map<string, FileStorage>();
 

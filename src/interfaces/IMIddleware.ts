@@ -1,5 +1,5 @@
 export interface IMiddleware<T> {
-  capability: symbol;
+  name: symbol;
   getInstance(): Promise<T> | T;
   shutdown?(): Promise<void>;
 }

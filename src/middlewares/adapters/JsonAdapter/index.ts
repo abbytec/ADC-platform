@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { IFileAdapter, JSON_ADAPTER_CAPABILITY } from '../../../interfaces/middlewares/adapters/IFIleAdapter.js';
+import { IFileAdapter, FILE_JSON_ADAPTER } from '../../../interfaces/middlewares/adapters/IFIleAdapter.js';
 import { IMiddleware } from '../../../interfaces/IMIddleware.js';
 
 class JsonAdapter implements IFileAdapter<any> {
@@ -34,15 +34,8 @@ class JsonAdapter implements IFileAdapter<any> {
 
 export default class JsonAdapterMiddleware implements IMiddleware<IFileAdapter<any>> {
 
-  /**
-   * La "llave" única que esta implementación proveerá.
-   */
-  public capability = JSON_ADAPTER_CAPABILITY;
+  public name = FILE_JSON_ADAPTER;
 
-  /**
-   * El Kernel llamará a esto para obtener la instancia
-   * del adapter.
-   */
   getInstance(): IFileAdapter<any> {
     return new JsonAdapter();
   }

@@ -2,15 +2,19 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import chokidar from 'chokidar';
-import { IKernel, KERNEL_INJECTION } from './interfaces/IKernel.js';
+import { IKernel } from './interfaces/IKernel.js';
 import { IApp } from './interfaces/IApp.js';
 import { IMiddleware } from './interfaces/IMIddleware.js';
 import { IProvider } from './interfaces/IProvider.js';
 import { IPreset } from './interfaces/IPreset.js';
 
 export class Kernel implements IKernel {
-  // --- Registros ---
-  private readonly capabilities = new Map<symbol, any>();
+  // --- Registros por categoría ---
+  private readonly providersRegistry = new Map<symbol, any>();
+  private readonly middlewaresRegistry = new Map<symbol, any>();
+  private readonly presetsRegistry = new Map<symbol, any>();
+  private readonly appsRegistry = new Map<string, IApp>();
+  
   private readonly providers = new Map<string, IProvider<any>>();
   private readonly middlewares = new Map<string, IMiddleware<any>>();
   private readonly presets = new Map<string, IPreset<any>>();
@@ -29,25 +33,69 @@ export class Kernel implements IKernel {
   private readonly presetsPath = path.resolve(this.basePath, 'presets');
   private readonly appsPath = path.resolve(this.basePath, 'apps');
 
-  constructor() {
-    this.register(KERNEL_INJECTION, this);
-  }
-
   // --- API Pública del Kernel ---
-  public register<T>(capability: symbol, instance: T): void {
-    if (this.capabilities.has(capability)) {
-      console.warn(`[Kernel] ADVERTENCIA: Capacidad ${capability.description} sobrescrita.`);
+  public registerProvider<T>(name: symbol, instance: T): void {
+    if (this.providersRegistry.has(name)) {
+      console.warn(`[Kernel] ADVERTENCIA: Provider ${name.description} sobrescrito.`);
     }
-    this.capabilities.set(capability, instance);
-    console.log(`[Kernel] Capacidad registrada: ${capability.description}`);
+    this.providersRegistry.set(name, instance);
+    console.log(`[Kernel] Provider registrado: ${name.description}`);
   }
 
-  public get<T>(capability: symbol): T {
-    const instance = this.capabilities.get(capability);
+  public getProvider<T>(name: symbol): T {
+    const instance = this.providersRegistry.get(name);
     if (!instance) {
-      throw new Error(`[Kernel] Capacidad ${capability.description} no encontrada.`);
+      throw new Error(`[Kernel] Provider ${name.description} no encontrado.`);
     }
     return instance as T;
+  }
+
+  public registerMiddleware<T>(name: symbol, instance: T): void {
+    if (this.middlewaresRegistry.has(name)) {
+      console.warn(`[Kernel] ADVERTENCIA: Middleware ${name.description} sobrescrito.`);
+    }
+    this.middlewaresRegistry.set(name, instance);
+    console.log(`[Kernel] Middleware registrado: ${name.description}`);
+  }
+
+  public getMiddleware<T>(name: symbol): T {
+    const instance = this.middlewaresRegistry.get(name);
+    if (!instance) {
+      throw new Error(`[Kernel] Middleware ${name.description} no encontrado.`);
+    }
+    return instance as T;
+  }
+
+  public registerPreset<T>(name: symbol, instance: T): void {
+    if (this.presetsRegistry.has(name)) {
+      console.warn(`[Kernel] ADVERTENCIA: Preset ${name.description} sobrescrito.`);
+    }
+    this.presetsRegistry.set(name, instance);
+    console.log(`[Kernel] Preset registrado: ${name.description}`);
+  }
+
+  public getPreset<T>(name: symbol): T {
+    const instance = this.presetsRegistry.get(name);
+    if (!instance) {
+      throw new Error(`[Kernel] Preset ${name.description} no encontrado.`);
+    }
+    return instance as T;
+  }
+
+  public registerApp(name: string, instance: IApp): void {
+    if (this.appsRegistry.has(name)) {
+      console.warn(`[Kernel] ADVERTENCIA: App '${name}' sobrescrita.`);
+    }
+    this.appsRegistry.set(name, instance);
+    console.log(`[Kernel] App registrada: ${name}`);
+  }
+
+  public getApp(name: string): IApp {
+    const instance = this.appsRegistry.get(name);
+    if (!instance) {
+      throw new Error(`[Kernel] App '${name}' no encontrada.`);
+    }
+    return instance;
   }
 
   // --- Lógica de Arranque ---
@@ -123,7 +171,7 @@ export class Kernel implements IKernel {
       const provider: IProvider<any> = new ProviderClass();
       const instance = await provider.getInstance();
       
-      this.register(provider.capability, instance);
+      this.registerProvider(provider.name, instance);
       this.providers.set(filePath, provider);
       
     } catch (e) {
@@ -140,7 +188,7 @@ export class Kernel implements IKernel {
       const middleware: IMiddleware<any> = new MiddlewareClass();
       const instance = await middleware.getInstance();
       
-      this.register(middleware.capability, instance);
+      this.registerMiddleware(middleware.name, instance);
       this.middlewares.set(filePath, middleware);
       
     } catch (e) {
@@ -160,7 +208,7 @@ export class Kernel implements IKernel {
       }
       
       const instance = preset.getInstance();
-      this.register(preset.capability, instance);
+      this.registerPreset(preset.name, instance);
       this.presets.set(filePath, preset);
       
     } catch (e) {
@@ -183,7 +231,7 @@ export class Kernel implements IKernel {
     }
   }
   
-  // --- Lógica de Watchers y Descarga (Simplificada) ---
+  // --- Lógica de Watchers y Descarga ---
   
   private watchLayer(
     dir: string, 
@@ -206,9 +254,9 @@ export class Kernel implements IKernel {
   private async unloadProvider(filePath: string) {
     const provider = this.providers.get(filePath);
     if(provider) {
-      console.log(`Descargando provider: ${provider.capability.description}`);
+      console.log(`Descargando provider: ${provider.name.description}`);
       await provider.shutdown?.();
-      this.capabilities.delete(provider.capability);
+      this.providersRegistry.delete(provider.name);
       this.providers.delete(filePath);
     }
   }
@@ -216,9 +264,9 @@ export class Kernel implements IKernel {
   private async unloadMiddleware(filePath: string) {
     const mw = this.middlewares.get(filePath);
     if(mw) {
-      console.log(`Descargando middleware: ${mw.capability.description}`);
+      console.log(`Descargando middleware: ${mw.name.description}`);
       await mw.shutdown?.();
-      this.capabilities.delete(mw.capability);
+      this.middlewaresRegistry.delete(mw.name);
       this.middlewares.delete(filePath);
     }
   }
@@ -226,9 +274,9 @@ export class Kernel implements IKernel {
   private async unloadPreset(filePath: string) {
     const preset = this.presets.get(filePath);
     if(preset) {
-      console.log(`Descargando preset: ${preset.capability.description}`);
+      console.log(`Descargando preset: ${preset.name.description}`);
       await preset.shutdown?.();
-      this.capabilities.delete(preset.capability);
+      this.presetsRegistry.delete(preset.name);
       this.presets.delete(filePath);
     }
   }
@@ -238,6 +286,7 @@ export class Kernel implements IKernel {
     if(app) {
       console.log(`Descargando app: ${app.name}`);
       await app.stop();
+      this.appsRegistry.delete(app.name);
       this.apps.delete(filePath);
     }
   }

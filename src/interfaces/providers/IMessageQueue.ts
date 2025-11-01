@@ -1,4 +1,4 @@
-export const QUEUE_CAPABILITY = Symbol.for("IMessageQueue");
+export const QUEUE_PROVIDER = Symbol.for("IMessageQueue");
 
 export interface IMessageQueue {
   publish(topic: string, message: any): Promise<void>;

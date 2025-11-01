@@ -11,24 +11,23 @@ export abstract class BaseApp implements IApp {
   abstract name: string;
 
   /**
-   * Las 'Apps' hijas deben definir aquí las capacidades
-   * de I/O que necesitan (ej: STORAGE_CAPABILITY)
+   * Las 'Apps' deben definir aquí los nombres
+   * de los providers que necesitan.
    */
   protected requiredProviders: symbol[] = [];
   
   /**
-   * Las 'Apps' hijas deben definir aquí las capacidades
-   * de lógica que necesitan (ej: JSON_ADAPTER_CAPABILITY)
+   * Las 'Apps' deben definir aquí los nombres
+   * de los middlewares que necesitan.
    */
   protected requiredMiddlewares: symbol[] = [];
 
   /**
-   * Las 'Apps' hijas deben definir aquí las capacidades
-   * de utilidad que necesitan (ej: JSON_FILE_CRUD_CAPABILITY)
+   * Las 'Apps' deben definir aquí los nombres
+   * de los presets que necesitan.
    */
   protected requiredPresets: symbol[] = [];
 
-  /** El Kernel inyectado, disponible para las clases hijas */
   protected kernel!: IKernel;
 
   /**
@@ -52,12 +51,12 @@ export abstract class BaseApp implements IApp {
   }
 
   /**
-   * La lógica de negocio de la app (implementada por la hija).
+   * La lógica de negocio de la app.
    */
   abstract run(): Promise<void>;
 
   /**
-   * Lógica de detención (implementada por la hija).
+   * Lógica de detención.
    */
   abstract stop(): Promise<void>;
 
@@ -67,11 +66,19 @@ export abstract class BaseApp implements IApp {
    */
   private checkDependencies(): void {
     console.log(`[App: ${this.name}] Validando dependencias...`);
-    const allDeps = [...this.requiredProviders, ...this.requiredMiddlewares, ...this.requiredPresets];
 
-    for (const capabilitySymbol of allDeps) {
-        this.kernel.get(capabilitySymbol);
+    for (const name of this.requiredProviders) {
+      this.kernel.getProvider(name);
     }
+
+    for (const name of this.requiredMiddlewares) {
+      this.kernel.getMiddleware(name);
+    }
+
+    for (const name of this.requiredPresets) {
+      this.kernel.getPreset(name);
+    }
+
     console.log(`[App: ${this.name}] Todas las dependencias fueron validadas.`);
   }
 }

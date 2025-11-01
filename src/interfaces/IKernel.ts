@@ -5,17 +5,15 @@
 export const KERNEL_INJECTION = Symbol.for("IKernel");
 
 export interface IKernel {
-  /**
-   * Registra una instancia concreta que satisface una capacidad.
-   * @param capability El Symbol que identifica la capacidad (ej: STORAGE_CAPABILITY)
-   * @param instance La instancia de la clase (ej: new FileStorage())
-   */
-  register<T>(capability: symbol, instance: T): void;
+  registerProvider<T>(name: symbol, instance: T): void;
+  getProvider<T>(name: symbol): T;
 
-  /**
-   * Obtiene la instancia de una capacidad registrada.
-   * @param capability El Symbol de la capacidad deseada.
-   * @returns La instancia que provee esa capacidad.
-   */
-  get<T>(capability: symbol): T;
+  registerMiddleware<T>(name: symbol, instance: T): void;
+  getMiddleware<T>(name: symbol): T;
+
+  registerPreset<T>(name: symbol, instance: T): void;
+  getPreset<T>(name: symbol): T;
+
+  registerApp(name: string, instance: any): void;
+  getApp(name: string): any;
 }
