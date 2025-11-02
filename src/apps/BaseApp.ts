@@ -13,7 +13,7 @@ export abstract class BaseApp implements IApp {
 	abstract readonly name: string;
 
 	protected kernel!: IKernel;
-	protected moduleLoader = new ModuleLoader();
+	protected static moduleLoader = new ModuleLoader();
 
 	constructor(kernel: IKernel) {
 		this.kernel = kernel;
@@ -49,7 +49,7 @@ export abstract class BaseApp implements IApp {
 				: path.resolve(process.cwd(), "dist", "apps", this.name);
 
 			const modulesConfigPath = path.join(appDir, "modules.json");
-			await this.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
+			await BaseApp.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
 		} catch (error) {
 			Logger.error(`Error procesando modules.json: ${error}`);
 			throw error;

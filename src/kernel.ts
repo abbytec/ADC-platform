@@ -7,6 +7,8 @@ import { IMiddleware } from "./interfaces/IMIddleware.js";
 import { IProvider } from "./interfaces/IProvider.js";
 import { IPreset } from "./interfaces/IPreset.js";
 import { Logger } from "./utils/Logger/Logger.js";
+import { ModuleLoader } from "./loaders/ModuleLoader.js";
+import { IModuleConfig } from "./interfaces/IModule.js";
 
 export class Kernel implements IKernel {
 	// --- Registros por categoría ---
@@ -15,10 +17,17 @@ export class Kernel implements IKernel {
 	private readonly presetsRegistry = new Map<string, any>();
 	private readonly appsRegistry = new Map<string, IApp>();
 
-	private readonly providers = new Map<string, IProvider<any>>();
-	private readonly middlewares = new Map<string, IMiddleware<any>>();
-	private readonly presets = new Map<string, IPreset<any>>();
+	private readonly providerNameMap = new Map<string, string[]>();
+	private readonly middlewareNameMap = new Map<string, string[]>();
+	private readonly presetNameMap = new Map<string, string[]>();
+
+	private readonly providers = new Map<string, string>(); // filePath -> uniqueKey
+	private readonly middlewares = new Map<string, string>(); // filePath -> uniqueKey
+	private readonly presets = new Map<string, string>(); // filePath -> uniqueKey
 	private readonly apps = new Map<string, IApp>();
+
+	// --- Gestor de carga ---
+	private readonly moduleLoader = new ModuleLoader();
 
 	// --- Determinación de entorno ---
 	private readonly isDevelopment = process.env.NODE_ENV === "development";
@@ -31,56 +40,151 @@ export class Kernel implements IKernel {
 	private readonly presetsPath = path.resolve(this.basePath, "presets");
 	private readonly appsPath = path.resolve(this.basePath, "apps");
 
-	// --- API Pública del Kernel ---
-	public registerProvider<T>(name: string, instance: T, type?: string): void {
-		if (this.providersRegistry.has(name)) {
-			Logger.warn(`ADVERTENCIA: Provider ${name} sobrescrito.`);
-		}
-		this.providersRegistry.set(name, instance);
-		if (type && type !== name) {
-			this.providersRegistry.set(type, instance);
-		}
-		Logger.ok(`Provider registrado: ${name}`);
+	private getUniqueKey(name: string, config?: Record<string, any>): string {
+		return `${name}:${JSON.stringify(config || {})}`;
 	}
 
-	public getProvider<T>(name: string): T {
-		const instance = this.providersRegistry.get(name);
-		if (!instance) {
+	// --- API Pública del Kernel ---
+	public registerProvider<T>(name: string, instance: T, type: string | undefined, config: IModuleConfig): void {
+		const nameUniqueKey = this.getUniqueKey(name, config.config);
+
+		if (!this.providersRegistry.has(nameUniqueKey)) {
+			this.providersRegistry.set(nameUniqueKey, instance);
+
+			if (!this.providerNameMap.has(name)) {
+				this.providerNameMap.set(name, []);
+			}
+			const nameKeys = this.providerNameMap.get(name)!;
+			nameKeys.push(nameUniqueKey);
+			Logger.ok(`Provider registrado: ${name} (Total de instancias: ${nameKeys.length})`);
+		} else {
+			Logger.warn(`ADVERTENCIA: Provider ${name} con la misma configuración ya ha sido registrado.`);
+		}
+
+		if (type && type !== name) {
+			const typeUniqueKey = this.getUniqueKey(type, config.config);
+			if (!this.providersRegistry.has(typeUniqueKey)) {
+				this.providersRegistry.set(typeUniqueKey, instance);
+			}
+
+			if (!this.providerNameMap.has(type)) {
+				this.providerNameMap.set(type, []);
+			}
+			const typeKeys = this.providerNameMap.get(type)!;
+			if (!typeKeys.includes(typeUniqueKey)) {
+				typeKeys.push(typeUniqueKey);
+			}
+		}
+	}
+
+	public getProvider<T>(name: string, config?: Record<string, any>): T {
+		if (config) {
+			const uniqueKey = this.getUniqueKey(name, config);
+			const instance = this.providersRegistry.get(uniqueKey);
+			if (!instance) {
+				throw new Error(`[Kernel] Provider ${name} con la configuración especificada no encontrado.`);
+			}
+			return instance as T;
+		}
+
+		const keys = this.providerNameMap.get(name);
+		if (!keys || keys.length === 0) {
 			throw new Error(`[Kernel] Provider ${name} no encontrado.`);
 		}
-		return instance as T;
-	}
 
-	public registerMiddleware<T>(name: string, instance: T): void {
-		if (this.middlewaresRegistry.has(name)) {
-			Logger.warn(`ADVERTENCIA: Middleware ${name} sobrescrito.`);
+		if (keys.length > 1) {
+			throw new Error(
+				`[Kernel] Múltiples instancias de Provider ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
+			);
 		}
-		this.middlewaresRegistry.set(name, instance);
-		Logger.ok(`Middleware registrado: ${name}`);
+
+		return this.providersRegistry.get(keys[0]) as T;
 	}
 
-	public getMiddleware<T>(name: string): T {
-		const instance = this.middlewaresRegistry.get(name);
-		if (!instance) {
+	public registerMiddleware<T>(name: string, instance: T, config: IModuleConfig): void {
+		const uniqueKey = this.getUniqueKey(name, config.config);
+
+		if (this.middlewaresRegistry.has(uniqueKey)) {
+			Logger.warn(`ADVERTENCIA: Middleware ${name} con la misma configuración ya ha sido registrado.`);
+			return;
+		}
+
+		this.middlewaresRegistry.set(uniqueKey, instance);
+
+		if (!this.middlewareNameMap.has(name)) {
+			this.middlewareNameMap.set(name, []);
+		}
+		const keys = this.middlewareNameMap.get(name)!;
+		keys.push(uniqueKey);
+
+		Logger.ok(`Middleware registrado: ${name} (Total de instancias: ${keys.length})`);
+	}
+
+	public getMiddleware<T>(name: string, config?: Record<string, any>): T {
+		if (config) {
+			const uniqueKey = this.getUniqueKey(name, config);
+			const instance = this.middlewaresRegistry.get(uniqueKey);
+			if (!instance) {
+				throw new Error(`[Kernel] Middleware ${name} con la configuración especificada no encontrado.`);
+			}
+			return instance as T;
+		}
+
+		const keys = this.middlewareNameMap.get(name);
+		if (!keys || keys.length === 0) {
 			throw new Error(`[Kernel] Middleware ${name} no encontrado.`);
 		}
-		return instance as T;
-	}
 
-	public registerPreset<T>(name: string, instance: T): void {
-		if (this.presetsRegistry.has(name)) {
-			Logger.warn(`ADVERTENCIA: Preset ${name} sobrescrito.`);
+		if (keys.length > 1) {
+			throw new Error(
+				`[Kernel] Múltiples instancias de Middleware ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
+			);
 		}
-		this.presetsRegistry.set(name, instance);
-		Logger.ok(`Preset registrado: ${name}`);
+
+		return this.middlewaresRegistry.get(keys[0]) as T;
 	}
 
-	public getPreset<T>(name: string): T {
-		const instance = this.presetsRegistry.get(name);
-		if (!instance) {
+	public registerPreset<T>(name: string, instance: T, config: IModuleConfig): void {
+		const uniqueKey = this.getUniqueKey(name, config.config);
+
+		if (this.presetsRegistry.has(uniqueKey)) {
+			Logger.warn(`ADVERTENCIA: Preset ${name} con la misma configuración ya ha sido registrado.`);
+			return;
+		}
+
+		this.presetsRegistry.set(uniqueKey, instance);
+
+		if (!this.presetNameMap.has(name)) {
+			this.presetNameMap.set(name, []);
+		}
+		const keys = this.presetNameMap.get(name)!;
+		keys.push(uniqueKey);
+
+		Logger.ok(`Preset registrado: ${name} (Total de instancias: ${keys.length})`);
+	}
+
+	public getPreset<T>(name: string, config?: Record<string, any>): T {
+		if (config) {
+			const uniqueKey = this.getUniqueKey(name, config);
+			const instance = this.presetsRegistry.get(uniqueKey);
+			if (!instance) {
+				throw new Error(`[Kernel] Preset ${name} con la configuración especificada no encontrado.`);
+			}
+			return instance as T;
+		}
+
+		const keys = this.presetNameMap.get(name);
+		if (!keys || keys.length === 0) {
 			throw new Error(`[Kernel] Preset ${name} no encontrado.`);
 		}
-		return instance as T;
+
+		if (keys.length > 1) {
+			throw new Error(
+				`[Kernel] Múltiples instancias de Preset ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
+			);
+		}
+
+		return this.presetsRegistry.get(keys[0]) as T;
 	}
 
 	public registerApp(name: string, instance: IApp): void {
@@ -149,31 +253,26 @@ export class Kernel implements IKernel {
 	public async loadModuleOfType(
 		type: "provider" | "middleware" | "preset",
 		moduleName: string,
-		version: string = "latest",
+		versionRange: string = "latest",
 		language: string = "typescript"
 	): Promise<void> {
-		const basePath = {
-			provider: this.providersPath,
-			middleware: this.middlewaresPath,
-			preset: this.presetsPath,
-		}[type];
-
-		const loader = {
-			provider: this.loadProvider.bind(this),
-			middleware: this.loadMiddleware.bind(this),
-			preset: this.loadPreset.bind(this),
-		}[type];
-
 		try {
-			// Buscar el módulo en el base path
-			const moduleDir = path.join(basePath, moduleName);
-			const indexFile = path.join(moduleDir, `index${this.fileExtension}`);
-
-			try {
-				await fs.stat(indexFile);
-				await loader(indexFile);
-			} catch {
-				Logger.warn(`[Kernel] No se encontró ${type} '${moduleName}'`);
+			const config = { name: moduleName, version: versionRange, language };
+			if (type === "provider") {
+				const provider = await this.moduleLoader.loadProvider(config);
+				const instance = await provider.getInstance();
+				this.registerProvider(provider.name, instance, provider.type, config);
+			} else if (type === "middleware") {
+				const middleware = await this.moduleLoader.loadMiddleware(config);
+				const instance = await middleware.getInstance();
+				this.registerMiddleware(middleware.name, instance, config);
+			} else if (type === "preset") {
+				const preset = await this.moduleLoader.loadPreset(config, this);
+				if (preset.initialize) {
+					await preset.initialize();
+				}
+				const instance = preset.getInstance();
+				this.registerPreset(preset.name, instance, config);
 			}
 		} catch (error) {
 			Logger.error(`[Kernel] Error cargando ${type} '${moduleName}': ${error}`);
@@ -197,7 +296,8 @@ export class Kernel implements IKernel {
 
 		// 2. Detener Presets
 		Logger.info("Deteniendo presets...");
-		for (const [, preset] of this.presets) {
+		for (const key of this.presetsRegistry.keys()) {
+			const preset = this.presetsRegistry.get(key) as IPreset<any>;
 			try {
 				await preset.shutdown?.();
 			} catch (e) {
@@ -207,7 +307,8 @@ export class Kernel implements IKernel {
 
 		// 3. Detener Middlewares
 		Logger.info("Deteniendo middlewares...");
-		for (const [, middleware] of this.middlewares) {
+		for (const key of this.middlewaresRegistry.keys()) {
+			const middleware = this.middlewaresRegistry.get(key) as IMiddleware<any>;
 			try {
 				await middleware.shutdown?.();
 			} catch (e) {
@@ -217,7 +318,8 @@ export class Kernel implements IKernel {
 
 		// 4. Detener Providers
 		Logger.info("Deteniendo providers...");
-		for (const [, provider] of this.providers) {
+		for (const key of this.providersRegistry.keys()) {
+			const provider = this.providersRegistry.get(key) as IProvider<any>;
 			try {
 				await provider.shutdown?.();
 			} catch (e) {
@@ -261,15 +363,19 @@ export class Kernel implements IKernel {
 
 	private async loadProvider(filePath: string): Promise<void> {
 		try {
-			const module = await import(`${filePath}?v=${Date.now()}`);
-			const ProviderClass = module.default;
-			if (!ProviderClass) return;
+			const modulePath = path.dirname(filePath);
+			let config = this.moduleLoader.getConfigByPath(modulePath);
+			if (!config) {
+				const moduleName = path.basename(modulePath);
+				config = { name: moduleName };
+			}
 
-			const provider: IProvider<any> = new ProviderClass();
+			const provider = await this.moduleLoader.loadProvider(config);
 			const instance = await provider.getInstance();
 
-			this.registerProvider(provider.name, instance, provider.type);
-			this.providers.set(filePath, provider);
+			this.registerProvider(provider.name, instance, provider.type, config);
+			const uniqueKey = this.getUniqueKey(provider.name, config.config);
+			this.providers.set(filePath, uniqueKey);
 		} catch (e) {
 			Logger.error(`Error cargando Provider ${filePath}: ${e}`);
 		}
@@ -277,15 +383,19 @@ export class Kernel implements IKernel {
 
 	private async loadMiddleware(filePath: string): Promise<void> {
 		try {
-			const module = await import(`${filePath}?v=${Date.now()}`);
-			const MiddlewareClass = module.default;
-			if (!MiddlewareClass) return;
+			const modulePath = path.dirname(filePath);
+			let config = this.moduleLoader.getConfigByPath(modulePath);
+			if (!config) {
+				const moduleName = path.basename(modulePath);
+				config = { name: moduleName };
+			}
 
-			const middleware: IMiddleware<any> = new MiddlewareClass();
+			const middleware = await this.moduleLoader.loadMiddleware(config);
 			const instance = await middleware.getInstance();
 
-			this.registerMiddleware(middleware.name, instance);
-			this.middlewares.set(filePath, middleware);
+			this.registerMiddleware(middleware.name, instance, config);
+			const uniqueKey = this.getUniqueKey(middleware.name, config.config);
+			this.middlewares.set(filePath, uniqueKey);
 		} catch (e) {
 			Logger.error(`Error cargando Middleware ${filePath}: ${e}`);
 		}
@@ -293,18 +403,22 @@ export class Kernel implements IKernel {
 
 	private async loadPreset(filePath: string): Promise<void> {
 		try {
-			const module = await import(`${filePath}?v=${Date.now()}`);
-			const PresetClass = module.default;
-			if (!PresetClass) return;
+			const modulePath = path.dirname(filePath);
+			let config = this.moduleLoader.getConfigByPath(modulePath);
+			if (!config) {
+				const moduleName = path.basename(modulePath);
+				config = { name: moduleName };
+			}
 
-			const preset: IPreset<any> = new PresetClass(this);
+			const preset = await this.moduleLoader.loadPreset(config, this);
 			if (preset.initialize) {
 				await preset.initialize();
 			}
 
 			const instance = preset.getInstance();
-			this.registerPreset(preset.name, instance);
-			this.presets.set(filePath, preset);
+			this.registerPreset(preset.name, instance, config);
+			const uniqueKey = this.getUniqueKey(preset.name, config.config);
+			this.presets.set(filePath, uniqueKey);
 		} catch (e) {
 			Logger.error(`Error cargando Preset ${filePath}: ${e}`);
 		}
@@ -343,34 +457,65 @@ export class Kernel implements IKernel {
 	}
 
 	private async unloadProvider(filePath: string) {
-		const provider = this.providers.get(filePath);
-		if (provider) {
-			Logger.debug(`Removiendo provider: ${provider.name}`);
-			await provider.shutdown?.();
-			this.providersRegistry.delete(provider.name);
-			if (provider.type && provider.type !== provider.name) {
-				this.providersRegistry.delete(provider.type);
+		const uniqueKey = this.providers.get(filePath);
+		if (uniqueKey) {
+			const provider = this.providersRegistry.get(uniqueKey) as IProvider<any>;
+			if (provider) {
+				Logger.debug(`Removiendo provider: ${provider.name}`);
+				await provider.shutdown?.();
+				this.providersRegistry.delete(uniqueKey);
+				if (provider.type && provider.type !== provider.name) {
+					const typeKey = this.getUniqueKey(provider.type, (this.moduleLoader.getConfigByPath(path.dirname(filePath)) || {}).config);
+					this.providersRegistry.delete(typeKey);
+				}
+				const keys = this.providerNameMap.get(provider.name);
+				if (keys) {
+					const index = keys.indexOf(uniqueKey);
+					if (index > -1) {
+						keys.splice(index, 1);
+					}
+				}
 			}
 			this.providers.delete(filePath);
 		}
 	}
 
 	private async unloadMiddleware(filePath: string) {
-		const mw = this.middlewares.get(filePath);
-		if (mw) {
-			Logger.debug(`Removiendo middleware: ${mw.name}`);
-			await mw.shutdown?.();
-			this.middlewaresRegistry.delete(mw.name);
+		const uniqueKey = this.middlewares.get(filePath);
+		if (uniqueKey) {
+			const mw = this.middlewaresRegistry.get(uniqueKey) as IMiddleware<any>;
+			if (mw) {
+				Logger.debug(`Removiendo middleware: ${mw.name}`);
+				await mw.shutdown?.();
+				this.middlewaresRegistry.delete(uniqueKey);
+				const keys = this.middlewareNameMap.get(mw.name);
+				if (keys) {
+					const index = keys.indexOf(uniqueKey);
+					if (index > -1) {
+						keys.splice(index, 1);
+					}
+				}
+			}
 			this.middlewares.delete(filePath);
 		}
 	}
 
 	private async unloadPreset(filePath: string) {
-		const preset = this.presets.get(filePath);
-		if (preset) {
-			Logger.debug(`Removiendo preset: ${preset.name}`);
-			await preset.shutdown?.();
-			this.presetsRegistry.delete(preset.name);
+		const uniqueKey = this.presets.get(filePath);
+		if (uniqueKey) {
+			const preset = this.presetsRegistry.get(uniqueKey) as IPreset<any>;
+			if (preset) {
+				Logger.debug(`Removiendo preset: ${preset.name}`);
+				await preset.shutdown?.();
+				this.presetsRegistry.delete(uniqueKey);
+				const keys = this.presetNameMap.get(preset.name);
+				if (keys) {
+					const index = keys.indexOf(uniqueKey);
+					if (index > -1) {
+						keys.splice(index, 1);
+					}
+				}
+			}
 			this.presets.delete(filePath);
 		}
 	}

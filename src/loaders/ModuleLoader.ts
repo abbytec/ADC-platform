@@ -17,6 +17,12 @@ export class ModuleLoader {
 	private readonly middlewaresPath = path.resolve(this.basePath, "middlewares");
 	private readonly presetsPath = path.resolve(this.basePath, "presets");
 
+	private readonly configCache = new Map<string, IModuleConfig>();
+
+	public getConfigByPath(modulePath: string): IModuleConfig | undefined {
+		return this.configCache.get(modulePath);
+	}
+
 	/**
 	 * Carga todos los módulos (providers, middlewares, presets) desde un modules.json
 	 */
@@ -37,7 +43,7 @@ export class ModuleLoader {
 					try {
 						const provider = await this.loadProvider(providerConfig);
 						const instance = await provider.getInstance();
-						kernel.registerProvider(provider.name, instance, provider.type);
+						kernel.registerProvider(provider.name, instance, provider.type, providerConfig);
 					} catch (error) {
 						if (modulesConfig.failOnError) throw error;
 						Logger.warn(`Error cargando provider ${providerConfig.name}: ${error}`);
@@ -51,7 +57,7 @@ export class ModuleLoader {
 					try {
 						const middleware = await this.loadMiddleware(middlewareConfig);
 						const instance = await middleware.getInstance();
-						kernel.registerMiddleware(middleware.name, instance);
+						kernel.registerMiddleware(middleware.name, instance, middlewareConfig);
 					} catch (error) {
 						if (modulesConfig.failOnError) throw error;
 						Logger.warn(`Error cargando middleware ${middlewareConfig.name}: ${error}`);
@@ -68,7 +74,7 @@ export class ModuleLoader {
 							await preset.initialize();
 						}
 						const instance = preset.getInstance();
-						kernel.registerPreset(preset.name, instance);
+						kernel.registerPreset(preset.name, instance, presetConfig);
 					} catch (error) {
 						if (modulesConfig.failOnError) throw error;
 						Logger.warn(`Error cargando preset ${presetConfig.name}: ${error}`);
@@ -97,6 +103,8 @@ export class ModuleLoader {
 			throw new Error(`No se pudo resolver Provider: ${config.name}@${version} (${language})`);
 		}
 
+		this.configCache.set(resolved.path, config);
+
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
 
@@ -120,6 +128,8 @@ export class ModuleLoader {
 			throw new Error(`No se pudo resolver Middleware: ${config.name}@${version} (${language})`);
 		}
 
+		this.configCache.set(resolved.path, config);
+
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
 
@@ -142,6 +152,8 @@ export class ModuleLoader {
 		if (!resolved) {
 			throw new Error(`No se pudo resolver Preset: ${config.name}@${version} (${language})`);
 		}
+
+		this.configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);

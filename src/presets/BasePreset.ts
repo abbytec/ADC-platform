@@ -13,7 +13,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	abstract readonly name: string;
 
 	protected kernel: IKernel;
-	protected moduleLoader = new ModuleLoader();
+	protected static moduleLoader = new ModuleLoader();
 
 	constructor(kernel: IKernel) {
 		this.kernel = kernel;
@@ -35,7 +35,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 		Logger.info(`[${presetName}] Inicializando y cargando módulos...`);
 
 		try {
-			await this.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
+			await BasePreset.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
 			await this.onInitialize();
 			Logger.ok(`[${presetName}] Inicialización completada`);
 		} catch (error) {
