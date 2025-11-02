@@ -17,6 +17,34 @@ Funcionalidad reutilizable sin lógica de ejecución automática. Pueden ser sta
 ### Apps (Capa Negocio)
 Lógica principal que consume Providers, Middlewares y Presets. Se ejecutan automáticamente. Ubicados en `src/apps/`. Cada app puede tener un `modules.json` para declarar sus módulos específicos.
 
+### Instancias Múltiples de Apps
+
+Es posible crear múltiples instancias de una misma aplicación proporcionando diferentes archivos de configuración. El Kernel buscará archivos de configuración en dos ubicaciones dentro del directorio de una aplicación:
+
+1.  **Directorio Raíz de la App**: Archivos `config.json` o `config-*.json` en la raíz del directorio de la app.
+2.  **Directorio `configs`**: Archivos `config.json` o `config-*.json` dentro de un subdirectorio llamado `configs`.
+
+Por cada archivo de configuración encontrado, el Kernel creará una nueva instancia de la aplicación. El nombre de la instancia se generará combinando el nombre de la aplicación y el nombre del archivo de configuración (sin la extensión `.json`).
+
+Por ejemplo, para una aplicación llamada `user-profile`, la siguiente estructura de archivos creará tres instancias:
+
+```
+src/apps/user-profile/
+├── index.ts
+├── config-main.json
+└── configs/
+    ├── config-web.json
+    └── config-api.json
+```
+
+Las instancias creadas serán:
+
+-   `user-profile:config-main`
+-   `user-profile:config-web`
+-   `user-profile:config-api`
+
+Cada instancia recibirá su propia configuración y se ejecutará de forma independiente. Esto permite, por ejemplo, tener la misma lógica de aplicación conectada a diferentes bases de datos o con diferentes parámetros de funcionamiento.
+
 ### Loaders (Sistema Modular)
 Sistema de carga de módulos con soporte para versionado semántico y múltiples lenguajes. Ubicados en `src/loaders/`.
 

@@ -10,12 +10,15 @@ import { Kernel } from "../kernel.js";
  */
 export abstract class BaseApp implements IApp {
 	/** El nombre único de la app */
-	abstract readonly name: string;
+	name: string;
 
 	protected kernel!: IKernel;
+	protected config: any;
 
-	constructor(kernel: IKernel) {
+	constructor(kernel: IKernel, name?: string, config?: any) {
 		this.kernel = kernel;
+		this.name = name || this.constructor.name;
+		this.config = config;
 	}
 
 	/**
@@ -44,8 +47,8 @@ export abstract class BaseApp implements IApp {
 		try {
 			const isDevelopment = process.env.NODE_ENV === "development";
 			const appDir = isDevelopment
-				? path.resolve(process.cwd(), "src", "apps", this.name)
-				: path.resolve(process.cwd(), "dist", "apps", this.name);
+				? path.resolve(process.cwd(), "src", "apps", this.name.split(":")[0])
+				: path.resolve(process.cwd(), "dist", "apps", this.name.split(":")[0]);
 
 			const modulesConfigPath = path.join(appDir, "modules.json");
 			await Kernel.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);

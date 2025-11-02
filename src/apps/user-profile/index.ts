@@ -14,10 +14,7 @@ interface UserProfile {
  * usando el preset JsonFileCrud.
  */
 export default class UserProfileApp extends BaseApp {
-	public readonly name = "user-profile";
-
 	private crud!: IJsonFileCrud;
-	private readonly PROFILE_KEY = "main_user_profile";
 
 	async start() {
 		this.crud = this.kernel.getPreset<IJsonFileCrud>("json-file-crud");
@@ -25,7 +22,7 @@ export default class UserProfileApp extends BaseApp {
 
 	async run(): Promise<void> {
 		// Intentar cargar el perfil existente
-		let data = await this.crud.read<UserProfile>(this.PROFILE_KEY);
+		let data = await this.crud.read<UserProfile>(this.config.PROFILE_KEY);
 
 		if (data) {
 			Logger.info(`[${this.name}] Perfil cargado:`, data);
@@ -42,16 +39,17 @@ export default class UserProfileApp extends BaseApp {
 		}
 
 		await this.crud
-			.update(this.PROFILE_KEY, data)
+			.update(this.config.PROFILE_KEY, data)
 			.then(() => {
 				Logger.ok(`[${this.name}] Perfil guardado con éxito.`);
 			})
 			.catch(async (err: any) => {
 				if (err.message.includes("no existe")) {
-					await this.crud.create(this.PROFILE_KEY, data);
+					await this.crud.create(this.config.PROFILE_KEY, data);
 				} else {
 					throw err;
-				}
+			}
 			});
 	}
 }
+

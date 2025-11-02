@@ -49,7 +49,7 @@ export class Kernel implements IKernel {
 		const nameUniqueKey = this.getUniqueKey(name, config.config);
 
 		if (this.providersRegistry.has(nameUniqueKey)) {
-			Logger.warn(`ADVERTENCIA: Provider ${name} con la misma configuración ya ha sido registrado.`);
+			Logger.debug(`[Kernel] Provider ${name} con la misma configuración ya ha sido registrado.`);
 		} else {
 			this.providersRegistry.set(nameUniqueKey, instance);
 
@@ -58,7 +58,7 @@ export class Kernel implements IKernel {
 			}
 			const nameKeys = this.providerNameMap.get(name)!;
 			nameKeys.push(nameUniqueKey);
-			Logger.ok(`Provider registrado: ${name} (Total de instancias: ${nameKeys.length})`);
+			Logger.ok(`[Kernel] Provider registrado: ${name} (Total de instancias: ${nameKeys.length})`);
 		}
 
 		if (type && type !== name) {
@@ -105,7 +105,7 @@ export class Kernel implements IKernel {
 		const uniqueKey = this.getUniqueKey(name, config.config);
 
 		if (this.middlewaresRegistry.has(uniqueKey)) {
-			Logger.warn(`ADVERTENCIA: Middleware ${name} con la misma configuración ya ha sido registrado.`);
+			Logger.debug(`[Kernel] Middleware ${name} con la misma configuración ya ha sido registrado.`);
 			return;
 		}
 
@@ -117,7 +117,7 @@ export class Kernel implements IKernel {
 		const keys = this.middlewareNameMap.get(name)!;
 		keys.push(uniqueKey);
 
-		Logger.ok(`Middleware registrado: ${name} (Total de instancias: ${keys.length})`);
+		Logger.ok(`[Kernel] Middleware registrado: ${name} (Total de instancias: ${keys.length})`);
 	}
 
 	public getMiddleware<T>(name: string, config?: Record<string, any>): T {
@@ -148,7 +148,7 @@ export class Kernel implements IKernel {
 		const uniqueKey = this.getUniqueKey(name, config.config);
 
 		if (this.presetsRegistry.has(uniqueKey)) {
-			Logger.warn(`ADVERTENCIA: Preset ${name} con la misma configuración ya ha sido registrado.`);
+			Logger.debug(`[Kernel] Preset ${name} con la misma configuración ya ha sido registrado.`);
 			return;
 		}
 
@@ -160,7 +160,7 @@ export class Kernel implements IKernel {
 		const keys = this.presetNameMap.get(name)!;
 		keys.push(uniqueKey);
 
-		Logger.ok(`Preset registrado: ${name} (Total de instancias: ${keys.length})`);
+		Logger.ok(`[Kernel] Preset registrado: ${name} (Total de instancias: ${keys.length})`);
 	}
 
 	public getPreset<T>(name: string, config?: Record<string, any>): T {
@@ -189,10 +189,10 @@ export class Kernel implements IKernel {
 
 	public registerApp(name: string, instance: IApp): void {
 		if (this.appsRegistry.has(name)) {
-			Logger.warn(`ADVERTENCIA: App '${name}' sobrescrita.`);
+			Logger.debug(`[Kernel] App '${name}' sobrescrita.`);
 		}
 		this.appsRegistry.set(name, instance);
-		Logger.ok(`App registrada: ${name}`);
+		Logger.ok(`[Kernel] App registrada: ${name}`);
 	}
 
 	public getApp(name: string): IApp {
@@ -219,8 +219,6 @@ export class Kernel implements IKernel {
 			this.watchLayer(this.presetsPath, this.loadPreset.bind(this), this.unloadPreset.bind(this));
 			this.watchLayer(this.appsPath, this.loadApp.bind(this), this.unloadApp.bind(this), ["BaseApp.ts"]);
 		}
-
-		Logger.ok("En funcionamiento.");
 	}
 
 	/**
@@ -430,13 +428,52 @@ export class Kernel implements IKernel {
 			const AppClass = module.default;
 			if (!AppClass) return;
 
-			const app: IApp = new AppClass(this);
-			Logger.debug(`Inicializando App ${app.name}`);
-			await app.loadModulesFromConfig();
-			await app.start?.();
-			this.apps.set(filePath, app);
-			Logger.debug(`Ejecutando App ${app.name}`);
-			await app.run();
+			const appDir = path.dirname(filePath);
+			const appName = path.basename(appDir);
+
+			const configDirs = [appDir, path.join(appDir, "configs")];
+			const allConfigFiles: string[] = [];
+
+			for (const dir of configDirs) {
+				try {
+					const files = await fs.readdir(dir);
+					files
+						.filter((file) => file === "config.json" || (file.startsWith("config-") && file.endsWith(".json")))
+						.forEach((file) => allConfigFiles.push(path.join(dir, file)));
+				} catch (error) {
+					if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+						Logger.warn(`[Kernel] No se pudo leer el directorio de configuración ${dir}: ${error}`);
+					}
+				}
+			}
+
+			if (allConfigFiles.length > 0) {
+				for (const configPath of allConfigFiles) {
+					const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
+					const configFile = path.basename(configPath);
+					const configName = path.basename(configFile, ".json");
+					const instanceName = `${appName}:${configName}`;
+
+					const app: IApp = new AppClass(this, instanceName, config);
+					this.registerApp(instanceName, app);
+					Logger.debug(`Inicializando App ${app.name}`);
+					await app.loadModulesFromConfig();
+					await app.start?.();
+					const appKey = `${filePath}:${instanceName}`;
+					this.apps.set(appKey, app);
+					Logger.debug(`Ejecutando App ${app.name}`);
+					await app.run();
+				}
+			} else {
+				const app: IApp = new AppClass(this, appName);
+				this.registerApp(appName, app);
+				Logger.debug(`Inicializando App ${app.name}`);
+				await app.loadModulesFromConfig();
+				await app.start?.();
+				this.apps.set(filePath, app);
+				Logger.debug(`Ejecutando App ${app.name}`);
+				await app.run();
+			}
 		} catch (e) {
 			Logger.error(`Error ejecutando App ${filePath}: ${e}`);
 		}
@@ -521,12 +558,17 @@ export class Kernel implements IKernel {
 	}
 
 	private async unloadApp(filePath: string) {
-		const app = this.apps.get(filePath);
-		if (app) {
-			Logger.debug(`Removiendo app: ${app.name}`);
-			await app.stop?.();
-			this.appsRegistry.delete(app.name);
-			this.apps.delete(filePath);
+		// Find all apps associated with this file path
+		const keysToUnload = Array.from(this.apps.keys()).filter((key) => key.startsWith(filePath));
+
+		for (const key of keysToUnload) {
+			const app = this.apps.get(key);
+			if (app) {
+				Logger.debug(`Removiendo app: ${app.name}`);
+				await app.stop?.();
+				this.appsRegistry.delete(app.name);
+				this.apps.delete(key);
+			}
 		}
 	}
 }
