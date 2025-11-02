@@ -27,7 +27,7 @@ export class Kernel implements IKernel {
 	private readonly apps = new Map<string, IApp>();
 
 	// --- Gestor de carga ---
-	private readonly moduleLoader = new ModuleLoader();
+	public static readonly moduleLoader = new ModuleLoader();
 
 	// --- Determinación de entorno ---
 	private readonly isDevelopment = process.env.NODE_ENV === "development";
@@ -48,7 +48,9 @@ export class Kernel implements IKernel {
 	public registerProvider<T>(name: string, instance: T, type: string | undefined, config: IModuleConfig): void {
 		const nameUniqueKey = this.getUniqueKey(name, config.config);
 
-		if (!this.providersRegistry.has(nameUniqueKey)) {
+		if (this.providersRegistry.has(nameUniqueKey)) {
+			Logger.warn(`ADVERTENCIA: Provider ${name} con la misma configuración ya ha sido registrado.`);
+		} else {
 			this.providersRegistry.set(nameUniqueKey, instance);
 
 			if (!this.providerNameMap.has(name)) {
@@ -57,8 +59,6 @@ export class Kernel implements IKernel {
 			const nameKeys = this.providerNameMap.get(name)!;
 			nameKeys.push(nameUniqueKey);
 			Logger.ok(`Provider registrado: ${name} (Total de instancias: ${nameKeys.length})`);
-		} else {
-			Logger.warn(`ADVERTENCIA: Provider ${name} con la misma configuración ya ha sido registrado.`);
 		}
 
 		if (type && type !== name) {
@@ -259,15 +259,15 @@ export class Kernel implements IKernel {
 		try {
 			const config = { name: moduleName, version: versionRange, language };
 			if (type === "provider") {
-				const provider = await this.moduleLoader.loadProvider(config);
+				const provider = await Kernel.moduleLoader.loadProvider(config);
 				const instance = await provider.getInstance();
 				this.registerProvider(provider.name, instance, provider.type, config);
 			} else if (type === "middleware") {
-				const middleware = await this.moduleLoader.loadMiddleware(config);
+				const middleware = await Kernel.moduleLoader.loadMiddleware(config);
 				const instance = await middleware.getInstance();
 				this.registerMiddleware(middleware.name, instance, config);
 			} else if (type === "preset") {
-				const preset = await this.moduleLoader.loadPreset(config, this);
+				const preset = await Kernel.moduleLoader.loadPreset(config, this);
 				if (preset.initialize) {
 					await preset.initialize();
 				}
@@ -364,13 +364,13 @@ export class Kernel implements IKernel {
 	private async loadProvider(filePath: string): Promise<void> {
 		try {
 			const modulePath = path.dirname(filePath);
-			let config = this.moduleLoader.getConfigByPath(modulePath);
+			let config = Kernel.moduleLoader.getConfigByPath(modulePath);
 			if (!config) {
 				const moduleName = path.basename(modulePath);
 				config = { name: moduleName };
 			}
 
-			const provider = await this.moduleLoader.loadProvider(config);
+			const provider = await Kernel.moduleLoader.loadProvider(config);
 			const instance = await provider.getInstance();
 
 			this.registerProvider(provider.name, instance, provider.type, config);
@@ -384,13 +384,13 @@ export class Kernel implements IKernel {
 	private async loadMiddleware(filePath: string): Promise<void> {
 		try {
 			const modulePath = path.dirname(filePath);
-			let config = this.moduleLoader.getConfigByPath(modulePath);
+			let config = Kernel.moduleLoader.getConfigByPath(modulePath);
 			if (!config) {
 				const moduleName = path.basename(modulePath);
 				config = { name: moduleName };
 			}
 
-			const middleware = await this.moduleLoader.loadMiddleware(config);
+			const middleware = await Kernel.moduleLoader.loadMiddleware(config);
 			const instance = await middleware.getInstance();
 
 			this.registerMiddleware(middleware.name, instance, config);
@@ -404,13 +404,13 @@ export class Kernel implements IKernel {
 	private async loadPreset(filePath: string): Promise<void> {
 		try {
 			const modulePath = path.dirname(filePath);
-			let config = this.moduleLoader.getConfigByPath(modulePath);
+			let config = Kernel.moduleLoader.getConfigByPath(modulePath);
 			if (!config) {
 				const moduleName = path.basename(modulePath);
 				config = { name: moduleName };
 			}
 
-			const preset = await this.moduleLoader.loadPreset(config, this);
+			const preset = await Kernel.moduleLoader.loadPreset(config, this);
 			if (preset.initialize) {
 				await preset.initialize();
 			}
@@ -465,7 +465,7 @@ export class Kernel implements IKernel {
 				await provider.shutdown?.();
 				this.providersRegistry.delete(uniqueKey);
 				if (provider.type && provider.type !== provider.name) {
-					const typeKey = this.getUniqueKey(provider.type, (this.moduleLoader.getConfigByPath(path.dirname(filePath)) || {}).config);
+					const typeKey = this.getUniqueKey(provider.type, (Kernel.moduleLoader.getConfigByPath(path.dirname(filePath)) || {}).config);
 					this.providersRegistry.delete(typeKey);
 				}
 				const keys = this.providerNameMap.get(provider.name);

@@ -1,8 +1,8 @@
 import * as path from "node:path";
 import { IApp } from "../interfaces/IApp.js";
 import { IKernel } from "../interfaces/IKernel.js";
-import { ModuleLoader } from "../loaders/ModuleLoader.js";
 import { Logger } from "../utils/Logger/Logger.js";
+import { Kernel } from "../kernel.js";
 
 /**
  * Clase base abstracta para todas las Apps.
@@ -13,7 +13,6 @@ export abstract class BaseApp implements IApp {
 	abstract readonly name: string;
 
 	protected kernel!: IKernel;
-	protected static moduleLoader = new ModuleLoader();
 
 	constructor(kernel: IKernel) {
 		this.kernel = kernel;
@@ -49,7 +48,7 @@ export abstract class BaseApp implements IApp {
 				: path.resolve(process.cwd(), "dist", "apps", this.name);
 
 			const modulesConfigPath = path.join(appDir, "modules.json");
-			await BaseApp.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
+			await Kernel.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
 		} catch (error) {
 			Logger.error(`Error procesando modules.json: ${error}`);
 			throw error;

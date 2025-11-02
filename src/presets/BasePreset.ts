@@ -1,8 +1,8 @@
 import * as path from "node:path";
 import { IPreset } from "../interfaces/IPreset.js";
 import { IKernel } from "../interfaces/IKernel.js";
-import { ModuleLoader } from "../loaders/ModuleLoader.js";
 import { Logger } from "../utils/Logger/Logger.js";
+import { Kernel } from "../kernel.js";
 
 /**
  * Clase base abstracta para todos los Presets.
@@ -13,7 +13,6 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	abstract readonly name: string;
 
 	protected kernel: IKernel;
-	protected static moduleLoader = new ModuleLoader();
 
 	constructor(kernel: IKernel) {
 		this.kernel = kernel;
@@ -35,7 +34,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 		Logger.info(`[${presetName}] Inicializando y cargando módulos...`);
 
 		try {
-			await BasePreset.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
+			await Kernel.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
 			await this.onInitialize();
 			Logger.ok(`[${presetName}] Inicialización completada`);
 		} catch (error) {
