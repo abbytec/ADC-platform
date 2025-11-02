@@ -1,6 +1,6 @@
 import { IStorage, STORAGE_PROVIDER } from "../../interfaces/providers/IStorage.js";
 import { IProvider } from "../../interfaces/IProvider.js";
-import { Logger } from "../../utils/Logger.js";
+import { Logger } from "../../utils/Logger/Logger.js";
 
 import * as fs from "node:fs/promises";
 import * as path from "node:path";

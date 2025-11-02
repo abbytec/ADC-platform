@@ -1,6 +1,6 @@
 import { BaseApp } from "../BaseApp.js";
 import { IJsonFileCrud } from "../../presets/json-file-crud/index.js";
-import { Logger } from "../../utils/Logger.js";
+import { Logger } from "../../utils/Logger/Logger.js";
 
 // La estructura de datos que manejaremos
 interface UserProfile {
@@ -19,7 +19,7 @@ export default class UserProfileApp extends BaseApp {
 	private crud!: IJsonFileCrud;
 	private readonly PROFILE_KEY = "main_user_profile";
 
-	async start(){
+	async start() {
 		this.crud = this.kernel.getPreset<IJsonFileCrud>("json-file-crud");
 	}
 
@@ -41,14 +41,17 @@ export default class UserProfileApp extends BaseApp {
 			};
 		}
 
-		await this.crud.update(this.PROFILE_KEY, data).then(()=>{
-            Logger.ok(`[${this.name}] Perfil guardado con éxito.`);
-        }).catch(async (err: any) => {
-			if (err.message.includes("no existe")) {
-				await this.crud.create(this.PROFILE_KEY, data);
-			} else {
-				throw err;
-			}
-		});
+		await this.crud
+			.update(this.PROFILE_KEY, data)
+			.then(() => {
+				Logger.ok(`[${this.name}] Perfil guardado con éxito.`);
+			})
+			.catch(async (err: any) => {
+				if (err.message.includes("no existe")) {
+					await this.crud.create(this.PROFILE_KEY, data);
+				} else {
+					throw err;
+				}
+			});
 	}
 }
