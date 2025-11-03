@@ -34,6 +34,19 @@ export default class ConsoleLogger implements ILogger {
 		this.currentLevel = initialLevel;
 	}
 
+	public getLogger(title: string): ILogger {
+		const self = this; // Capture the original logger instance
+		return {
+			logDebug: (message: string, ...args: any[]) => self.logDebug(`[${title}] ${message}`, ...args),
+			logInfo: (message: string, ...args: any[]) => self.logInfo(`[${title}] ${message}`, ...args),
+			logOk: (message: string, ...args: any[]) => self.logOk(`[${title}] ${message}`, ...args),
+			logWarn: (message: string, ...args: any[]) => self.logWarn(`[${title}] ${message}`, ...args),
+			logError: (message: string, ...args: any[]) => self.logError(`[${title}] ${message}`, ...args),
+			setLevel: (level: LogLevel) => self.setLevel(level),
+			getLogger: (newTitle: string): ILogger => self.getLogger(`${title}:${newTitle}`),
+		};
+	}
+
 	public setLevel(level: LogLevel): void {
 		this.currentLevel = level;
 	}

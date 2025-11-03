@@ -1,3 +1,4 @@
+import "dotenv/config";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import chokidar from "chokidar";
@@ -8,9 +9,12 @@ import { IProvider } from "./interfaces/IProvider.js";
 import { IPreset } from "./interfaces/IPreset.js";
 import { Logger } from "./utils/Logger/Logger.js";
 import { ModuleLoader } from "./loaders/ModuleLoader.js";
+import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModuleConfig } from "./interfaces/IModule.js";
 
 export class Kernel implements IKernel {
+	private logger: ILogger;
+
 	// --- Registros por categoría ---
 	private readonly providersRegistry = new Map<string, any>();
 	private readonly middlewaresRegistry = new Map<string, any>();
@@ -40,6 +44,10 @@ export class Kernel implements IKernel {
 	private readonly presetsPath = path.resolve(this.basePath, "presets");
 	private readonly appsPath = path.resolve(this.basePath, "apps");
 
+	constructor() {
+		this.logger = Logger.getLogger("Kernel");
+	}
+
 	private getUniqueKey(name: string, config?: Record<string, any>): string {
 		return `${name}:${JSON.stringify(config || {})}`;
 	}
@@ -49,7 +57,7 @@ export class Kernel implements IKernel {
 		const nameUniqueKey = this.getUniqueKey(name, config.config);
 
 		if (this.providersRegistry.has(nameUniqueKey)) {
-			Logger.debug(`[Kernel] Provider ${name} con la misma configuración ya ha sido registrado.`);
+			this.logger.logDebug(`Provider ${name} con la misma configuración ya ha sido registrado.`);
 		} else {
 			this.providersRegistry.set(nameUniqueKey, instance);
 
@@ -58,7 +66,7 @@ export class Kernel implements IKernel {
 			}
 			const nameKeys = this.providerNameMap.get(name)!;
 			nameKeys.push(nameUniqueKey);
-			Logger.ok(`[Kernel] Provider registrado: ${name} (Total de instancias: ${nameKeys.length})`);
+			this.logger.logOk(`Provider registrado: ${name} (Total de instancias: ${nameKeys.length})`);
 		}
 
 		if (type && type !== name) {
@@ -82,20 +90,23 @@ export class Kernel implements IKernel {
 			const uniqueKey = this.getUniqueKey(name, config);
 			const instance = this.providersRegistry.get(uniqueKey);
 			if (!instance) {
-				throw new Error(`[Kernel] Provider ${name} con la configuración especificada no encontrado.`);
+				this.logger.logError(`Provider ${name} con la configuración especificada no encontrado.`);
+				throw new Error(`Provider ${name} con la configuración especificada no encontrado.`);
 			}
 			return instance as T;
 		}
 
 		const keys = this.providerNameMap.get(name);
 		if (!keys || keys.length === 0) {
-			throw new Error(`[Kernel] Provider ${name} no encontrado.`);
+			this.logger.logError(`Provider ${name} no encontrado.`);
+			throw new Error(`Provider ${name} no encontrado.`);
 		}
 
 		if (keys.length > 1) {
-			throw new Error(
-				`[Kernel] Múltiples instancias de Provider ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
+			this.logger.logError(
+				`Múltiples instancias de Provider ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
 			);
+			throw new Error(`Múltiples instancias de Provider ${name} encontradas. Por favor, especifique una configuración para desambiguar.`);
 		}
 
 		return this.providersRegistry.get(keys[0]) as T;
@@ -105,7 +116,7 @@ export class Kernel implements IKernel {
 		const uniqueKey = this.getUniqueKey(name, config.config);
 
 		if (this.middlewaresRegistry.has(uniqueKey)) {
-			Logger.debug(`[Kernel] Middleware ${name} con la misma configuración ya ha sido registrado.`);
+			this.logger.logDebug(`Middleware ${name} con la misma configuración ya ha sido registrado.`);
 			return;
 		}
 
@@ -117,7 +128,7 @@ export class Kernel implements IKernel {
 		const keys = this.middlewareNameMap.get(name)!;
 		keys.push(uniqueKey);
 
-		Logger.ok(`[Kernel] Middleware registrado: ${name} (Total de instancias: ${keys.length})`);
+		this.logger.logOk(`Middleware registrado: ${name} (Total de instancias: ${keys.length})`);
 	}
 
 	public getMiddleware<T>(name: string, config?: Record<string, any>): T {
@@ -125,19 +136,24 @@ export class Kernel implements IKernel {
 			const uniqueKey = this.getUniqueKey(name, config);
 			const instance = this.middlewaresRegistry.get(uniqueKey);
 			if (!instance) {
-				throw new Error(`[Kernel] Middleware ${name} con la configuración especificada no encontrado.`);
+				this.logger.logError(`Middleware ${name} con la configuración especificada no encontrado.`);
+				throw new Error(`Middleware ${name} con la configuración especificada no encontrado.`);
 			}
 			return instance as T;
 		}
 
 		const keys = this.middlewareNameMap.get(name);
 		if (!keys || keys.length === 0) {
-			throw new Error(`[Kernel] Middleware ${name} no encontrado.`);
+			this.logger.logError(`Middleware ${name} no encontrado.`);
+			throw new Error(`Middleware ${name} no encontrado.`);
 		}
 
 		if (keys.length > 1) {
+			this.logger.logError(
+				`Múltiples instancias de Middleware ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
+			);
 			throw new Error(
-				`[Kernel] Múltiples instancias de Middleware ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
+				`Múltiples instancias de Middleware ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
 			);
 		}
 
@@ -148,7 +164,7 @@ export class Kernel implements IKernel {
 		const uniqueKey = this.getUniqueKey(name, config.config);
 
 		if (this.presetsRegistry.has(uniqueKey)) {
-			Logger.debug(`[Kernel] Preset ${name} con la misma configuración ya ha sido registrado.`);
+			this.logger.logDebug(`Preset ${name} con la misma configuración ya ha sido registrado.`);
 			return;
 		}
 
@@ -160,7 +176,7 @@ export class Kernel implements IKernel {
 		const keys = this.presetNameMap.get(name)!;
 		keys.push(uniqueKey);
 
-		Logger.ok(`[Kernel] Preset registrado: ${name} (Total de instancias: ${keys.length})`);
+		this.logger.logOk(`Preset registrado: ${name} (Total de instancias: ${keys.length})`);
 	}
 
 	public getPreset<T>(name: string, config?: Record<string, any>): T {
@@ -168,20 +184,23 @@ export class Kernel implements IKernel {
 			const uniqueKey = this.getUniqueKey(name, config);
 			const instance = this.presetsRegistry.get(uniqueKey);
 			if (!instance) {
-				throw new Error(`[Kernel] Preset ${name} con la configuración especificada no encontrado.`);
+				this.logger.logError(`Preset ${name} con la configuración especificada no encontrado.`);
+				throw new Error(`Preset ${name} con la configuración especificada no encontrado.`);
 			}
 			return instance as T;
 		}
 
 		const keys = this.presetNameMap.get(name);
 		if (!keys || keys.length === 0) {
-			throw new Error(`[Kernel] Preset ${name} no encontrado.`);
+			this.logger.logError(`Preset ${name} no encontrado.`);
+			throw new Error(`Preset ${name} no encontrado.`);
 		}
 
 		if (keys.length > 1) {
-			throw new Error(
-				`[Kernel] Múltiples instancias de Preset ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
+			this.logger.logError(
+				`Múltiples instancias de Preset ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
 			);
+			throw new Error(`Múltiples instancias de Preset ${name} encontradas. Por favor, especifique una configuración para desambiguar.`);
 		}
 
 		return this.presetsRegistry.get(keys[0]) as T;
@@ -189,25 +208,26 @@ export class Kernel implements IKernel {
 
 	public registerApp(name: string, instance: IApp): void {
 		if (this.appsRegistry.has(name)) {
-			Logger.debug(`[Kernel] App '${name}' sobrescrita.`);
+			this.logger.logDebug(`App '${name}' sobrescrita.`);
 		}
 		this.appsRegistry.set(name, instance);
-		Logger.ok(`[Kernel] App registrada: ${name}`);
+		this.logger.logOk(`App registrada: ${name}`);
 	}
 
 	public getApp(name: string): IApp {
 		const instance = this.appsRegistry.get(name);
 		if (!instance) {
-			throw new Error(`[Kernel] App '${name}' no encontrada.`);
+			this.logger.logError(`App '${name}' no encontrada.`);
+			throw new Error(`App '${name}' no encontrada.`);
 		}
 		return instance;
 	}
 
 	// --- Lógica de Arranque ---
 	public async start(): Promise<void> {
-		Logger.info("Iniciando...");
-		Logger.info(`Modo: ${this.isDevelopment ? "DESARROLLO" : "PRODUCCIÓN"}`);
-		Logger.debug(`Base path: ${this.basePath}`);
+		this.logger.logInfo("Iniciando...");
+		this.logger.logInfo(`Modo: ${this.isDevelopment ? "DESARROLLO" : "PRODUCCIÓN"}`);
+		this.logger.logDebug(`Base path: ${this.basePath}`);
 
 		// Solo cargar Apps (que cargarán sus propios módulos desde modules.json)
 		await this.loadLayerRecursive(this.appsPath, this.loadApp.bind(this), ["BaseApp.ts"]);
@@ -273,59 +293,59 @@ export class Kernel implements IKernel {
 				this.registerPreset(preset.name, instance, config);
 			}
 		} catch (error) {
-			Logger.error(`[Kernel] Error cargando ${type} '${moduleName}': ${error}`);
+			this.logger.logError(`Error cargando ${type} '${moduleName}': ${error}`);
 		}
 	}
 
 	// --- Lógica de Cierre ---
 	public async stop(): Promise<void> {
-		Logger.info("\nIniciando cierre ordenado...");
+		this.logger.logInfo("\nIniciando cierre ordenado...");
 
 		// 1. Detener Apps
-		Logger.info("Deteniendo apps...");
+		this.logger.logInfo("Deteniendo apps...");
 		for (const [, app] of this.apps) {
 			try {
-				Logger.debug(`Deteniendo app ${app.name}`);
+				this.logger.logDebug(`Deteniendo app ${app.name}`);
 				await app.stop?.();
 			} catch (e) {
-				Logger.error(`Error deteniendo app ${app.name}: ${e}`);
+				this.logger.logError(`Error deteniendo app ${app.name}: ${e}`);
 			}
 		}
 
 		// 2. Detener Presets
-		Logger.info("Deteniendo presets...");
+		this.logger.logInfo("Deteniendo presets...");
 		for (const key of this.presetsRegistry.keys()) {
 			const preset = this.presetsRegistry.get(key) as IPreset<any>;
 			try {
 				await preset.shutdown?.();
 			} catch (e) {
-				Logger.error(`Error deteniendo preset ${preset.name}: ${e}`);
+				this.logger.logError(`Error deteniendo preset ${preset.name}: ${e}`);
 			}
 		}
 
 		// 3. Detener Middlewares
-		Logger.info("Deteniendo middlewares...");
+		this.logger.logInfo("Deteniendo middlewares...");
 		for (const key of this.middlewaresRegistry.keys()) {
 			const middleware = this.middlewaresRegistry.get(key) as IMiddleware<any>;
 			try {
 				await middleware.shutdown?.();
 			} catch (e) {
-				Logger.error(`Error deteniendo middleware ${middleware.name}: ${e}`);
+				this.logger.logError(`Error deteniendo middleware ${middleware.name}: ${e}`);
 			}
 		}
 
 		// 4. Detener Providers
-		Logger.info("Deteniendo providers...");
+		this.logger.logInfo("Deteniendo providers...");
 		for (const key of this.providersRegistry.keys()) {
 			const provider = this.providersRegistry.get(key) as IProvider<any>;
 			try {
 				await provider.shutdown?.();
 			} catch (e) {
-				Logger.error(`Error deteniendo provider ${provider.name}: ${e}`);
+				this.logger.logError(`Error deteniendo provider ${provider.name}: ${e}`);
 			}
 		}
 
-		Logger.ok("Cierre completado.");
+		this.logger.logOk("Cierre completado.");
 	}
 
 	/**
@@ -375,7 +395,7 @@ export class Kernel implements IKernel {
 			const uniqueKey = this.getUniqueKey(provider.name, config.config);
 			this.providers.set(filePath, uniqueKey);
 		} catch (e) {
-			Logger.error(`Error cargando Provider ${filePath}: ${e}`);
+			this.logger.logError(`Error cargando Provider ${filePath}: ${e}`);
 		}
 	}
 
@@ -395,7 +415,7 @@ export class Kernel implements IKernel {
 			const uniqueKey = this.getUniqueKey(middleware.name, config.config);
 			this.middlewares.set(filePath, uniqueKey);
 		} catch (e) {
-			Logger.error(`Error cargando Middleware ${filePath}: ${e}`);
+			this.logger.logError(`Error cargando Middleware ${filePath}: ${e}`);
 		}
 	}
 
@@ -418,7 +438,7 @@ export class Kernel implements IKernel {
 			const uniqueKey = this.getUniqueKey(preset.name, config.config);
 			this.presets.set(filePath, uniqueKey);
 		} catch (e) {
-			Logger.error(`Error cargando Preset ${filePath}: ${e}`);
+			this.logger.logError(`Error cargando Preset ${filePath}: ${e}`);
 		}
 	}
 
@@ -438,11 +458,11 @@ export class Kernel implements IKernel {
 				try {
 					const files = await fs.readdir(dir);
 					files
-						.filter((file) => file === "config.json" || (file.startsWith("config-") && file.endsWith(".json")))
+						.filter((file) => file.endsWith(".json") && file !== "modules.json")
 						.forEach((file) => allConfigFiles.push(path.join(dir, file)));
 				} catch (error) {
 					if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-						Logger.warn(`[Kernel] No se pudo leer el directorio de configuración ${dir}: ${error}`);
+						this.logger.logWarn(`No se pudo leer el directorio de configuración ${dir}: ${error}`);
 					}
 				}
 			}
@@ -451,31 +471,37 @@ export class Kernel implements IKernel {
 				for (const configPath of allConfigFiles) {
 					const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
 					const configFile = path.basename(configPath);
-					const configName = path.basename(configFile, ".json");
+					const configNameRaw = path.basename(configFile, ".json");
+					const configName =
+						configNameRaw === "config"
+							? "default"
+							: configNameRaw.startsWith("config-")
+							? configNameRaw.substring("config-".length)
+							: configNameRaw;
 					const instanceName = `${appName}:${configName}`;
 
 					const app: IApp = new AppClass(this, instanceName, config);
 					this.registerApp(instanceName, app);
-					Logger.debug(`Inicializando App ${app.name}`);
+					this.logger.logDebug(`Inicializando App ${app.name}`);
 					await app.loadModulesFromConfig();
 					await app.start?.();
 					const appKey = `${filePath}:${instanceName}`;
 					this.apps.set(appKey, app);
-					Logger.debug(`Ejecutando App ${app.name}`);
+					this.logger.logDebug(`Ejecutando App ${app.name}`);
 					await app.run();
 				}
 			} else {
 				const app: IApp = new AppClass(this, appName);
 				this.registerApp(appName, app);
-				Logger.debug(`Inicializando App ${app.name}`);
+				this.logger.logDebug(`Inicializando App ${app.name}`);
 				await app.loadModulesFromConfig();
 				await app.start?.();
 				this.apps.set(filePath, app);
-				Logger.debug(`Ejecutando App ${app.name}`);
+				this.logger.logDebug(`Ejecutando App ${app.name}`);
 				await app.run();
 			}
 		} catch (e) {
-			Logger.error(`Error ejecutando App ${filePath}: ${e}`);
+			this.logger.logError(`Error ejecutando App ${filePath}: ${e}`);
 		}
 	}
 
@@ -498,7 +524,7 @@ export class Kernel implements IKernel {
 		if (uniqueKey) {
 			const provider = this.providersRegistry.get(uniqueKey) as IProvider<any>;
 			if (provider) {
-				Logger.debug(`Removiendo provider: ${provider.name}`);
+				this.logger.logDebug(`Removiendo provider: ${provider.name}`);
 				await provider.shutdown?.();
 				this.providersRegistry.delete(uniqueKey);
 				if (provider.type && provider.type !== provider.name) {
@@ -522,7 +548,7 @@ export class Kernel implements IKernel {
 		if (uniqueKey) {
 			const mw = this.middlewaresRegistry.get(uniqueKey) as IMiddleware<any>;
 			if (mw) {
-				Logger.debug(`Removiendo middleware: ${mw.name}`);
+				this.logger.logDebug(`Removiendo middleware: ${mw.name}`);
 				await mw.shutdown?.();
 				this.middlewaresRegistry.delete(uniqueKey);
 				const keys = this.middlewareNameMap.get(mw.name);
@@ -542,7 +568,7 @@ export class Kernel implements IKernel {
 		if (uniqueKey) {
 			const preset = this.presetsRegistry.get(uniqueKey) as IPreset<any>;
 			if (preset) {
-				Logger.debug(`Removiendo preset: ${preset.name}`);
+				this.logger.logDebug(`Removiendo preset: ${preset.name}`);
 				await preset.shutdown?.();
 				this.presetsRegistry.delete(uniqueKey);
 				const keys = this.presetNameMap.get(preset.name);
@@ -564,7 +590,7 @@ export class Kernel implements IKernel {
 		for (const key of keysToUnload) {
 			const app = this.apps.get(key);
 			if (app) {
-				Logger.debug(`Removiendo app: ${app.name}`);
+				this.logger.logDebug(`Removiendo app: ${app.name}`);
 				await app.stop?.();
 				this.appsRegistry.delete(app.name);
 				this.apps.delete(key);

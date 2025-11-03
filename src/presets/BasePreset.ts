@@ -2,6 +2,7 @@ import * as path from "node:path";
 import { IPreset } from "../interfaces/IPreset.js";
 import { IKernel } from "../interfaces/IKernel.js";
 import { Logger } from "../utils/Logger/Logger.js";
+import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
 
 /**
@@ -13,6 +14,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	abstract readonly name: string;
 
 	protected kernel: IKernel;
+	protected logger: ILogger = Logger.getLogger(this.constructor.name);
 
 	constructor(kernel: IKernel) {
 		this.kernel = kernel;
@@ -27,18 +29,17 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	 * Lógica de inicialización del preset
 	 */
 	public async initialize(): Promise<void> {
-		const presetName = this.constructor.name;
 		const presetDir = this.getPresetDir();
 		const modulesConfigPath = path.join(presetDir, "modules.json");
 
-		Logger.info(`[${presetName}] Inicializando y cargando módulos...`);
+		this.logger.logDebug(`Inicializando y cargando módulos...`);
 
 		try {
 			await Kernel.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
 			await this.onInitialize();
-			Logger.ok(`[${presetName}] Inicialización completada`);
+			this.logger.logOk(`Inicialización completada`);
 		} catch (error) {
-			Logger.error(`[${presetName}] Error durante inicialización: ${error}`);
+			this.logger.logError(`Error durante inicialización: ${error}`);
 			throw error;
 		}
 	}
@@ -55,7 +56,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	 * Lógica de cierre del preset
 	 */
 	public async shutdown(): Promise<void> {
-		Logger.ok(`[${this.constructor.name}] Detenido.`);
+		this.logger.logOk(`Detenido.`);
 	}
 
 	/**

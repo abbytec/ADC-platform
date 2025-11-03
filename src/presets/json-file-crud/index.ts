@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import { BasePreset } from "../BasePreset.js";
-import { Logger } from "../../utils/Logger/Logger.js";
+import { ILogger } from "../../interfaces/utils/ILogger.js";
 
 /**
  * Interfaz que define las operaciones CRUD para archivos JSON
@@ -18,7 +18,7 @@ export interface IJsonFileCrud {
  * Implementación del CRUD para JSON en archivos usando providers y middlewares
  */
 class JsonFileCrudImpl implements IJsonFileCrud {
-	constructor(private readonly storage: any, private readonly fileAdapter: any) {}
+	constructor(private readonly storage: any, private readonly fileAdapter: any, private readonly logger: ILogger) {}
 
 	private getFilePath(key: string): string {
 		const safeKey = path.basename(key);
@@ -37,7 +37,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 		// Guardar usando el storage y el adaptador
 		const buffer = this.fileAdapter.toBuffer(data);
 		await this.storage.save(filePath, buffer);
-		Logger.ok(`[JsonFileCrud] Archivo creado: ${key}`);
+		this.logger.logOk(`[JsonFileCrud] Archivo creado: ${key}`);
 	}
 
 	async read<T>(key: string): Promise<T | null> {
@@ -46,11 +46,11 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 		try {
 			const buffer = await this.storage.load(filePath);
 			if (!buffer) {
-				Logger.warn(`[JsonFileCrud] Archivo no encontrado: ${key}`);
+				this.logger.logWarn(`[JsonFileCrud] Archivo no encontrado: ${key}`);
 				return null;
 			}
 			const data = this.fileAdapter.fromBuffer(buffer) as T;
-			Logger.info(`[JsonFileCrud] Archivo leído: ${key}`);
+			this.logger.logDebug(`[JsonFileCrud] Archivo leído: ${key}`);
 			return data;
 		} catch (err: any) {
 			throw new Error(`[JsonFileCrud] Error al leer ${key}: ${err.message}`);
@@ -69,13 +69,13 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 		// Actualizar archivo
 		const buffer = this.fileAdapter.toBuffer(data);
 		await this.storage.save(filePath, buffer);
-		Logger.ok(`[JsonFileCrud] Archivo actualizado: ${key}`);
+		this.logger.logDebug(`[JsonFileCrud] Archivo actualizado: ${key}`);
 	}
 
 	async delete(key: string): Promise<void> {
 		// Nota: La implementación actual de FileStorage no tiene método delete
 		// Por lo tanto, esta operación es un no-op o debería extenderse IStorage
-		Logger.warn(`[JsonFileCrud] Delete no soportado aún por el provider file-storage`);
+		this.logger.logWarn(`[JsonFileCrud] Delete no soportado aún por el provider file-storage`);
 	}
 
 	async exists(key: string): Promise<boolean> {
@@ -83,7 +83,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 			const filePath = this.getFilePath(key);
 			const buffer = await this.storage.load(filePath);
 			return buffer !== null;
-		} catch (err) {
+		} catch {
 			return false;
 		}
 	}
@@ -91,7 +91,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 	async list(): Promise<string[]> {
 		// Nota: FileStorage no proporciona operación de listado
 		// Esta funcionalidad requeriría extender IStorage
-		Logger.warn(`[JsonFileCrud] List no soportado aún por el provider file-storage`);
+		this.logger.logWarn(`[JsonFileCrud] List no soportado aún por el provider file-storage`);
 		return [];
 	}
 }
@@ -115,7 +115,7 @@ export default class JsonFileCrudPreset extends BasePreset<IJsonFileCrud> {
 		const fileAdapter = this.getMiddleware("json-file-adapter");
 
 		// Crear instancia del CRUD
-		this.instance = new JsonFileCrudImpl(storage, fileAdapter);
+		this.instance = new JsonFileCrudImpl(storage, fileAdapter, this.logger);
 	}
 
 	getInstance(): IJsonFileCrud {

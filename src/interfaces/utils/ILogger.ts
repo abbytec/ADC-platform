@@ -8,4 +8,5 @@ export interface ILogger {
   logWarn(message: string, ...args: any[]): void;
   logError(message: string, ...args: any[]): void;
   setLevel(level: 'DEBUG' | 'INFO' | 'OK' | 'WARN' | 'ERROR' | 'NONE'): void;
+  getLogger(title: string): ILogger;
 }

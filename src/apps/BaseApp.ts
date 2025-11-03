@@ -2,6 +2,7 @@ import * as path from "node:path";
 import { IApp } from "../interfaces/IApp.js";
 import { IKernel } from "../interfaces/IKernel.js";
 import { Logger } from "../utils/Logger/Logger.js";
+import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
 
 /**
@@ -14,11 +15,13 @@ export abstract class BaseApp implements IApp {
 
 	protected kernel!: IKernel;
 	protected config: any;
+	protected logger: ILogger;
 
 	constructor(kernel: IKernel, name?: string, config?: any) {
 		this.kernel = kernel;
 		this.name = name || this.constructor.name;
 		this.config = config;
+		this.logger = Logger.getLogger(this.name);
 	}
 
 	/**
@@ -53,7 +56,7 @@ export abstract class BaseApp implements IApp {
 			const modulesConfigPath = path.join(appDir, "modules.json");
 			await Kernel.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
 		} catch (error) {
-			Logger.error(`Error procesando modules.json: ${error}`);
+			this.logger.logError(`Error procesando modules.json: ${error}`);
 			throw error;
 		}
 	}

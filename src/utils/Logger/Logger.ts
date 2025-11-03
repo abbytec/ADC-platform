@@ -30,4 +30,8 @@ export class Logger {
 	static setLevel(level: "DEBUG" | "INFO" | "OK" | "WARN" | "ERROR" | "NONE"): void {
 		globalLogger.setLevel(level);
 	}
+
+	static getLogger(title: string): ILogger {
+		return globalLogger.getLogger(title);
+	}
 }
