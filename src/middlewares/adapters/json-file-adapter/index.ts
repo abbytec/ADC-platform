@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-import { IFileAdapter } from "../../../interfaces/middlewares/adapters/IFIleAdapter.js";
+import { IFileAdapter } from "../../../interfaces/modules/middlewares/adapters/IFIleAdapter.js";
 import { Logger } from "../../../utils/Logger/Logger.js";
 import { BaseMiddleware } from "../../BaseMiddleware.js";
 

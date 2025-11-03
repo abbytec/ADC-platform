@@ -1,7 +1,7 @@
 import { IModuleLoader } from "../IModuleLoader.js";
-import { IProvider } from "../../interfaces/IProvider.js";
-import { IMiddleware } from "../../interfaces/IMIddleware.js";
-import { IPreset } from "../../interfaces/IPreset.js";
+import { IProvider } from "../../interfaces/modules/IProvider.js";
+import { IMiddleware } from "../../interfaces/modules/IMiddleware.js";
+import { IPreset } from "../../interfaces/modules/IPreset.js";
 import { Logger } from "../../utils/Logger/Logger.js";
 
 /**

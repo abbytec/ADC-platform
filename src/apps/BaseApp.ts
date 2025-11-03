@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { IApp } from "../interfaces/IApp.js";
+import { IApp } from "../interfaces/modules/IApp.js";
 import { IKernel } from "../interfaces/IKernel.js";
 import { Logger } from "../utils/Logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";

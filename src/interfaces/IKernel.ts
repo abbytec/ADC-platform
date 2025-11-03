@@ -1,4 +1,4 @@
-import { IModuleConfig } from "./IModule.js";
+import { IModuleConfig } from "./modules/IModule.js";
 
 /**
  * Identificador único para inyectar el propio Kernel

@@ -1,4 +1,4 @@
-import { IStorage, STORAGE_PROVIDER } from "../../interfaces/providers/IStorage.js";
+import { IStorage, STORAGE_PROVIDER } from "../../interfaces/modules/providers/IStorage.js";
 import { BaseProvider } from "../BaseProvider.js";
 import { ILogger } from "../../interfaces/utils/ILogger.js";
 

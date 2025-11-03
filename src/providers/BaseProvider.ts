@@ -1,4 +1,4 @@
-import { IProvider } from "../interfaces/IProvider.js";
+import { IProvider } from "../interfaces/modules/IProvider.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Logger } from "../utils/Logger/Logger.js";
 

@@ -1,4 +1,4 @@
-import { IMiddleware } from "../interfaces/IMIddleware.js";
+import { IMiddleware } from "../interfaces/modules/IMiddleware.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Logger } from "../utils/Logger/Logger.js";
 

@@ -1,7 +1,7 @@
 import * as path from "node:path";
-import { IModulesDefinition } from "../interfaces/IModule.js";
+import { IModulesDefinition } from "../interfaces/modules/IModule.js";
 import * as fs from "node:fs/promises";
-import { IPreset } from "../interfaces/IPreset.js";
+import { IPreset } from "../interfaces/modules/IPreset.js";
 import { IKernel } from "../interfaces/IKernel.js";
 import { Logger } from "../utils/Logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
@@ -18,10 +18,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	protected logger: ILogger = Logger.getLogger(this.constructor.name);
 	protected mergedModulesConfig: IModulesDefinition;
 
-	constructor(
-		protected readonly kernel: IKernel,
-		protected readonly options?: any,
-	) {
+	constructor(protected readonly kernel: IKernel, protected readonly options?: any) {
 		this.mergedModulesConfig = {};
 	}
 

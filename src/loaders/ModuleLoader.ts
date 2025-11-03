@@ -1,9 +1,9 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
-import { IModuleConfig, IModulesDefinition } from "../interfaces/IModule.js";
-import { IProvider } from "../interfaces/IProvider.js";
-import { IMiddleware } from "../interfaces/IMIddleware.js";
-import { IPreset } from "../interfaces/IPreset.js";
+import { IModuleConfig, IModulesDefinition } from "../interfaces/modules/IModule.js";
+import { IProvider } from "../interfaces/modules/IProvider.js";
+import { IMiddleware } from "../interfaces/modules/IMiddleware.js";
+import { IPreset } from "../interfaces/modules/IPreset.js";
 import { IKernel } from "../interfaces/IKernel.js";
 import { LoaderManager } from "./LoaderManager.js";
 import { VersionResolver } from "../utils/VersionResolver.js";

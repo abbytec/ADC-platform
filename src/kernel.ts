@@ -3,14 +3,14 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import chokidar from "chokidar";
 import { IKernel } from "./interfaces/IKernel.js";
-import { IApp } from "./interfaces/IApp.js";
-import { IMiddleware } from "./interfaces/IMIddleware.js";
-import { IProvider } from "./interfaces/IProvider.js";
-import { IPreset } from "./interfaces/IPreset.js";
+import { IApp } from "./interfaces/modules/IApp.js";
+import { IMiddleware } from "./interfaces/modules/IMiddleware.js";
+import { IProvider } from "./interfaces/modules/IProvider.js";
+import { IPreset } from "./interfaces/modules/IPreset.js";
 import { Logger } from "./utils/Logger/Logger.js";
 import { ModuleLoader } from "./loaders/ModuleLoader.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
-import { IModuleConfig } from "./interfaces/IModule.js";
+import { IModuleConfig } from "./interfaces/modules/IModule.js";
 
 export class Kernel implements IKernel {
 	private readonly logger: ILogger = Logger.getLogger("Kernel");
