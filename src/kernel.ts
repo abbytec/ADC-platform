@@ -13,7 +13,7 @@ import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModuleConfig } from "./interfaces/IModule.js";
 
 export class Kernel implements IKernel {
-	private logger: ILogger;
+	private readonly logger: ILogger = Logger.getLogger("Kernel");
 
 	// --- Registros por categoría ---
 	private readonly providersRegistry = new Map<string, any>();
@@ -43,10 +43,6 @@ export class Kernel implements IKernel {
 	private readonly middlewaresPath = path.resolve(this.basePath, "middlewares");
 	private readonly presetsPath = path.resolve(this.basePath, "presets");
 	private readonly appsPath = path.resolve(this.basePath, "apps");
-
-	constructor() {
-		this.logger = Logger.getLogger("Kernel");
-	}
 
 	private getUniqueKey(name: string, config?: Record<string, any>): string {
 		return `${name}:${JSON.stringify(config || {})}`;

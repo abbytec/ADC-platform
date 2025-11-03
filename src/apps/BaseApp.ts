@@ -10,19 +10,9 @@ import { Kernel } from "../kernel.js";
  * Maneja la inyección del Kernel y la carga de módulos desde modules.json.
  */
 export abstract class BaseApp implements IApp {
-	/** El nombre único de la app */
-	name: string;
+	protected logger: ILogger = Logger.getLogger(this.constructor.name);
 
-	protected kernel!: IKernel;
-	protected config: any;
-	protected logger: ILogger;
-
-	constructor(kernel: IKernel, name?: string, config?: any) {
-		this.kernel = kernel;
-		this.name = name || this.constructor.name;
-		this.config = config;
-		this.logger = Logger.getLogger(this.name);
-	}
+	constructor(protected readonly kernel: IKernel, public readonly name: string = this.constructor.name, public readonly config?: any) {}
 
 	/**
 	 * Lógica de inicialización.

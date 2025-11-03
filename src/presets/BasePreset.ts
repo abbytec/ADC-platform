@@ -13,12 +13,9 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	/** Nombre único del preset */
 	abstract readonly name: string;
 
-	protected kernel: IKernel;
 	protected logger: ILogger = Logger.getLogger(this.constructor.name);
 
-	constructor(kernel: IKernel) {
-		this.kernel = kernel;
-	}
+	constructor(protected readonly kernel: IKernel) {}
 
 	/**
 	 * Obtener la instancia del preset

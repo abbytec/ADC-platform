@@ -28,22 +28,17 @@ const Colors = {
  * Implementación de logger en consola con soporte para colores y niveles
  */
 export default class ConsoleLogger implements ILogger {
-	private currentLevel: LogLevel;
-
-	constructor(initialLevel: LogLevel = "DEBUG") {
-		this.currentLevel = initialLevel;
-	}
+	constructor(private currentLevel: LogLevel = "DEBUG") {}
 
 	public getLogger(title: string): ILogger {
-		const self = this; // Capture the original logger instance
 		return {
-			logDebug: (message: string, ...args: any[]) => self.logDebug(`[${title}] ${message}`, ...args),
-			logInfo: (message: string, ...args: any[]) => self.logInfo(`[${title}] ${message}`, ...args),
-			logOk: (message: string, ...args: any[]) => self.logOk(`[${title}] ${message}`, ...args),
-			logWarn: (message: string, ...args: any[]) => self.logWarn(`[${title}] ${message}`, ...args),
-			logError: (message: string, ...args: any[]) => self.logError(`[${title}] ${message}`, ...args),
-			setLevel: (level: LogLevel) => self.setLevel(level),
-			getLogger: (newTitle: string): ILogger => self.getLogger(`${title}:${newTitle}`),
+			logDebug: (message: string, ...args: any[]) => this.logDebug(`[${title}] ${message}`, ...args),
+			logInfo: (message: string, ...args: any[]) => this.logInfo(`[${title}] ${message}`, ...args),
+			logOk: (message: string, ...args: any[]) => this.logOk(`[${title}] ${message}`, ...args),
+			logWarn: (message: string, ...args: any[]) => this.logWarn(`[${title}] ${message}`, ...args),
+			logError: (message: string, ...args: any[]) => this.logError(`[${title}] ${message}`, ...args),
+			setLevel: (level: LogLevel) => this.setLevel(level),
+			getLogger: (newTitle: string): ILogger => this.getLogger(`${title}:${newTitle}`),
 		};
 	}
 

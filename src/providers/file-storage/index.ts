@@ -8,13 +8,7 @@ import { Buffer } from "node:buffer";
 
 // 1. La implementación concreta
 class FileStorage implements IStorage {
-	private readonly basePath: string;
-	private readonly logger: ILogger;
-
-	constructor(basePath: string, logger: ILogger) {
-		this.basePath = basePath;
-		this.logger = logger;
-	}
+	constructor(private readonly basePath: string, private readonly logger: ILogger) {}
 
 	public async init() {
 		// Asegurarse de que el directorio de almacenamiento exista
