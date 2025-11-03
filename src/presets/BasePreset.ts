@@ -33,20 +33,11 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 
 		try {
 			await Kernel.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
-			await this.onInitialize();
 			this.logger.logOk(`Inicialización completada`);
 		} catch (error) {
 			this.logger.logError(`Error durante inicialización: ${error}`);
 			throw error;
 		}
-	}
-
-	/**
-	 * Hook para que subclases implementen lógica adicional después de cargar módulos
-	 * Implementar en subclases si es necesario
-	 */
-	protected async onInitialize(): Promise<void> {
-		/* noop */
 	}
 
 	/**

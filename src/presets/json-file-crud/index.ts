@@ -105,22 +105,11 @@ export default class JsonFileCrudPreset extends BasePreset<IJsonFileCrud> {
 
 	private instance!: JsonFileCrudImpl;
 
-	/**
-	 * Hook llamado después de cargar módulos
-	 * Aquí inicializamos la instancia del CRUD
-	 */
-	protected async onInitialize(): Promise<void> {
-		// Obtener las instancias del kernel
-		const storage = this.getProvider("storage-provider");
-		const fileAdapter = this.getMiddleware("json-file-adapter");
-
-		// Crear instancia del CRUD
-		this.instance = new JsonFileCrudImpl(storage, fileAdapter, this.logger);
-	}
-
 	getInstance(): IJsonFileCrud {
 		if (!this.instance) {
-			throw new Error("[JsonFileCrud] Preset no ha sido inicializado. Llama a initialize() primero.");
+			const storage = this.getProvider("storage-provider");
+			const fileAdapter = this.getMiddleware("json-file-adapter");
+			this.instance = new JsonFileCrudImpl(storage, fileAdapter, this.logger);
 		}
 		return this.instance;
 	}
