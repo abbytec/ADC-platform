@@ -49,8 +49,7 @@ export default class UserProfileApp extends BaseApp {
 					await this.crud.create(this.config.PROFILE_KEY, data);
 				} else {
 					throw err;
-			}
+				}
 			});
 	}
 }
-

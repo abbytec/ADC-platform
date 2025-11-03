@@ -7,7 +7,8 @@
 	"scripts": {
 		"dev": "cross-env NODE_ENV=development tsx src/index.ts",
 		"build": "rimraf dist && tsc && node scripts/copy-config.mjs",
-		"start": "cross-env NODE_ENV=production node dist/index.js"
+		"prestart": "npm run build",
+		"start": "concurrently \"tsc --watch\" \"cross-env NODE_ENV=production node dist/index.js\""
 	},
 	"keywords": [
 		"kernel",
@@ -24,6 +25,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^20.14.2",
+		"concurrently": "^8.2.2",
 		"cross-env": "^7.0.3",
 		"rimraf": "^5.0.7",
 		"tsx": "^4.15.2",

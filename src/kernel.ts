@@ -12,6 +12,7 @@ import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModuleConfig } from "./interfaces/modules/IModule.js";
 
 export class Kernel {
+	private isStartingUp = true;
 	private readonly logger: ILogger = Logger.getLogger("Kernel");
 
 	// --- Registros por categoría ---
@@ -227,13 +228,16 @@ export class Kernel {
 		// Solo cargar Apps (que cargarán sus propios módulos desde modules.json)
 		await this.loadLayerRecursive(this.appsPath, this.loadApp.bind(this), ["BaseApp.ts"]);
 
-		// Iniciar watchers para carga dinámica (solo en desarrollo)
-		if (this.isDevelopment) {
-			this.watchLayer(this.providersPath, this.loadProvider.bind(this), this.unloadProvider.bind(this));
-			this.watchLayer(this.middlewaresPath, this.loadMiddleware.bind(this), this.unloadMiddleware.bind(this));
-			this.watchLayer(this.presetsPath, this.loadPreset.bind(this), this.unloadPreset.bind(this));
-			this.watchLayer(this.appsPath, this.loadApp.bind(this), this.unloadApp.bind(this), ["BaseApp.ts"]);
-		}
+		// Iniciar watchers para carga dinámica
+		this.watchLayer(this.providersPath, this.loadProvider.bind(this), this.unloadProvider.bind(this));
+		this.watchLayer(this.middlewaresPath, this.loadMiddleware.bind(this), this.unloadMiddleware.bind(this));
+		this.watchLayer(this.presetsPath, this.loadPreset.bind(this), this.unloadPreset.bind(this));
+		this.watchLayer(this.appsPath, this.loadApp.bind(this), this.unloadApp.bind(this), ["BaseApp.ts"]);
+
+		setTimeout(() => {
+			this.isStartingUp = false;
+			this.logger.logInfo("HMR está activo.");
+		}, 5000);
 	}
 
 	/**
@@ -501,13 +505,24 @@ export class Kernel {
 		const watcher = chokidar.watch(path.join(dir, `**/index${this.fileExtension}`), {
 			ignoreInitial: true,
 			ignored: exclude,
+			awaitWriteFinish: {
+				stabilityThreshold: 2000,
+				pollInterval: 100,
+			},
 		});
-		watcher.on("add", (p) => loader(p));
+		watcher.on("add", (p) => {
+			if (this.isStartingUp) return;
+			loader(p);
+		});
 		watcher.on("change", async (p) => {
+			if (this.isStartingUp) return;
 			await unloader(p);
 			await loader(p);
 		});
-		watcher.on("unlink", (p) => unloader(p));
+		watcher.on("unlink", (p) => {
+			if (this.isStartingUp) return;
+			unloader(p);
+		});
 	}
 
 	private async unloadProvider(filePath: string) {
