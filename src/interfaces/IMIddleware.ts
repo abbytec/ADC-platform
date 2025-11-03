@@ -1,5 +1,5 @@
 export interface IMiddleware<T> {
   name: string;
-  getInstance(): Promise<T> | T;
+  getInstance(options?: any): Promise<T> | T;
   shutdown?(): Promise<void>;
 }

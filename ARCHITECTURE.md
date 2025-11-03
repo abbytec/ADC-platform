@@ -45,6 +45,10 @@ Las instancias creadas serán:
 
 Cada instancia recibirá su propia configuración y se ejecutará de forma independiente. Esto permite, por ejemplo, tener la misma lógica de aplicación conectada a diferentes bases de datos o con diferentes parámetros de funcionamiento.
 
+### Configuración de Módulos por Instancia
+
+Los archivos de configuración de instancia (e.g., `config-main.json`) también pueden contener una sección `modules`. Esta sección sigue la misma estructura que un archivo `modules.json`, permitiendo definir dependencias y configuraciones de módulos específicas para cada instancia de la aplicación.
+
 ### Loaders (Sistema Modular)
 Sistema de carga de módulos con soporte para versionado semántico y múltiples lenguajes. Ubicados en `src/loaders/`.
 

@@ -1,3 +1,26 @@
 {
-	"PROFILE_KEY": "2_user_profile"
+	"PROFILE_KEY": "2_user_profile",
+	"modules": {
+		"presets": [
+			{
+				"name": "json-file-crud",
+				"version": "latest",
+				"language": "typescript",
+				"config": {
+					"modules": {
+						"providers": [
+							{
+								"name": "file-storage",
+								"version": "latest",
+								"language": "typescript",
+								"config": {
+									"basePath": "./temp/storage2"
+								}
+							}
+						]
+					}
+				}
+			}
+		]
+	}
 }

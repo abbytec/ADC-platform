@@ -6,7 +6,7 @@ export abstract class BaseMiddleware<T> implements IMiddleware<T> {
 	abstract name: string;
 	protected logger: ILogger = Logger.getLogger(this.constructor.name);
 
-	abstract getInstance(): Promise<T> | T;
+	abstract getInstance(options?: any): Promise<T> | T;
 
 	public async shutdown(): Promise<void> {
 		this.logger.logInfo(`Shutting down...`);

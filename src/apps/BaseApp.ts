@@ -45,6 +45,10 @@ export abstract class BaseApp implements IApp {
 
 			const modulesConfigPath = path.join(appDir, "modules.json");
 			await Kernel.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
+
+			if (this.config?.modules) {
+				await Kernel.moduleLoader.loadAllModulesFromDefinition(this.config.modules, this.kernel);
+			}
 		} catch (error) {
 			this.logger.logError(`Error procesando modules.json: ${error}`);
 			throw error;

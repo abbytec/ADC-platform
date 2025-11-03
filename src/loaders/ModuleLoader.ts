@@ -24,25 +24,18 @@ export class ModuleLoader {
 	}
 
 	/**
-	 * Carga todos los módulos (providers, middlewares, presets) desde un modules.json
+	 * Carga todos los módulos (providers, middlewares, presets) desde un objeto de definición de módulos.
+	 * @param modulesConfig - El objeto de definición de módulos.
+	 * @param kernel - La instancia del kernel.
 	 */
-	async loadAllModulesFromConfig(configPath: string, kernel: IKernel): Promise<void> {
+	async loadAllModulesFromDefinition(modulesConfig: IModulesDefinition, kernel: IKernel): Promise<void> {
 		try {
-			try {
-				await fs.stat(configPath);
-			} catch {
-				return; // El archivo no existe, no hay nada que cargar
-			}
-
-			const configContent = await fs.readFile(configPath, "utf-8");
-			const modulesConfig: IModulesDefinition = JSON.parse(configContent);
-
 			// Cargar providers
 			if (modulesConfig.providers && Array.isArray(modulesConfig.providers)) {
 				for (const providerConfig of modulesConfig.providers) {
 					try {
 						const provider = await this.loadProvider(providerConfig);
-						const instance = await provider.getInstance();
+						const instance = await provider.getInstance(providerConfig.config);
 						kernel.registerProvider(provider.name, instance, provider.type, providerConfig);
 					} catch (error) {
 						if (modulesConfig.failOnError) throw error;
@@ -56,7 +49,7 @@ export class ModuleLoader {
 				for (const middlewareConfig of modulesConfig.middlewares) {
 					try {
 						const middleware = await this.loadMiddleware(middlewareConfig);
-						const instance = await middleware.getInstance();
+						const instance = await middleware.getInstance(middlewareConfig.config);
 						kernel.registerMiddleware(middleware.name, instance, middlewareConfig);
 					} catch (error) {
 						if (modulesConfig.failOnError) throw error;
@@ -81,6 +74,26 @@ export class ModuleLoader {
 					}
 				}
 			}
+		} catch (error) {
+			Logger.error(`Error procesando la definición de módulos: ${error}`);
+			throw error;
+		}
+	}
+
+	/**
+	 * Carga todos los módulos (providers, middlewares, presets) desde un modules.json
+	 */
+	async loadAllModulesFromConfig(configPath: string, kernel: IKernel): Promise<void> {
+		try {
+			try {
+				await fs.stat(configPath);
+			} catch {
+				return; // El archivo no existe, no hay nada que cargar
+			}
+
+			const configContent = await fs.readFile(configPath, "utf-8");
+			const modulesConfig: IModulesDefinition = JSON.parse(configContent);
+			await this.loadAllModulesFromDefinition(modulesConfig, kernel);
 		} catch (error) {
 			Logger.error(`Error procesando modules.json: ${error}`);
 			throw error;

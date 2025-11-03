@@ -1,10 +1,3 @@
 {
-  "failOnError": false,
-  "presets": [
-    {
-      "name": "json-file-crud",
-      "version": "latest",
-      "language": "typescript"
-    }
-  ]
+	"failOnError": false
 }

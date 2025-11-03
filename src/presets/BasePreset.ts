@@ -1,4 +1,6 @@
 import * as path from "node:path";
+import { IModulesDefinition } from "../interfaces/IModule.js";
+import * as fs from "node:fs/promises";
 import { IPreset } from "../interfaces/IPreset.js";
 import { IKernel } from "../interfaces/IKernel.js";
 import { Logger } from "../utils/Logger/Logger.js";
@@ -14,8 +16,14 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	abstract readonly name: string;
 
 	protected logger: ILogger = Logger.getLogger(this.constructor.name);
+	protected mergedModulesConfig: IModulesDefinition;
 
-	constructor(protected readonly kernel: IKernel) {}
+	constructor(
+		protected readonly kernel: IKernel,
+		protected readonly options?: any,
+	) {
+		this.mergedModulesConfig = {};
+	}
 
 	/**
 	 * Obtener la instancia del preset
@@ -32,7 +40,62 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 		this.logger.logDebug(`Inicializando y cargando módulos...`);
 
 		try {
-			await Kernel.moduleLoader.loadAllModulesFromConfig(modulesConfigPath, this.kernel);
+			let baseConfig: IModulesDefinition = {};
+			try {
+				const configContent = await fs.readFile(modulesConfigPath, "utf-8");
+				baseConfig = JSON.parse(configContent);
+			} catch (error) {
+				// Silenciar error si modules.json no existe
+			}
+
+			const mergedConfig: IModulesDefinition = JSON.parse(JSON.stringify(baseConfig));
+
+			if (this.options?.modules) {
+				const optModules = this.options.modules;
+
+				// Fusionar providers
+				if (optModules.providers) {
+					if (!mergedConfig.providers) mergedConfig.providers = [];
+					for (const provider of optModules.providers) {
+						const index = mergedConfig.providers.findIndex((p) => p.name === provider.name);
+						if (index > -1) {
+							mergedConfig.providers[index] = { ...mergedConfig.providers[index], ...provider };
+						} else {
+							mergedConfig.providers.push(provider);
+						}
+					}
+				}
+
+				// Fusionar middlewares
+				if (optModules.middlewares) {
+					if (!mergedConfig.middlewares) mergedConfig.middlewares = [];
+					for (const middleware of optModules.middlewares) {
+						const index = mergedConfig.middlewares.findIndex((m) => m.name === middleware.name);
+						if (index > -1) {
+							mergedConfig.middlewares[index] = { ...mergedConfig.middlewares[index], ...middleware };
+						} else {
+							mergedConfig.middlewares.push(middleware);
+						}
+					}
+				}
+
+				// Fusionar presets (si es necesario en el futuro)
+				if (optModules.presets) {
+					if (!mergedConfig.presets) mergedConfig.presets = [];
+					for (const preset of optModules.presets) {
+						const index = mergedConfig.presets.findIndex((p) => p.name === preset.name);
+						if (index > -1) {
+							mergedConfig.presets[index] = { ...mergedConfig.presets[index], ...preset };
+						} else {
+							mergedConfig.presets.push(preset);
+						}
+					}
+				}
+			}
+
+			this.mergedModulesConfig = mergedConfig;
+			await Kernel.moduleLoader.loadAllModulesFromDefinition(this.mergedModulesConfig, this.kernel);
+
 			this.logger.logOk(`Inicialización completada`);
 		} catch (error) {
 			this.logger.logError(`Error durante inicialización: ${error}`);
@@ -68,14 +131,14 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	/**
 	 * Obtener el provider del kernel
 	 */
-	protected getProvider<P>(name: string): P {
-		return this.kernel.getProvider<P>(name);
+	protected getProvider<P>(name: string, config?: Record<string, any>): P {
+		return this.kernel.getProvider<P>(name, config);
 	}
 
 	/**
 	 * Obtener el middleware del kernel
 	 */
-	protected getMiddleware<M>(name: string): M {
-		return this.kernel.getMiddleware<M>(name);
+	protected getMiddleware<M>(name: string, config?: Record<string, any>): M {
+		return this.kernel.getMiddleware<M>(name, config);
 	}
 }

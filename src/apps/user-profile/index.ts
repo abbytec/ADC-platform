@@ -17,7 +17,8 @@ export default class UserProfileApp extends BaseApp {
 	private crud!: IJsonFileCrud;
 
 	async start() {
-		this.crud = this.kernel.getPreset<IJsonFileCrud>("json-file-crud");
+		const presetConfig = this.config.modules.presets.find((p: any) => p.name === "json-file-crud");
+		this.crud = this.kernel.getPreset<IJsonFileCrud>("json-file-crud", presetConfig.config);
 	}
 
 	async run(): Promise<void> {

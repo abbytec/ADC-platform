@@ -107,8 +107,12 @@ export default class JsonFileCrudPreset extends BasePreset<IJsonFileCrud> {
 
 	getInstance(): IJsonFileCrud {
 		if (!this.instance) {
-			const storage = this.getProvider("storage-provider");
-			const fileAdapter = this.getMiddleware("json-file-adapter");
+			const storageProviderModuleConfig = this.mergedModulesConfig?.providers?.find((p) => p.name === "file-storage")?.config;
+			const storage = this.getProvider("storage-provider", storageProviderModuleConfig);
+
+			const fileAdapterModuleConfig = this.mergedModulesConfig?.middlewares?.find((m) => m.name === "adapters/json-file-adapter")?.config;
+			const fileAdapter = this.getMiddleware("json-file-adapter", fileAdapterModuleConfig);
+
 			this.instance = new JsonFileCrudImpl(storage, fileAdapter, this.logger);
 		}
 		return this.instance;

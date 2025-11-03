@@ -66,7 +66,7 @@ export class TypeScriptLoader implements IModuleLoader {
 				throw new Error(`No hay export default en ${indexFile}`);
 			}
 
-			const preset: IPreset<any> = new PresetClass(kernel);
+			const preset: IPreset<any> = new PresetClass(kernel, config);
 			return preset;
 		} catch (error) {
 			Logger.error(`[TypeScriptLoader] Error cargando Preset: ${error}`);
