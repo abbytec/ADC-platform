@@ -2,7 +2,6 @@ import * as path from "node:path";
 import { IModulesDefinition } from "../interfaces/modules/IModule.js";
 import * as fs from "node:fs/promises";
 import { IPreset } from "../interfaces/modules/IPreset.js";
-import { IKernel } from "../interfaces/IKernel.js";
 import { Logger } from "../utils/Logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
@@ -18,7 +17,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	protected logger: ILogger = Logger.getLogger(this.constructor.name);
 	protected mergedModulesConfig: IModulesDefinition;
 
-	constructor(protected readonly kernel: IKernel, protected readonly options?: any) {
+	constructor(protected readonly kernel: Kernel, protected readonly options?: any) {
 		this.mergedModulesConfig = {};
 	}
 
@@ -30,7 +29,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	/**
 	 * Lógica de inicialización del preset
 	 */
-	public async initialize(): Promise<void> {
+	public async start(): Promise<void> {
 		const presetDir = this.getPresetDir();
 		const modulesConfigPath = path.join(presetDir, "modules.json");
 
@@ -41,18 +40,16 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 			try {
 				const configContent = await fs.readFile(modulesConfigPath, "utf-8");
 				baseConfig = JSON.parse(configContent);
-			} catch (error) {
-				// Silenciar error si modules.json no existe
-			}
+			} catch {}
 
-			const mergedConfig: IModulesDefinition = JSON.parse(JSON.stringify(baseConfig));
+			const mergedConfig: IModulesDefinition = structuredClone(baseConfig);
 
 			if (this.options?.modules) {
 				const optModules = this.options.modules;
 
 				// Fusionar providers
 				if (optModules.providers) {
-					if (!mergedConfig.providers) mergedConfig.providers = [];
+					mergedConfig.providers ??= [];
 					for (const provider of optModules.providers) {
 						const index = mergedConfig.providers.findIndex((p) => p.name === provider.name);
 						if (index > -1) {
@@ -65,7 +62,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 
 				// Fusionar middlewares
 				if (optModules.middlewares) {
-					if (!mergedConfig.middlewares) mergedConfig.middlewares = [];
+					mergedConfig.middlewares ??= [];
 					for (const middleware of optModules.middlewares) {
 						const index = mergedConfig.middlewares.findIndex((m) => m.name === middleware.name);
 						if (index > -1) {
@@ -78,7 +75,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 
 				// Fusionar presets (si es necesario en el futuro)
 				if (optModules.presets) {
-					if (!mergedConfig.presets) mergedConfig.presets = [];
+					mergedConfig.presets ??= [];
 					for (const preset of optModules.presets) {
 						const index = mergedConfig.presets.findIndex((p) => p.name === preset.name);
 						if (index > -1) {
@@ -103,7 +100,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	/**
 	 * Lógica de cierre del preset
 	 */
-	public async shutdown(): Promise<void> {
+	public async stop(): Promise<void> {
 		this.logger.logOk(`Detenido.`);
 	}
 

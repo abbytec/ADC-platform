@@ -1,7 +1,7 @@
-import { IProvider } from "../interfaces/modules/IProvider.js";
-import { IMiddleware } from "../interfaces/modules/IMiddleware.js";
-import { IPreset } from "../interfaces/modules/IPreset.js";
-import { IKernel } from "../interfaces/IKernel.js";
+import { IProvider } from "./IProvider.js";
+import { IMiddleware } from "./IMiddleware.js";
+import { IPreset } from "./IPreset.js";
+import { IKernel } from "../IKernel.ts";
 
 /**
  * Interfaz base para loaders de módulos por lenguaje

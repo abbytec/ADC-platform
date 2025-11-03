@@ -1,9 +1,9 @@
 import * as path from "node:path";
 import { IApp } from "../interfaces/modules/IApp.js";
-import { IKernel } from "../interfaces/IKernel.js";
 import { Logger } from "../utils/Logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
+import { ILifecycle } from "../interfaces/behaviours/ILifecycle.js";
 
 /**
  * Clase base abstracta para todas las Apps.
@@ -12,7 +12,7 @@ import { Kernel } from "../kernel.js";
 export abstract class BaseApp implements IApp {
 	protected logger: ILogger = Logger.getLogger(this.constructor.name);
 
-	constructor(protected readonly kernel: IKernel, public readonly name: string = this.constructor.name, public readonly config?: any) {}
+	constructor(protected readonly kernel: Kernel, public readonly name: string = this.constructor.name, public readonly config?: any) {}
 
 	/**
 	 * Lógica de inicialización.

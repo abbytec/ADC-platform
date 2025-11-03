@@ -2,7 +2,6 @@ import "dotenv/config";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import chokidar from "chokidar";
-import { IKernel } from "./interfaces/IKernel.js";
 import { IApp } from "./interfaces/modules/IApp.js";
 import { IMiddleware } from "./interfaces/modules/IMiddleware.js";
 import { IProvider } from "./interfaces/modules/IProvider.js";
@@ -12,7 +11,7 @@ import { ModuleLoader } from "./loaders/ModuleLoader.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModuleConfig } from "./interfaces/modules/IModule.js";
 
-export class Kernel implements IKernel {
+export class Kernel {
 	private readonly logger: ILogger = Logger.getLogger("Kernel");
 
 	// --- Registros por categoría ---
@@ -282,9 +281,7 @@ export class Kernel implements IKernel {
 				this.registerMiddleware(middleware.name, instance, config);
 			} else if (type === "preset") {
 				const preset = await Kernel.moduleLoader.loadPreset(config, this);
-				if (preset.initialize) {
-					await preset.initialize();
-				}
+				await preset.start?.();
 				const instance = preset.getInstance();
 				this.registerPreset(preset.name, instance, config);
 			}
@@ -313,7 +310,7 @@ export class Kernel implements IKernel {
 		for (const key of this.presetsRegistry.keys()) {
 			const preset = this.presetsRegistry.get(key) as IPreset<any>;
 			try {
-				await preset.shutdown?.();
+				await preset.stop?.();
 			} catch (e) {
 				this.logger.logError(`Error deteniendo preset ${preset.name}: ${e}`);
 			}
@@ -324,7 +321,7 @@ export class Kernel implements IKernel {
 		for (const key of this.middlewaresRegistry.keys()) {
 			const middleware = this.middlewaresRegistry.get(key) as IMiddleware<any>;
 			try {
-				await middleware.shutdown?.();
+				await middleware.stop?.();
 			} catch (e) {
 				this.logger.logError(`Error deteniendo middleware ${middleware.name}: ${e}`);
 			}
@@ -335,7 +332,7 @@ export class Kernel implements IKernel {
 		for (const key of this.providersRegistry.keys()) {
 			const provider = this.providersRegistry.get(key) as IProvider<any>;
 			try {
-				await provider.shutdown?.();
+				await provider.stop?.();
 			} catch (e) {
 				this.logger.logError(`Error deteniendo provider ${provider.name}: ${e}`);
 			}
@@ -425,9 +422,7 @@ export class Kernel implements IKernel {
 			}
 
 			const preset = await Kernel.moduleLoader.loadPreset(config, this);
-			if (preset.initialize) {
-				await preset.initialize();
-			}
+			await preset.start?.();
 
 			const instance = preset.getInstance();
 			this.registerPreset(preset.name, instance, config);
@@ -521,10 +516,10 @@ export class Kernel implements IKernel {
 			const provider = this.providersRegistry.get(uniqueKey) as IProvider<any>;
 			if (provider) {
 				this.logger.logDebug(`Removiendo provider: ${provider.name}`);
-				await provider.shutdown?.();
+				await provider.stop?.();
 				this.providersRegistry.delete(uniqueKey);
 				if (provider.type && provider.type !== provider.name) {
-					const typeKey = this.getUniqueKey(provider.type, (Kernel.moduleLoader.getConfigByPath(path.dirname(filePath)) || {}).config);
+					const typeKey = this.getUniqueKey(provider.type, Kernel.moduleLoader.getConfigByPath(path.dirname(filePath))?.config);
 					this.providersRegistry.delete(typeKey);
 				}
 				const keys = this.providerNameMap.get(provider.name);
@@ -545,7 +540,7 @@ export class Kernel implements IKernel {
 			const mw = this.middlewaresRegistry.get(uniqueKey) as IMiddleware<any>;
 			if (mw) {
 				this.logger.logDebug(`Removiendo middleware: ${mw.name}`);
-				await mw.shutdown?.();
+				await mw.stop?.();
 				this.middlewaresRegistry.delete(uniqueKey);
 				const keys = this.middlewareNameMap.get(mw.name);
 				if (keys) {
@@ -565,7 +560,7 @@ export class Kernel implements IKernel {
 			const preset = this.presetsRegistry.get(uniqueKey) as IPreset<any>;
 			if (preset) {
 				this.logger.logDebug(`Removiendo preset: ${preset.name}`);
-				await preset.shutdown?.();
+				await preset.stop?.();
 				this.presetsRegistry.delete(uniqueKey);
 				const keys = this.presetNameMap.get(preset.name);
 				if (keys) {

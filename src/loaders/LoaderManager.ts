@@ -1,4 +1,4 @@
-import { IModuleLoader } from "./IModuleLoader.js";
+import { IModuleLoader } from "../interfaces/modules/IModuleLoader.js";
 import TypeScriptLoader from "./typescript/index.js";
 import PythonLoader from "./python/index.js";
 import { Logger } from "../utils/Logger/Logger.js";

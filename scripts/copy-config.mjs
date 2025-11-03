@@ -8,7 +8,7 @@ function findAndCopy(dir, pattern) {
     const fullPath = path.join(dir, file.name);
     if (file.isDirectory()) {
       findAndCopy(fullPath, pattern);
-    } else if (file.name === pattern) {
+    } else if (file.name.endsWith(pattern)) {
       const relativePath = path.relative(path.join(process.cwd(), 'src'), fullPath);
       const destPath = path.join(process.cwd(), 'dist', relativePath);
       const destDir = path.dirname(destPath);
@@ -24,4 +24,4 @@ function findAndCopy(dir, pattern) {
 }
 
 const srcPath = path.join(process.cwd(), 'src');
-findAndCopy(srcPath, 'modules.json');
+findAndCopy(srcPath, '.json');

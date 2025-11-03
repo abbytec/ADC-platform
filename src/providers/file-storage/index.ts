@@ -1,5 +1,5 @@
-import { IStorage, STORAGE_PROVIDER } from "../../interfaces/modules/providers/IStorage.js";
-import { BaseProvider } from "../BaseProvider.js";
+import { IStorage } from "../../interfaces/modules/providers/IStorage.js";
+import { BaseProvider, ProviderType } from "../BaseProvider.js";
 import { ILogger } from "../../interfaces/utils/ILogger.js";
 
 import * as fs from "node:fs/promises";
@@ -49,7 +49,7 @@ class FileStorage implements IStorage {
 // 2. El Proveedor que la expone
 export default class FileStorageProvider extends BaseProvider<IStorage> {
 	public name = "file-storage-provider";
-	public type = STORAGE_PROVIDER;
+	public type = ProviderType.STORAGE_PROVIDER;
 
 	private readonly fileStoragesMap = new Map<string, FileStorage>();
 

@@ -4,10 +4,10 @@ import { IModuleConfig, IModulesDefinition } from "../interfaces/modules/IModule
 import { IProvider } from "../interfaces/modules/IProvider.js";
 import { IMiddleware } from "../interfaces/modules/IMiddleware.js";
 import { IPreset } from "../interfaces/modules/IPreset.js";
-import { IKernel } from "../interfaces/IKernel.js";
 import { LoaderManager } from "./LoaderManager.js";
 import { VersionResolver } from "../utils/VersionResolver.js";
 import { Logger } from "../utils/Logger/Logger.js";
+import { Kernel } from "../kernel.js";
 
 export class ModuleLoader {
 	private readonly basePath =
@@ -28,7 +28,7 @@ export class ModuleLoader {
 	 * @param modulesConfig - El objeto de definición de módulos.
 	 * @param kernel - La instancia del kernel.
 	 */
-	async loadAllModulesFromDefinition(modulesConfig: IModulesDefinition, kernel: IKernel): Promise<void> {
+	async loadAllModulesFromDefinition(modulesConfig: IModulesDefinition, kernel: Kernel): Promise<void> {
 		try {
 			// Cargar providers
 			if (modulesConfig.providers && Array.isArray(modulesConfig.providers)) {
@@ -63,8 +63,8 @@ export class ModuleLoader {
 				for (const presetConfig of modulesConfig.presets) {
 					try {
 						const preset = await this.loadPreset(presetConfig, kernel);
-						if (preset.initialize) {
-							await preset.initialize();
+						if (preset.start) {
+							await preset.start();
 						}
 						const instance = preset.getInstance();
 						kernel.registerPreset(preset.name, instance, presetConfig);
@@ -83,7 +83,7 @@ export class ModuleLoader {
 	/**
 	 * Carga todos los módulos (providers, middlewares, presets) desde un modules.json
 	 */
-	async loadAllModulesFromConfig(configPath: string, kernel: IKernel): Promise<void> {
+	async loadAllModulesFromConfig(configPath: string, kernel: Kernel): Promise<void> {
 		try {
 			try {
 				await fs.stat(configPath);
@@ -153,7 +153,7 @@ export class ModuleLoader {
 	/**
 	 * Carga un Preset usando modules.json
 	 */
-	async loadPreset(config: IModuleConfig, kernel: IKernel): Promise<IPreset<any>> {
+	async loadPreset(config: IModuleConfig, kernel: Kernel): Promise<IPreset<any>> {
 		const language = config.language || "typescript";
 		const version = config.version || "latest";
 

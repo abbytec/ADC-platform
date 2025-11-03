@@ -8,7 +8,7 @@ export abstract class BaseMiddleware<T> implements IMiddleware<T> {
 
 	abstract getInstance(options?: any): Promise<T> | T;
 
-	public async shutdown(): Promise<void> {
+	public async stop(): Promise<void> {
 		this.logger.logInfo(`Shutting down...`);
 	}
 }
