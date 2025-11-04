@@ -1,6 +1,5 @@
-import { ILifecycle } from "../behaviours/ILifecycle.d.ts";
-export interface IApp extends ILifecycle {
-	name: string;
+import { IModule } from "./IModule.d.ts";
+export interface IApp extends IModule {
 	run(): Promise<void>;
 	loadModulesFromConfig(): Promise<void>;
 }

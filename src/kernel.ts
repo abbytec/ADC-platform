@@ -9,16 +9,19 @@ import { IPreset } from "./interfaces/modules/IPreset.js";
 import { Logger } from "./utils/Logger/Logger.js";
 import { ModuleLoader } from "./loaders/ModuleLoader.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
-import { IModuleConfig } from "./interfaces/modules/IModule.js";
+import { IModule, IModuleConfig } from "./interfaces/modules/IModule.js";
+import { ILifecycle } from "./interfaces/behaviours/ILifecycle.js";
+
+type ModuleType = "provider" | "middleware" | "preset";
 
 export class Kernel {
 	private isStartingUp = true;
 	private readonly logger: ILogger = Logger.getLogger("Kernel");
 
 	// --- Registros por categoría ---
-	private readonly providersRegistry = new Map<string, any>();
-	private readonly middlewaresRegistry = new Map<string, any>();
-	private readonly presetsRegistry = new Map<string, any>();
+	private readonly providersRegistry = new Map<string, IModule>();
+	private readonly middlewaresRegistry = new Map<string, IModule>();
+	private readonly presetsRegistry = new Map<string, IModule>();
 	private readonly appsRegistry = new Map<string, IApp>();
 
 	private readonly providerNameMap = new Map<string, string[]>();
@@ -49,7 +52,7 @@ export class Kernel {
 	}
 
 	// --- API Pública del Kernel ---
-	public registerProvider<T>(name: string, instance: T, type: string | undefined, config: IModuleConfig): void {
+	public registerProvider(name: string, instance: IProvider<any>, type: string | undefined, config: IModuleConfig): void {
 		const nameUniqueKey = this.getUniqueKey(name, config.config);
 
 		if (this.providersRegistry.has(nameUniqueKey)) {
@@ -81,133 +84,49 @@ export class Kernel {
 		}
 	}
 
-	public getProvider<T>(name: string, config?: Record<string, any>): T {
+	private _getModule<T>(moduleType: ModuleType, name: string, config?: Record<string, any>): T {
+		const registry = this[`${moduleType}sRegistry`];
+		const nameMap = this[`${moduleType}NameMap`];
+		const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
+
 		if (config) {
 			const uniqueKey = this.getUniqueKey(name, config);
-			const instance = this.providersRegistry.get(uniqueKey);
+			const instance = registry.get(uniqueKey);
 			if (!instance) {
-				this.logger.logError(`Provider ${name} con la configuración especificada no encontrado.`);
-				throw new Error(`Provider ${name} con la configuración especificada no encontrado.`);
+				this.logger.logError(`${capitalizedModuleType} ${name} con la configuración especificada no encontrado.`);
+				throw new Error(`${capitalizedModuleType} ${name} con la configuración especificada no encontrado.`);
 			}
 			return instance as T;
 		}
 
-		const keys = this.providerNameMap.get(name);
+		const keys = nameMap.get(name);
 		if (!keys || keys.length === 0) {
-			this.logger.logError(`Provider ${name} no encontrado.`);
-			throw new Error(`Provider ${name} no encontrado.`);
+			this.logger.logError(`${capitalizedModuleType} ${name} no encontrado.`);
+			throw new Error(`${capitalizedModuleType} ${name} no encontrado.`);
 		}
 
 		if (keys.length > 1) {
 			this.logger.logError(
-				`Múltiples instancias de Provider ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
+				`Múltiples instancias de ${capitalizedModuleType} ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
 			);
-			throw new Error(`Múltiples instancias de Provider ${name} encontradas. Por favor, especifique una configuración para desambiguar.`);
+			throw new Error(
+				`Múltiples instancias de ${capitalizedModuleType} ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
+			);
 		}
 
-		return this.providersRegistry.get(keys[0]) as T;
+		return registry.get(keys[0]) as T;
 	}
 
-	public registerMiddleware<T>(name: string, instance: T, config: IModuleConfig): void {
-		const uniqueKey = this.getUniqueKey(name, config.config);
-
-		if (this.middlewaresRegistry.has(uniqueKey)) {
-			this.logger.logDebug(`Middleware ${name} con la misma configuración ya ha sido registrado.`);
-			return;
-		}
-
-		this.middlewaresRegistry.set(uniqueKey, instance);
-
-		if (!this.middlewareNameMap.has(name)) {
-			this.middlewareNameMap.set(name, []);
-		}
-		const keys = this.middlewareNameMap.get(name)!;
-		keys.push(uniqueKey);
-
-		this.logger.logOk(`Middleware registrado: ${name} (Total de instancias: ${keys.length})`);
+	public getProvider<T>(name: string, config?: Record<string, any>): T {
+		return this._getModule("provider", name, config);
 	}
 
 	public getMiddleware<T>(name: string, config?: Record<string, any>): T {
-		if (config) {
-			const uniqueKey = this.getUniqueKey(name, config);
-			const instance = this.middlewaresRegistry.get(uniqueKey);
-			if (!instance) {
-				this.logger.logError(`Middleware ${name} con la configuración especificada no encontrado.`);
-				throw new Error(`Middleware ${name} con la configuración especificada no encontrado.`);
-			}
-			return instance as T;
-		}
-
-		const keys = this.middlewareNameMap.get(name);
-		if (!keys || keys.length === 0) {
-			this.logger.logError(`Middleware ${name} no encontrado.`);
-			throw new Error(`Middleware ${name} no encontrado.`);
-		}
-
-		if (keys.length > 1) {
-			this.logger.logError(
-				`Múltiples instancias de Middleware ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
-			);
-			throw new Error(
-				`Múltiples instancias de Middleware ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
-			);
-		}
-
-		return this.middlewaresRegistry.get(keys[0]) as T;
-	}
-
-	public registerPreset<T>(name: string, instance: T, config: IModuleConfig): void {
-		const uniqueKey = this.getUniqueKey(name, config.config);
-
-		if (this.presetsRegistry.has(uniqueKey)) {
-			this.logger.logDebug(`Preset ${name} con la misma configuración ya ha sido registrado.`);
-			return;
-		}
-
-		this.presetsRegistry.set(uniqueKey, instance);
-
-		if (!this.presetNameMap.has(name)) {
-			this.presetNameMap.set(name, []);
-		}
-		const keys = this.presetNameMap.get(name)!;
-		keys.push(uniqueKey);
-
-		this.logger.logOk(`Preset registrado: ${name} (Total de instancias: ${keys.length})`);
+		return this._getModule("middleware", name, config);
 	}
 
 	public getPreset<T>(name: string, config?: Record<string, any>): T {
-		if (config) {
-			const uniqueKey = this.getUniqueKey(name, config);
-			const instance = this.presetsRegistry.get(uniqueKey);
-			if (!instance) {
-				this.logger.logError(`Preset ${name} con la configuración especificada no encontrado.`);
-				throw new Error(`Preset ${name} con la configuración especificada no encontrado.`);
-			}
-			return instance as T;
-		}
-
-		const keys = this.presetNameMap.get(name);
-		if (!keys || keys.length === 0) {
-			this.logger.logError(`Preset ${name} no encontrado.`);
-			throw new Error(`Preset ${name} no encontrado.`);
-		}
-
-		if (keys.length > 1) {
-			this.logger.logError(
-				`Múltiples instancias de Preset ${name} encontradas. Por favor, especifique una configuración para desambiguar.`
-			);
-			throw new Error(`Múltiples instancias de Preset ${name} encontradas. Por favor, especifique una configuración para desambiguar.`);
-		}
-
-		return this.presetsRegistry.get(keys[0]) as T;
-	}
-
-	public registerApp(name: string, instance: IApp): void {
-		if (this.appsRegistry.has(name)) {
-			this.logger.logDebug(`App '${name}' sobrescrita.`);
-		}
-		this.appsRegistry.set(name, instance);
-		this.logger.logOk(`App registrada: ${name}`);
+		return this._getModule("preset", name, config);
 	}
 
 	public getApp(name: string): IApp {
@@ -217,6 +136,44 @@ export class Kernel {
 			throw new Error(`App '${name}' no encontrada.`);
 		}
 		return instance;
+	}
+
+	private _registerModule<T>(moduleType: "middleware" | "preset", name: string, instance: IModule, config: IModuleConfig): void {
+		const registry = this[`${moduleType}sRegistry`];
+		const nameMap = this[`${moduleType}NameMap`];
+		const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
+		const uniqueKey = this.getUniqueKey(name, config.config);
+
+		if (registry.has(uniqueKey)) {
+			this.logger.logDebug(`${capitalizedModuleType} ${name} con la misma configuración ya ha sido registrado.`);
+			return;
+		}
+
+		registry.set(uniqueKey, instance);
+
+		if (!nameMap.has(name)) {
+			nameMap.set(name, []);
+		}
+		const keys = nameMap.get(name)!;
+		keys.push(uniqueKey);
+
+		this.logger.logOk(`${capitalizedModuleType} registrado: ${name} (Total de instancias: ${keys.length})`);
+	}
+
+	public registerMiddleware<T>(name: string, instance: IModule, config: IModuleConfig): void {
+		this._registerModule("middleware", name, instance, config);
+	}
+
+	public registerPreset<T>(name: string, instance: IModule, config: IModuleConfig): void {
+		this._registerModule("preset", name, instance, config);
+	}
+
+	public registerApp(name: string, instance: IApp): void {
+		if (this.appsRegistry.has(name)) {
+			this.logger.logDebug(`App '${name}' sobrescrita.`);
+		}
+		this.appsRegistry.set(name, instance);
+		this.logger.logOk(`App registrada: ${name}`);
 	}
 
 	// --- Lógica de Arranque ---
@@ -229,39 +186,15 @@ export class Kernel {
 		await this.loadLayerRecursive(this.appsPath, this.loadApp.bind(this), ["BaseApp.ts"]);
 
 		// Iniciar watchers para carga dinámica
-		this.watchLayer(this.providersPath, this.loadProvider.bind(this), this.unloadProvider.bind(this));
-		this.watchLayer(this.middlewaresPath, this.loadMiddleware.bind(this), this.unloadMiddleware.bind(this));
-		this.watchLayer(this.presetsPath, this.loadPreset.bind(this), this.unloadPreset.bind(this));
+		this.watchLayer(this.providersPath, this._loadAndRegisterModule.bind(this, "provider"), this._unloadModule.bind(this, "provider"));
+		this.watchLayer(this.middlewaresPath, this._loadAndRegisterModule.bind(this, "middleware"), this._unloadModule.bind(this, "middleware"));
+		this.watchLayer(this.presetsPath, this._loadAndRegisterModule.bind(this, "preset"), this._unloadModule.bind(this, "preset"));
 		this.watchLayer(this.appsPath, this.loadApp.bind(this), this.unloadApp.bind(this), ["BaseApp.ts"]);
 
 		setTimeout(() => {
 			this.isStartingUp = false;
 			this.logger.logInfo("HMR está activo.");
 		}, 5000);
-	}
-
-	/**
-	 * Carga todos los providers de forma recursiva
-	 * Usado por apps que lo necesiten
-	 */
-	public async loadAllProviders(): Promise<void> {
-		await this.loadLayerRecursive(this.providersPath, this.loadProvider.bind(this));
-	}
-
-	/**
-	 * Carga todos los middlewares de forma recursiva
-	 * Usado por apps que lo necesiten
-	 */
-	public async loadAllMiddlewares(): Promise<void> {
-		await this.loadLayerRecursive(this.middlewaresPath, this.loadMiddleware.bind(this));
-	}
-
-	/**
-	 * Carga todos los presets de forma recursiva
-	 * Usado por apps que lo necesiten
-	 */
-	public async loadAllPresets(): Promise<void> {
-		await this.loadLayerRecursive(this.presetsPath, this.loadPreset.bind(this));
 	}
 
 	/**
@@ -298,50 +231,25 @@ export class Kernel {
 	public async stop(): Promise<void> {
 		this.logger.logInfo("\nIniciando cierre ordenado...");
 
-		// 1. Detener Apps
-		this.logger.logInfo("Deteniendo apps...");
-		for (const [, app] of this.apps) {
-			try {
-				this.logger.logDebug(`Deteniendo app ${app.name}`);
-				await app.stop?.();
-			} catch (e) {
-				this.logger.logError(`Error deteniendo app ${app.name}: ${e}`);
+		const elements: Record<string, Map<string, IModule>> = {
+			App: this.apps,
+			Preset: this.presetsRegistry,
+			Middleware: this.middlewaresRegistry,
+			Provider: this.providersRegistry,
+		};
+
+		for (const [name, instances] of Object.entries(elements)) {
+			this.logger.logInfo(`Deteniendo ${name}s...`);
+
+			for (const [key, instance] of instances) {
+				try {
+					this.logger.logDebug(`Deteniendo ${name} ${key}`);
+					await instance.stop?.();
+				} catch (e) {
+					this.logger.logError(`Error deteniendo ${name} ${key}: ${e}`);
+				}
 			}
 		}
-
-		// 2. Detener Presets
-		this.logger.logInfo("Deteniendo presets...");
-		for (const key of this.presetsRegistry.keys()) {
-			const preset = this.presetsRegistry.get(key) as IPreset<any>;
-			try {
-				await preset.stop?.();
-			} catch (e) {
-				this.logger.logError(`Error deteniendo preset ${preset.name}: ${e}`);
-			}
-		}
-
-		// 3. Detener Middlewares
-		this.logger.logInfo("Deteniendo middlewares...");
-		for (const key of this.middlewaresRegistry.keys()) {
-			const middleware = this.middlewaresRegistry.get(key) as IMiddleware<any>;
-			try {
-				await middleware.stop?.();
-			} catch (e) {
-				this.logger.logError(`Error deteniendo middleware ${middleware.name}: ${e}`);
-			}
-		}
-
-		// 4. Detener Providers
-		this.logger.logInfo("Deteniendo providers...");
-		for (const key of this.providersRegistry.keys()) {
-			const provider = this.providersRegistry.get(key) as IProvider<any>;
-			try {
-				await provider.stop?.();
-			} catch (e) {
-				this.logger.logError(`Error deteniendo provider ${provider.name}: ${e}`);
-			}
-		}
-
 		this.logger.logOk("Cierre completado.");
 	}
 
@@ -376,7 +284,7 @@ export class Kernel {
 		}
 	}
 
-	private async loadProvider(filePath: string): Promise<void> {
+	private async _loadAndRegisterModule(moduleType: ModuleType, filePath: string): Promise<void> {
 		try {
 			const modulePath = path.dirname(filePath);
 			let config = Kernel.moduleLoader.getConfigByPath(modulePath);
@@ -385,55 +293,40 @@ export class Kernel {
 				config = { name: moduleName };
 			}
 
-			const provider = await Kernel.moduleLoader.loadProvider(config);
-			const instance = await provider.getInstance();
+			let module: IProvider<any> | IMiddleware<any> | IPreset<any>;
+			let instance: any;
 
-			this.registerProvider(provider.name, instance, provider.type, config);
-			const uniqueKey = this.getUniqueKey(provider.name, config.config);
-			this.providers.set(filePath, uniqueKey);
-		} catch (e) {
-			this.logger.logError(`Error cargando Provider ${filePath}: ${e}`);
-		}
-	}
-
-	private async loadMiddleware(filePath: string): Promise<void> {
-		try {
-			const modulePath = path.dirname(filePath);
-			let config = Kernel.moduleLoader.getConfigByPath(modulePath);
-			if (!config) {
-				const moduleName = path.basename(modulePath);
-				config = { name: moduleName };
+			switch (moduleType) {
+				case "provider": {
+					const providerModule = await Kernel.moduleLoader.loadProvider(config);
+					instance = await providerModule.getInstance();
+					this.registerProvider(providerModule.name, instance, providerModule.type, config);
+					module = providerModule;
+					break;
+				}
+				case "middleware": {
+					const middlewareModule = await Kernel.moduleLoader.loadMiddleware(config);
+					instance = await middlewareModule.getInstance();
+					this.registerMiddleware(middlewareModule.name, instance, config);
+					module = middlewareModule;
+					break;
+				}
+				case "preset": {
+					const presetModule = await Kernel.moduleLoader.loadPreset(config, this);
+					await presetModule.start?.();
+					instance = presetModule.getInstance();
+					this.registerPreset(presetModule.name, instance, config);
+					module = presetModule;
+					break;
+				}
 			}
 
-			const middleware = await Kernel.moduleLoader.loadMiddleware(config);
-			const instance = await middleware.getInstance();
-
-			this.registerMiddleware(middleware.name, instance, config);
-			const uniqueKey = this.getUniqueKey(middleware.name, config.config);
-			this.middlewares.set(filePath, uniqueKey);
+			const uniqueKey = this.getUniqueKey(module.name, config.config);
+			const fileMap = this[`${moduleType}s`];
+			fileMap.set(filePath, uniqueKey);
 		} catch (e) {
-			this.logger.logError(`Error cargando Middleware ${filePath}: ${e}`);
-		}
-	}
-
-	private async loadPreset(filePath: string): Promise<void> {
-		try {
-			const modulePath = path.dirname(filePath);
-			let config = Kernel.moduleLoader.getConfigByPath(modulePath);
-			if (!config) {
-				const moduleName = path.basename(modulePath);
-				config = { name: moduleName };
-			}
-
-			const preset = await Kernel.moduleLoader.loadPreset(config, this);
-			await preset.start?.();
-
-			const instance = preset.getInstance();
-			this.registerPreset(preset.name, instance, config);
-			const uniqueKey = this.getUniqueKey(preset.name, config.config);
-			this.presets.set(filePath, uniqueKey);
-		} catch (e) {
-			this.logger.logError(`Error cargando Preset ${filePath}: ${e}`);
+			const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
+			this.logger.logError(`Error cargando ${capitalizedModuleType} ${filePath}: ${e}`);
 		}
 	}
 
@@ -525,59 +418,28 @@ export class Kernel {
 		});
 	}
 
-	private async unloadProvider(filePath: string) {
-		const uniqueKey = this.providers.get(filePath);
+	private async _unloadModule(moduleType: ModuleType, filePath: string) {
+		const fileMap = this[`${moduleType}s`];
+		const uniqueKey = fileMap.get(filePath);
 		if (uniqueKey) {
-			const provider = this.providersRegistry.get(uniqueKey) as IProvider<any>;
-			if (provider) {
-				this.logger.logDebug(`Removiendo provider: ${provider.name}`);
-				await provider.stop?.();
-				this.providersRegistry.delete(uniqueKey);
-				if (provider.type && provider.type !== provider.name) {
-					const typeKey = this.getUniqueKey(provider.type, Kernel.moduleLoader.getConfigByPath(path.dirname(filePath))?.config);
-					this.providersRegistry.delete(typeKey);
-				}
-				const keys = this.providerNameMap.get(provider.name);
-				if (keys) {
-					const index = keys.indexOf(uniqueKey);
-					if (index > -1) {
-						keys.splice(index, 1);
-					}
-				}
-			}
-			this.providers.delete(filePath);
-		}
-	}
+			const registry = this[`${moduleType}sRegistry`];
+			const module = registry.get(uniqueKey) as IProvider<any> | IMiddleware<any> | IPreset<any>;
+			if (module) {
+				const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
+				this.logger.logDebug(`Removiendo ${capitalizedModuleType}: ${module.name}`);
+				await module.stop?.();
+				registry.delete(uniqueKey);
 
-	private async unloadMiddleware(filePath: string) {
-		const uniqueKey = this.middlewares.get(filePath);
-		if (uniqueKey) {
-			const mw = this.middlewaresRegistry.get(uniqueKey) as IMiddleware<any>;
-			if (mw) {
-				this.logger.logDebug(`Removiendo middleware: ${mw.name}`);
-				await mw.stop?.();
-				this.middlewaresRegistry.delete(uniqueKey);
-				const keys = this.middlewareNameMap.get(mw.name);
-				if (keys) {
-					const index = keys.indexOf(uniqueKey);
-					if (index > -1) {
-						keys.splice(index, 1);
+				if (moduleType === "provider") {
+					const provider = module as IProvider<any>;
+					if (provider.type && provider.type !== provider.name) {
+						const typeKey = this.getUniqueKey(provider.type, Kernel.moduleLoader.getConfigByPath(path.dirname(filePath))?.config);
+						this.providersRegistry.delete(typeKey);
 					}
 				}
-			}
-			this.middlewares.delete(filePath);
-		}
-	}
 
-	private async unloadPreset(filePath: string) {
-		const uniqueKey = this.presets.get(filePath);
-		if (uniqueKey) {
-			const preset = this.presetsRegistry.get(uniqueKey) as IPreset<any>;
-			if (preset) {
-				this.logger.logDebug(`Removiendo preset: ${preset.name}`);
-				await preset.stop?.();
-				this.presetsRegistry.delete(uniqueKey);
-				const keys = this.presetNameMap.get(preset.name);
+				const nameMap = this[`${moduleType}NameMap`];
+				const keys = nameMap.get(module.name);
 				if (keys) {
 					const index = keys.indexOf(uniqueKey);
 					if (index > -1) {
@@ -585,7 +447,7 @@ export class Kernel {
 					}
 				}
 			}
-			this.presets.delete(filePath);
+			fileMap.delete(filePath);
 		}
 	}
 

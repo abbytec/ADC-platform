@@ -1,3 +1,5 @@
+import { ILifecycle } from "../behaviours/ILifecycle.d.ts";
+
 /**
  * Configuración de un módulo en modules.json
  */
@@ -24,4 +26,8 @@ export interface IModulesDefinition {
 	middlewares?: IModuleConfig[];
 	/** Lista de providers a cargar */
 	providers?: IModuleConfig[];
+}
+
+export interface IModule extends ILifecycle {
+	name: string;
 }

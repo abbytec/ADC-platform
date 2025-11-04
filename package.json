@@ -27,6 +27,7 @@
 		"@types/node": "^20.14.2",
 		"concurrently": "^8.2.2",
 		"cross-env": "^7.0.3",
+		"eslint": "^9.39.1",
 		"rimraf": "^5.0.7",
 		"tsx": "^4.15.2",
 		"typescript": "^5.4.5"
