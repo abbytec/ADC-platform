@@ -25,6 +25,7 @@ export class ModuleLoader {
 
 	/**
 	 * Carga todos los módulos (providers, middlewares, presets) desde un objeto de definición de módulos.
+	 * Usa el contexto de carga del kernel para reference counting.
 	 * @param modulesConfig - El objeto de definición de módulos.
 	 * @param kernel - La instancia del kernel.
 	 */
@@ -81,7 +82,10 @@ export class ModuleLoader {
 	}
 
 	/**
-	 * Carga todos los módulos (providers, middlewares, presets) desde un modules.json
+	 * Carga todos los módulos (providers, middlewares, presets) desde un modules.json.
+	 * Usa el contexto de carga del kernel para reference counting.
+	 * @param configPath - Ruta al archivo modules.json
+	 * @param kernel - La instancia del kernel.
 	 */
 	async loadAllModulesFromConfig(configPath: string, kernel: Kernel): Promise<void> {
 		try {

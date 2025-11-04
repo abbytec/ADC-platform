@@ -34,7 +34,8 @@ export abstract class BaseApp implements IApp {
 	}
 
 	/**
-	 * Carga módulos desde modules.json en el mismo directorio de la app
+	 * Carga módulos desde modules.json en el mismo directorio de la app.
+	 * Usa el contexto de carga del kernel para reference counting.
 	 */
 	public async loadModulesFromConfig(): Promise<void> {
 		try {

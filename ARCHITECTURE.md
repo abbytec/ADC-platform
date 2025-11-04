@@ -88,6 +88,24 @@ El Kernel busca recursivamente sin límites de profundidad en sus directorios (`
 
 En desarrollo (`NODE_ENV=development`) el Kernel observa cambios y recarga componentes automáticamente.
 
+### Hot Reload de Archivos de Configuración
+
+El Kernel también detecta cambios en los archivos de configuración JSON de las apps y recarga automáticamente **solo la instancia específica** asociada a ese archivo, sin afectar otras instancias de la misma app.
+
+**Funcionalidades:**
+
+- **Cambio de archivo de configuración**: Cuando editas un archivo `config*.json` de una app, solo se reinicia la instancia correspondiente a ese archivo.
+- **Nuevo archivo de configuración**: Al agregar un nuevo archivo de configuración, se crea automáticamente una nueva instancia de la app.
+- **Eliminación de archivo de configuración**: Al eliminar un archivo de configuración, se detiene y remueve la instancia correspondiente.
+
+**Ejemplo:**
+
+Si tienes estas instancias corriendo:
+- `user-profile:main` (usando `config-main.json`)
+- `user-profile:secondary` (usando `config-secondary.json`)
+
+Y editas `config-main.json`, solo se reiniciará la instancia `user-profile:main`, manteniendo `user-profile:secondary` ejecutándose sin interrupciones.
+
 ## Sistema de Versionado
 
 El sistema soporta versionado semántico con el patrón: `{moduleName}/{version}-{language}/`
