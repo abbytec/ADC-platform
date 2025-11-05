@@ -1,5 +1,5 @@
 {
-	"PROFILE_KEY": "main_user_profile",
+	"failOnError": false,
 	"presets": [
 		{
 			"name": "json-file-crud",
@@ -12,7 +12,7 @@
 						"version": "latest",
 						"language": "typescript",
 						"config": {
-							"basePath": "./temp/storage1"
+							"basePath": "./temp/storage2"
 						}
 					}
 				]

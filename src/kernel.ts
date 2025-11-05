@@ -526,7 +526,7 @@ export class Kernel {
 				try {
 					const files = await fs
 						.readdir(dir)
-						.then((files) => files.filter((file) => file.endsWith(".json") && file !== "modules.json"));
+						.then((files) => files.filter((file) => file.startsWith("config") && file.endsWith(".json")));
 					for (const file of files) {
 						allConfigFiles.push(path.join(dir, file));
 					}
@@ -568,8 +568,8 @@ export class Kernel {
 		const watcher = chokidar.watch(patterns, {
 			ignoreInitial: true,
 			ignored: (filePath) => {
-				// Ignorar archivos modules.json
-				return path.basename(filePath) === "modules.json";
+				// Ignorar archivos default.json
+				return path.basename(filePath) === "default.json";
 			},
 			awaitWriteFinish: {
 				stabilityThreshold: 2000,

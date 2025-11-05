@@ -81,31 +81,9 @@ export class ModuleLoader {
 		}
 	}
 
-	/**
-	 * Carga todos los módulos (providers, middlewares, presets) desde un modules.json.
-	 * Usa el contexto de carga del kernel para reference counting.
-	 * @param configPath - Ruta al archivo modules.json
-	 * @param kernel - La instancia del kernel.
-	 */
-	async loadAllModulesFromConfig(configPath: string, kernel: Kernel): Promise<void> {
-		try {
-			try {
-				await fs.stat(configPath);
-			} catch {
-				return; // El archivo no existe, no hay nada que cargar
-			}
-
-			const configContent = await fs.readFile(configPath, "utf-8");
-			const modulesConfig: IModulesDefinition = JSON.parse(configContent);
-			await this.loadAllModulesFromDefinition(modulesConfig, kernel);
-		} catch (error) {
-			Logger.error(`Error procesando modules.json: ${error}`);
-			throw error;
-		}
-	}
 
 	/**
-	 * Carga un Provider usando modules.json
+	 * Carga un Provider desde su configuración.
 	 */
 	async loadProvider(config: IModuleConfig): Promise<IProvider<any>> {
 		const language = config.language || "typescript";
@@ -130,7 +108,7 @@ export class ModuleLoader {
 	}
 
 	/**
-	 * Carga un Middleware usando modules.json
+	 * Carga un Middleware desde su configuración.
 	 */
 	async loadMiddleware(config: IModuleConfig): Promise<IMiddleware<any>> {
 		const language = config.language || "typescript";
@@ -155,7 +133,7 @@ export class ModuleLoader {
 	}
 
 	/**
-	 * Carga un Preset usando modules.json
+	 * Carga un Preset desde su configuración.
 	 */
 	async loadPreset(config: IModuleConfig, kernel: Kernel): Promise<IPreset<any>> {
 		const language = config.language || "typescript";
