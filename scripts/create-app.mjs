@@ -31,6 +31,7 @@ export default class ${className} extends BaseApp {
 
 const packageJson = {
   name: `@adc-platform/${name}`,
+  type: "module",
   dependencies: {},
 };
 

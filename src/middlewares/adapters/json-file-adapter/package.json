@@ -1,4 +1,5 @@
 {
 	"name": "@adc-platform/json-file-adapter-middleware",
+	"type": "module",
 	"dependencies": {}
 }

@@ -29,6 +29,7 @@ export default class ${className} extends BasePreset {
 
 const packageJson = {
   name: `@adc-platform/${name}`,
+  type: "module",
   dependencies: {},
 };
 

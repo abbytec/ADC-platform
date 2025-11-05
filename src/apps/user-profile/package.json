@@ -1,4 +1,5 @@
 {
 	"name": "@adc-platform/user-profile",
+	"type": "module",
 	"dependencies": {}
 }

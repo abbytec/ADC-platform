@@ -1,4 +1,5 @@
 {
 	"name": "@adc-platform/json-file-crud-preset",
+	"type": "module",
 	"dependencies": {}
 }

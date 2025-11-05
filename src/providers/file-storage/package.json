@@ -1,4 +1,5 @@
 {
 	"name": "@adc-platform/file-storage-provider",
+	"type": "module",
 	"dependencies": {}
 }
