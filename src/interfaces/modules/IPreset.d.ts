@@ -11,5 +11,5 @@ export const PRESET_INJECTION = Symbol.for("IPreset");
  */
 export interface IPreset<T = any> extends ILifecycle, IModule {
 	/** Obtener la instancia del preset */
-	getInstance(): T;
+	getInstance(): Promise<T>;
 }

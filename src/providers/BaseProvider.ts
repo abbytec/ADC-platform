@@ -6,7 +6,7 @@ export abstract class BaseProvider<T> implements IProvider<T> {
 	abstract readonly type: string;
 	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
 
-	abstract getInstance(options?: any): Promise<T> | T;
+	abstract getInstance(options?: any): Promise<T>;
 
 	public async stop(): Promise<void> {
 		this.logger.logInfo(`Shutting down...`);

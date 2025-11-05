@@ -365,28 +365,24 @@ export class Kernel {
 		config: IModuleConfig
 	): Promise<IProvider<any> | IMiddleware<any> | IPreset<any>> {
 		let module: IProvider<any> | IMiddleware<any> | IPreset<any>;
-		let instance: any;
 
 		switch (moduleType) {
 			case "provider": {
 				const providerModule = await Kernel.moduleLoader.loadProvider(config);
-				instance = await providerModule.getInstance();
-				this.registerProvider(providerModule.name, instance, providerModule.type, config);
+				this.registerProvider(providerModule.name, providerModule, providerModule.type, config);
 				module = providerModule;
 				break;
 			}
 			case "middleware": {
 				const middlewareModule = await Kernel.moduleLoader.loadMiddleware(config);
-				instance = await middlewareModule.getInstance();
-				this.registerMiddleware(middlewareModule.name, instance, config);
+				this.registerMiddleware(middlewareModule.name, middlewareModule, config);
 				module = middlewareModule;
 				break;
 			}
 			case "preset": {
 				const presetModule = await Kernel.moduleLoader.loadPreset(config, this);
 				await presetModule.start?.();
-				instance = presetModule.getInstance();
-				this.registerPreset(presetModule.name, instance, config);
+				this.registerPreset(presetModule.name, presetModule, config);
 				module = presetModule;
 				break;
 			}

@@ -35,11 +35,11 @@ export class ModuleLoader {
 				for (const providerConfig of modulesConfig.providers) {
 					try {
 						const provider = await this.loadProvider(providerConfig);
-						const instance = await provider.getInstance(providerConfig.config);
-						kernel.registerProvider(provider.name, instance, provider.type, providerConfig);
+						kernel.registerProvider(provider.name, provider, provider.type, providerConfig);
 					} catch (error) {
-						if (modulesConfig.failOnError) throw error;
-						Logger.warn(`Error cargando provider ${providerConfig.name}: ${error}`);
+						const message = `Error cargando provider ${providerConfig.name}: ${error}`;
+						if (modulesConfig.failOnError) throw new Error(message);
+						Logger.warn(message);
 					}
 				}
 			}
@@ -49,11 +49,11 @@ export class ModuleLoader {
 				for (const middlewareConfig of modulesConfig.middlewares) {
 					try {
 						const middleware = await this.loadMiddleware(middlewareConfig);
-						const instance = await middleware.getInstance(middlewareConfig.config);
-						kernel.registerMiddleware(middleware.name, instance, middlewareConfig);
+						kernel.registerMiddleware(middleware.name, middleware, middlewareConfig);
 					} catch (error) {
-						if (modulesConfig.failOnError) throw error;
-						Logger.warn(`Error cargando middleware ${middlewareConfig.name}: ${error}`);
+						const message = `Error cargando middleware ${middlewareConfig.name}: ${error}`;
+						if (modulesConfig.failOnError) throw new Error(message);
+						Logger.warn(message);
 					}
 				}
 			}
@@ -66,17 +66,19 @@ export class ModuleLoader {
 						if (preset.start) {
 							await preset.start();
 						}
-						const instance = preset.getInstance();
+						const instance = await preset.getInstance();
 						kernel.registerPreset(preset.name, instance, presetConfig);
 					} catch (error) {
-						if (modulesConfig.failOnError) throw error;
-						Logger.warn(`Error cargando preset ${presetConfig.name}: ${error}`);
+						const message = `Error cargando preset ${presetConfig.name}: ${error}`;
+						if (modulesConfig.failOnError) throw new Error(message);
+						Logger.warn(message);
 					}
 				}
 			}
 		} catch (error) {
-			Logger.error(`Error procesando la definición de módulos: ${error}`);
-			throw error;
+			const message = `Error procesando la definición de módulos: ${error}`;
+			Logger.error(message);
+			throw new Error(message);
 		}
 	}
 

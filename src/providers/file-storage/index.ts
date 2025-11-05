@@ -53,7 +53,7 @@ export default class FileStorageProvider extends BaseProvider<IStorage> {
 
 	readonly #fileStoragesMap = new Map<string, FileStorage>();
 
-	getInstance(options?: any): IStorage {
+	async getInstance(options?: any): Promise<IStorage> {
 		const basePath = options?.basePath || "./temp/file-storage";
 		if (this.#fileStoragesMap.has(basePath)) {
 			return this.#fileStoragesMap.get(basePath)!;

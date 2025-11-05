@@ -24,7 +24,7 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	/**
 	 * Obtener la instancia del preset
 	 */
-	abstract getInstance(): T;
+	abstract getInstance(): Promise<T>;
 
 	/**
 	 * Lógica de inicialización del preset

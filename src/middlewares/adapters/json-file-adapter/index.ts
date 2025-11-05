@@ -34,7 +34,7 @@ class JsonAdapter implements IFileAdapter<any> {
 export default class JsonAdapterMiddleware extends BaseMiddleware<IFileAdapter<any>> {
 	public readonly name = "json-file-adapter";
 
-	getInstance(): IFileAdapter<any> {
+	async getInstance(): Promise<IFileAdapter<any>> {
 		return new JsonAdapter();
 	}
 }

@@ -6,6 +6,8 @@ import { ILifecycle } from "../behaviours/ILifecycle.d.ts";
 export interface IModuleConfig {
 	/** Nombre del módulo */
 	name: string;
+	/** Tipo de módulo */
+	type?: string;
 	/** Versión a cargar - puede ser exacta (1.0.0) o con rango (^1.0.0, >=1.0.0) */
 	version?: string;
 	/** Lenguaje del módulo (default: 'typescript') */
