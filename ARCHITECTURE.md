@@ -145,6 +145,32 @@ Soportados: `1.0.0` (exacta), `^1.0.0` (caret), `~1.2.3` (tilde), `>=1.0.0`, `>1
 }
 ```
 
+## Gestión de Dependencias con Workspaces
+
+El proyecto utiliza [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces) para gestionar las dependencias de forma modular. Cada app, provider, middleware y preset es un "paquete" individual dentro del workspace, lo que permite un manejo de dependencias aislado y eficiente.
+
+### Estructura
+
+-   Cada módulo (ej. `src/apps/user-profile`) contiene su propio archivo `package.json`.
+-   El `package.json` de la raíz del proyecto define la ubicación de estos paquetes a través de la directiva `workspaces`.
+
+### Añadir Dependencias a un Módulo
+
+Para añadir una dependencia de Node.js a un módulo específico, utiliza el flag `-w` (o `--workspace`) en el comando de instalación desde la raíz del proyecto. El nombre del workspace se define en el `package.json` del módulo.
+
+**Ejemplo:**
+
+```bash
+# Instala la librería 'lodash' únicamente para el módulo 'user-profile'
+npm install lodash -w @adc-platform/user-profile
+```
+
+### Beneficios
+
+-   **Aislamiento:** Las dependencias de un módulo no afectan a otros.
+-   **Mantenimiento Simplificado:** Si eliminas el directorio de un módulo y ejecutas `npm install` en la raíz, sus dependencias ya no se instalarán, manteniendo el `node_modules` general limpio.
+-   **Instalación Única:** Un solo `npm install` en la raíz se encarga de instalar todas las dependencias de todos los módulos.
+
 ## Distribución de Responsabilidades
 
 ### Kernel

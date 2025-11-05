@@ -10,7 +10,7 @@ import { ILifecycle } from "../interfaces/behaviours/ILifecycle.js";
  * Maneja la inyección del Kernel y la carga de módulos desde modules.json.
  */
 export abstract class BaseApp implements IApp {
-	protected logger: ILogger = Logger.getLogger(this.constructor.name);
+	public logger: ILogger = Logger.getLogger(this.constructor.name);
 
 	constructor(protected readonly kernel: Kernel, public readonly name: string = this.constructor.name, public readonly config?: any) {}
 

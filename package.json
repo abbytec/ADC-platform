@@ -1,14 +1,25 @@
 {
 	"name": "adc-platform",
+	"private": true,
 	"version": "0.1.0",
 	"description": "Un kernel de módulos dinámicos.",
 	"main": "dist/index.js",
 	"type": "module",
+	"workspaces": [
+		"src/apps/*",
+		"src/providers/*",
+		"src/middlewares/*",
+		"src/presets/*"
+	],
 	"scripts": {
 		"dev": "cross-env NODE_ENV=development tsx src/index.ts",
 		"build": "rimraf dist && tsc && node scripts/copy-config.mjs",
 		"prestart": "npm run build",
-		"start": "concurrently \"tsc --watch\" \"cross-env NODE_ENV=production node dist/index.js\""
+		"start": "concurrently \"tsc --watch\" \"cross-env NODE_ENV=production node dist/index.js\"",
+		"create:app": "node scripts/create-app.mjs",
+		"create:preset": "node scripts/create-preset.mjs",
+		"create:middleware": "node scripts/create-middleware.mjs",
+		"create:provider": "node scripts/create-provider.mjs"
 	},
 	"keywords": [
 		"kernel",
