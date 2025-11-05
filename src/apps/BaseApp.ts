@@ -4,16 +4,15 @@ import { IApp } from "../interfaces/modules/IApp.js";
 import { Logger } from "../utils/Logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
-import { ILifecycle } from "../interfaces/behaviours/ILifecycle.js";
 
 /**
  * Clase base abstracta para todas las Apps.
  * Maneja la inyección del Kernel y la carga de módulos desde archivos de configuración.
  */
 export abstract class BaseApp implements IApp {
-	public logger: ILogger = Logger.getLogger(this.constructor.name);
+	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
 
-	constructor(protected readonly kernel: Kernel, public readonly name: string = this.constructor.name, public readonly config?: any) {}
+	constructor(protected readonly kernel: Kernel, public readonly name: string = this.constructor.name, protected config?: any) {}
 
 	/**
 	 * Lógica de inicialización.
@@ -38,7 +37,7 @@ export abstract class BaseApp implements IApp {
 	 * Combina la configuración de `default.json` (base) con la configuración
 	 * de la instancia específica de la app.
 	 */
-	private async mergeModuleConfigs(): Promise<void> {
+	async #mergeModuleConfigs(): Promise<void> {
 		const appDirName = this.name.split(":")[0];
 		const isDevelopment = process.env.NODE_ENV === "development";
 		const appDir = isDevelopment
@@ -50,9 +49,7 @@ export abstract class BaseApp implements IApp {
 			const defaultConfigPath = path.join(appDir, "default.json");
 			const content = await fs.readFile(defaultConfigPath, "utf-8");
 			baseConfig = JSON.parse(content);
-		} catch (error) {
-			// default.json might not exist, which is fine.
-		}
+		} catch {}
 
 		const instanceConfig = this.config || {};
 
@@ -66,6 +63,7 @@ export abstract class BaseApp implements IApp {
 		};
 
 		this.config = mergedConfig;
+		Object.freeze(this.config); // Freezes config from modifications
 	}
 
 	/**
@@ -73,7 +71,7 @@ export abstract class BaseApp implements IApp {
 	 */
 	public async loadModulesFromConfig(): Promise<void> {
 		try {
-			await this.mergeModuleConfigs();
+			await this.#mergeModuleConfigs();
 			if (this.config) {
 				await Kernel.moduleLoader.loadAllModulesFromDefinition(this.config, this.kernel);
 			}

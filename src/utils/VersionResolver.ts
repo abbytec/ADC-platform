@@ -3,8 +3,8 @@ import * as path from "node:path";
 import { Logger } from "./Logger/Logger.js";
 
 export class VersionResolver {
-	private static readonly isDevelopment = process.env.NODE_ENV === "development";
-	private static readonly fileExtension = this.isDevelopment ? ".ts" : ".js";
+	static readonly #isDevelopment = process.env.NODE_ENV === "development";
+	static readonly #fileExtension = this.#isDevelopment ? ".ts" : ".js";
 
 	/**
 	 * Compara dos versiones semánticas (1.2.3)
@@ -125,7 +125,7 @@ export class VersionResolver {
 				const match = entry.name.match(/^(.+)-([a-z]{2,})$/);
 				if (match) {
 					const [, version, lang] = match;
-					if (lang === language || lang === this.normalizeLanguage(language)) {
+					if (lang === language || lang === this.#normalizeLanguage(language)) {
 						candidates.push({
 							path: path.join(moduleBaseDir, entry.name),
 							version,
@@ -137,7 +137,7 @@ export class VersionResolver {
 
 			// Si no hay versiones versionadas, buscar el default (index.ts/index.js)
 			if (candidates.length === 0) {
-				const indexFile = path.join(moduleBaseDir, `index${this.fileExtension}`);
+				const indexFile = path.join(moduleBaseDir, `index${this.#fileExtension}`);
 				try {
 					await fs.stat(indexFile);
 					return {
@@ -170,7 +170,7 @@ export class VersionResolver {
 	/**
 	 * Normaliza abreviaturas de lenguaje
 	 */
-	private static normalizeLanguage(lang: string): string {
+	static #normalizeLanguage(lang: string): string {
 		const map: Record<string, string> = {
 			ts: "ts",
 			typescript: "ts",

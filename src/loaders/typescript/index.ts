@@ -8,11 +8,11 @@ import { Logger } from "../../utils/Logger/Logger.js";
 import { Kernel } from "../../kernel.js";
 
 export class TypeScriptLoader implements IModuleLoader {
-	private readonly extension = process.env.NODE_ENV === "development" ? ".ts" : ".js";
+	readonly #extension = process.env.NODE_ENV === "development" ? ".ts" : ".js";
 
 	async canHandle(modulePath: string): Promise<boolean> {
 		try {
-			const indexFile = path.join(modulePath, `index${this.extension}`);
+			const indexFile = path.join(modulePath, `index${this.#extension}`);
 			await fs.stat(indexFile);
 			return true;
 		} catch {
@@ -22,7 +22,7 @@ export class TypeScriptLoader implements IModuleLoader {
 
 	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider<any>> {
 		try {
-			const indexFile = path.join(modulePath, `index${this.extension}`);
+			const indexFile = path.join(modulePath, `index${this.#extension}`);
 			const module = await import(`${indexFile}?v=${Date.now()}`);
 			const ProviderClass = module.default;
 
@@ -40,7 +40,7 @@ export class TypeScriptLoader implements IModuleLoader {
 
 	async loadMiddleware(modulePath: string, config?: Record<string, any>): Promise<IMiddleware<any>> {
 		try {
-			const indexFile = path.join(modulePath, `index${this.extension}`);
+			const indexFile = path.join(modulePath, `index${this.#extension}`);
 			const module = await import(`${indexFile}?v=${Date.now()}`);
 			const MiddlewareClass = module.default;
 
@@ -58,7 +58,7 @@ export class TypeScriptLoader implements IModuleLoader {
 
 	async loadPreset(modulePath: string, kernel: Kernel, config?: Record<string, any>): Promise<IPreset<any>> {
 		try {
-			const indexFile = path.join(modulePath, `index${this.extension}`);
+			const indexFile = path.join(modulePath, `index${this.#extension}`);
 			const module = await import(`${indexFile}?v=${Date.now()}`);
 			const PresetClass = module.default;
 

@@ -15,20 +15,20 @@ class FileStorage implements IStorage {
 		fs.mkdir(this.basePath, { recursive: true }).catch((err) => this.logger.logError(`Error creating directory: ${err}`));
 	}
 
-	private getKeyPath(key: string): string {
+	#getKeyPath(key: string): string {
 		// Usamos una extensión genérica. ¡Importante! Evitar 'path traversal'.
 		const safeKey = path.basename(key);
 		return path.join(this.basePath, `${safeKey}.bin`);
 	}
 
 	async save(key: string, data: Buffer): Promise<void> {
-		const filePath = this.getKeyPath(key);
+		const filePath = this.#getKeyPath(key);
 		this.logger.logDebug(`Saving ${data.byteLength} bytes to ${filePath}...`);
 		await fs.writeFile(filePath, data);
 	}
 
 	async load(key: string): Promise<Buffer | null> {
-		const filePath = this.getKeyPath(key);
+		const filePath = this.#getKeyPath(key);
 		try {
 			const data = await fs.readFile(filePath);
 			this.logger.logDebug(`Loading ${data.byteLength} bytes from ${filePath}...`);
@@ -48,19 +48,19 @@ class FileStorage implements IStorage {
 
 // 2. El Proveedor que la expone
 export default class FileStorageProvider extends BaseProvider<IStorage> {
-	public name = "file-storage-provider";
-	public type = ProviderType.STORAGE_PROVIDER;
+	public readonly name = "file-storage-provider";
+	public readonly type = ProviderType.STORAGE_PROVIDER;
 
-	private readonly fileStoragesMap = new Map<string, FileStorage>();
+	readonly #fileStoragesMap = new Map<string, FileStorage>();
 
 	getInstance(options?: any): IStorage {
 		const basePath = options?.basePath || "./temp/file-storage";
-		if (this.fileStoragesMap.has(basePath)) {
-			return this.fileStoragesMap.get(basePath)!;
+		if (this.#fileStoragesMap.has(basePath)) {
+			return this.#fileStoragesMap.get(basePath)!;
 		} else {
 			const newFileStorage = new FileStorage(basePath, this.logger);
 			newFileStorage.init().catch((err) => this.logger.logError(`Error initializing FileStorage: ${err}`));
-			this.fileStoragesMap.set(basePath, newFileStorage);
+			this.#fileStoragesMap.set(basePath, newFileStorage);
 			return newFileStorage;
 		}
 	}

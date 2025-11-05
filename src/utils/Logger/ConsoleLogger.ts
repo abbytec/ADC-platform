@@ -46,11 +46,11 @@ export default class ConsoleLogger implements ILogger {
 		this.currentLevel = level;
 	}
 
-	private shouldLog(level: LogLevel): boolean {
+	#shouldLog(level: LogLevel): boolean {
 		return LogLevelValues[level] >= LogLevelValues[this.currentLevel];
 	}
 
-	private format(level: LogLevel, message: string): string {
+	#format(level: LogLevel, message: string): string {
 		const levelLabel = level.padEnd(5);
 		const timestamp = new Date().toLocaleTimeString("es-ES");
 
@@ -71,32 +71,32 @@ export default class ConsoleLogger implements ILogger {
 	}
 
 	public logDebug(message: string, ...args: any[]): void {
-		if (this.shouldLog("DEBUG")) {
-			console.log(this.format("DEBUG", message), ...args);
+		if (this.#shouldLog("DEBUG")) {
+			console.log(this.#format("DEBUG", message), ...args);
 		}
 	}
 
 	public logInfo(message: string, ...args: any[]): void {
-		if (this.shouldLog("INFO")) {
-			console.log(this.format("INFO", message), ...args);
+		if (this.#shouldLog("INFO")) {
+			console.log(this.#format("INFO", message), ...args);
 		}
 	}
 
 	public logOk(message: string, ...args: any[]): void {
-		if (this.shouldLog("OK")) {
-			console.log(this.format("OK", message), ...args);
+		if (this.#shouldLog("OK")) {
+			console.log(this.#format("OK", message), ...args);
 		}
 	}
 
 	public logWarn(message: string, ...args: any[]): void {
-		if (this.shouldLog("WARN")) {
-			console.warn(this.format("WARN", message), ...args);
+		if (this.#shouldLog("WARN")) {
+			console.warn(this.#format("WARN", message), ...args);
 		}
 	}
 
 	public logError(message: string, ...args: any[]): void {
-		if (this.shouldLog("ERROR")) {
-			console.error(this.format("ERROR", message), ...args);
+		if (this.#shouldLog("ERROR")) {
+			console.error(this.#format("ERROR", message), ...args);
 		}
 	}
 }

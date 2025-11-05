@@ -29,5 +29,5 @@ export interface IModulesDefinition {
 }
 
 export interface IModule extends ILifecycle {
-	name: string;
+	readonly name: string;
 }

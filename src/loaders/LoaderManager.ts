@@ -4,7 +4,7 @@ import PythonLoader from "./python/index.js";
 import { Logger } from "../utils/Logger/Logger.js";
 
 export class LoaderManager {
-	private static loaders: Map<string, IModuleLoader> = new Map([
+	static readonly #loaders: Map<string, IModuleLoader> = new Map([
 		["typescript", new TypeScriptLoader()],
 		["ts", new TypeScriptLoader()],
 		["python", new PythonLoader()],
@@ -16,7 +16,7 @@ export class LoaderManager {
 	 */
 	static getLoader(language: string): IModuleLoader {
 		const normalized = language.toLowerCase();
-		const loader = this.loaders.get(normalized);
+		const loader = this.#loaders.get(normalized);
 
 		if (!loader) {
 			Logger.warn(`[LoaderManager] No hay loader para el lenguaje: ${language}`);
@@ -31,7 +31,7 @@ export class LoaderManager {
 	 * Registra un nuevo loader para un lenguaje
 	 */
 	static registerLoader(language: string, loader: IModuleLoader): void {
-		this.loaders.set(language.toLowerCase(), loader);
+		this.#loaders.set(language.toLowerCase(), loader);
 		Logger.info(`[LoaderManager] Loader registrado para: ${language}`);
 	}
 
@@ -39,6 +39,6 @@ export class LoaderManager {
 	 * Obtiene todos los lenguajes soportados
 	 */
 	static getSupportedLanguages(): string[] {
-		return Array.from(this.loaders.keys());
+		return Array.from(this.#loaders.keys());
 	}
 }

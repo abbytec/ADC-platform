@@ -32,7 +32,7 @@ class JsonAdapter implements IFileAdapter<any> {
 }
 
 export default class JsonAdapterMiddleware extends BaseMiddleware<IFileAdapter<any>> {
-	public name = "json-file-adapter";
+	public readonly name = "json-file-adapter";
 
 	getInstance(): IFileAdapter<any> {
 		return new JsonAdapter();

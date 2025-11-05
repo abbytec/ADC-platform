@@ -20,13 +20,13 @@ export interface IJsonFileCrud {
 class JsonFileCrudImpl implements IJsonFileCrud {
 	constructor(private readonly storage: any, private readonly fileAdapter: any, private readonly logger: ILogger) {}
 
-	private getFilePath(key: string): string {
+	#getFilePath(key: string): string {
 		const safeKey = path.basename(key);
 		return safeKey;
 	}
 
 	async create<T>(key: string, data: T): Promise<void> {
-		const filePath = this.getFilePath(key);
+		const filePath = this.#getFilePath(key);
 
 		// Verificar si ya existe
 		const exists = await this.storage.load(filePath);
@@ -41,7 +41,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 	}
 
 	async read<T>(key: string): Promise<T | null> {
-		const filePath = this.getFilePath(key);
+		const filePath = this.#getFilePath(key);
 
 		try {
 			const buffer = await this.storage.load(filePath);
@@ -58,7 +58,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 	}
 
 	async update<T>(key: string, data: T): Promise<void> {
-		const filePath = this.getFilePath(key);
+		const filePath = this.#getFilePath(key);
 
 		// Verificar que existe
 		const exists = await this.storage.load(filePath);
@@ -80,7 +80,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 
 	async exists(key: string): Promise<boolean> {
 		try {
-			const filePath = this.getFilePath(key);
+			const filePath = this.#getFilePath(key);
 			const buffer = await this.storage.load(filePath);
 			return buffer !== null;
 		} catch {
@@ -107,10 +107,10 @@ export default class JsonFileCrudPreset extends BasePreset<IJsonFileCrud> {
 
 	getInstance(): IJsonFileCrud {
 		if (!this.instance) {
-			const storageProviderModuleConfig = this.mergedModulesConfig?.providers?.find((p) => p.name === "file-storage")?.config;
+			const storageProviderModuleConfig = this.config?.providers?.find((p) => p.name === "file-storage")?.config;
 			const storage = this.getProvider("storage-provider", storageProviderModuleConfig);
 
-			const fileAdapterModuleConfig = this.mergedModulesConfig?.middlewares?.find((m) => m.name === "adapters/json-file-adapter")?.config;
+			const fileAdapterModuleConfig = this.config?.middlewares?.find((m) => m.name === "adapters/json-file-adapter")?.config;
 			const fileAdapter = this.getMiddleware("json-file-adapter", fileAdapterModuleConfig);
 
 			this.instance = new JsonFileCrudImpl(storage, fileAdapter, this.logger);

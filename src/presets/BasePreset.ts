@@ -14,11 +14,11 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	/** Nombre único del preset */
 	abstract readonly name: string;
 
-	protected logger: ILogger = Logger.getLogger(this.constructor.name);
-	protected mergedModulesConfig: IModulesDefinition;
+	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
+	protected config: IModulesDefinition;
 
 	constructor(protected readonly kernel: Kernel, protected readonly options?: any) {
-		this.mergedModulesConfig = {};
+		this.config = {};
 	}
 
 	/**
@@ -87,8 +87,8 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 				}
 			}
 
-			this.mergedModulesConfig = mergedConfig;
-			await Kernel.moduleLoader.loadAllModulesFromDefinition(this.mergedModulesConfig, this.kernel);
+			this.config = mergedConfig;
+			await Kernel.moduleLoader.loadAllModulesFromDefinition(this.config, this.kernel);
 
 			this.logger.logOk(`Inicialización completada`);
 		} catch (error) {

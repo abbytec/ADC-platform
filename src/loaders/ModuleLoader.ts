@@ -10,17 +10,16 @@ import { Logger } from "../utils/Logger/Logger.js";
 import { Kernel } from "../kernel.js";
 
 export class ModuleLoader {
-	private readonly basePath =
-		process.env.NODE_ENV === "development" ? path.resolve(process.cwd(), "src") : path.resolve(process.cwd(), "dist");
+	readonly #basePath = process.env.NODE_ENV === "development" ? path.resolve(process.cwd(), "src") : path.resolve(process.cwd(), "dist");
 
-	private readonly providersPath = path.resolve(this.basePath, "providers");
-	private readonly middlewaresPath = path.resolve(this.basePath, "middlewares");
-	private readonly presetsPath = path.resolve(this.basePath, "presets");
+	readonly #providersPath = path.resolve(this.#basePath, "providers");
+	readonly #middlewaresPath = path.resolve(this.#basePath, "middlewares");
+	readonly #presetsPath = path.resolve(this.#basePath, "presets");
 
-	private readonly configCache = new Map<string, IModuleConfig>();
+	readonly #configCache = new Map<string, IModuleConfig>();
 
 	public getConfigByPath(modulePath: string): IModuleConfig | undefined {
-		return this.configCache.get(modulePath);
+		return this.#configCache.get(modulePath);
 	}
 
 	/**
@@ -81,7 +80,6 @@ export class ModuleLoader {
 		}
 	}
 
-
 	/**
 	 * Carga un Provider desde su configuración.
 	 */
@@ -92,13 +90,13 @@ export class ModuleLoader {
 		Logger.debug(`[ModuleLoader] Cargando Provider: ${config.name} (v${version}, ${language})`);
 
 		// Resolver la versión correcta
-		const resolved = await VersionResolver.resolveModuleVersion(this.providersPath, config.name, version, language);
+		const resolved = await VersionResolver.resolveModuleVersion(this.#providersPath, config.name, version, language);
 
 		if (!resolved) {
 			throw new Error(`No se pudo resolver Provider: ${config.name}@${version} (${language})`);
 		}
 
-		this.configCache.set(resolved.path, config);
+		this.#configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
@@ -117,13 +115,13 @@ export class ModuleLoader {
 		Logger.debug(`[ModuleLoader] Cargando Middleware: ${config.name} (v${version}, ${language})`);
 
 		// Resolver la versión correcta
-		const resolved = await VersionResolver.resolveModuleVersion(this.middlewaresPath, config.name, version, language);
+		const resolved = await VersionResolver.resolveModuleVersion(this.#middlewaresPath, config.name, version, language);
 
 		if (!resolved) {
 			throw new Error(`No se pudo resolver Middleware: ${config.name}@${version} (${language})`);
 		}
 
-		this.configCache.set(resolved.path, config);
+		this.#configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
@@ -142,13 +140,13 @@ export class ModuleLoader {
 		Logger.debug(`[ModuleLoader] Cargando Preset: ${config.name} (v${version}, ${language})`);
 
 		// Resolver la versión correcta
-		const resolved = await VersionResolver.resolveModuleVersion(this.presetsPath, config.name, version, language);
+		const resolved = await VersionResolver.resolveModuleVersion(this.#presetsPath, config.name, version, language);
 
 		if (!resolved) {
 			throw new Error(`No se pudo resolver Preset: ${config.name}@${version} (${language})`);
 		}
 
-		this.configCache.set(resolved.path, config);
+		this.#configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
