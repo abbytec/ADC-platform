@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { BasePreset } from "../BasePreset.js";
+import { BaseService } from "../BaseService.js";
 import { ILogger } from "../../interfaces/utils/ILogger.js";
 import { IProvider } from "../../interfaces/modules/IProvider.js";
 import { IStorage } from "../../interfaces/modules/providers/IStorage.js";
@@ -101,10 +101,10 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 }
 
 /**
- * Preset que expone las operaciones CRUD para JSON usando módulos desacoplados
- * Extiende BasePreset para heredar la lógica de carga de módulos
+ * Service que expone las operaciones CRUD para JSON usando módulos desacoplados
+ * Extiende BaseService para heredar la lógica de carga de módulos
  */
-export default class JsonFileCrudPreset extends BasePreset<IJsonFileCrud> {
+export default class JsonFileCrudService extends BaseService<IJsonFileCrud> {
 	public readonly name = "json-file-crud";
 
 	private instance!: JsonFileCrudImpl;

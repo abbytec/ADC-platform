@@ -9,7 +9,7 @@
 		"src/apps/*",
 		"src/providers/*",
 		"src/middlewares/*",
-		"src/presets/*"
+		"src/services/*"
 	],
 	"scripts": {
 		"dev": "cross-env NODE_ENV=development tsx src/index.ts",
@@ -17,7 +17,7 @@
 		"prestart": "npm run build",
 		"start": "concurrently \"tsc --watch\" \"cross-env NODE_ENV=production node dist/index.js\"",
 		"create:app": "node scripts/create-app.mjs",
-		"create:preset": "node scripts/create-preset.mjs",
+		"create:service": "node scripts/create-service.mjs",
 		"create:middleware": "node scripts/create-middleware.mjs",
 		"create:provider": "node scripts/create-provider.mjs"
 	},

@@ -1,6 +1,6 @@
 {
 	"PROFILE_KEY": "main_user_profile",
-	"presets": [
+	"services": [
 		{
 			"name": "json-file-crud",
 			"version": "latest",

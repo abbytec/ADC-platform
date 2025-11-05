@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import { IModuleConfig, IModulesDefinition } from "../interfaces/modules/IModule.js";
 import { IProvider } from "../interfaces/modules/IProvider.js";
 import { IMiddleware } from "../interfaces/modules/IMiddleware.js";
-import { IPreset } from "../interfaces/modules/IPreset.js";
+import { IService } from "../interfaces/modules/IService.js";
 import { LoaderManager } from "./LoaderManager.js";
 import { VersionResolver } from "../utils/VersionResolver.js";
 import { Logger } from "../utils/Logger/Logger.js";
@@ -14,7 +14,7 @@ export class ModuleLoader {
 
 	readonly #providersPath = path.resolve(this.#basePath, "providers");
 	readonly #middlewaresPath = path.resolve(this.#basePath, "middlewares");
-	readonly #presetsPath = path.resolve(this.#basePath, "presets");
+	readonly #servicesPath = path.resolve(this.#basePath, "services");
 
 	readonly #configCache = new Map<string, IModuleConfig>();
 
@@ -23,7 +23,7 @@ export class ModuleLoader {
 	}
 
 	/**
-	 * Carga todos los módulos (providers, middlewares, presets) desde un objeto de definición de módulos.
+	 * Carga todos los módulos (providers, middlewares, services) desde un objeto de definición de módulos.
 	 * Usa el contexto de carga del kernel para reference counting.
 	 * @param modulesConfig - El objeto de definición de módulos.
 	 * @param kernel - La instancia del kernel.
@@ -58,18 +58,18 @@ export class ModuleLoader {
 				}
 			}
 
-			// Cargar presets
-			if (modulesConfig.presets && Array.isArray(modulesConfig.presets)) {
-				for (const presetConfig of modulesConfig.presets) {
+			// Cargar services
+			if (modulesConfig.services && Array.isArray(modulesConfig.services)) {
+				for (const serviceConfig of modulesConfig.services) {
 					try {
-						const preset = await this.loadPreset(presetConfig, kernel);
-						if (preset.start) {
-							await preset.start();
+						const service = await this.loadService(serviceConfig, kernel);
+						if (service.start) {
+							await service.start();
 						}
-						const instance = await preset.getInstance();
-						kernel.registerPreset(preset.name, instance, presetConfig);
+						const instance = await service.getInstance();
+						kernel.registerService(service.name, instance, serviceConfig);
 					} catch (error) {
-						const message = `Error cargando preset ${presetConfig.name}: ${error}`;
+						const message = `Error cargando service ${serviceConfig.name}: ${error}`;
 						if (modulesConfig.failOnError) throw new Error(message);
 						Logger.warn(message);
 					}
@@ -133,19 +133,19 @@ export class ModuleLoader {
 	}
 
 	/**
-	 * Carga un Preset desde su configuración.
+	 * Carga un Service desde su configuración.
 	 */
-	async loadPreset(config: IModuleConfig, kernel: Kernel): Promise<IPreset<any>> {
+	async loadService(config: IModuleConfig, kernel: Kernel): Promise<IService<any>> {
 		const language = config.language || "typescript";
 		const version = config.version || "latest";
 
-		Logger.debug(`[ModuleLoader] Cargando Preset: ${config.name} (v${version}, ${language})`);
+		Logger.debug(`[ModuleLoader] Cargando Service: ${config.name} (v${version}, ${language})`);
 
 		// Resolver la versión correcta
-		const resolved = await VersionResolver.resolveModuleVersion(this.#presetsPath, config.name, version, language);
+		const resolved = await VersionResolver.resolveModuleVersion(this.#servicesPath, config.name, version, language);
 
 		if (!resolved) {
-			throw new Error(`No se pudo resolver Preset: ${config.name}@${version} (${language})`);
+			throw new Error(`No se pudo resolver Service: ${config.name}@${version} (${language})`);
 		}
 
 		this.#configCache.set(resolved.path, config);
@@ -154,6 +154,6 @@ export class ModuleLoader {
 		const loader = LoaderManager.getLoader(language);
 
 		// Cargar el módulo pasando el kernel
-		return await loader.loadPreset(resolved.path, kernel, config.config);
+		return await loader.loadService(resolved.path, kernel, config.config);
 	}
 }

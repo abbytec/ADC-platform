@@ -1,6 +1,6 @@
 import { IProvider } from "./IProvider.js";
 import { IMiddleware } from "./IMiddleware.js";
-import { IPreset } from "./IPreset.js";
+import { IService } from "./IService.js";
 import { IKernel } from "../IKernel.ts";
 
 /**
@@ -18,9 +18,9 @@ export interface IModuleLoader {
 	loadMiddleware(modulePath: string, config?: Record<string, any>): Promise<IMiddleware<any>>;
 
 	/**
-	 * Carga un Preset desde una ruta específica
+	 * Carga un Service desde una ruta específica
 	 */
-	loadPreset(modulePath: string, kernel: IKernel, config?: Record<string, any>): Promise<IPreset<any>>;
+	loadService(modulePath: string, kernel: IKernel, config?: Record<string, any>): Promise<IService<any>>;
 
 	/**
 	 * Verifica si el loader puede manejar un módulo en una ruta específica

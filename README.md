@@ -1,6 +1,6 @@
 # ADC Platform
 
-ADC Platform es un kernel de software modular y dinámico construido sobre Node.js y TypeScript. Su arquitectura está diseñada para permitir la creación de aplicaciones complejas y escalables a través de la composición de módulos independientes: **Providers**, **Middlewares**, **Presets** y **Apps**.
+ADC Platform es un kernel de software modular y dinámico construido sobre Node.js y TypeScript. Su arquitectura está diseñada para permitir la creación de aplicaciones complejas y escalables a través de la composición de módulos independientes: **Providers**, **Middlewares**, **Services** y **Apps**.
 
 El objetivo principal del proyecto es ofrecer una base sólida y flexible que desacopla la lógica de negocio de las capas de infraestructura, permitiendo un desarrollo ágil y un alto grado de reutilización de código. La plataforma está pensada para evolucionar y soportar funcionalidades avanzadas como:
 

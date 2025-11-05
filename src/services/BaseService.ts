@@ -1,17 +1,17 @@
 import * as path from "node:path";
 import { IModulesDefinition } from "../interfaces/modules/IModule.js";
 import * as fs from "node:fs/promises";
-import { IPreset } from "../interfaces/modules/IPreset.js";
+import { IService } from "../interfaces/modules/IService.js";
 import { Logger } from "../utils/Logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
 
 /**
- * Clase base abstracta para todos los Presets.
+ * Clase base abstracta para todos los Services.
  * Maneja la inyección del Kernel y la carga de módulos desde modules.json.
  */
-export abstract class BasePreset<T = any> implements IPreset<T> {
-	/** Nombre único del preset */
+export abstract class BaseService<T = any> implements IService<T> {
+	/** Nombre único del service */
 	abstract readonly name: string;
 
 	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
@@ -22,16 +22,16 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	}
 
 	/**
-	 * Obtener la instancia del preset
+	 * Obtener la instancia del service
 	 */
 	abstract getInstance(): Promise<T>;
 
 	/**
-	 * Lógica de inicialización del preset
+	 * Lógica de inicialización del service
 	 */
 	public async start(): Promise<void> {
-		const presetDir = this.getPresetDir();
-		const modulesConfigPath = path.join(presetDir, "modules.json");
+		const serviceDir = this.getServiceDir();
+		const modulesConfigPath = path.join(serviceDir, "modules.json");
 
 		this.logger.logDebug(`Inicializando y cargando módulos...`);
 
@@ -73,15 +73,15 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 					}
 				}
 
-				// Fusionar presets (si es necesario en el futuro)
-				if (optModules.presets) {
-					mergedConfig.presets ??= [];
-					for (const preset of optModules.presets) {
-						const index = mergedConfig.presets.findIndex((p) => p.name === preset.name);
+				// Fusionar services (si es necesario en el futuro)
+				if (optModules.services) {
+					mergedConfig.services ??= [];
+					for (const service of optModules.services) {
+						const index = mergedConfig.services.findIndex((p) => p.name === service.name);
 						if (index > -1) {
-							mergedConfig.presets[index] = { ...mergedConfig.presets[index], ...preset };
+							mergedConfig.services[index] = { ...mergedConfig.services[index], ...service };
 						} else {
-							mergedConfig.presets.push(preset);
+							mergedConfig.services.push(service);
 						}
 					}
 				}
@@ -98,28 +98,28 @@ export abstract class BasePreset<T = any> implements IPreset<T> {
 	}
 
 	/**
-	 * Lógica de cierre del preset
+	 * Lógica de cierre del service
 	 */
 	public async stop(): Promise<void> {
 		this.logger.logOk(`Detenido.`);
 	}
 
 	/**
-	 * Resuelve el directorio del preset según el entorno
+	 * Resuelve el directorio del service según el entorno
 	 */
-	protected getPresetDir(): string {
+	protected getServiceDir(): string {
 		const isDevelopment = process.env.NODE_ENV === "development";
-		const presetName = this.constructor.name
-			.replace(/Preset$/, "")
+		const serviceName = this.constructor.name
+			.replace(/Service$/, "")
 			.replaceAll(/([A-Z])/g, "-$1")
 			.toLowerCase()
 			.replace(/^-/, "");
 
-		const presetDir = isDevelopment
-			? path.resolve(process.cwd(), "src", "presets", presetName)
-			: path.resolve(process.cwd(), "dist", "presets", presetName);
+		const serviceDir = isDevelopment
+			? path.resolve(process.cwd(), "src", "services", serviceName)
+			: path.resolve(process.cwd(), "dist", "services", serviceName);
 
-		return presetDir;
+		return serviceDir;
 	}
 
 	/**

@@ -5,13 +5,13 @@ import chokidar from "chokidar";
 import { IApp } from "./interfaces/modules/IApp.js";
 import { IMiddleware } from "./interfaces/modules/IMiddleware.js";
 import { IProvider } from "./interfaces/modules/IProvider.js";
-import { IPreset } from "./interfaces/modules/IPreset.js";
+import { IService } from "./interfaces/modules/IService.js";
 import { Logger } from "./utils/Logger/Logger.js";
 import { ModuleLoader } from "./loaders/ModuleLoader.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModule, IModuleConfig } from "./interfaces/modules/IModule.js";
 
-type ModuleType = "provider" | "middleware" | "preset";
+type ModuleType = "provider" | "middleware" | "service";
 
 export class Kernel {
 	#isStartingUp = true;
@@ -36,7 +36,7 @@ export class Kernel {
 			fileToUniqueKeyMap: new Map<string, string>(),
 			refCount: new Map<string, number>(),
 		},
-		preset: {
+		service: {
 			registry: new Map<string, IModule>(),
 			nameMap: new Map<string, string[]>(),
 			fileToUniqueKeyMap: new Map<string, string>(),
@@ -77,7 +77,7 @@ export class Kernel {
 	// --- Rutas ---
 	readonly #providersPath = path.resolve(this.#basePath, "providers");
 	readonly #middlewaresPath = path.resolve(this.#basePath, "middlewares");
-	readonly #presetsPath = path.resolve(this.#basePath, "presets");
+	readonly #servicesPath = path.resolve(this.#basePath, "services");
 	readonly #appsPath = path.resolve(this.#basePath, "apps");
 
 	#getUniqueKey(name: string, config?: Record<string, any>): string {
@@ -179,7 +179,7 @@ export class Kernel {
 		}
 	}
 
-	#registerModule<T>(moduleType: "middleware" | "preset", name: string, instance: IModule, config: IModuleConfig, appName?: string): void {
+	#registerModule<T>(moduleType: "middleware" | "service", name: string, instance: IModule, config: IModuleConfig, appName?: string): void {
 		const uniqueKey = this.#getUniqueKey(name, config.config);
 		this.#addModuleToRegistry(moduleType, name, uniqueKey, instance, appName);
 	}
@@ -223,8 +223,8 @@ export class Kernel {
 		return this.#getModule("middleware", name, config);
 	}
 
-	public getPreset<T>(name: string, config?: Record<string, any>): T {
-		return this.#getModule("preset", name, config);
+	public getService<T>(name: string, config?: Record<string, any>): T {
+		return this.#getModule("service", name, config);
 	}
 
 	public getApp(name: string): IApp {
@@ -240,8 +240,8 @@ export class Kernel {
 		this.#registerModule("middleware", name, instance, config, appName);
 	}
 
-	public registerPreset<T>(name: string, instance: IModule, config: IModuleConfig, appName?: string): void {
-		this.#registerModule("preset", name, instance, config, appName);
+	public registerService<T>(name: string, instance: IModule, config: IModuleConfig, appName?: string): void {
+		this.#registerModule("service", name, instance, config, appName);
 	}
 
 	public registerApp(name: string, instance: IApp): void {
@@ -268,7 +268,7 @@ export class Kernel {
 			this.#loadAndRegisterModule.bind(this, "middleware"),
 			this.#unloadModule.bind(this, "middleware")
 		);
-		this.#watchLayer(this.#presetsPath, this.#loadAndRegisterModule.bind(this, "preset"), this.#unloadModule.bind(this, "preset"));
+		this.#watchLayer(this.#servicesPath, this.#loadAndRegisterModule.bind(this, "service"), this.#unloadModule.bind(this, "service"));
 		this.#watchLayer(this.#appsPath, this.#loadApp.bind(this), this.#unloadApp.bind(this), ["BaseApp.ts"]);
 
 		// Watcher para archivos de configuración de apps
@@ -281,10 +281,10 @@ export class Kernel {
 	}
 
 	/**
-	 * Carga un módulo específico de un tipo (provider, middleware o preset)
+	 * Carga un módulo específico de un tipo (provider, middleware o service)
 	 */
 	public async loadModuleOfType(
-		type: "provider" | "middleware" | "preset",
+		type: "provider" | "middleware" | "service",
 		moduleName: string,
 		versionRange: string = "latest",
 		language: string = "typescript"
@@ -313,7 +313,7 @@ export class Kernel {
 		}
 
 		// Detener otros módulos
-		for (const moduleType of ["provider", "middleware", "preset"] as ModuleType[]) {
+		for (const moduleType of ["provider", "middleware", "service"] as ModuleType[]) {
 			const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
 			this.#logger.logInfo(`Deteniendo ${capitalizedModuleType}s...`);
 			const registry = this.#getRegistry(moduleType);
@@ -363,8 +363,8 @@ export class Kernel {
 	async #loadAndRegisterSpecificModule(
 		moduleType: ModuleType,
 		config: IModuleConfig
-	): Promise<IProvider<any> | IMiddleware<any> | IPreset<any>> {
-		let module: IProvider<any> | IMiddleware<any> | IPreset<any>;
+	): Promise<IProvider<any> | IMiddleware<any> | IService<any>> {
+		let module: IProvider<any> | IMiddleware<any> | IService<any>;
 
 		switch (moduleType) {
 			case "provider": {
@@ -379,11 +379,11 @@ export class Kernel {
 				module = middlewareModule;
 				break;
 			}
-			case "preset": {
-				const presetModule = await Kernel.moduleLoader.loadPreset(config, this);
-				await presetModule.start?.();
-				this.registerPreset(presetModule.name, presetModule, config);
-				module = presetModule;
+			case "service": {
+				const serviceModule = await Kernel.moduleLoader.loadService(config, this);
+				await serviceModule.start?.();
+				this.registerService(serviceModule.name, serviceModule, config);
+				module = serviceModule;
 				break;
 			}
 		}
@@ -665,7 +665,7 @@ export class Kernel {
 		const uniqueKey = fileMap.get(filePath);
 		if (uniqueKey) {
 			const registry = this.#getRegistry(moduleType);
-			const module = registry.get(uniqueKey) as IProvider<any> | IMiddleware<any> | IPreset<any>;
+			const module = registry.get(uniqueKey) as IProvider<any> | IMiddleware<any> | IService<any>;
 			if (module) {
 				const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
 				this.#logger.logDebug(`Removiendo ${capitalizedModuleType}: ${module.name}`);

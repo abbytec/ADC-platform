@@ -1,5 +1,5 @@
 import { BaseApp } from "../BaseApp.js";
-import { IJsonFileCrud } from "../../presets/json-file-crud/index.js";
+import { IJsonFileCrud } from "../../services/json-file-crud/index.js";
 import { Logger } from "../../utils/Logger/Logger.js";
 
 // La estructura de datos que manejaremos
@@ -11,14 +11,14 @@ interface UserProfile {
 
 /**
  * App que guarda, lee y actualiza un perfil de usuario
- * usando el preset JsonFileCrud.
+ * usando el service JsonFileCrud.
  */
 export default class UserProfileApp extends BaseApp {
 	private crud!: IJsonFileCrud;
 
 	async start() {
-		const presetConfig = this.config.presets.find((p: any) => p.name === "json-file-crud");
-		this.crud = this.kernel.getPreset<IJsonFileCrud>("json-file-crud", presetConfig.config);
+		const serviceConfig = this.config.services.find((p: any) => p.name === "json-file-crud");
+		this.crud = this.kernel.getService<IJsonFileCrud>("json-file-crud", serviceConfig.config);
 	}
 
 	async run(): Promise<void> {

@@ -1,6 +1,6 @@
 {
 	"failOnError": false,
-	"presets": [
+	"services": [
 		{
 			"name": "json-file-crud",
 			"version": "latest",

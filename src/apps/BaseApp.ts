@@ -59,7 +59,7 @@ export abstract class BaseApp implements IApp {
 			failOnError: instanceConfig.failOnError ?? baseConfig.failOnError,
 			providers: [...(baseConfig.providers || []), ...(instanceConfig.providers || [])],
 			middlewares: [...(baseConfig.middlewares || []), ...(instanceConfig.middlewares || [])],
-			presets: [...(baseConfig.presets || []), ...(instanceConfig.presets || [])],
+			services: [...(baseConfig.services || []), ...(instanceConfig.services || [])],
 		};
 
 		this.config = mergedConfig;

@@ -22,8 +22,8 @@ export interface IModuleConfig {
 export interface IModulesDefinition {
 	/** Si true, los errores al cargar módulos no detendrán la app */
 	failOnError?: boolean;
-	/** Lista de presets a cargar */
-	presets?: IModuleConfig[];
+	/** Lista de services a cargar */
+	services?: IModuleConfig[];
 	/** Lista de middlewares a cargar */
 	middlewares?: IModuleConfig[];
 	/** Lista de providers a cargar */

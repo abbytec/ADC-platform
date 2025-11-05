@@ -3,14 +3,14 @@ import path from 'node:path';
 
 const name = process.argv[2];
 if (!name) {
-  console.error('Usage: npm run create:preset -- <preset-name>');
+  console.error('Usage: npm run create:service -- <service-name>');
   process.exit(1);
 }
 
 const toPascalCase = (str) =>
 	str.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join('');
 
-const dir = path.resolve(process.cwd(), 'src/presets', name);
+const dir = path.resolve(process.cwd(), 'src/services', name);
 
 if (fs.existsSync(dir)) {
 	console.error(`Error: Directory ${dir} already exists.`);
@@ -20,9 +20,9 @@ if (fs.existsSync(dir)) {
 fs.mkdirSync(dir, { recursive: true });
 
 const className = toPascalCase(name);
-const indexContent = `import { BasePreset } from '../BasePreset';
+const indexContent = `import { BaseService } from '../BaseService';
 
-export default class ${className} extends BasePreset {
+export default class ${className} extends BaseService {
   public readonly name = "${name}";
 }
 `;
@@ -37,7 +37,7 @@ const modulesJson = {
   failOnError: false,
   providers: [],
   middlewares: [],
-  presets: [],
+  services: [],
 };
 
 fs.writeFileSync(
@@ -53,4 +53,4 @@ fs.writeFileSync(
 fs.writeFileSync(path.join(dir, 'index.ts'), indexContent);
 
 
-console.log(`✅ Preset "${name}" created at ${path.relative(process.cwd(), dir)}`);
+console.log(`✅ Service "${name}" created at ${path.relative(process.cwd(), dir)}`);

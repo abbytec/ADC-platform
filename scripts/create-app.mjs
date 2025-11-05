@@ -39,7 +39,7 @@ const modulesJson = {
   failOnError: false,
   providers: [],
   middlewares: [],
-  presets: [],
+  services: [],
 };
 
 fs.writeFileSync(

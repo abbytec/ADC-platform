@@ -91,7 +91,7 @@ export class VersionResolver {
 	 * Busca directorios con patrón: {moduleName}/{version}-{language}/
 	 * o {moduleName}/index.{ext} para la versión default
 	 *
-	 * @param modulesDir Directorio raíz de módulos (ej: src/presets)
+	 * @param modulesDir Directorio raíz de módulos (ej: src/services)
 	 * @param moduleName Nombre del módulo a buscar (ej: JsonFileCrud)
 	 * @param versionRange Rango de versión requerido (default: latest)
 	 * @param language Lenguaje del módulo (default: typescript)

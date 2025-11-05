@@ -3,19 +3,24 @@
 ## Componentes
 
 ### Kernel
-Orquestador central que carga dinámicamente componentes del filesystem. Busca recursivamente providers, middlewares y presets en sus directorios. Registra capacidades mediante Symbols para inyección de dependencias. También ejecuta las Apps.
+
+Orquestador central que carga dinámicamente componentes del filesystem. Busca recursivamente providers, middlewares y services en sus directorios. Registra capacidades mediante Symbols para inyección de dependencias. También ejecuta las Apps.
 
 ### Providers (Capa I/O)
+
 Sistemas de almacenamiento, conexiones a bases de datos, APIs externas. Ubicados en `src/providers/`.
 
 ### Middlewares (Capa Lógica)
+
 Serializadores, validadores, filtros, transformadores. Ubicados en `src/middlewares/`.
 
-### Presets (Capa Utilidad)
-Funcionalidad reutilizable sin lógica de ejecución automática. Pueden ser stateful. Ubicados en `src/presets/`. Pueden tener su propio `modules.json` para cargar dependencias.
+### Services (Capa Utilidad)
+
+Funcionalidad reutilizable sin lógica de ejecución automática. Pueden ser stateful. Ubicados en `src/services/`. Pueden tener su propio `modules.json` para cargar dependencias.
 
 ### Apps (Capa Negocio)
-Lógica principal que consume Providers, Middlewares y Presets. Se ejecutan automáticamente. Ubicados en `src/apps/`. Cada app puede tener un `modules.json` para declarar sus módulos específicos.
+
+Lógica principal que consume Providers, Middlewares y Services. Se ejecutan automáticamente. Ubicados en `src/apps/`. Cada app puede tener un `modules.json` para declarar sus módulos específicos.
 
 ### Instancias Múltiples de Apps
 
@@ -50,6 +55,7 @@ Cada instancia recibirá su propia configuración y se ejecutará de forma indep
 Los archivos de configuración de instancia (e.g., `config-main.json`) también pueden contener una sección `modules`. Esta sección sigue la misma estructura que un archivo `modules.json`, permitiendo definir dependencias y configuraciones de módulos específicas para cada instancia de la aplicación.
 
 ### Loaders (Sistema Modular)
+
 Sistema de carga de módulos con soporte para versionado semántico y múltiples lenguajes. Ubicados en `src/loaders/`.
 
 ## Flujo de Carga
@@ -58,7 +64,7 @@ Sistema de carga de módulos con soporte para versionado semántico y múltiples
 1. Kernel.start()
    ├─ 2. Cargar Providers (recursivo, fallback global)
    ├─ 3. Cargar Middlewares (recursivo, fallback global)
-   ├─ 4. Cargar Presets (recursivo, fallback global)
+   ├─ 4. Cargar Services (recursivo, fallback global)
    │
    └─ 5. Cargar Apps (cada app)
       └─ App.loadModulesFromConfig()
@@ -82,7 +88,7 @@ const storage = kernel.getProvider(STORAGE_PROVIDER);
 
 ## Búsqueda Recursiva
 
-El Kernel busca recursivamente sin límites de profundidad en sus directorios (`providers/`, `middlewares/`, `presets/`, `apps/`).
+El Kernel busca recursivamente sin límites de profundidad en sus directorios (`providers/`, `middlewares/`, `services/`, `apps/`).
 
 ## Hot Reloading
 
@@ -94,15 +100,16 @@ El Kernel también detecta cambios en los archivos de configuración JSON de las
 
 **Funcionalidades:**
 
-- **Cambio de archivo de configuración**: Cuando editas un archivo `config*.json` de una app, solo se reinicia la instancia correspondiente a ese archivo.
-- **Nuevo archivo de configuración**: Al agregar un nuevo archivo de configuración, se crea automáticamente una nueva instancia de la app.
-- **Eliminación de archivo de configuración**: Al eliminar un archivo de configuración, se detiene y remueve la instancia correspondiente.
+-   **Cambio de archivo de configuración**: Cuando editas un archivo `config*.json` de una app, solo se reinicia la instancia correspondiente a ese archivo.
+-   **Nuevo archivo de configuración**: Al agregar un nuevo archivo de configuración, se crea automáticamente una nueva instancia de la app.
+-   **Eliminación de archivo de configuración**: Al eliminar un archivo de configuración, se detiene y remueve la instancia correspondiente.
 
 **Ejemplo:**
 
 Si tienes estas instancias corriendo:
-- `user-profile:main` (usando `config-main.json`)
-- `user-profile:secondary` (usando `config-secondary.json`)
+
+-   `user-profile:main` (usando `config-main.json`)
+-   `user-profile:secondary` (usando `config-secondary.json`)
 
 Y editas `config-main.json`, solo se reiniciará la instancia `user-profile:main`, manteniendo `user-profile:secondary` ejecutándose sin interrupciones.
 
@@ -113,10 +120,10 @@ El sistema soporta versionado semántico con el patrón: `{moduleName}/{version}
 ### Estructura de Módulos
 
 ```
-src/presets/
+src/services/
 ├── JsonFileCrud/
 │   ├── index.ts                    # Versión default (1.0.0)
-│   └── modules.json                # (Opcional) Dependencias del preset
+│   └── modules.json                # (Opcional) Dependencias del service
 ├── JsonFileCrud/1.0.1-ts/
 │   └── index.ts                    # Versión específica TypeScript
 ├── JsonFileCrud/2.0.0-ts/
@@ -133,21 +140,21 @@ Soportados: `1.0.0` (exacta), `^1.0.0` (caret), `~1.2.3` (tilde), `>=1.0.0`, `>1
 
 ```json
 {
-  "failOnError": false,
-  "presets": [
-    {
-      "name": "JsonFileCrud",
-      "version": "^1.0.0",
-      "language": "typescript",
-      "config": {}
-    }
-  ]
+	"failOnError": false,
+	"services": [
+		{
+			"name": "JsonFileCrud",
+			"version": "^1.0.0",
+			"language": "typescript",
+			"config": {}
+		}
+	]
 }
 ```
 
 ## Gestión de Dependencias con Workspaces
 
-El proyecto utiliza [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces) para gestionar las dependencias de forma modular. Cada app, provider, middleware y preset es un "paquete" individual dentro del workspace, lo que permite un manejo de dependencias aislado y eficiente.
+El proyecto utiliza [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces) para gestionar las dependencias de forma modular. Cada app, provider, middleware y service es un "paquete" individual dentro del workspace, lo que permite un manejo de dependencias aislado y eficiente.
 
 ### Estructura
 
@@ -174,25 +181,28 @@ npm install lodash -w @adc-platform/user-profile
 ## Distribución de Responsabilidades
 
 ### Kernel
-- Carga recursiva de `providers/`, `middlewares/`, `presets/` (fallback global)
-- Ejecuta Apps encontradas
-- Registra módulos en el registry central
-- Soporta hot reloading en desarrollo
+
+-   Carga recursiva de `providers/`, `middlewares/`, `services/` (fallback global)
+-   Ejecuta Apps encontradas
+-   Registra módulos en el registry central
+-   Soporta hot reloading en desarrollo
 
 ### BaseApp
-- Responsable de cargar sus propios módulos desde `modules.json`
-- Obtiene módulos del kernel después de cargarlos
-- Ejecuta lógica de negocio en `run()`
-- NO declara dependencias estáticas
+
+-   Responsable de cargar sus propios módulos desde `modules.json`
+-   Obtiene módulos del kernel después de cargarlos
+-   Ejecuta lógica de negocio en `run()`
+-   NO declara dependencias estáticas
 
 ### ModuleLoader
-- Resuelve versiones según especificadores semver
-- Selecciona loader por lenguaje
-- Carga dinámicamente módulos versionados
-- Pasa configuración al módulo
+
+-   Resuelve versiones según especificadores semver
+-   Selecciona loader por lenguaje
+-   Carga dinámicamente módulos versionados
+-   Pasa configuración al módulo
 
 ## Optimizaciones de Memoria
 
-- Cada app carga solo los módulos que declara en `modules.json`
-- El Kernel mantiene un fallback global para módulos sin versionar
-- Menor impacto en memoria en ejecuciones con múltiples apps
+-   Cada app carga solo los módulos que declara en `modules.json`
+-   El Kernel mantiene un fallback global para módulos sin versionar
+-   Menor impacto en memoria en ejecuciones con múltiples apps

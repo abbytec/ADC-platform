@@ -1,7 +1,7 @@
 import { IModuleLoader } from "../../interfaces/modules/IModuleLoader.js";
 import { IProvider } from "../../interfaces/modules/IProvider.js";
 import { IMiddleware } from "../../interfaces/modules/IMiddleware.js";
-import { IPreset } from "../../interfaces/modules/IPreset.js";
+import { IService } from "../../interfaces/modules/IService.js";
 import { Logger } from "../../utils/Logger/Logger.js";
 
 /**
@@ -22,7 +22,7 @@ export class PythonLoader implements IModuleLoader {
 		throw new Error("[PythonLoader] Python loader aún no está implementado");
 	}
 
-	async loadPreset(modulePath: string, config?: Record<string, any>): Promise<IPreset<any>> {
+	async loadService(modulePath: string, config?: Record<string, any>): Promise<IService<any>> {
 		throw new Error("[PythonLoader] Python loader aún no está implementado");
 	}
 }
