@@ -1,5 +1,5 @@
 import { IProvider } from "./IProvider.js";
-import { IMiddleware } from "./IMiddleware.js";
+import { IUtility } from "./IUtility.js";
 import { IService } from "./IService.js";
 import { IKernel } from "../IKernel.ts";
 
@@ -13,9 +13,9 @@ export interface IModuleLoader {
 	loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider<any>>;
 
 	/**
-	 * Carga un Middleware desde una ruta específica
+	 * Carga un Utility desde una ruta específica
 	 */
-	loadMiddleware(modulePath: string, config?: Record<string, any>): Promise<IMiddleware<any>>;
+	loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility<any>>;
 
 	/**
 	 * Carga un Service desde una ruta específica

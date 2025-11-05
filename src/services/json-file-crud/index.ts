@@ -3,8 +3,8 @@ import { BaseService } from "../BaseService.js";
 import { ILogger } from "../../interfaces/utils/ILogger.js";
 import { IProvider } from "../../interfaces/modules/IProvider.js";
 import { IStorage } from "../../interfaces/modules/providers/IStorage.js";
-import { IMiddleware } from "../../interfaces/modules/IMiddleware.js";
-import { IFileAdapter } from "../../interfaces/modules/middlewares/adapters/IFIleAdapter.js";
+import { IUtility } from "../../interfaces/modules/IUtility.js";
+import { IFileAdapter } from "../../interfaces/modules/utilities/adapters/IFIleAdapter.js";
 
 /**
  * Interfaz que define las operaciones CRUD para archivos JSON
@@ -19,7 +19,7 @@ export interface IJsonFileCrud {
 }
 
 /**
- * Implementación del CRUD para JSON en archivos usando providers y middlewares
+ * Implementación del CRUD para JSON en archivos usando providers y utilities
  */
 class JsonFileCrudImpl implements IJsonFileCrud {
 	constructor(private readonly storage: IStorage, private readonly fileAdapter: IFileAdapter<any>, private readonly logger: ILogger) {}
@@ -122,11 +122,11 @@ export default class JsonFileCrudService extends BaseService<IJsonFileCrud> {
 			// 3. Obtener la instancia específica del storage (con el basePath correcto)
 			const storage = await storageProvider.getInstance(storageProviderConfig);
 
-			// 4. Repetir para el middleware adaptador de archivos
-			const fileAdapterConfig = this.config?.middlewares?.find(
+			// 4. Repetir para el utility adaptador de archivos
+			const fileAdapterConfig = this.config?.utilities?.find(
 				(m) => m.name === "json-file-adapter" || m.type === "json-file-adapter"
 			)?.config;
-			const fileAdapterProvider = this.getMiddleware<IMiddleware<IFileAdapter<any>>>("json-file-adapter", fileAdapterConfig);
+			const fileAdapterProvider = this.getUtility<IUtility<IFileAdapter<any>>>("json-file-adapter", fileAdapterConfig);
 			const fileAdapter = await fileAdapterProvider.getInstance(fileAdapterConfig);
 
 			// 5. Crear la instancia del CRUD

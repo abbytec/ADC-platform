@@ -1,5 +1,5 @@
 import { IModule } from "./IModule.js";
 
-export interface IMiddleware<T> extends IModule {
+export interface IUtility<T> extends IModule {
 	getInstance(options?: any): Promise<T>;
 }

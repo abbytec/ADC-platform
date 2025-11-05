@@ -36,7 +36,7 @@ const packageJson = {
 const modulesJson = {
   failOnError: false,
   providers: [],
-  middlewares: [],
+  utilities: [],
   services: [],
 };
 

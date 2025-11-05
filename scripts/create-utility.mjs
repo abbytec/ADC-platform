@@ -3,14 +3,14 @@ import path from 'node:path';
 
 const name = process.argv[2];
 if (!name) {
-  console.error('Usage: npm run create:middleware -- <middleware-name>');
+  console.error('Usage: npm run create:utility -- <utility-name>');
   process.exit(1);
 }
 
 const toPascalCase = (str) =>
 	str.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join('');
 
-const dir = path.resolve(process.cwd(), 'src/middlewares', name);
+const dir = path.resolve(process.cwd(), 'src/utilities', name);
 
 if (fs.existsSync(dir)) {
 	console.error(`Error: Directory ${dir} already exists.`);
@@ -20,9 +20,9 @@ if (fs.existsSync(dir)) {
 fs.mkdirSync(dir, { recursive: true });
 
 const className = toPascalCase(name);
-const indexContent = `import { BaseMiddleware } from '../BaseMiddleware';
+const indexContent = `import { BaseUtility } from '../BaseUtility';
 
-export default class ${className} extends BaseMiddleware {
+export default class ${className} extends BaseUtility {
   public name = "${name}";
 }
 `;
@@ -41,4 +41,4 @@ fs.writeFileSync(
 fs.writeFileSync(path.join(dir, 'index.ts'), indexContent);
 
 
-console.log(`✅ Middleware "${name}" created at ${path.relative(process.cwd(), dir)}`);
+console.log(`✅ Utility "${name}" created at ${path.relative(process.cwd(), dir)}`);

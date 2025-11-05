@@ -4,15 +4,15 @@
 
 ### Kernel
 
-Orquestador central que carga dinámicamente componentes del filesystem. Busca recursivamente providers, middlewares y services en sus directorios. Registra capacidades mediante Symbols para inyección de dependencias. También ejecuta las Apps.
+Orquestador central que carga dinámicamente componentes del filesystem. Busca recursivamente providers, utilities y services en sus directorios. Registra capacidades mediante Symbols para inyección de dependencias. También ejecuta las Apps.
 
 ### Providers (Capa I/O)
 
 Sistemas de almacenamiento, conexiones a bases de datos, APIs externas. Ubicados en `src/providers/`.
 
-### Middlewares (Capa Lógica)
+### Utilities (Capa Lógica)
 
-Serializadores, validadores, filtros, transformadores. Ubicados en `src/middlewares/`.
+Serializadores, validadores, filtros, transformadores. Ubicados en `src/utilities/`.
 
 ### Services (Capa Utilidad)
 
@@ -20,7 +20,7 @@ Funcionalidad reutilizable sin lógica de ejecución automática. Pueden ser sta
 
 ### Apps (Capa Negocio)
 
-Lógica principal que consume Providers, Middlewares y Services. Se ejecutan automáticamente. Ubicados en `src/apps/`. Cada app puede tener un `modules.json` para declarar sus módulos específicos.
+Lógica principal que consume Providers, Utilities y Services. Se ejecutan automáticamente. Ubicados en `src/apps/`. Cada app puede tener un `modules.json` para declarar sus módulos específicos.
 
 ### Instancias Múltiples de Apps
 
@@ -63,7 +63,7 @@ Sistema de carga de módulos con soporte para versionado semántico y múltiples
 ```
 1. Kernel.start()
    ├─ 2. Cargar Providers (recursivo, fallback global)
-   ├─ 3. Cargar Middlewares (recursivo, fallback global)
+   ├─ 3. Cargar Utilities (recursivo, fallback global)
    ├─ 4. Cargar Services (recursivo, fallback global)
    │
    └─ 5. Cargar Apps (cada app)
@@ -88,7 +88,7 @@ const storage = kernel.getProvider(STORAGE_PROVIDER);
 
 ## Búsqueda Recursiva
 
-El Kernel busca recursivamente sin límites de profundidad en sus directorios (`providers/`, `middlewares/`, `services/`, `apps/`).
+El Kernel busca recursivamente sin límites de profundidad en sus directorios (`providers/`, `utilities/`, `services/`, `apps/`).
 
 ## Hot Reloading
 
@@ -154,7 +154,7 @@ Soportados: `1.0.0` (exacta), `^1.0.0` (caret), `~1.2.3` (tilde), `>=1.0.0`, `>1
 
 ## Gestión de Dependencias con Workspaces
 
-El proyecto utiliza [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces) para gestionar las dependencias de forma modular. Cada app, provider, middleware y service es un "paquete" individual dentro del workspace, lo que permite un manejo de dependencias aislado y eficiente.
+El proyecto utiliza [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces) para gestionar las dependencias de forma modular. Cada app, provider, utility y service es un "paquete" individual dentro del workspace, lo que permite un manejo de dependencias aislado y eficiente.
 
 ### Estructura
 
@@ -182,7 +182,7 @@ npm install lodash -w @adc-platform/user-profile
 
 ### Kernel
 
--   Carga recursiva de `providers/`, `middlewares/`, `services/` (fallback global)
+-   Carga recursiva de `providers/`, `utilities/`, `services/` (fallback global)
 -   Ejecuta Apps encontradas
 -   Registra módulos en el registry central
 -   Soporta hot reloading en desarrollo

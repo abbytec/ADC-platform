@@ -60,15 +60,15 @@ export abstract class BaseService<T = any> implements IService<T> {
 					}
 				}
 
-				// Fusionar middlewares
-				if (optModules.middlewares) {
-					mergedConfig.middlewares ??= [];
-					for (const middleware of optModules.middlewares) {
-						const index = mergedConfig.middlewares.findIndex((m) => m.name === middleware.name);
+				// Fusionar utilities
+				if (optModules.utilities) {
+					mergedConfig.utilities ??= [];
+					for (const utility of optModules.utilities) {
+						const index = mergedConfig.utilities.findIndex((m) => m.name === utility.name);
 						if (index > -1) {
-							mergedConfig.middlewares[index] = { ...mergedConfig.middlewares[index], ...middleware };
+							mergedConfig.utilities[index] = { ...mergedConfig.utilities[index], ...utility };
 						} else {
-							mergedConfig.middlewares.push(middleware);
+							mergedConfig.utilities.push(utility);
 						}
 					}
 				}
@@ -130,9 +130,9 @@ export abstract class BaseService<T = any> implements IService<T> {
 	}
 
 	/**
-	 * Obtener el middleware del kernel
+	 * Obtener el utility del kernel
 	 */
-	protected getMiddleware<M>(name: string, config?: Record<string, any>): M {
-		return this.kernel.getMiddleware<M>(name, config);
+	protected getUtility<M>(name: string, config?: Record<string, any>): M {
+		return this.kernel.getUtility<M>(name, config);
 	}
 }

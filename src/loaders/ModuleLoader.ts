@@ -2,7 +2,7 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { IModuleConfig, IModulesDefinition } from "../interfaces/modules/IModule.js";
 import { IProvider } from "../interfaces/modules/IProvider.js";
-import { IMiddleware } from "../interfaces/modules/IMiddleware.js";
+import { IUtility } from "../interfaces/modules/IUtility.js";
 import { IService } from "../interfaces/modules/IService.js";
 import { LoaderManager } from "./LoaderManager.js";
 import { VersionResolver } from "../utils/VersionResolver.js";
@@ -13,7 +13,7 @@ export class ModuleLoader {
 	readonly #basePath = process.env.NODE_ENV === "development" ? path.resolve(process.cwd(), "src") : path.resolve(process.cwd(), "dist");
 
 	readonly #providersPath = path.resolve(this.#basePath, "providers");
-	readonly #middlewaresPath = path.resolve(this.#basePath, "middlewares");
+	readonly #utilitiesPath = path.resolve(this.#basePath, "utilities");
 	readonly #servicesPath = path.resolve(this.#basePath, "services");
 
 	readonly #configCache = new Map<string, IModuleConfig>();
@@ -23,7 +23,7 @@ export class ModuleLoader {
 	}
 
 	/**
-	 * Carga todos los módulos (providers, middlewares, services) desde un objeto de definición de módulos.
+	 * Carga todos los módulos (providers, utilities, services) desde un objeto de definición de módulos.
 	 * Usa el contexto de carga del kernel para reference counting.
 	 * @param modulesConfig - El objeto de definición de módulos.
 	 * @param kernel - La instancia del kernel.
@@ -44,14 +44,14 @@ export class ModuleLoader {
 				}
 			}
 
-			// Cargar middlewares
-			if (modulesConfig.middlewares && Array.isArray(modulesConfig.middlewares)) {
-				for (const middlewareConfig of modulesConfig.middlewares) {
+			// Cargar utilities
+			if (modulesConfig.utilities && Array.isArray(modulesConfig.utilities)) {
+				for (const utilityConfig of modulesConfig.utilities) {
 					try {
-						const middleware = await this.loadMiddleware(middlewareConfig);
-						kernel.registerMiddleware(middleware.name, middleware, middlewareConfig);
+						const utility = await this.loadUtility(utilityConfig);
+						kernel.registerUtility(utility.name, utility, utilityConfig);
 					} catch (error) {
-						const message = `Error cargando middleware ${middlewareConfig.name}: ${error}`;
+						const message = `Error cargando utility ${utilityConfig.name}: ${error}`;
 						if (modulesConfig.failOnError) throw new Error(message);
 						Logger.warn(message);
 					}
@@ -108,19 +108,19 @@ export class ModuleLoader {
 	}
 
 	/**
-	 * Carga un Middleware desde su configuración.
+	 * Carga un Utility desde su configuración.
 	 */
-	async loadMiddleware(config: IModuleConfig): Promise<IMiddleware<any>> {
+	async loadUtility(config: IModuleConfig): Promise<IUtility<any>> {
 		const language = config.language || "typescript";
 		const version = config.version || "latest";
 
-		Logger.debug(`[ModuleLoader] Cargando Middleware: ${config.name} (v${version}, ${language})`);
+		Logger.debug(`[ModuleLoader] Cargando Utility: ${config.name} (v${version}, ${language})`);
 
 		// Resolver la versión correcta
-		const resolved = await VersionResolver.resolveModuleVersion(this.#middlewaresPath, config.name, version, language);
+		const resolved = await VersionResolver.resolveModuleVersion(this.#utilitiesPath, config.name, version, language);
 
 		if (!resolved) {
-			throw new Error(`No se pudo resolver Middleware: ${config.name}@${version} (${language})`);
+			throw new Error(`No se pudo resolver Utility: ${config.name}@${version} (${language})`);
 		}
 
 		this.#configCache.set(resolved.path, config);
@@ -129,7 +129,7 @@ export class ModuleLoader {
 		const loader = LoaderManager.getLoader(language);
 
 		// Cargar el módulo
-		return await loader.loadMiddleware(resolved.path, config.config);
+		return await loader.loadUtility(resolved.path, config.config);
 	}
 
 	/**

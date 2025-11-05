@@ -58,7 +58,7 @@ export abstract class BaseApp implements IApp {
 			...instanceConfig,
 			failOnError: instanceConfig.failOnError ?? baseConfig.failOnError,
 			providers: [...(baseConfig.providers || []), ...(instanceConfig.providers || [])],
-			middlewares: [...(baseConfig.middlewares || []), ...(instanceConfig.middlewares || [])],
+			utilities: [...(baseConfig.utilities || []), ...(instanceConfig.utilities || [])],
 			services: [...(baseConfig.services || []), ...(instanceConfig.services || [])],
 		};
 

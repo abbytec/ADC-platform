@@ -8,7 +8,7 @@
 	"workspaces": [
 		"src/apps/*",
 		"src/providers/*",
-		"src/middlewares/*",
+		"src/utilities/*",
 		"src/services/*"
 	],
 	"scripts": {
@@ -18,7 +18,7 @@
 		"start": "concurrently \"tsc --watch\" \"cross-env NODE_ENV=production node dist/index.js\"",
 		"create:app": "node scripts/create-app.mjs",
 		"create:service": "node scripts/create-service.mjs",
-		"create:middleware": "node scripts/create-middleware.mjs",
+		"create:utility": "node scripts/create-utility.mjs",
 		"create:provider": "node scripts/create-provider.mjs"
 	},
 	"keywords": [

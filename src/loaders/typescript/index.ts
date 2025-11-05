@@ -2,10 +2,10 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { IModuleLoader } from "../../interfaces/modules/IModuleLoader.js";
 import { IProvider } from "../../interfaces/modules/IProvider.js";
-import { IMiddleware } from "../../interfaces/modules/IMiddleware.js";
 import { IService } from "../../interfaces/modules/IService.js";
 import { Logger } from "../../utils/Logger/Logger.js";
 import { Kernel } from "../../kernel.js";
+import { IUtility } from "../../interfaces/modules/IUtility.js";
 
 export class TypeScriptLoader implements IModuleLoader {
 	readonly #extension = process.env.NODE_ENV === "development" ? ".ts" : ".js";
@@ -38,20 +38,20 @@ export class TypeScriptLoader implements IModuleLoader {
 		}
 	}
 
-	async loadMiddleware(modulePath: string, config?: Record<string, any>): Promise<IMiddleware<any>> {
+	async loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility<any>> {
 		try {
 			const indexFile = path.join(modulePath, `index${this.#extension}`);
 			const module = await import(`${indexFile}?v=${Date.now()}`);
-			const MiddlewareClass = module.default;
+			const UtilityClass = module.default;
 
-			if (!MiddlewareClass) {
+			if (!UtilityClass) {
 				throw new Error(`No hay export default en ${indexFile}`);
 			}
 
-			const middleware: IMiddleware<any> = new MiddlewareClass(config);
-			return middleware;
+			const utility: IUtility<any> = new UtilityClass(config);
+			return utility;
 		} catch (error) {
-			Logger.error(`[TypeScriptLoader] Error cargando Middleware: ${error}`);
+			Logger.error(`[TypeScriptLoader] Error cargando Utility: ${error}`);
 			throw error;
 		}
 	}

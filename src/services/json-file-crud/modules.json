@@ -1,17 +1,17 @@
 {
-  "failOnError": false,
-  "providers": [
-    {
-      "name": "file-storage",
-      "version": "latest",
-      "language": "typescript"
-    }
-  ],
-  "middlewares": [
-    {
-      "name": "adapters/json-file-adapter",
-      "version": "latest",
-      "language": "typescript"
-    }
-  ]
+	"failOnError": false,
+	"providers": [
+		{
+			"name": "file-storage",
+			"version": "latest",
+			"language": "typescript"
+		}
+	],
+	"utilities": [
+		{
+			"name": "adapters/json-file-adapter",
+			"version": "latest",
+			"language": "typescript"
+		}
+	]
 }

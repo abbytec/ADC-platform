@@ -24,8 +24,8 @@ export interface IModulesDefinition {
 	failOnError?: boolean;
 	/** Lista de services a cargar */
 	services?: IModuleConfig[];
-	/** Lista de middlewares a cargar */
-	middlewares?: IModuleConfig[];
+	/** Lista de utilities a cargar */
+	utilities?: IModuleConfig[];
 	/** Lista de providers a cargar */
 	providers?: IModuleConfig[];
 }

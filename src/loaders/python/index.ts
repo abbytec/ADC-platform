@@ -1,6 +1,6 @@
 import { IModuleLoader } from "../../interfaces/modules/IModuleLoader.js";
 import { IProvider } from "../../interfaces/modules/IProvider.js";
-import { IMiddleware } from "../../interfaces/modules/IMiddleware.js";
+import { IUtility } from "../../interfaces/modules/IUtility.js";
 import { IService } from "../../interfaces/modules/IService.js";
 import { Logger } from "../../utils/Logger/Logger.js";
 
@@ -18,7 +18,7 @@ export class PythonLoader implements IModuleLoader {
 		throw new Error("[PythonLoader] Python loader aún no está implementado");
 	}
 
-	async loadMiddleware(modulePath: string, config?: Record<string, any>): Promise<IMiddleware<any>> {
+	async loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility<any>> {
 		throw new Error("[PythonLoader] Python loader aún no está implementado");
 	}
 
