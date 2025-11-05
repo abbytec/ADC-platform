@@ -1,11 +1,11 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { IModuleLoader } from "../../interfaces/modules/IModuleLoader.js";
-import { IProvider } from "../../interfaces/modules/IProvider.js";
-import { IService } from "../../interfaces/modules/IService.js";
-import { Logger } from "../../utils/Logger/Logger.js";
-import { Kernel } from "../../kernel.js";
-import { IUtility } from "../../interfaces/modules/IUtility.js";
+import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
+import { IProvider } from "../../../interfaces/modules/IProvider.js";
+import { IService } from "../../../interfaces/modules/IService.js";
+import { IUtility } from "../../../interfaces/modules/IUtility.js";
+import { Kernel } from "../../../kernel.js";
+import { Logger } from "../../logger/Logger.js";
 
 export class TypeScriptLoader implements IModuleLoader {
 	readonly #extension = process.env.NODE_ENV === "development" ? ".ts" : ".js";

@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { IFileAdapter } from "../../../interfaces/modules/utilities/adapters/IFIleAdapter.js";
-import { Logger } from "../../../utils/Logger/Logger.js";
+import { Logger } from "../../../utils/logger/Logger.js";
 import { BaseUtility } from "../../BaseUtility.js";
 
 class JsonAdapter implements IFileAdapter<any> {

@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { Logger } from "./Logger/Logger.js";
+import { Logger } from "./logger/Logger.js";
 
 export class VersionResolver {
 	static readonly #isDevelopment = process.env.NODE_ENV === "development";

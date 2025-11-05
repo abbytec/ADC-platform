@@ -1,7 +1,7 @@
-import { IModuleLoader } from "../interfaces/modules/IModuleLoader.js";
 import TypeScriptLoader from "./typescript/index.js";
 import PythonLoader from "./python/index.js";
-import { Logger } from "../utils/Logger/Logger.js";
+import { IModuleLoader } from "../../interfaces/modules/IModuleLoader.js";
+import { Logger } from "../logger/Logger.js";
 
 export class LoaderManager {
 	static readonly #loaders: Map<string, IModuleLoader> = new Map([

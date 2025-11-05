@@ -1,8 +1,8 @@
-import { IModuleLoader } from "../../interfaces/modules/IModuleLoader.js";
-import { IProvider } from "../../interfaces/modules/IProvider.js";
-import { IUtility } from "../../interfaces/modules/IUtility.js";
-import { IService } from "../../interfaces/modules/IService.js";
-import { Logger } from "../../utils/Logger/Logger.js";
+import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
+import { IProvider } from "../../../interfaces/modules/IProvider.js";
+import { IService } from "../../../interfaces/modules/IService.js";
+import { IUtility } from "../../../interfaces/modules/IUtility.js";
+import { Logger } from "../../logger/Logger.js";
 
 /**
  * Loader para módulos Python

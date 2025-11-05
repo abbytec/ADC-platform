@@ -6,8 +6,8 @@ import { IApp } from "./interfaces/modules/IApp.js";
 import { IUtility } from "./interfaces/modules/IUtility.js";
 import { IProvider } from "./interfaces/modules/IProvider.js";
 import { IService } from "./interfaces/modules/IService.js";
-import { Logger } from "./utils/Logger/Logger.js";
-import { ModuleLoader } from "./loaders/ModuleLoader.js";
+import { Logger } from "./utils/logger/Logger.js";
+import { ModuleLoader } from "./utils/loaders/ModuleLoader.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModule, IModuleConfig } from "./interfaces/modules/IModule.js";
 

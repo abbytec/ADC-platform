@@ -1,13 +1,12 @@
 import * as path from "node:path";
-import * as fs from "node:fs/promises";
-import { IModuleConfig, IModulesDefinition } from "../interfaces/modules/IModule.js";
-import { IProvider } from "../interfaces/modules/IProvider.js";
-import { IUtility } from "../interfaces/modules/IUtility.js";
-import { IService } from "../interfaces/modules/IService.js";
 import { LoaderManager } from "./LoaderManager.js";
-import { VersionResolver } from "../utils/VersionResolver.js";
-import { Logger } from "../utils/Logger/Logger.js";
-import { Kernel } from "../kernel.js";
+import { IModuleConfig, IModulesDefinition } from "../../interfaces/modules/IModule.js";
+import { IProvider } from "../../interfaces/modules/IProvider.js";
+import { IService } from "../../interfaces/modules/IService.js";
+import { IUtility } from "../../interfaces/modules/IUtility.js";
+import { Kernel } from "../../kernel.js";
+import { Logger } from "../logger/Logger.js";
+import { VersionResolver } from "../VersionResolver.js";
 
 export class ModuleLoader {
 	readonly #basePath = process.env.NODE_ENV === "development" ? path.resolve(process.cwd(), "src") : path.resolve(process.cwd(), "dist");

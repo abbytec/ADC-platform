@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { IApp } from "../interfaces/modules/IApp.js";
-import { Logger } from "../utils/Logger/Logger.js";
+import { Logger } from "../utils/logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
 

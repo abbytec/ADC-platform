@@ -1,6 +1,6 @@
 // src/index.ts
 import { Kernel } from "./kernel.js";
-import { Logger } from "./utils/Logger/Logger.js";
+import { Logger } from "./utils/logger/Logger.js";
 
 async function main() {
 	const kernel = new Kernel();

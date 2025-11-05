@@ -1,6 +1,6 @@
 import { IUtility } from "../interfaces/modules/IUtility.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
-import { Logger } from "../utils/Logger/Logger.js";
+import { Logger } from "../utils/logger/Logger.js";
 
 export abstract class BaseUtility<T> implements IUtility<T> {
 	abstract readonly name: string;
