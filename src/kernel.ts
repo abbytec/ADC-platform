@@ -533,8 +533,13 @@ export class Kernel {
 				const app: IApp = new AppClass(this, appName);
 				await this.#initializeAndRunApp(app, filePath, appName);
 			}
-		} catch (e) {
-			this.#logger.logError(`Error ejecutando App ${filePath}: ${e}`);
+		} catch (e: any) {
+			if (e.code === "ERR_MODULE_NOT_FOUND") {
+				this.#logger.logError(`Faltan dependencias de Node.js para la app en ${filePath}. Por favor, instálalas. Reintentando en 30 segundos...`);
+				setTimeout(() => this.#loadApp(filePath), 30000);
+			} else {
+				this.#logger.logError(`Error ejecutando App ${filePath}: ${e}`);
+			}
 		}
 	}
 
