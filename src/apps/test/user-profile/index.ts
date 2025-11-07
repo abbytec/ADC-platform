@@ -1,6 +1,6 @@
-import { BaseApp } from "../BaseApp.js";
-import { IJsonFileCrud } from "../../services/json-file-crud/index.js";
-import { Logger } from "../../utils/logger/Logger.js";
+import { BaseApp } from "../../BaseApp.js";
+import { IJsonFileCrud } from "../../../services/json-file-crud/index.js";
+import { Logger } from "../../../utils/logger/Logger.js";
 
 // La estructura de datos que manejaremos
 interface UserProfile {
