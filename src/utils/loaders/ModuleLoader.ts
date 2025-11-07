@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import { promises as fs } from "node:fs";
 import { LoaderManager } from "./LoaderManager.js";
 import { IModuleConfig, IModulesDefinition } from "../../interfaces/modules/IModule.js";
 import { IProvider } from "../../interfaces/modules/IProvider.js";
@@ -27,14 +28,51 @@ export class ModuleLoader {
 	 * @param modulesConfig - El objeto de definición de módulos.
 	 * @param kernel - La instancia del kernel.
 	 */
+	#globalConfigs: {
+		providers: IModuleConfig[];
+		utilities: IModuleConfig[];
+	} = { providers: [], utilities: [] };
+
+	/**
+	 * Procesa y almacena las configuraciones globales de la definición de módulos.
+	 * @param modulesConfig - El objeto de definición de módulos.
+	 */
+	#processGlobalConfigs(modulesConfig: IModulesDefinition): void {
+		this.#globalConfigs = { providers: [], utilities: [] }; // Reset
+
+		const process = (configs: IModuleConfig[] = [], type: "providers" | "utilities") => {
+			for (const config of configs) {
+				if (config.global) {
+					this.#globalConfigs[type].push(config);
+				}
+			}
+		};
+
+		process(modulesConfig.providers, "providers");
+		process(modulesConfig.utilities, "utilities");
+	}
+
 	async loadAllModulesFromDefinition(modulesConfig: IModulesDefinition, kernel: Kernel): Promise<void> {
+		this.#processGlobalConfigs(modulesConfig); // Procesar globales primero
+
 		try {
-			// Cargar providers
+			// Cargar providers globales (NO se registran como dependencias de la app)
+			// Solo se registran como dependencias cuando un servicio los usa
 			if (modulesConfig.providers && Array.isArray(modulesConfig.providers)) {
 				for (const providerConfig of modulesConfig.providers) {
 					try {
 						const provider = await this.loadProvider(providerConfig);
-						kernel.registerProvider(provider.name, provider, provider.type, providerConfig);
+						// Pasar null como appName para que NO se registre como dependencia de la app actual
+						// Registrar por el nombre de la clase del provider
+						kernel.registerProvider(provider.name, provider, provider.type, providerConfig, null);
+						
+						// También registrar por el nombre del módulo/configuración para que sea encontrable
+						if (providerConfig.name !== provider.name) {
+							// Crear una clave única basada en el nombre del módulo
+							const moduleNameKey = `${providerConfig.name}`;
+							// Registrar el provider también por este nombre
+							kernel.registerProvider(moduleNameKey, provider, undefined, providerConfig, null);
+						}
 					} catch (error) {
 						const message = `Error cargando provider ${providerConfig.name}: ${error}`;
 						if (modulesConfig.failOnError) throw new Error(message);
@@ -43,12 +81,13 @@ export class ModuleLoader {
 				}
 			}
 
-			// Cargar utilities
+			// Cargar utilities globales (NO se registran como dependencias de la app)
 			if (modulesConfig.utilities && Array.isArray(modulesConfig.utilities)) {
 				for (const utilityConfig of modulesConfig.utilities) {
 					try {
 						const utility = await this.loadUtility(utilityConfig);
-						kernel.registerUtility(utility.name, utility, utilityConfig);
+						// Pasar null como appName para que NO se registre como dependencia de la app actual
+						kernel.registerUtility(utility.name, utility, utilityConfig, null);
 					} catch (error) {
 						const message = `Error cargando utility ${utilityConfig.name}: ${error}`;
 						if (modulesConfig.failOnError) throw new Error(message);
@@ -57,23 +96,115 @@ export class ModuleLoader {
 				}
 			}
 
-			// Cargar services
-			if (modulesConfig.services && Array.isArray(modulesConfig.services)) {
-				for (const serviceConfig of modulesConfig.services) {
-					try {
-						const service = await this.loadService(serviceConfig, kernel);
-						if (service.start) {
-							await service.start();
+		// Cargar services
+		if (modulesConfig.services && Array.isArray(modulesConfig.services)) {
+			for (const serviceConfig of modulesConfig.services) {
+				try {
+					// Clonar la configuración para poder mutarla, ya que el original está congelado
+					const mutableServiceConfig = JSON.parse(JSON.stringify(serviceConfig));
+
+					// PRIMERO: Cargar los providers específicos del servicio (si los tiene)
+					// Esto evita duplicación porque los providers se cargan una sola vez en el kernel
+					if (mutableServiceConfig.providers && Array.isArray(mutableServiceConfig.providers)) {
+						for (const providerConfig of mutableServiceConfig.providers) {
+							// Solo cargar si no es global (los globales ya fueron cargados)
+							if (!providerConfig.global) {
+								try {
+									const provider = await this.loadProvider(providerConfig);
+									kernel.registerProvider(provider.name, provider, provider.type, providerConfig);
+									
+									// También registrar por el nombre del módulo/configuración
+									if (providerConfig.name !== provider.name) {
+										kernel.registerProvider(providerConfig.name, provider, undefined, providerConfig);
+									}
+								} catch (error) {
+									const message = `Error cargando provider ${providerConfig.name} del servicio ${serviceConfig.name}: ${error}`;
+									if (modulesConfig.failOnError) throw new Error(message);
+									Logger.warn(message);
+								}
+							}
 						}
-						const instance = await service.getInstance();
-						kernel.registerService(service.name, instance, serviceConfig);
-					} catch (error) {
-						const message = `Error cargando service ${serviceConfig.name}: ${error}`;
-						if (modulesConfig.failOnError) throw new Error(message);
-						Logger.warn(message);
 					}
+
+					// Cargar utilities específicas del servicio (si las tiene)
+					if (mutableServiceConfig.utilities && Array.isArray(mutableServiceConfig.utilities)) {
+						for (const utilityConfig of mutableServiceConfig.utilities) {
+							if (!utilityConfig.global) {
+								try {
+									const utility = await this.loadUtility(utilityConfig);
+									kernel.registerUtility(utility.name, utility, utilityConfig);
+								} catch (error) {
+									const message = `Error cargando utility ${utilityConfig.name} del servicio ${serviceConfig.name}: ${error}`;
+									if (modulesConfig.failOnError) throw new Error(message);
+									Logger.warn(message);
+								}
+							}
+						}
+					}
+
+					// SEGUNDO: Cargar el servicio (que ahora puede acceder a sus providers del kernel)
+					const service = await this.loadService(mutableServiceConfig, kernel);
+					if (service.start) {
+						await service.start();
+					}
+					const instance = await service.getInstance();
+					
+					// TERCERO: Registrar los providers del servicio como dependencias de la app
+					// Esto es necesario para el reference counting correcto
+					if (mutableServiceConfig.providers && Array.isArray(mutableServiceConfig.providers)) {
+						for (const providerConfig of mutableServiceConfig.providers) {
+							// Agregar el provider como dependencia de la app actual
+							// Esto incrementa el reference count y lo añade a appModuleDependencies
+							// addModuleDependency también maneja automáticamente los aliases (type)
+							kernel.addModuleDependency("provider", providerConfig.name, providerConfig.config);
+						}
+					}
+					
+					// CUARTO: Registrar el servicio
+					// Si el servicio no tiene providers en su config, puede que los haya cargado del modules.json
+					// Necesitamos incluir esos providers en el uniqueKey
+					let finalProviders = mutableServiceConfig.providers;
+					if (!finalProviders || finalProviders.length === 0) {
+						// Leer el modules.json del servicio para ver qué providers declaró
+						try {
+							const resolved = await VersionResolver.resolveModuleVersion(
+								this.#servicesPath,
+								serviceConfig.name,
+								serviceConfig.version,
+								serviceConfig.language
+							);
+							if (resolved) {
+								const modulesJsonPath = path.join(path.dirname(resolved.path), "modules.json");
+								const modulesContent = await fs.readFile(modulesJsonPath, "utf-8");
+								const modulesJson = JSON.parse(modulesContent);
+								if (modulesJson.providers && Array.isArray(modulesJson.providers)) {
+									finalProviders = modulesJson.providers;
+								}
+							}
+						} catch {
+							// Si no se puede leer, usar el array vacío
+						}
+					}
+					
+					// Registrar con una configuración que incluya config y providers para reference counting correcto
+					// El config debe incluir los providers para que el uniqueKey refleje las dependencias
+					const registrationConfig: IModuleConfig = {
+						name: serviceConfig.name,
+						version: serviceConfig.version,
+						language: serviceConfig.language,
+						config: {
+							...serviceConfig.config,
+							__providers: finalProviders, // Incluir providers en config para uniqueKey
+						},
+					};
+					kernel.registerService(service.name, instance, registrationConfig);
+				} catch (error) {
+					const message = `Error cargando service ${serviceConfig.name}: ${error}`;
+					if (modulesConfig.failOnError) throw new Error(message);
+					Logger.warn(message);
 				}
 			}
+		}
 		} catch (error) {
 			const message = `Error procesando la definición de módulos: ${error}`;
 			Logger.error(message);
@@ -152,7 +283,8 @@ export class ModuleLoader {
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
 
-		// Cargar el módulo pasando el kernel
-		return await loader.loadService(resolved.path, kernel, config.config);
+		// Cargar el módulo pasando la configuración completa (incluyendo providers/utilities)
+		// El servicio necesita acceso a sus providers/utilities específicas
+		return await loader.loadService(resolved.path, kernel, config);
 	}
 }

@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
+import { IModuleConfig } from "../../../interfaces/modules/IModule.js";
 import { IProvider } from "../../../interfaces/modules/IProvider.js";
 import { IService } from "../../../interfaces/modules/IService.js";
 import { IUtility } from "../../../interfaces/modules/IUtility.js";
@@ -56,7 +57,7 @@ export class TypeScriptLoader implements IModuleLoader {
 		}
 	}
 
-	async loadService(modulePath: string, kernel: Kernel, config?: Record<string, any>): Promise<IService<any>> {
+	async loadService(modulePath: string, kernel: Kernel, config?: Record<string, any> | IModuleConfig): Promise<IService<any>> {
 		try {
 			const indexFile = path.join(modulePath, `index${this.#extension}`);
 			const module = await import(`${indexFile}?v=${Date.now()}`);
@@ -66,6 +67,8 @@ export class TypeScriptLoader implements IModuleLoader {
 				throw new Error(`No hay export default en ${indexFile}`);
 			}
 
+			// Pasar la configuración completa al servicio
+			// El servicio espera recibir providers, utilities, config, etc.
 			const service: IService<any> = new ServiceClass(kernel, config);
 			return service;
 		} catch (error) {

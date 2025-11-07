@@ -10,10 +10,16 @@ export interface IModuleConfig {
 	type?: string;
 	/** Versión a cargar - puede ser exacta (1.0.0) o con rango (^1.0.0, >=1.0.0) */
 	version?: string;
+	/** Si es `true`, la configuración del módulo se considerará global y estará disponible en submódulos */
+	global?: boolean;
 	/** Lenguaje del módulo (default: 'typescript') */
 	language?: string;
 	/** Configuración personalizada para pasar al constructor del módulo */
 	config?: Record<string, any>;
+	/** Providers que este módulo necesita como dependencias */
+	providers?: IModuleConfig[];
+	/** Utilities que este módulo necesita como dependencias */
+	utilities?: IModuleConfig[];
 }
 
 /**

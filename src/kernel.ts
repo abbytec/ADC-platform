@@ -84,14 +84,15 @@ export class Kernel {
 		return `${name}:${JSON.stringify(config || {})}`;
 	}
 
-	#addModuleToRegistry(moduleType: ModuleType, name: string, uniqueKey: string, instance: IModule, appName?: string): void {
+	#addModuleToRegistry(moduleType: ModuleType, name: string, uniqueKey: string, instance: IModule, appName?: string | null, silent = false): void {
 		const registry = this.#getRegistry(moduleType);
 		const nameMap = this.#getNameMap(moduleType);
 		const refCountMap = this.#getRefCountMap(moduleType);
 		const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
 
-		// Usar el contexto de carga si no se proporciona appName explícito
-		const effectiveAppName = appName || this.#currentLoadingContext;
+		// Usar el contexto de carga solo si appName es undefined (no si es null)
+		// null = explícitamente NO registrar como dependencia de app
+		const effectiveAppName = appName === undefined ? this.#currentLoadingContext : appName;
 
 		const alreadyExists = registry.has(uniqueKey);
 
@@ -99,7 +100,9 @@ export class Kernel {
 			// Incrementar el contador de referencias
 			const currentCount = refCountMap.get(uniqueKey) || 0;
 			refCountMap.set(uniqueKey, currentCount + 1);
-			this.#logger.logDebug(`${capitalizedModuleType} ${name} reutilizado (Referencias: ${currentCount + 1})`);
+			if (!silent) {
+				this.#logger.logDebug(`${capitalizedModuleType} ${name} reutilizado (Referencias: ${currentCount + 1})`);
+			}
 		} else {
 			// Registrar nuevo módulo
 			registry.set(uniqueKey, instance);
@@ -111,7 +114,11 @@ export class Kernel {
 			const keys = nameMap.get(name)!;
 			keys.push(uniqueKey);
 
-			this.#logger.logOk(`${capitalizedModuleType} registrado: ${name} (Total de instancias: ${keys.length})`);
+			// Contar instancias únicas para el log
+			if (!silent) {
+				const uniqueInstances = new Set(keys.map(k => registry.get(k))).size;
+				this.#logger.logOk(`${capitalizedModuleType} registrado: ${name} (Instancias únicas: ${uniqueInstances})`);
+			}
 		}
 
 		// Registrar la dependencia en la app
@@ -169,17 +176,18 @@ export class Kernel {
 	}
 
 	// --- API Pública del Kernel ---
-	public registerProvider(name: string, instance: IProvider<any>, type: string | undefined, config: IModuleConfig, appName?: string): void {
+	public registerProvider(name: string, instance: IProvider<any>, type: string | undefined, config: IModuleConfig, appName?: string | null): void {
 		const nameUniqueKey = this.#getUniqueKey(name, config.config);
 		this.#addModuleToRegistry("provider", name, nameUniqueKey, instance, appName);
 
+		// Registrar también por tipo (alias) pero sin log
 		if (type && type !== name) {
 			const typeUniqueKey = this.#getUniqueKey(type, config.config);
-			this.#addModuleToRegistry("provider", type, typeUniqueKey, instance, appName);
+			this.#addModuleToRegistry("provider", type, typeUniqueKey, instance, appName, true); // silent = true
 		}
 	}
 
-	#registerModule<T>(moduleType: "utility" | "service", name: string, instance: IModule, config: IModuleConfig, appName?: string): void {
+	#registerModule<T>(moduleType: "utility" | "service", name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
 		const uniqueKey = this.#getUniqueKey(name, config.config);
 		this.#addModuleToRegistry(moduleType, name, uniqueKey, instance, appName);
 	}
@@ -199,11 +207,43 @@ export class Kernel {
 			return instance as T;
 		}
 
-		const keys = nameMap.get(name);
+		let keys = nameMap.get(name);
 		if (!keys || keys.length === 0) {
 			const errorMessage = `${capitalizedModuleType} ${name} no encontrado.`;
 			this.#logger.logError(errorMessage);
 			throw new Error(errorMessage);
+		}
+
+		if (keys.length > 1) {
+			let filteredKeys = keys;
+
+			// 1. Try to filter by current app context
+			if (this.#currentLoadingContext) {
+				const appDependencies = this.#appModuleDependencies.get(this.#currentLoadingContext);
+				if (appDependencies) {
+					const appDependencyKeys = new Set(
+						Array.from(appDependencies)
+							.filter((dep) => dep.type === moduleType)
+							.map((dep) => dep.uniqueKey)
+					);
+					const matchingKeys = keys.filter((key) => appDependencyKeys.has(key));
+
+					if (matchingKeys.length > 0) {
+						filteredKeys = matchingKeys;
+					}
+				}
+			}
+
+			// 2. If still ambiguous, apply specificity rule WITHIN the filtered set
+			if (filteredKeys.length > 1) {
+				const sorted = [...filteredKeys].sort((a, b) => b.length - a.length);
+				// Only pick if there is a single most-specific key
+				if (sorted[0].length > sorted[1].length) {
+					filteredKeys = [sorted[0]];
+				}
+			}
+
+			keys = filteredKeys;
 		}
 
 		if (keys.length > 1) {
@@ -236,11 +276,11 @@ export class Kernel {
 		return instance;
 	}
 
-	public registerUtility<T>(name: string, instance: IModule, config: IModuleConfig, appName?: string): void {
+	public registerUtility<T>(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
 		this.#registerModule("utility", name, instance, config, appName);
 	}
 
-	public registerService<T>(name: string, instance: IModule, config: IModuleConfig, appName?: string): void {
+	public registerService<T>(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
 		this.#registerModule("service", name, instance, config, appName);
 	}
 
@@ -250,6 +290,61 @@ export class Kernel {
 		}
 		this.#appsRegistry.set(name, instance);
 		this.#logger.logOk(`App registrada: ${name}`);
+	}
+
+	/**
+	 * Registra una dependencia de módulo existente para una app
+	 * (para reference counting sin volver a cargar el módulo)
+	 */
+	public addModuleDependency(moduleType: ModuleType, name: string, config?: Record<string, any>, appName?: string): void {
+		const uniqueKey = this.#getUniqueKey(name, config);
+		const registry = this.#getRegistry(moduleType);
+		const refCountMap = this.#getRefCountMap(moduleType);
+		
+		if (!registry.has(uniqueKey)) {
+			this.#logger.logWarn(`Intentando agregar dependencia de ${moduleType} ${name} que no existe en el registry`);
+			return;
+		}
+
+		const effectiveAppName = appName || this.#currentLoadingContext;
+		
+		if (effectiveAppName) {
+			if (!this.#appModuleDependencies.has(effectiveAppName)) {
+				this.#appModuleDependencies.set(effectiveAppName, new Set());
+			}
+			
+			const instance = registry.get(uniqueKey);
+			const deps = this.#appModuleDependencies.get(effectiveAppName)!;
+			
+			// Agregar a las dependencias de la app (solo si no existe ya)
+			const depExists = Array.from(deps).some(d => d.type === moduleType && d.uniqueKey === uniqueKey);
+			if (!depExists) {
+				deps.add({ type: moduleType, uniqueKey });
+				
+				// Incrementar reference count
+				const currentCount = refCountMap.get(uniqueKey) || 0;
+				refCountMap.set(uniqueKey, currentCount + 1);
+				
+				this.#logger.logDebug(`Dependencia agregada: ${moduleType} ${name} para ${effectiveAppName} (Referencias: ${currentCount + 1})`);
+			}
+			
+			// Para providers, también agregar el alias (type) si existe
+			if (moduleType === "provider" && instance) {
+				const provider = instance as IProvider<any>;
+				if (provider.type && provider.type !== name) {
+					const typeKey = this.#getUniqueKey(provider.type, config);
+					if (registry.has(typeKey)) {
+						const typeDepExists = Array.from(deps).some(d => d.type === moduleType && d.uniqueKey === typeKey);
+						if (!typeDepExists) {
+							deps.add({ type: moduleType, uniqueKey: typeKey });
+							const typeCount = refCountMap.get(typeKey) || 0;
+							refCountMap.set(typeKey, typeCount + 1);
+							this.#logger.logDebug(`Dependencia agregada (alias): ${moduleType} ${provider.type} para ${effectiveAppName} (Referencias: ${typeCount + 1})`);
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// --- Lógica de Arranque ---
@@ -274,6 +369,44 @@ export class Kernel {
 			this.#isStartingUp = false;
 			this.#logger.logInfo("HMR está activo.");
 		}, 5000);
+
+		setInterval(() => {
+			// Contar instancias únicas (no entradas en el registry)
+			// Los providers se registran 2 veces (name y type), así que contamos instancias únicas
+			const pCount = new Set(this.#moduleStore.provider.registry.values()).size;
+			const uCount = new Set(this.#moduleStore.utility.registry.values()).size;
+			const sCount = new Set(this.#moduleStore.service.registry.values()).size;
+			this.#logger.logInfo(`Providers: ${pCount} - Utilities: ${uCount} - Services: ${sCount}`);
+
+			// TODO 2 resuelto: Muestra un resumen del estado del kernel (en modo debug)
+			const kernelState = {
+				apps: Array.from(this.#appsRegistry.keys()),
+				providers: {
+					keys: Array.from(this.#moduleStore.provider.registry.keys()),
+					refs: Object.fromEntries(this.#moduleStore.provider.refCount),
+				},
+				utilities: {
+					keys: Array.from(this.#moduleStore.utility.registry.keys()),
+					refs: Object.fromEntries(this.#moduleStore.utility.refCount),
+				},
+				services: {
+					keys: Array.from(this.#moduleStore.service.registry.keys()),
+					refs: Object.fromEntries(this.#moduleStore.service.refCount),
+				},
+				appDependencies: Object.fromEntries(
+					Array.from(this.#appModuleDependencies.entries()).map(([appName, deps]) => [
+						appName, 
+						Array.from(deps).map(dep => ({
+							type: dep.type,
+							key: dep.uniqueKey
+						}))
+					])
+				),
+				appFiles: Object.fromEntries(this.#appFilePaths),
+				appConfigFiles: Object.fromEntries(this.#appConfigFilePaths),
+			};
+			this.#logger.logDebug("Kernel State Dump:", JSON.stringify(kernelState, null, 2));
+		}, 30000);
 	}
 
 	/**
@@ -326,7 +459,7 @@ export class Kernel {
 	}
 
 	/**
-	 * Búsqueda recursiva ilimitada de todos los 'index.ts'/'index.js' en una capa.
+	 * Búsqueda recursiva ilimitada de cada 'index.ts'/'index.js' en una capa.
 	 */
 	async #loadLayerRecursive(dir: string, loader: (entryPath: string) => Promise<void>, exclude: string[] = []): Promise<void> {
 		try {
@@ -466,9 +599,9 @@ export class Kernel {
 
 			// Obtener información de la app
 			const appName = instanceName.split(":")[0];
-			const appDir = this.#isDevelopment
-				? path.resolve(process.cwd(), "src", "apps", appName)
-				: path.resolve(process.cwd(), "dist", "apps", appName);
+			const appDir = configPath.includes(`${path.sep}configs${path.sep}`)
+				? path.dirname(path.dirname(configPath))
+				: path.dirname(configPath);
 			const appFilePath = path.join(appDir, `index${this.#fileExtension}`);
 
 			// Cargar la clase de la app
@@ -483,7 +616,7 @@ export class Kernel {
 			const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
 
 			// Crear y ejecutar la nueva instancia
-			const newApp: IApp = new AppClass(this, instanceName, config);
+			const newApp: IApp = new AppClass(this, instanceName, config, appFilePath);
 			await this.#initializeAndRunApp(newApp, appFilePath, instanceName, configPath);
 
 			this.#logger.logOk(`Instancia recargada exitosamente: ${instanceName}`);
@@ -526,16 +659,18 @@ export class Kernel {
 					const configName = this.#getConfigName(configFile);
 					const instanceName = `${appName}:${configName}`;
 
-					const app: IApp = new AppClass(this, instanceName, config);
+					const app: IApp = new AppClass(this, instanceName, config, filePath);
 					await this.#initializeAndRunApp(app, filePath, instanceName, configPath);
 				}
 			} else {
-				const app: IApp = new AppClass(this, appName);
+				const app: IApp = new AppClass(this, appName, undefined, filePath);
 				await this.#initializeAndRunApp(app, filePath, appName);
 			}
 		} catch (e: any) {
 			if (e.code === "ERR_MODULE_NOT_FOUND") {
-				this.#logger.logError(`Faltan dependencias de Node.js para la app en ${filePath}. Por favor, instálalas. Reintentando en 30 segundos...`);
+				this.#logger.logError(
+					`Faltan dependencias de Node.js para la app en ${filePath}. Por favor, instálalas. Reintentando en 30 segundos...`
+				);
 				setTimeout(() => this.#loadApp(filePath), 30000);
 			} else {
 				this.#logger.logError(`Error ejecutando App ${filePath}: ${e}`);

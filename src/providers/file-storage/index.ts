@@ -36,7 +36,7 @@ class FileStorage implements IStorage {
 		} catch (err: any) {
 			if (err.code === "ENOENT") {
 				// ENOENT = Error NO ENTry (Archivo no encontrado)
-				this.logger.logWarn(`File not found: ${key}`);
+				this.logger.logDebug(`File not found: ${key}`);
 				return null;
 			}
 			// Otro error (ej. permisos)

@@ -18,7 +18,12 @@ export default class UserProfileApp extends BaseApp {
 
 	async start() {
 		const serviceConfig = this.config.services.find((p: any) => p.name === "json-file-crud");
-		this.crud = this.kernel.getService<IJsonFileCrud>("json-file-crud", serviceConfig.config);
+		// Crear una configuración de búsqueda que incluya config y providers para reference counting correcto
+		const searchConfig = {
+			...serviceConfig.config,
+			__providers: serviceConfig.providers,
+		};
+		this.crud = this.kernel.getService<IJsonFileCrud>("json-file-crud", searchConfig);
 	}
 
 	async run(): Promise<void> {

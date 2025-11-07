@@ -33,7 +33,7 @@ export abstract class BaseService<T = any> implements IService<T> {
 		const serviceDir = this.getServiceDir();
 		const modulesConfigPath = path.join(serviceDir, "modules.json");
 
-		this.logger.logDebug(`Inicializando y cargando módulos...`);
+		this.logger.logDebug(`Inicializando...`);
 
 		try {
 			let baseConfig: IModulesDefinition = {};
@@ -42,53 +42,56 @@ export abstract class BaseService<T = any> implements IService<T> {
 				baseConfig = JSON.parse(configContent);
 			} catch {}
 
-			const mergedConfig: IModulesDefinition = structuredClone(baseConfig);
-
-			if (this.options?.modules) {
-				const optModules = this.options.modules;
-
-				// Fusionar providers
-				if (optModules.providers) {
-					mergedConfig.providers ??= [];
-					for (const provider of optModules.providers) {
-						const index = mergedConfig.providers.findIndex((p) => p.name === provider.name);
-						if (index > -1) {
-							mergedConfig.providers[index] = { ...mergedConfig.providers[index], ...provider };
-						} else {
-							mergedConfig.providers.push(provider);
-						}
-					}
-				}
-
-				// Fusionar utilities
-				if (optModules.utilities) {
-					mergedConfig.utilities ??= [];
-					for (const utility of optModules.utilities) {
-						const index = mergedConfig.utilities.findIndex((m) => m.name === utility.name);
-						if (index > -1) {
-							mergedConfig.utilities[index] = { ...mergedConfig.utilities[index], ...utility };
-						} else {
-							mergedConfig.utilities.push(utility);
-						}
-					}
-				}
-
-				// Fusionar services (si es necesario en el futuro)
-				if (optModules.services) {
-					mergedConfig.services ??= [];
-					for (const service of optModules.services) {
-						const index = mergedConfig.services.findIndex((p) => p.name === service.name);
-						if (index > -1) {
-							mergedConfig.services[index] = { ...mergedConfig.services[index], ...service };
-						} else {
-							mergedConfig.services.push(service);
+			// Determinar qué providers usar:
+			// - Si la app proporciona providers (options.providers), usar esos
+			// - Si no, cargar los del modules.json (dependencias por defecto del servicio)
+			let providersToUse = this.options?.providers || [];
+			
+			if (!providersToUse || providersToUse.length === 0) {
+				// No hay providers de la app, usar los del modules.json
+				if (baseConfig.providers && Array.isArray(baseConfig.providers)) {
+					providersToUse = baseConfig.providers;
+					// Cargar estos providers
+					for (const providerConfig of baseConfig.providers) {
+						try {
+							const provider = await Kernel.moduleLoader.loadProvider(providerConfig);
+							this.kernel.registerProvider(provider.name, provider, provider.type, providerConfig);
+							
+							// También registrar por el nombre del módulo/configuración
+							if (providerConfig.name !== provider.name) {
+								this.kernel.registerProvider(providerConfig.name, provider, undefined, providerConfig);
+							}
+							
+							// Agregar como dependencia de la app actual
+							this.kernel.addModuleDependency("provider", providerConfig.name, providerConfig.config);
+						} catch (error) {
+							const message = `Error cargando provider ${providerConfig.name}: ${error}`;
+							if (baseConfig.failOnError) throw new Error(message);
+							this.logger.logWarn(message);
 						}
 					}
 				}
 			}
 
-			this.config = mergedConfig;
-			await Kernel.moduleLoader.loadAllModulesFromDefinition(this.config, this.kernel);
+			// Cargar las utilities internas del servicio (del modules.json)
+			if (baseConfig.utilities && Array.isArray(baseConfig.utilities)) {
+				for (const utilityConfig of baseConfig.utilities) {
+					try {
+						const utility = await Kernel.moduleLoader.loadUtility(utilityConfig);
+						this.kernel.registerUtility(utility.name, utility, utilityConfig);
+					} catch (error) {
+						const message = `Error cargando utility ${utilityConfig.name}: ${error}`;
+						if (baseConfig.failOnError) throw new Error(message);
+						this.logger.logWarn(message);
+					}
+				}
+			}
+
+			this.config = {
+				...baseConfig,
+				providers: providersToUse,
+				utilities: this.options?.utilities || baseConfig.utilities || [],
+			};
 
 			this.logger.logOk(`Inicialización completada`);
 		} catch (error) {

@@ -11,8 +11,25 @@ import { Kernel } from "../kernel.js";
  */
 export abstract class BaseApp implements IApp {
 	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
+	protected readonly appDir: string;
 
-	constructor(protected readonly kernel: Kernel, public readonly name: string = this.constructor.name, protected config?: any) {}
+	constructor(
+		protected readonly kernel: Kernel,
+		public readonly name: string = this.constructor.name,
+		protected config?: any,
+		_appFilePath?: string
+	) {
+		if (_appFilePath) {
+			this.appDir = path.dirname(_appFilePath);
+		} else {
+			// Fallback para cuando no se proporciona la ruta (aunque debería hacerse siempre)
+			const appDirName = this.name.split(":")[0];
+			const isDevelopment = process.env.NODE_ENV === "development";
+			this.appDir = isDevelopment
+				? path.resolve(process.cwd(), "src", "apps", appDirName)
+				: path.resolve(process.cwd(), "dist", "apps", appDirName);
+		}
+	}
 
 	/**
 	 * Lógica de inicialización.
@@ -38,29 +55,50 @@ export abstract class BaseApp implements IApp {
 	 * de la instancia específica de la app.
 	 */
 	async #mergeModuleConfigs(): Promise<void> {
-		const appDirName = this.name.split(":")[0];
-		const isDevelopment = process.env.NODE_ENV === "development";
-		const appDir = isDevelopment
-			? path.resolve(process.cwd(), "src", "apps", appDirName)
-			: path.resolve(process.cwd(), "dist", "apps", appDirName);
+		const appDir = this.appDir;
 
 		let baseConfig: any = {};
 		try {
 			const defaultConfigPath = path.join(appDir, "default.json");
 			const content = await fs.readFile(defaultConfigPath, "utf-8");
 			baseConfig = JSON.parse(content);
-		} catch {}
+		} catch {
+			// No hay archivo default.json, lo cual es aceptable.
+		}
 
 		const instanceConfig = this.config || {};
 
-		const mergedConfig: any = {
-			...baseConfig,
-			...instanceConfig,
-			failOnError: instanceConfig.failOnError ?? baseConfig.failOnError,
-			providers: [...(baseConfig.providers || []), ...(instanceConfig.providers || [])],
-			utilities: [...(baseConfig.utilities || []), ...(instanceConfig.utilities || [])],
-			services: [...(baseConfig.services || []), ...(instanceConfig.services || [])],
-		};
+	// Función auxiliar para fusionar módulos por nombre
+	const mergeModules = (base: any[] = [], instance: any[] = []): any[] => {
+		const byName = new Map(base.map((item) => [item.name, item]));
+		for (const item of instance) {
+			const existing = byName.get(item.name) || {};
+			byName.set(item.name, { ...existing, ...item });
+		}
+		return Array.from(byName.values());
+	};
+
+	const mergedProviders = mergeModules(baseConfig.providers, instanceConfig.providers);
+	const mergedUtilities = mergeModules(baseConfig.utilities, instanceConfig.utilities);
+	const mergedServices = mergeModules(baseConfig.services, instanceConfig.services);
+	
+	// Los servicios SIN providers propios heredan los globales
+	// Esto permite que usen la configuración correcta del provider global
+	const servicesWithInheritedProviders = mergedServices.map((service: any) => {
+		if (!service.providers || service.providers.length === 0) {
+			return { ...service, providers: mergedProviders };
+		}
+		return service;
+	});
+
+	const mergedConfig: any = {
+		...baseConfig,
+		...instanceConfig,
+		failOnError: instanceConfig.failOnError ?? baseConfig.failOnError,
+		providers: mergedProviders,
+		utilities: mergedUtilities,
+		services: servicesWithInheritedProviders,
+	};
 
 		this.config = mergedConfig;
 		Object.freeze(this.config); // Freezes config from modifications
