@@ -50,7 +50,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 		try {
 			const buffer = await this.storage.load(filePath);
 			if (!buffer) {
-				this.logger.logWarn(`Archivo no disponible: ${key}`);
+				this.logger.logDebug(`Archivo no disponible: ${key}`);
 				return null;
 			}
 			const data = this.fileAdapter.fromBuffer(buffer) as T;
