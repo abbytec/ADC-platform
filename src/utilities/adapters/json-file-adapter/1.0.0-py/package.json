@@ -1,0 +1,9 @@
+{
+	"name": "@adc-platform/json-file-adapter-utility",
+	"version": "1.0.0-py",
+	"language": "python",
+	"description": "JSON File Adapter Utility - Python implementation with IPC interoperability",
+	"main": "index.py",
+	"dependencies": {}
+}
+

@@ -79,6 +79,12 @@ export abstract class BaseService<T = any> implements IService<T> {
 					try {
 						const utility = await Kernel.moduleLoader.loadUtility(utilityConfig);
 						this.kernel.registerUtility(utility.name, utility, utilityConfig);
+						
+						// Si el nombre contiene "/", también registrar con el nombre base como alias
+						if (utilityConfig.name.includes("/")) {
+							const baseName = utilityConfig.name.split("/").pop()!;
+							this.kernel.registerUtility(baseName, utility, utilityConfig);
+						}
 					} catch (error) {
 						const message = `Error cargando utility ${utilityConfig.name}: ${error}`;
 						if (baseConfig.failOnError) throw new Error(message);

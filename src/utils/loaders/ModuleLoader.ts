@@ -88,6 +88,12 @@ export class ModuleLoader {
 						const utility = await this.loadUtility(utilityConfig);
 						// Pasar null como appName para que NO se registre como dependencia de la app actual
 						kernel.registerUtility(utility.name, utility, utilityConfig, null);
+						
+						// Si el nombre contiene "/", también registrar con el nombre base como alias
+						if (utilityConfig.name.includes("/")) {
+							const baseName = utilityConfig.name.split("/").pop()!;
+							kernel.registerUtility(baseName, utility, utilityConfig, null);
+						}
 					} catch (error) {
 						const message = `Error cargando utility ${utilityConfig.name}: ${error}`;
 						if (modulesConfig.failOnError) throw new Error(message);
@@ -128,16 +134,27 @@ export class ModuleLoader {
 
 					// Cargar utilities específicas del servicio (si las tiene)
 					if (mutableServiceConfig.utilities && Array.isArray(mutableServiceConfig.utilities)) {
+						Logger.debug(`[ModuleLoader] Cargando ${mutableServiceConfig.utilities.length} utilities para servicio ${serviceConfig.name}`);
 						for (const utilityConfig of mutableServiceConfig.utilities) {
+							Logger.debug(`[ModuleLoader] Utility '${utilityConfig.name}' - global: ${utilityConfig.global}`);
 							if (!utilityConfig.global) {
 								try {
 									const utility = await this.loadUtility(utilityConfig);
 									kernel.registerUtility(utility.name, utility, utilityConfig);
+									
+									// Si el nombre contiene "/", también registrar con el nombre base como alias
+									if (utilityConfig.name.includes("/")) {
+										const baseName = utilityConfig.name.split("/").pop()!;
+										Logger.debug(`[ModuleLoader] Registrando alias '${baseName}' para utility '${utilityConfig.name}'`);
+										kernel.registerUtility(baseName, utility, utilityConfig);
+									}
 								} catch (error) {
 									const message = `Error cargando utility ${utilityConfig.name} del servicio ${serviceConfig.name}: ${error}`;
 									if (modulesConfig.failOnError) throw new Error(message);
 									Logger.warn(message);
 								}
+							} else {
+								Logger.debug(`[ModuleLoader] Saltando utility global: ${utilityConfig.name}`);
 							}
 						}
 					}
@@ -233,8 +250,17 @@ export class ModuleLoader {
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
 
+		// Enriquecer config con información del módulo para interoperabilidad
+		const enrichedConfig = {
+			...config.config,
+			moduleName: config.name,
+			moduleVersion: resolved.version,
+			language: language,
+			type: config.type,
+		};
+
 		// Cargar el módulo
-		return await loader.loadProvider(resolved.path, config.config);
+		return await loader.loadProvider(resolved.path, enrichedConfig);
 	}
 
 	/**
@@ -258,8 +284,16 @@ export class ModuleLoader {
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
 
+		// Enriquecer config con información del módulo para interoperabilidad
+		const enrichedConfig = {
+			...config.config,
+			moduleName: config.name,
+			moduleVersion: resolved.version,
+			language: language,
+		};
+
 		// Cargar el módulo
-		return await loader.loadUtility(resolved.path, config.config);
+		return await loader.loadUtility(resolved.path, enrichedConfig);
 	}
 
 	/**
@@ -283,8 +317,19 @@ export class ModuleLoader {
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
 
+		// Enriquecer config con información del módulo para interoperabilidad
+		const enrichedConfig = {
+			...config,
+			config: {
+				...config.config,
+				moduleName: config.name,
+				moduleVersion: resolved.version,
+				language: language,
+			},
+		};
+
 		// Cargar el módulo pasando la configuración completa (incluyendo providers/utilities)
 		// El servicio necesita acceso a sus providers/utilities específicas
-		return await loader.loadService(resolved.path, kernel, config);
+		return await loader.loadService(resolved.path, kernel, enrichedConfig);
 	}
 }

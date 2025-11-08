@@ -31,7 +31,15 @@ export class TypeScriptLoader implements IModuleLoader {
 				throw new Error(`No hay export default en ${indexFile}`);
 			}
 
-			const provider: IProvider<any> = new ProviderClass(config);
+			// Enriquecer config con información del módulo para el decorador @Proxied
+			const enrichedConfig = {
+				...config,
+				moduleName: config?.moduleName || path.basename(modulePath),
+				moduleVersion: config?.moduleVersion || "latest",
+				language: config?.language || "typescript",
+			};
+
+			const provider: IProvider<any> = new ProviderClass(enrichedConfig);
 			return provider;
 		} catch (error) {
 			Logger.error(`[TypeScriptLoader] Error cargando Provider: ${error}`);
@@ -49,7 +57,15 @@ export class TypeScriptLoader implements IModuleLoader {
 				throw new Error(`No hay export default en ${indexFile}`);
 			}
 
-			const utility: IUtility<any> = new UtilityClass(config);
+			// Enriquecer config con información del módulo para el decorador @Proxied
+			const enrichedConfig = {
+				...config,
+				moduleName: config?.moduleName || path.basename(modulePath),
+				moduleVersion: config?.moduleVersion || "latest",
+				language: config?.language || "typescript",
+			};
+
+			const utility: IUtility<any> = new UtilityClass(enrichedConfig);
 			return utility;
 		} catch (error) {
 			Logger.error(`[TypeScriptLoader] Error cargando Utility: ${error}`);
