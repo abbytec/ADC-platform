@@ -31,7 +31,7 @@ export abstract class BaseService<T = any> implements IService<T> {
 	 */
 	public async start(): Promise<void> {
 		const serviceDir = this.getServiceDir();
-		const modulesConfigPath = path.join(serviceDir, "modules.json");
+		const modulesConfigPath = path.join(serviceDir, "config.json");
 
 		this.logger.logDebug(`Inicializando...`);
 
@@ -73,7 +73,7 @@ export abstract class BaseService<T = any> implements IService<T> {
 				}
 			}
 
-			// Cargar las utilities internas del servicio (del modules.json)
+			// Cargar las utilities internas del servicio (del config.json)
 			if (baseConfig.utilities && Array.isArray(baseConfig.utilities)) {
 				for (const utilityConfig of baseConfig.utilities) {
 					try {

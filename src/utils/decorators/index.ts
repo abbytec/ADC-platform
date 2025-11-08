@@ -1,2 +1,2 @@
-export { Proxied, assignWorker, getProxyConfig, type ProxyConfig } from "./Proxied.js";
+export { Distributed, assignWorker, getAssignedWorker } from "./Distributed.js";
 

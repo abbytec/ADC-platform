@@ -178,11 +178,11 @@ export class ModuleLoader {
 					}
 					
 					// CUARTO: Registrar el servicio
-					// Si el servicio no tiene providers en su config, puede que los haya cargado del modules.json
+					// Si el servicio no tiene providers en su config, puede que los haya cargado del config.json
 					// Necesitamos incluir esos providers en el uniqueKey
 					let finalProviders = mutableServiceConfig.providers;
 					if (!finalProviders || finalProviders.length === 0) {
-						// Leer el modules.json del servicio para ver qué providers declaró
+						// Leer el config.json del servicio para ver qué providers declaró
 						try {
 							const resolved = await VersionResolver.resolveModuleVersion(
 								this.#servicesPath,
@@ -191,11 +191,11 @@ export class ModuleLoader {
 								serviceConfig.language
 							);
 							if (resolved) {
-								const modulesJsonPath = path.join(path.dirname(resolved.path), "modules.json");
-								const modulesContent = await fs.readFile(modulesJsonPath, "utf-8");
-								const modulesJson = JSON.parse(modulesContent);
-								if (modulesJson.providers && Array.isArray(modulesJson.providers)) {
-									finalProviders = modulesJson.providers;
+							const configJsonPath = path.join(path.dirname(resolved.path), "config.json");
+							const configContent = await fs.readFile(configJsonPath, "utf-8");
+							const configJson = JSON.parse(configContent);
+							if (configJson.providers && Array.isArray(configJson.providers)) {
+								finalProviders = configJson.providers;
 								}
 							}
 						} catch {

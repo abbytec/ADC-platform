@@ -370,13 +370,105 @@ export class Kernel {
 		}
 	}
 
+	/**
+	 * Carga servicios en modo kernel antes de las apps
+	 */
+	async #loadKernelServices(): Promise<void> {
+		const findKernelServices = async (dir: string): Promise<Array<{ path: string; name: string }>> => {
+			const kernelServices: Array<{ path: string; name: string }> = [];
+
+			const traverse = async (currentDir: string) => {
+				const entries = await fs.readdir(currentDir, { withFileTypes: true });
+
+				for (const entry of entries) {
+					const fullPath = path.join(currentDir, entry.name);
+
+					if (entry.isDirectory()) {
+						// Buscar config.json en este directorio
+						const configPath = path.join(fullPath, "config.json");
+						try {
+							await fs.access(configPath);
+							const configContent = await fs.readFile(configPath, "utf-8");
+							const config = JSON.parse(configContent);
+
+							if (config.kernelMode === true) {
+								// Buscar el archivo index.ts o index.js
+								const indexTs = path.join(fullPath, "index.ts");
+								const indexJs = path.join(fullPath, "index.js");
+
+								try {
+									await fs.access(indexTs);
+									kernelServices.push({ path: indexTs, name: entry.name });
+									continue;
+								} catch {
+									try {
+										await fs.access(indexJs);
+										kernelServices.push({ path: indexJs, name: entry.name });
+										continue;
+									} catch {
+										// No tiene index, continuar buscando en subdirectorios
+									}
+								}
+							}
+						} catch {
+							// No tiene config.json o no es válido, seguir buscando
+						}
+
+						// Continuar buscando recursivamente
+						await traverse(fullPath);
+					}
+				}
+			};
+
+			await traverse(dir);
+			return kernelServices;
+		};
+
+		const kernelServices = await findKernelServices(this.#servicesPath);
+
+		if (kernelServices.length > 0) {
+			this.#logger.logInfo(`Cargando ${kernelServices.length} servicio(s) en modo kernel...`);
+
+			for (const { path: servicePath, name: serviceName } of kernelServices) {
+				try {
+					// Cargar el módulo directamente (sin versionado)
+					const serviceModule = await import(servicePath);
+					const ServiceClass = serviceModule.default;
+
+					if (!ServiceClass) {
+						throw new Error(`No se encontró export default en ${servicePath}`);
+					}
+
+					// Crear instancia del servicio
+					const serviceInstance = new ServiceClass(this, {});
+					await serviceInstance.start();
+
+					// Registrar el servicio
+					this.registerService(serviceName, serviceInstance, {
+						name: serviceName,
+						version: "1.0.0",
+						language: "typescript",
+						global: true,
+					});
+
+					this.#logger.logOk(`Servicio en modo kernel cargado: ${serviceName}`);
+				} catch (error: any) {
+					this.#logger.logError(`Error cargando servicio en modo kernel (${serviceName}): ${error.message}`);
+				}
+			}
+		}
+	}
+
 	// --- Lógica de Arranque ---
 	public async start(): Promise<void> {
 		this.#logger.logInfo("Iniciando...");
 		this.#logger.logInfo(`Modo: ${this.#isDevelopment ? "DESARROLLO" : "PRODUCCIÓN"}`);
 		this.#logger.logDebug(`Base path: ${this.#basePath}`);
 
-		// Solo cargar Apps (que cargarán sus propios módulos desde modules.json)
+		// Cargar servicios en modo kernel primero
+		await this.#loadKernelServices();
+
+		// Solo cargar Apps (que cargarán sus propios módulos desde config.json)
 		await this.#loadLayerRecursive(this.#appsPath, this.#loadApp.bind(this), ["BaseApp.ts"]);
 
 		// Iniciar watchers para carga dinámica

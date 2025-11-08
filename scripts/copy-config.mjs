@@ -29,6 +29,6 @@ function findAndCopy(dir, patterns) {
 
 const srcPath = path.join(process.cwd(), 'src');
 
-// Copiar archivos JSON y Python
+// Copiar archivos de configuración y módulos Python
 console.log('Copying configuration files and Python modules...');
 findAndCopy(srcPath, ['.json', '.py']);

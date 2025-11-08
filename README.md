@@ -14,7 +14,9 @@ El objetivo principal del proyecto es ofrecer una base sólida y flexible que de
 -   **Carga Dinámica de Módulos:** El kernel carga y enlaza módulos en tiempo de ejecución desde el sistema de archivos.
 -   **Gestión de Dependencias Aislada:** Gracias a los [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces), cada módulo gestiona sus propias dependencias sin interferir con el resto del sistema.
 -   **Hot Reloading:** En modo de desarrollo, los cambios en el código fuente o en los archivos de configuración de las apps recargan automáticamente los componentes afectados sin necesidad de reiniciar todo el sistema.
--   **Soporte Multi-lenguaje (Futuro):** La arquitectura está preparada para cargar módulos escritos en otros lenguajes, como Python.
+-   **Interoperabilidad Multi-lenguaje:** Soporte para módulos en TypeScript y Python con comunicación via IPC (named pipes).
+-   **Ejecución Distribuida:** Sistema de workers gestionado automáticamente para distribuir carga pesada según uso de CPU y memoria.
 -   **Instancias Múltiples de Apps:** Una misma base de código de una aplicación puede ejecutarse en múltiples instancias con diferentes configuraciones, permitiendo una gran flexibilidad para distintos entornos o clientes.
+-   **Preparado para Clusterización:** Arquitectura diseñada para soportar nodos remotos en el futuro.
 
 Para una descripción técnica detallada sobre la arquitectura, los componentes y el flujo de trabajo, consulta el documento [ARCHITECTURE.md](./ARCHITECTURE.md).

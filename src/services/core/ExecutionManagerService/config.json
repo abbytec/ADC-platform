@@ -1,0 +1,10 @@
+{
+	"global": true,
+	"kernelMode": true,
+	"failOnError": true,
+	"config": {
+		"minWorkers": 2,
+		"maxWorkers": 4
+	}
+}
+

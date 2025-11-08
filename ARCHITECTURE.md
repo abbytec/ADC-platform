@@ -16,11 +16,13 @@ Serializadores, validadores, filtros, transformadores. Ubicados en `src/utilitie
 
 ### Services (Capa Utilidad)
 
-Funcionalidad reutilizable sin lógica de ejecución automática. Pueden ser stateful. Ubicados en `src/services/`. Pueden tener su propio `modules.json` para cargar dependencias.
+Funcionalidad reutilizable sin lógica de ejecución automática. Pueden ser stateful. Ubicados en `src/services/`. Pueden tener su propio `config.json` para cargar dependencias.
+
+**Servicios en Modo Kernel:** Algunos servicios críticos (como `ExecutionManagerService`) se ejecutan en modo kernel (`kernelMode: true` en config.json), lo que los hace disponibles globalmente y se cargan durante la inicialización del kernel.
 
 ### Apps (Capa Negocio)
 
-Lógica principal que consume Providers, Utilities y Services. Se ejecutan automáticamente. Ubicados en `src/apps/`. Cada app puede tener un `modules.json` para declarar sus módulos específicos.
+Lógica principal que consume Providers, Utilities y Services. Se ejecutan automáticamente. Ubicados en `src/apps/`. Cada app puede tener un `config.json` para declarar sus módulos específicos.
 
 ### Instancias Múltiples de Apps
 
@@ -52,11 +54,32 @@ Cada instancia recibirá su propia configuración y se ejecutará de forma indep
 
 ### Configuración de Módulos por Instancia
 
-Los archivos de configuración de instancia (e.g., `config-main.json`) también pueden contener una sección `modules`. Esta sección sigue la misma estructura que un archivo `modules.json`, permitiendo definir dependencias y configuraciones de módulos específicas para cada instancia de la aplicación.
+Los archivos de configuración de instancia (e.g., `config-main.json`) también pueden contener una sección `modules`. Esta sección permite definir dependencias y configuraciones de módulos específicas para cada instancia de la aplicación.
 
 ### Loaders (Sistema Modular)
 
-Sistema de carga de módulos con soporte para versionado semántico y múltiples lenguajes. Ubicados en `src/loaders/`.
+Sistema de carga de módulos con soporte para:
+- Versionado semántico
+- Múltiples lenguajes (TypeScript, Python)
+- Interoperabilidad cross-language via IPC (named pipes)
+
+### ExecutionManagerService (Distribución de Carga)
+
+Servicio en modo kernel que gestiona la ejecución distribuida:
+- **Pool de Workers:** Administra workers dinámicamente según la carga del sistema
+- **Monitoreo de Recursos:** Mide CPU y memoria para optimizar distribución
+- **Decorador @Distributed:** Los módulos anotados pueden ejecutarse en workers
+- **Preparado para Clusterización:** Arquitectura diseñada para soportar nodos remotos en el futuro
+
+**Uso:**
+```typescript
+@Distributed
+class MyService extends BaseService {
+  async heavyComputation() {
+    // Se ejecuta en worker si el ExecutionManager lo asigna
+  }
+}
+```
 
 ## Flujo de Carga
 
@@ -68,7 +91,7 @@ Sistema de carga de módulos con soporte para versionado semántico y múltiples
    │
    └─ 5. Cargar Apps (cada app)
       └─ App.loadModulesFromConfig()
-         ├─ Lee modules.json en el directorio de la app
+         ├─ Lee config.json en el directorio de la app
          ├─ Para cada módulo declarado:
          │  ├─ VersionResolver resuelve versión compatible
          │  ├─ LoaderManager selecciona loader por lenguaje
@@ -123,7 +146,7 @@ El sistema soporta versionado semántico con el patrón: `{moduleName}/{version}
 src/services/
 ├── JsonFileCrud/
 │   ├── index.ts                    # Versión default (1.0.0)
-│   └── modules.json                # (Opcional) Dependencias del service
+│   └── config.json                 # (Opcional) Dependencias del service
 ├── JsonFileCrud/1.0.1-ts/
 │   └── index.ts                    # Versión específica TypeScript
 ├── JsonFileCrud/2.0.0-ts/
@@ -136,7 +159,7 @@ src/services/
 
 Soportados: `1.0.0` (exacta), `^1.0.0` (caret), `~1.2.3` (tilde), `>=1.0.0`, `>1.0.0`, `<=2.0.0`, `<2.0.0`, `*`/`latest`
 
-### Declarar en modules.json (Apps)
+### Declarar en config.json (Apps)
 
 ```json
 {
@@ -149,6 +172,29 @@ Soportados: `1.0.0` (exacta), `^1.0.0` (caret), `~1.2.3` (tilde), `>=1.0.0`, `>1
 			"config": {}
 		}
 	]
+}
+```
+
+## Interoperabilidad Multi-Lenguaje
+
+ADC Platform soporta módulos en múltiples lenguajes mediante IPC (named pipes):
+
+**TypeScript ↔ Python:** Los módulos Python se comunican con TypeScript via named pipes nativos del SO.
+
+**KernelLogger:** Los módulos Python tienen acceso al logger del kernel, manteniendo logs uniformes.
+
+**Serialización:** Buffers y datos complejos se serializan automáticamente (base64 para JSON).
+
+**Ejemplo:**
+```json
+{
+  "utilities": [
+    {
+      "name": "json-file-adapter",
+      "version": "1.0.0-py",
+      "language": "python"
+    }
+  ]
 }
 ```
 
@@ -189,7 +235,7 @@ npm install lodash -w @adc-platform/user-profile
 
 ### BaseApp
 
--   Responsable de cargar sus propios módulos desde `modules.json`
+-   Responsable de cargar sus propios módulos desde `config.json`
 -   Obtiene módulos del kernel después de cargarlos
 -   Ejecuta lógica de negocio en `run()`
 -   NO declara dependencias estáticas
@@ -201,8 +247,10 @@ npm install lodash -w @adc-platform/user-profile
 -   Carga dinámicamente módulos versionados
 -   Pasa configuración al módulo
 
-## Optimizaciones de Memoria
+## Optimizaciones de Memoria y Rendimiento
 
--   Cada app carga solo los módulos que declara en `modules.json`
+-   Cada app carga solo los módulos que declara en `config.json`
 -   El Kernel mantiene un fallback global para módulos sin versionar
+-   ExecutionManagerService distribuye carga pesada a workers
 -   Menor impacto en memoria en ejecuciones con múltiples apps
+-   Preparado para clusterización futura (nodos remotos en lugar de workers)

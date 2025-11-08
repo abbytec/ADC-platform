@@ -1,7 +1,7 @@
 import { ILifecycle } from "../behaviours/ILifecycle.d.ts";
 
 /**
- * Configuración de un módulo en modules.json
+ * Configuración de un módulo en config.json
  */
 export interface IModuleConfig {
 	/** Nombre del módulo */

@@ -1,0 +1,8 @@
+{
+	"name": "@adc-platform/execution-manager-service",
+	"version": "1.0.0",
+	"type": "module",
+	"description": "Servicio en modo kernel que gestiona la ejecución distribuida de módulos",
+	"dependencies": {}
+}
+
