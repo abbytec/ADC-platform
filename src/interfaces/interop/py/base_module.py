@@ -9,6 +9,7 @@ import sys
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from ipc_client import IPCServer
+from kernel_logger import get_kernel_logger
 
 
 class BaseModule(ABC):
@@ -19,9 +20,13 @@ class BaseModule(ABC):
         self._name: Optional[str] = None
         self._version: Optional[str] = None
         self._module_type: Optional[str] = None
+        self.logger = None
 
         # Leer configuración desde variables de entorno
         self._load_from_env()
+        
+        # Crear el logger del kernel
+        self.logger = get_kernel_logger(self._name)
 
     def _load_from_env(self) -> None:
         """Carga la configuración desde variables de entorno"""
@@ -67,12 +72,12 @@ class BaseModule(ABC):
         ipc_server.set_handler(handler)
 
         # Iniciar el servidor (bloqueante)
-        print(f"[{self.name}] Iniciando servidor IPC...", file=sys.stderr)
+        self.logger.info(f"Iniciando servidor IPC...")
         ipc_server.start()
 
     def stop(self) -> None:
         """Detiene el módulo"""
-        print(f"[{self.name}] Deteniendo módulo...", file=sys.stderr)
+        self.logger.info(f"Deteniendo módulo...")
 
 
 class BaseUtility(BaseModule):

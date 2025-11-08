@@ -184,15 +184,52 @@ export class PythonLoader implements IModuleLoader {
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 
-		// Capturar salida estándar
-		pythonProcess.stdout?.on("data", (data) => {
-			Logger.info(`[Python:${moduleName}] ${data.toString().trim()}`);
-		});
+	// Helper para parsear y loguear mensajes con el nivel correcto
+	const logPythonMessage = (data: Buffer) => {
+		const message = data.toString().trim();
+		if (!message) return;
 
-		// Capturar errores
-		pythonProcess.stderr?.on("data", (data) => {
-			Logger.error(`[Python:${moduleName}] ${data.toString().trim()}`);
-		});
+		// Intentar parsear el nivel de log del formato: [NIVEL] [módulo] mensaje
+		const levelMatch = message.match(/^\[(DEBUG|INFO|OK|WARN|ERROR)\]\s+(.*)/i);
+		
+		if (levelMatch) {
+			const level = levelMatch[1].toUpperCase();
+			const rest = levelMatch[2];
+			
+			// Loguear con el nivel correcto
+			switch (level) {
+				case "DEBUG":
+					Logger.debug(`[Python:${moduleName}] ${rest}`);
+					break;
+				case "INFO":
+					Logger.info(`[Python:${moduleName}] ${rest}`);
+					break;
+				case "OK":
+					Logger.ok(`[Python:${moduleName}] ${rest}`);
+					break;
+				case "WARN":
+					Logger.warn(`[Python:${moduleName}] ${rest}`);
+					break;
+				case "ERROR":
+					Logger.error(`[Python:${moduleName}] ${rest}`);
+					break;
+				default:
+					Logger.info(`[Python:${moduleName}] ${message}`);
+			}
+		} else {
+			// Si no hay nivel explícito, loguear como info
+			Logger.info(`[Python:${moduleName}] ${message}`);
+		}
+	};
+
+	// Capturar salida estándar y de errores (ambos van a stderr desde Python)
+	pythonProcess.stdout?.on("data", (data) => {
+		logPythonMessage(data);
+	});
+
+	pythonProcess.stderr?.on("data", (data) => {
+		logPythonMessage(data);
+	});
 
 		// Manejar salida del proceso
 		pythonProcess.on("exit", (code) => {

@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 # Importar las interfaces base de ADC Platform
 from base_module import BaseUtility
 from adapters.file_adapter import IFileAdapter
+from kernel_logger import get_kernel_logger
 
 
 class JsonAdapter(IFileAdapter[Any]):
@@ -36,7 +37,8 @@ class JsonAdapter(IFileAdapter[Any]):
             json_string = json.dumps(data, indent=2, ensure_ascii=False)
             return json_string.encode("utf-8")
         except Exception as e:
-            print(f"[JsonAdapter] Error al serializar a Buffer: {e}", file=sys.stderr)
+            logger = get_kernel_logger("json-file-adapter")
+            logger.error(f"Error al serializar a Buffer: {e}")
             return b""
 
     def fromBuffer(self, buffer: bytes) -> Any:
@@ -56,21 +58,23 @@ class JsonAdapter(IFileAdapter[Any]):
         Raises:
             ValueError: Si el buffer está vacío o no es JSON válido
         """
+        logger = get_kernel_logger("json-file-adapter")
+        
         if len(buffer) == 0:
-            error_msg = "[JsonAdapter] Error: No se puede parsear un buffer vacío."
-            print(error_msg, file=sys.stderr)
+            error_msg = "Error: No se puede parsear un buffer vacío."
+            logger.error(error_msg)
             raise ValueError(error_msg)
 
         try:
             json_string = buffer.decode("utf-8")
             return json.loads(json_string)
         except json.JSONDecodeError as e:
-            error_msg = f"[JsonAdapter] Error al parsear JSON: {e}"
-            print(error_msg, file=sys.stderr)
+            error_msg = f"Error al parsear JSON: {e}"
+            logger.error(error_msg)
             raise ValueError(error_msg)
         except Exception as e:
-            error_msg = f"[JsonAdapter] Error al parsear desde Buffer: {e}"
-            print(error_msg, file=sys.stderr)
+            error_msg = f"Error al parsear desde Buffer: {e}"
+            logger.error(error_msg)
             raise ValueError(error_msg)
 
 
@@ -101,10 +105,11 @@ def main():
     Punto de entrada principal para el módulo Python.
     Inicia el servidor IPC y espera llamadas desde Node.js.
     """
-    print("[JsonAdapterUtility] Iniciando utility Python...", file=sys.stderr)
-
     # Crear la instancia del utility
     utility = JsonAdapterUtility()
+    
+    # El logger se inicializa automáticamente en BaseModule
+    utility.logger.ok("Iniciando utility Python...")
 
     # Iniciar el servidor IPC (bloqueante)
     utility.start_ipc_server()
@@ -114,9 +119,11 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n[JsonAdapterUtility] Detenido por usuario", file=sys.stderr)
+        logger = get_kernel_logger("json-file-adapter")
+        logger.info("Detenido por usuario")
         sys.exit(0)
     except Exception as e:
-        print(f"[JsonAdapterUtility] Error fatal: {e}", file=sys.stderr)
+        logger = get_kernel_logger("json-file-adapter")
+        logger.error(f"Error fatal: {e}")
         sys.exit(1)
 

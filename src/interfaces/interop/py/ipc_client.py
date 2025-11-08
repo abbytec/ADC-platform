@@ -12,6 +12,18 @@ import platform
 import base64
 from typing import Any, Callable, Dict, Optional
 
+# Importar el logger del kernel
+try:
+    from kernel_logger import get_kernel_logger
+except ImportError:
+    # Fallback si el logger no está disponible
+    class MockLogger:
+        def debug(self, msg): print(f"[DEBUG] {msg}", file=sys.stderr)
+        def info(self, msg): print(f"[INFO] {msg}", file=sys.stderr)
+        def warn(self, msg): print(f"[WARN] {msg}", file=sys.stderr)
+        def error(self, msg): print(f"[ERROR] {msg}", file=sys.stderr)
+    get_kernel_logger = lambda name: MockLogger()
+
 
 class IPCMessage:
     """Mensaje IPC para comunicación entre procesos"""
@@ -99,6 +111,8 @@ class IPCServer:
 
     def start(self) -> None:
         """Inicia el servidor IPC"""
+        logger = get_kernel_logger(self.module_name)
+        
         if not self.handler:
             raise RuntimeError("Debe establecer un handler antes de iniciar el servidor")
 
@@ -109,14 +123,14 @@ class IPCServer:
                 # Por simplicidad, aquí usamos sockets TCP local
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 # TODO: Implementar named pipes nativos de Windows con pywin32
-                print(f"[IPCServer] ADVERTENCIA: Named pipes de Windows no implementados, usando TCP", file=sys.stderr)
+                logger.warn("Named pipes de Windows no implementados, usando TCP")
                 self.socket.bind(("localhost", 0))
             else:
                 self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 self.socket.bind(self.pipe_path)
 
             self.socket.listen(5)
-            print(f"[IPCServer] Servidor iniciado en {self.pipe_path}", file=sys.stderr)
+            logger.ok(f"Servidor iniciado en {self.pipe_path}")
 
             # Bucle principal de escucha
             while True:
@@ -126,16 +140,17 @@ class IPCServer:
                 except KeyboardInterrupt:
                     break
                 except Exception as e:
-                    print(f"[IPCServer] Error aceptando cliente: {e}", file=sys.stderr)
+                    logger.error(f"Error aceptando cliente: {e}")
 
         except Exception as e:
-            print(f"[IPCServer] Error iniciando servidor: {e}", file=sys.stderr)
+            logger.error(f"Error iniciando servidor: {e}")
             raise
         finally:
             self.stop()
 
     def _handle_client(self, client_socket: socket.socket) -> None:
         """Maneja una conexión de cliente"""
+        logger = get_kernel_logger(self.module_name)
         buffer = ""
 
         try:
@@ -157,10 +172,10 @@ class IPCServer:
                         response = self._process_message(message)
                         client_socket.sendall((json.dumps(response.to_dict()) + "\n").encode("utf-8"))
                     except Exception as e:
-                        print(f"[IPCServer] Error procesando mensaje: {e}", file=sys.stderr)
+                        logger.debug(f"Error procesando mensaje: {e}")
 
         except Exception as e:
-            print(f"[IPCServer] Error manejando cliente: {e}", file=sys.stderr)
+            logger.debug(f"Error manejando cliente: {e}")
         finally:
             client_socket.close()
 
@@ -194,6 +209,8 @@ class IPCServer:
 
     def stop(self) -> None:
         """Detiene el servidor IPC"""
+        logger = get_kernel_logger(self.module_name)
+        
         if self.socket:
             self.socket.close()
             self.socket = None
@@ -205,5 +222,5 @@ class IPCServer:
             except OSError:
                 pass
 
-        print(f"[IPCServer] Servidor detenido", file=sys.stderr)
+        logger.debug("Servidor detenido")
 
