@@ -1,10 +1,10 @@
 import * as path from "node:path";
-import { BaseService } from "../BaseService.js";
-import { ILogger } from "../../interfaces/utils/ILogger.js";
-import { IProvider } from "../../interfaces/modules/IProvider.js";
-import { IStorage } from "../../interfaces/modules/providers/IStorage.js";
-import { IUtility } from "../../interfaces/modules/IUtility.js";
-import { IFileAdapter } from "../../interfaces/modules/utilities/adapters/IFIleAdapter.js";
+import { IProvider } from "../../../interfaces/modules/IProvider.js";
+import { IUtility } from "../../../interfaces/modules/IUtility.js";
+import { IStorage } from "../../../interfaces/modules/providers/IStorage.js";
+import { IFileAdapter } from "../../../interfaces/modules/utilities/adapters/IFIleAdapter.js";
+import { ILogger } from "../../../interfaces/utils/ILogger.js";
+import { BaseService } from "../../BaseService.js";
 
 /**
  * Interfaz que define las operaciones CRUD para archivos JSON
@@ -15,7 +15,7 @@ export interface IJsonFileCrud {
 	update<T>(key: string, data: T): Promise<void>;
 	delete(key: string): Promise<void>;
 	exists(key: string): Promise<boolean>;
-	list(): Promise<string[]>;
+	listFiles(subPath?: string): Promise<string[]>;
 }
 
 /**
@@ -39,7 +39,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 		}
 
 		// Guardar usando el storage y el adaptador
-		const buffer = await this.fileAdapter.toBuffer(data);
+		const buffer = this.fileAdapter.toBuffer(data);
 		await this.storage.save(filePath, buffer);
 		this.logger.logOk(`[JsonFileCrud] Archivo creado: ${key}`);
 	}
@@ -71,15 +71,15 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 		}
 
 		// Actualizar archivo
-		const buffer = await this.fileAdapter.toBuffer(data);
+		const buffer = this.fileAdapter.toBuffer(data);
 		await this.storage.save(filePath, buffer);
 		this.logger.logDebug(`[JsonFileCrud] Archivo actualizado: ${key}`);
 	}
 
 	async delete(key: string): Promise<void> {
-		// Nota: La implementación actual de FileStorage no tiene método delete
-		// Por lo tanto, esta operación es un no-op o debería extenderse IStorage
-		this.logger.logWarn(`[JsonFileCrud] Delete no soportado aún por el provider file-storage`);
+		const filePath = this.#getFilePath(key);
+		await this.storage.delete(filePath);
+		this.logger.logOk(`[JsonFileCrud] Archivo eliminado: ${key}`);
 	}
 
 	async exists(key: string): Promise<boolean> {
@@ -92,11 +92,9 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 		}
 	}
 
-	async list(): Promise<string[]> {
-		// Nota: FileStorage no proporciona operación de listado
-		// Esta funcionalidad requeriría extender IStorage
-		this.logger.logWarn(`[JsonFileCrud] List no soportado aún por el provider file-storage`);
-		return [];
+	async listFiles(subpath?: string): Promise<string[]> {
+		this.logger.logDebug(`[JsonFileCrud] Listando archivos en ${subpath || "la raíz"}`);
+		return this.storage.list(subpath);
 	}
 }
 

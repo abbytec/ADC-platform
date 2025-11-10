@@ -1,0 +1,11 @@
+{
+	"name": "mongo-provider",
+	"version": "1.0.0",
+	"description": "Proveedor de conexión a MongoDB con tolerancia a fallos",
+	"private": true,
+	"type": "module",
+	"main": "index.ts",
+	"dependencies": {
+		"mongoose": "^7.7.1"
+	}
+}

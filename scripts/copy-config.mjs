@@ -29,6 +29,6 @@ function findAndCopy(dir, patterns) {
 
 const srcPath = path.join(process.cwd(), 'src');
 
-// Copiar archivos de configuración y módulos Python
-console.log('Copying configuration files and Python modules...');
-findAndCopy(srcPath, ['.json', '.py']);
+// Copiar archivos de configuración, módulos Python y docker-compose
+console.log('Copying configuration files, Python modules and Docker files...');
+findAndCopy(srcPath, ['.json', '.py', '.yml', '.yaml']);

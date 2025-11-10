@@ -2,18 +2,20 @@
 	"failOnError": false,
 	"providers": [
 		{
-			"name": "file-storage",
+			"name": "mongo",
 			"global": true,
 			"version": "latest",
 			"language": "typescript",
 			"config": {
-				"basePath": "./temp/storage1"
+				"uri": "mongodb://admin:password@localhost:27017/adc-user-profile-mongo?authSource=admin",
+				"maxRetries": 5,
+				"retryDelay": 5000
 			}
 		}
 	],
 	"services": [
 		{
-			"name": "json-file-crud",
+			"name": "IdentityManagerService",
 			"version": "latest",
 			"language": "typescript"
 		}

@@ -1,0 +1,8 @@
+{
+	"name": "identity-manager-service",
+	"version": "1.0.0",
+	"description": "Servicio de gestión de identidades, usuarios, roles y grupos",
+	"private": true,
+	"type": "module",
+	"main": "index.ts"
+}

@@ -15,5 +15,6 @@ export abstract class BaseProvider<T> implements IProvider<T> {
 
 export enum ProviderType {
 	STORAGE_PROVIDER = "storage-provider",
+	OBJECT_PROVIDER = "object-provider",
 	QUEUE_PROVIDER = "queue-provider",
 }

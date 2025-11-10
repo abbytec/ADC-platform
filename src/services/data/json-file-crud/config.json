@@ -10,8 +10,8 @@
 	"utilities": [
 		{
 			"name": "adapters/json-file-adapter",
-			"version": "1.0.0-py",
-			"language": "python"
+			"version": "1.0.0",
+			"language": "typescript"
 		}
 	]
 }

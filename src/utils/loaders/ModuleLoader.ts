@@ -107,7 +107,7 @@ export class ModuleLoader {
 			for (const serviceConfig of modulesConfig.services) {
 				try {
 					// Clonar la configuración para poder mutarla, ya que el original está congelado
-					const mutableServiceConfig = JSON.parse(JSON.stringify(serviceConfig));
+					const mutableServiceConfig = structuredClone(serviceConfig);
 
 					// PRIMERO: Cargar los providers específicos del servicio (si los tiene)
 					// Esto evita duplicación porque los providers se cargan una sola vez en el kernel
@@ -137,7 +137,9 @@ export class ModuleLoader {
 						Logger.debug(`[ModuleLoader] Cargando ${mutableServiceConfig.utilities.length} utilities para servicio ${serviceConfig.name}`);
 						for (const utilityConfig of mutableServiceConfig.utilities) {
 							Logger.debug(`[ModuleLoader] Utility '${utilityConfig.name}' - global: ${utilityConfig.global}`);
-							if (!utilityConfig.global) {
+							if (utilityConfig.global) {
+								Logger.debug(`[ModuleLoader] Saltando utility global: ${utilityConfig.name}`);
+							} else {
 								try {
 									const utility = await this.loadUtility(utilityConfig);
 									kernel.registerUtility(utility.name, utility, utilityConfig);
@@ -153,8 +155,6 @@ export class ModuleLoader {
 									if (modulesConfig.failOnError) throw new Error(message);
 									Logger.warn(message);
 								}
-							} else {
-								Logger.debug(`[ModuleLoader] Saltando utility global: ${utilityConfig.name}`);
 							}
 						}
 					}
@@ -278,7 +278,6 @@ export class ModuleLoader {
 		if (!resolved) {
 			throw new Error(`No se pudo resolver Utility: ${config.name}@${version} (${language})`);
 		}
-
 		this.#configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
@@ -326,6 +325,7 @@ export class ModuleLoader {
 				moduleVersion: resolved.version,
 				language: language,
 			},
+			__modulePath: resolved.path, // Agregar el path real del módulo
 		};
 
 		// Cargar el módulo pasando la configuración completa (incluyendo providers/utilities)

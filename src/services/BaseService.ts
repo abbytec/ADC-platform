@@ -30,17 +30,20 @@ export abstract class BaseService<T = any> implements IService<T> {
 	 * Lógica de inicialización del service
 	 */
 	public async start(): Promise<void> {
-		const serviceDir = this.getServiceDir();
+		// Si ModuleLoader pasó el path real, usarlo; si no, calcular manualmente
+		const serviceDir = this.options?.__modulePath || this.getServiceDir();
 		const modulesConfigPath = path.join(serviceDir, "config.json");
 
-		this.logger.logDebug(`Inicializando...`);
+		this.logger.logInfo(`Inicializando ${this.name}...`);
 
 		try {
 			let baseConfig: IModulesDefinition = {};
 			try {
 				const configContent = await fs.readFile(modulesConfigPath, "utf-8");
 				baseConfig = JSON.parse(configContent);
-			} catch {}
+			} catch (e: any) {
+				this.logger.logDebug(`No se pudo leer config.json: ${e.message}`);
+			}
 
 			// Determinar qué providers usar:
 			// - Si la app proporciona providers (options.providers), usar esos
@@ -74,21 +77,23 @@ export abstract class BaseService<T = any> implements IService<T> {
 			}
 
 			// Cargar las utilities internas del servicio (del config.json)
+			// Estas utilities son globales (no limitadas a una app específica)
 			if (baseConfig.utilities && Array.isArray(baseConfig.utilities)) {
 				for (const utilityConfig of baseConfig.utilities) {
 					try {
 						const utility = await Kernel.moduleLoader.loadUtility(utilityConfig);
-						this.kernel.registerUtility(utility.name, utility, utilityConfig);
+						this.kernel.registerUtility(utility.name, utility, utilityConfig, null);
 						
 						// Si el nombre contiene "/", también registrar con el nombre base como alias
 						if (utilityConfig.name.includes("/")) {
 							const baseName = utilityConfig.name.split("/").pop()!;
-							this.kernel.registerUtility(baseName, utility, utilityConfig);
+							this.kernel.registerUtility(baseName, utility, utilityConfig, null);
 						}
-					} catch (error) {
-						const message = `Error cargando utility ${utilityConfig.name}: ${error}`;
+					} catch (error: any) {
+						const message = `Error cargando utility ${utilityConfig.name}: ${error.message || error}`;
+						this.logger.logError(message);
 						if (baseConfig.failOnError) throw new Error(message);
-						this.logger.logWarn(message);
+						else throw error; // Re-lanzar para que el servicio no se registre
 					}
 				}
 			}

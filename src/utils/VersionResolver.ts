@@ -87,9 +87,53 @@ export class VersionResolver {
 	}
 
 	/**
+	 * Busca recursivamente un módulo en subdirectorios
+	 * Retorna el primer directorio que contiene index.ts/index.js
+	 */
+	static async #findModuleRecursively(
+		searchDir: string,
+		moduleName: string,
+		depth: number = 0,
+		maxDepth: number = 3
+	): Promise<string | null> {
+		if (depth > maxDepth) return null;
+
+		try {
+			const entries = await fs.readdir(searchDir, { withFileTypes: true });
+
+			for (const entry of entries) {
+				if (!entry.isDirectory()) continue;
+				if (entry.name.startsWith(".")) continue;
+
+				const fullPath = path.join(searchDir, entry.name);
+
+				// Si el nombre del directorio coincide con el módulo, buscar en él
+				if (entry.name === moduleName) {
+					const indexFile = path.join(fullPath, `index${this.#fileExtension}`);
+					try {
+						await fs.stat(indexFile);
+						return fullPath;
+					} catch {
+						// No tiene index en este nivel, continuar
+					}
+				}
+
+				// Buscar recursivamente en subdirectorios
+				const result = await this.#findModuleRecursively(fullPath, moduleName, depth + 1, maxDepth);
+				if (result) return result;
+			}
+		} catch {
+			// Ignorar errores de lectura de directorio
+		}
+
+		return null;
+	}
+
+	/**
 	 * Busca y retorna la mejor versión disponible de un módulo
 	 * Busca directorios con patrón: {moduleName}/{version}-{language}/
 	 * o {moduleName}/index.{ext} para la versión default
+	 * También busca recursivamente en subdirectorios (ej: files/file-storage)
 	 *
 	 * @param modulesDir Directorio raíz de módulos (ej: src/services)
 	 * @param moduleName Nombre del módulo a buscar (ej: JsonFileCrud)
@@ -103,14 +147,22 @@ export class VersionResolver {
 		language: string = "typescript"
 	): Promise<{ path: string; version: string } | null> {
 		try {
-			const moduleBaseDir = path.join(modulesDir, moduleName);
+			let moduleBaseDir = path.join(modulesDir, moduleName);
 
-			// Verificar si existe el directorio del módulo
+			// Verificar si existe el directorio del módulo de forma directa
 			try {
 				await fs.stat(moduleBaseDir);
 			} catch {
-				Logger.warn(`[VersionResolver] No se encontró módulo: ${moduleName}`);
-				return null;
+				// Si no existe, buscar recursivamente en subdirectorios
+				Logger.debug(`[VersionResolver] No encontrado directamente: ${moduleName}, buscando recursivamente...`);
+				const recursiveResult = await this.#findModuleRecursively(modulesDir, moduleName);
+				if (recursiveResult) {
+					moduleBaseDir = recursiveResult;
+					Logger.debug(`[VersionResolver] Módulo encontrado recursivamente: ${moduleBaseDir}`);
+				} else {
+					Logger.warn(`[VersionResolver] No se encontró módulo: ${moduleName}`);
+					return null;
+				}
 			}
 
 			const candidates: { path: string; version: string; lang: string }[] = [];

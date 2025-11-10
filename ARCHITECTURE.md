@@ -81,16 +81,51 @@ class MyService extends BaseService {
 }
 ```
 
+### IdentityManagerService (Gestión de Identidades)
+
+Servicio en modo kernel para gestión centralizada de usuarios, roles y grupos:
+- **8 Roles Predefinidos:** SYSTEM, Admin, Network Manager, Security Manager, Data Manager, App Manager, Config Manager, User
+- **Usuario SYSTEM:** Auto-creado con credenciales aleatorias en cada arranque (solo disponible durante la sesión)
+- **Persistencia en MongoDB:** Cuando el mongo-provider está disponible (fallback a memoria en caso contrario)
+- **Seguridad:** Contraseñas hasheadas con PBKDF2 (100,000 iteraciones) y salt de 16 bytes
+- **Permisos Granulares:** Por recurso, acción y alcance (self/group/all)
+- **Roles Personalizados:** Posibilidad de crear nuevos roles con permisos específicos
+
+**Alerta de Configuración:**
+Si MongoDB no está configurado en las apps, el servicio muestra una alerta:
+```
+⚠️  MongoDB no está configurado. IdentityManagerService funcionará con datos en memoria.
+```
+
+**Ejemplo de Configuración en App:**
+```json
+{
+  "providers": [{
+    "name": "mongo",
+    "global": true,
+    "config": {
+      "uri": "mongodb://admin:password@localhost:27017/db-name"
+    }
+  }]
+}
+```
+
 ## Flujo de Carga
 
 ```
 1. Kernel.start()
-   ├─ 2. Cargar Providers (recursivo, fallback global)
-   ├─ 3. Cargar Utilities (recursivo, fallback global)
-   ├─ 4. Cargar Services (recursivo, fallback global)
+   ├─ 2. Cargar Servicios en Modo Kernel
+   │      └─ ExecutionManagerService, IdentityManagerService, etc.
    │
-   └─ 5. Cargar Apps (cada app)
-      └─ App.loadModulesFromConfig()
+   ├─ 3. Cargar Providers (recursivo, fallback global)
+   ├─ 4. Cargar Utilities (recursivo, fallback global)
+   ├─ 5. Cargar Services (recursivo, fallback global)
+   │
+   └─ 6. Cargar Apps (cada app)
+      ├─ 6a. Detectar docker-compose.yml (si existe)
+      │      └─ Ejecutar: docker-compose up -d (background)
+      │
+      └─ 6b. App.loadModulesFromConfig()
          ├─ Lee config.json en el directorio de la app
          ├─ Para cada módulo declarado:
          │  ├─ VersionResolver resuelve versión compatible
@@ -135,6 +170,32 @@ Si tienes estas instancias corriendo:
 -   `user-profile:secondary` (usando `config-secondary.json`)
 
 Y editas `config-main.json`, solo se reiniciará la instancia `user-profile:main`, manteniendo `user-profile:secondary` ejecutándose sin interrupciones.
+
+## Provisioning Automático con Docker Compose
+
+El Kernel detecta automáticamente archivos `docker-compose.yml` en las apps y los ejecuta antes de iniciar la aplicación:
+
+**Funcionalidades:**
+- Si una app contiene `docker-compose.yml`, el Kernel ejecuta `docker-compose up -d` al cargar la app
+- Los servicios se inician en background y el Kernel espera 3 segundos para estabilización
+- Si docker-compose falla o no está disponible, continúa sin error (degradación graciosa)
+- Recomendado para apps que requieren servicios como MongoDB, Redis, etc.
+
+**Ejemplo:**
+```
+src/apps/test/user-profile/
+├── index.ts
+├── default.json
+└── docker-compose.yml          # ← Se ejecuta automáticamente
+```
+
+**Antes del Arranque:**
+```
+1. Kernel detecta docker-compose.yml
+2. Ejecuta: docker-compose -f docker-compose.yml up -d
+3. Espera 3 segundos para estabilización
+4. Continúa cargando la app
+```
 
 ## Sistema de Versionado
 

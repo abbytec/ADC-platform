@@ -38,3 +38,4 @@ export default class JsonAdapterUtility extends BaseUtility<IFileAdapter<any>> {
 		return new JsonAdapter();
 	}
 }
+

@@ -1,0 +1,21 @@
+{
+	"failOnError": false,
+	"providers": [
+		{
+			"name": "file-storage",
+			"global": true,
+			"version": "latest",
+			"language": "typescript",
+			"config": {
+				"basePath": "./temp/storage-file"
+			}
+		}
+	],
+	"services": [
+		{
+			"name": "json-file-crud",
+			"version": "latest",
+			"language": "typescript"
+		}
+	]
+}

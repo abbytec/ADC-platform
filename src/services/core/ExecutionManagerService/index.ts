@@ -2,50 +2,7 @@ import * as os from "node:os";
 import { Worker } from "node:worker_threads";
 import { BaseService } from "../../BaseService.js";
 import { assignWorker } from "../../../utils/decorators/index.js";
-
-/**
- * Información de un worker en el pool
- */
-interface WorkerInfo {
-	worker: Worker;
-	id: string;
-	taskCount: number;
-	createdAt: number;
-}
-
-/**
- * Información de carga del sistema
- */
-interface SystemLoad {
-	cpuUsage: number[];
-	avgLoad: number;
-	freeMemory: number;
-	totalMemory: number;
-}
-
-/**
- * Interfaz del ExecutionManagerService
- */
-export interface IExecutionManager {
-	/**
-	 * Obtiene estadísticas actuales del sistema y workers
-	 */
-	getStats(): Promise<{
-		workers: number;
-		systemLoad: SystemLoad;
-		activeTasks: number;
-	}>;
-
-	/**
-	 * Asigna un worker óptimo a un módulo distribuido
-	 */
-	assignOptimalWorker(instance: any): Promise<void>;
-
-	/**
-	 * Libera un worker de un módulo
-	 */
-	releaseWorker(instance: any): void;
-}
+import type { WorkerInfo, SystemLoad, IExecutionManager } from "./types.js";
 
 /**
  * ExecutionManagerService - Gestiona la ejecución distribuida de módulos
@@ -80,8 +37,8 @@ export default class ExecutionManagerService extends BaseService<IExecutionManag
 	public readonly name = "ExecutionManagerService";
 
 	private workerPool: WorkerInfo[] = [];
-	private maxWorkers: number;
-	private minWorkers: number;
+	private readonly maxWorkers: number;
+	private readonly minWorkers: number;
 	private loadCheckInterval: NodeJS.Timeout | null = null;
 
 	constructor(kernel: any, options?: any) {
@@ -126,24 +83,16 @@ export default class ExecutionManagerService extends BaseService<IExecutionManag
 	}
 
 	async getInstance(): Promise<IExecutionManager> {
-		const self = this;
-
 		return {
-			async getStats() {
-				return {
-					workers: self.workerPool.length,
-					systemLoad: self.#getSystemLoad(),
-					activeTasks: self.workerPool.reduce((sum, w) => sum + w.taskCount, 0),
-				};
-			},
+			getStats: async () => ({
+				workers: this.workerPool.length,
+				systemLoad: this.#getSystemLoad(),
+				activeTasks: this.workerPool.reduce((sum, w) => sum + w.taskCount, 0),
+			}),
 
-			async assignOptimalWorker(instance: any) {
-				return self.#assignOptimalWorker(instance);
-			},
+			assignOptimalWorker: async (instance: any) => this.#assignOptimalWorker(instance),
 
-			releaseWorker(instance: any) {
-				assignWorker(instance, null);
-			},
+			releaseWorker: (instance: any) => assignWorker(instance, null),
 		};
 	}
 
@@ -277,3 +226,5 @@ export default class ExecutionManagerService extends BaseService<IExecutionManag
 	}
 }
 
+// Re-exportar tipos
+export type { WorkerInfo, SystemLoad, IExecutionManager } from "./types.js";

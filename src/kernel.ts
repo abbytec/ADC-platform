@@ -12,6 +12,7 @@ import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModule, IModuleConfig } from "./interfaces/modules/IModule.js";
 
 type ModuleType = "provider" | "utility" | "service";
+type Module = IProvider<any> | IUtility<any> | IService<any>
 
 export class Kernel {
 	#isStartingUp = true;
@@ -46,6 +47,9 @@ export class Kernel {
 
 	// Mapa de dependencias: appName -> Set<{type, uniqueKey}>
 	readonly #appModuleDependencies = new Map<string, Set<{ type: ModuleType; uniqueKey: string }>>();
+
+	// Mapa de apps con docker-compose: appName -> directorio
+	readonly #appDockerComposeMap = new Map<string, string>();
 
 	#getRegistry(moduleType: ModuleType): Map<string, IModule> {
 		return this.#moduleStore[moduleType].registry;
@@ -469,7 +473,10 @@ export class Kernel {
 		await this.#loadKernelServices();
 
 		// Solo cargar Apps (que cargarán sus propios módulos desde config.json)
-		await this.#loadLayerRecursive(this.#appsPath, this.#loadApp.bind(this), ["BaseApp.ts"]);
+		// En producción, excluir apps de test (cuando EXCLUDE_TESTS esté set)
+		const excludeTests = process.env.EXCLUDE_TESTS === "true" && !this.#isDevelopment;
+		const excludeList = excludeTests ? ["BaseApp.ts", "test"] : ["BaseApp.ts"];
+		await this.#loadLayerRecursive(this.#appsPath, this.#loadApp.bind(this), excludeList);
 
 		// Iniciar watchers para carga dinámica
 		this.#watchLayer(this.#providersPath, this.#loadAndRegisterModule.bind(this, "provider"), this.#unloadModule.bind(this, "provider"));
@@ -493,7 +500,6 @@ export class Kernel {
 			const sCount = new Set(this.#moduleStore.service.registry.values()).size;
 			this.#logger.logInfo(`Providers: ${pCount} - Utilities: ${uCount} - Services: ${sCount}`);
 
-			// TODO 2 resuelto: Muestra un resumen del estado del kernel (en modo debug)
 			const kernelState = {
 				apps: Array.from(this.#appsRegistry.keys()),
 				providers: {
@@ -551,6 +557,20 @@ export class Kernel {
 			try {
 				this.#logger.logDebug(`Deteniendo App ${name}`);
 				await instance.stop?.();
+
+				// Extraer el nombre base de la app (antes del primer ':')
+				const appBaseName = name.split(":")[0];
+
+				// Detener docker-compose si existe para esta app
+				if (this.#appDockerComposeMap.has(appBaseName)) {
+					const appDir = this.#appDockerComposeMap.get(appBaseName)!;
+					try {
+						await this.#stopDockerCompose(appDir);
+						this.#appDockerComposeMap.delete(appBaseName);
+					} catch (e) {
+						this.#logger.logWarn(`Error deteniendo Docker para App ${appBaseName}: ${e}`);
+					}
+				}
 			} catch (e) {
 				this.#logger.logError(`Error deteniendo App ${name}: ${e}`);
 			}
@@ -607,8 +627,8 @@ export class Kernel {
 	async #loadAndRegisterSpecificModule(
 		moduleType: ModuleType,
 		config: IModuleConfig
-	): Promise<IProvider<any> | IUtility<any> | IService<any>> {
-		let module: IProvider<any> | IUtility<any> | IService<any>;
+	): Promise<Module> {
+		let module: Module;
 
 		switch (moduleType) {
 			case "provider": {
@@ -743,14 +763,109 @@ export class Kernel {
 		}
 	}
 
+	/**
+	 * Ejecuta docker-compose.yml si existe en el directorio de la app
+	 */
+	async #startDockerCompose(appDir: string, appName: string): Promise<void> {
+		const dockerComposeFile = path.join(appDir, "docker-compose.yml");
+		try {
+			await fs.stat(dockerComposeFile);
+			
+			// Archivo existe, ejecutar docker-compose up -d
+			this.#logger.logInfo(`Iniciando servicios Docker para app en ${appDir}...`);
+			
+			const { spawn } = await import("node:child_process");
+			const docker = spawn("docker-compose", ["-f", dockerComposeFile, "up", "-d"], {
+				cwd: appDir,
+				stdio: "pipe",
+			});
+
+			return new Promise((resolve, reject) => {
+				let output = "";
+				docker.stdout?.on("data", (data) => {
+					output += data.toString();
+				});
+				docker.stderr?.on("data", (data) => {
+					output += data.toString();
+				});
+				docker.on("close", (code) => {
+					if (code === 0) {
+						this.#logger.logOk("Servicios Docker iniciados");
+						// Registrar que esta app tiene docker-compose
+						this.#appDockerComposeMap.set(appName, appDir);
+						// Esperar a que los servicios estén listos
+						setTimeout(() => resolve(), 3000);
+					} else {
+						this.#logger.logWarn(`docker-compose falló con código ${code}`);
+						reject(new Error(`docker-compose exit code: ${code}`));
+					}
+				});
+			});
+		} catch (error: any) {
+			if (error.code !== "ENOENT") {
+				this.#logger.logWarn(`No se pudo ejecutar docker-compose: ${error.message}`);
+			}
+			// Si no existe el archivo, simplemente continuar
+		}
+	}
+
+	/**
+	 * Detiene docker-compose.yml en el directorio de la app
+	 */
+	async #stopDockerCompose(appDir: string): Promise<void> {
+		const dockerComposeFile = path.join(appDir, "docker-compose.yml");
+		try {
+			await fs.stat(dockerComposeFile);
+			
+			this.#logger.logInfo(`Deteniendo servicios Docker para app en ${appDir}...`);
+			
+			const { spawn } = await import("node:child_process");
+			const docker = spawn("docker-compose", ["-f", dockerComposeFile, "down"], {
+				cwd: appDir,
+				stdio: "pipe",
+			});
+
+			return new Promise((resolve, reject) => {
+				let output = "";
+				docker.stdout?.on("data", (data) => {
+					output += data.toString();
+				});
+				docker.stderr?.on("data", (data) => {
+					output += data.toString();
+				});
+				docker.on("close", (code) => {
+					if (code === 0) {
+						this.#logger.logOk("Servicios Docker detenidos");
+						resolve();
+					} else {
+						this.#logger.logWarn(`docker-compose down falló con código ${code}`);
+						reject(new Error(`docker-compose exit code: ${code}`));
+					}
+				});
+			});
+		} catch (error: any) {
+			if (error.code !== "ENOENT") {
+				this.#logger.logWarn(`No se pudo detener docker-compose: ${error.message}`);
+			}
+			// Si no existe el archivo, simplemente continuar
+		}
+	}
+
 	async #loadApp(filePath: string): Promise<void> {
 		try {
 			const module = await import(`${filePath}?v=${Date.now()}`);
 			const AppClass = module.default;
 			if (!AppClass) return;
 
-			const appDir = path.dirname(filePath);
-			const appName = path.basename(appDir);
+		const appDir = path.dirname(filePath);
+		const appName = path.basename(appDir);
+
+		// Ejecutar docker-compose si existe
+		try {
+			await this.#startDockerCompose(appDir, appName);
+		} catch {
+			this.#logger.logDebug(`docker-compose no disponible o no configurado para ${appName}`);
+		}
 
 			const configDirs = [appDir, path.join(appDir, "configs")];
 			const allConfigFiles: string[] = [];
@@ -919,7 +1034,7 @@ export class Kernel {
 		const uniqueKey = fileMap.get(filePath);
 		if (uniqueKey) {
 			const registry = this.#getRegistry(moduleType);
-			const module = registry.get(uniqueKey) as IProvider<any> | IUtility<any> | IService<any>;
+			const module = registry.get(uniqueKey) as Module;
 			if (module) {
 				const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
 				this.#logger.logDebug(`Removiendo ${capitalizedModuleType}: ${module.name}`);
