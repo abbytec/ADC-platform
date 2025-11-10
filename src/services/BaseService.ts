@@ -76,10 +76,13 @@ export abstract class BaseService<T = any> implements IService<T> {
 				}
 			}
 
-			// Cargar las utilities internas del servicio (del config.json)
+			// Cargar las utilities del servicio
+			// Prioridad: utilities de la app (options) > utilities del config.json del servicio
 			// Estas utilities son globales (no limitadas a una app específica)
-			if (baseConfig.utilities && Array.isArray(baseConfig.utilities)) {
-				for (const utilityConfig of baseConfig.utilities) {
+			const utilitiesToLoad = this.options?.utilities || baseConfig.utilities || [];
+			
+			if (utilitiesToLoad && Array.isArray(utilitiesToLoad)) {
+				for (const utilityConfig of utilitiesToLoad) {
 					try {
 						const utility = await Kernel.moduleLoader.loadUtility(utilityConfig);
 						this.kernel.registerUtility(utility.name, utility, utilityConfig, null);

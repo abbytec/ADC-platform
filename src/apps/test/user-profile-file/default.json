@@ -11,11 +11,26 @@
 			}
 		}
 	],
+	"utilities": [
+		{
+			"name": "adapters/json-file-adapter",
+			"version": "1.0.0",
+			"language": "python",
+			"global": true
+		}
+	],
 	"services": [
 		{
 			"name": "json-file-crud",
 			"version": "latest",
-			"language": "typescript"
+			"language": "typescript",
+			"utilities": [
+				{
+					"name": "adapters/json-file-adapter",
+					"version": "1.0.0",
+					"language": "python"
+				}
+			]
 		}
 	]
 }

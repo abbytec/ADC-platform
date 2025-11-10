@@ -39,7 +39,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 		}
 
 		// Guardar usando el storage y el adaptador
-		const buffer = this.fileAdapter.toBuffer(data);
+		const buffer = await this.fileAdapter.toBuffer(data);
 		await this.storage.save(filePath, buffer);
 		this.logger.logOk(`[JsonFileCrud] Archivo creado: ${key}`);
 	}
@@ -71,7 +71,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 		}
 
 		// Actualizar archivo
-		const buffer = this.fileAdapter.toBuffer(data);
+		const buffer = await this.fileAdapter.toBuffer(data);
 		await this.storage.save(filePath, buffer);
 		this.logger.logDebug(`[JsonFileCrud] Archivo actualizado: ${key}`);
 	}
