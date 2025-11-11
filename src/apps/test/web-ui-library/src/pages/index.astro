@@ -1,0 +1,93 @@
+---
+import Layout from "../components/Layout.astro";
+import Card from "../components/Card.astro";
+import PrimaryButton from "../components/PrimaryButton";
+---
+
+<Layout title="UI Library - ADC Platform">
+	<div class="container">
+		<h2>Librería de Componentes ADC</h2>
+		<p class="intro">
+			Componentes reutilizables para construir interfaces consistentes en la plataforma ADC.
+		</p>
+
+		<section class="components-showcase">
+			<Card title="PrimaryButton">
+				<p>Botón principal del sistema de diseño.</p>
+				<div class="button-examples">
+					<PrimaryButton client:load>
+						Botón Normal
+					</PrimaryButton>
+					<PrimaryButton client:load disabled>
+						Botón Deshabilitado
+					</PrimaryButton>
+				</div>
+			</Card>
+
+			<Card title="Card">
+				<p>Contenedor para agrupar contenido relacionado.</p>
+				<p>Este componente ya está siendo usado para mostrar los ejemplos.</p>
+			</Card>
+
+			<Card title="Layout">
+				<p>Layout principal con header, main y footer.</p>
+				<p>Proporciona estructura consistente para todas las páginas.</p>
+			</Card>
+		</section>
+
+		<section class="usage">
+			<Card title="Cómo usar">
+				<pre><code>{`import { PrimaryButton } from 'ui-library';
+
+<PrimaryButton onClick={() => alert('Clicked!')}>
+  Mi Botón
+</PrimaryButton>`}</code></pre>
+			</Card>
+		</section>
+	</div>
+</Layout>
+
+<style>
+	.container {
+		max-width: 900px;
+		margin: 0 auto;
+	}
+
+	h2 {
+		color: #111827;
+		font-size: 2rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.intro {
+		color: #6b7280;
+		font-size: 1.125rem;
+		margin-bottom: 2rem;
+	}
+
+	.components-showcase {
+		display: grid;
+		gap: 1.5rem;
+		margin-bottom: 2rem;
+	}
+
+	.button-examples {
+		display: flex;
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+
+	.usage pre {
+		background: #f3f4f6;
+		padding: 1rem;
+		border-radius: 0.375rem;
+		overflow-x: auto;
+	}
+
+	.usage code {
+		font-family: "Courier New", Courier, monospace;
+		font-size: 0.875rem;
+		color: #111827;
+	}
+</style>
+

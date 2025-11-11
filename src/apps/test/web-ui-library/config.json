@@ -1,7 +1,7 @@
 {
 	"uiModule": {
 		"name": "ui-library",
-		"framework": "astro",
+		"framework": "vite",
 		"outputDir": "dist-ui",
 		"sharedLibs": ["react"]
 	}

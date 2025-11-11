@@ -1,0 +1,10 @@
+{
+	"name": "@adc-platform/ui-federation-service",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"astro": "^4.0.0"
+	}
+}
+

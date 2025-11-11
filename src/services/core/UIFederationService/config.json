@@ -1,0 +1,14 @@
+{
+	"kernelMode": true,
+	"global": true,
+	"config": {
+		"port": 3000,
+		"astroDefaults": {
+			"output": "static",
+			"build": {
+				"format": "file"
+			}
+		}
+	}
+}
+

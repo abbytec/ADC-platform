@@ -1,0 +1,11 @@
+{
+	"library": "vue",
+	"version": "3.3.0",
+	"importMapKeys": {
+		"vue": "/shared/vue/index.js",
+		"vue/": "/shared/vue/"
+	},
+	"cdnSource": "https://esm.sh",
+	"useLocal": false
+}
+

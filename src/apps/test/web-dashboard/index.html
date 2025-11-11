@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - ADC Platform</title>
+    
+    <!-- Import map cargado desde el servidor -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.3.1",
+            "react-dom": "https://esm.sh/react-dom@18.3.1",
+            "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+            "@ui-library/": "/ui/ui-library/",
+            "@dashboard/": "/ui/dashboard/"
+        }
+    }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f5f5f5;
+        }
+
+        #root {
+            min-height: 100vh;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="loading">Cargando dashboard...</div>
+    </div>
+
+    <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
+

@@ -1,7 +1,7 @@
 {
 	"uiModule": {
 		"name": "dashboard",
-		"framework": "astro",
+		"framework": "vite",
 		"outputDir": "dist-ui",
 		"routes": [
 			{ "path": "/", "page": "index" },
@@ -15,7 +15,7 @@
 			"version": "latest",
 			"language": "typescript",
 			"config": {
-				"uri": "mongodb://admin:password@localhost:27017/adc-dashboard?authSource=admin",
+				"uri": "mongodb://admin:password@localhost:27018/adc-dashboard?authSource=admin",
 				"maxRetries": 5,
 				"retryDelay": 5000
 			}
