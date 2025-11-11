@@ -1,4 +1,5 @@
 {
+	"disabled": true,
 	"PROFILE_KEY": "main_user_profile",
 	"services": [
 		{

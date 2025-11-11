@@ -1,0 +1,32 @@
+{
+	"uiModule": {
+		"name": "dashboard",
+		"framework": "astro",
+		"outputDir": "dist-ui",
+		"routes": [
+			{ "path": "/", "page": "index" },
+			{ "path": "/users", "page": "users" }
+		],
+		"sharedLibs": ["react"]
+	},
+	"providers": [
+		{
+			"name": "mongo",
+			"version": "latest",
+			"language": "typescript",
+			"config": {
+				"uri": "mongodb://admin:password@localhost:27017/adc-dashboard?authSource=admin",
+				"maxRetries": 5,
+				"retryDelay": 5000
+			}
+		}
+	],
+	"services": [
+		{
+			"name": "IdentityManagerService",
+			"version": "latest",
+			"language": "typescript"
+		}
+	]
+}
+

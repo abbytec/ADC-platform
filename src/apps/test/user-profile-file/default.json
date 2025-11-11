@@ -1,4 +1,5 @@
 {
+	"disabled": true,
 	"failOnError": false,
 	"providers": [
 		{

@@ -81,6 +81,7 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 	private lastError: string | undefined;
 	private reconnectTimer: NodeJS.Timeout | null = null;
 	private initialized = false;
+	private isDisconnecting = false;
 
 	constructor(options?: any) {
 		super();
@@ -180,7 +181,8 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 
 		this.connection.on("disconnected", () => {
 			Logger.warn(`[MongoProvider] Desconectado de MongoDB`);
-			if (this.config.autoReconnect) {
+
+			if (this.config.autoReconnect && !this.isDisconnecting) {
 				this.#scheduleReconnect();
 			}
 		});
@@ -294,6 +296,7 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 	}
 
 	async stop(): Promise<void> {
+		this.isDisconnecting = true;
 		await this.disconnect();
 	}
 }

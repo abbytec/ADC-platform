@@ -490,7 +490,7 @@ export class Kernel {
 		setTimeout(() => {
 			this.#isStartingUp = false;
 			this.#logger.logInfo("HMR está activo.");
-		}, 5000);
+		}, 10000);
 
 		setInterval(() => {
 			// Contar instancias únicas (no entradas en el registry)
@@ -775,7 +775,7 @@ export class Kernel {
 			this.#logger.logInfo(`Iniciando servicios Docker para app en ${appDir}...`);
 			
 			const { spawn } = await import("node:child_process");
-			const docker = spawn("docker-compose", ["-f", dockerComposeFile, "up", "-d"], {
+			const docker = spawn("docker", ["compose", "-f", dockerComposeFile, "up", "-d"], {
 				cwd: appDir,
 				stdio: "pipe",
 			});
@@ -820,7 +820,7 @@ export class Kernel {
 			this.#logger.logInfo(`Deteniendo servicios Docker para app en ${appDir}...`);
 			
 			const { spawn } = await import("node:child_process");
-			const docker = spawn("docker-compose", ["-f", dockerComposeFile, "down"], {
+			const docker = spawn("docker", ["compose", "-f", dockerComposeFile, "down"], {
 				cwd: appDir,
 				stdio: "pipe",
 			});
@@ -860,6 +860,20 @@ export class Kernel {
 		const appDir = path.dirname(filePath);
 		const appName = path.basename(appDir);
 
+		// Verificar si la app está deshabilitada en default.json
+		try {
+			const defaultConfigPath = path.join(appDir, "default.json");
+			const defaultConfigContent = await fs.readFile(defaultConfigPath, "utf-8");
+			const defaultConfig = JSON.parse(defaultConfigContent);
+			
+			if (defaultConfig.disabled === true) {
+				this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
+				return; // No continuar con esta app
+			}
+		} catch (error) {
+			// No hay default.json o no se puede leer, continuar normalmente
+		}
+
 		// Ejecutar docker-compose si existe
 		try {
 			await this.#startDockerCompose(appDir, appName);
@@ -885,20 +899,27 @@ export class Kernel {
 				}
 			}
 
-			if (allConfigFiles.length > 0) {
-				for (const configPath of allConfigFiles) {
-					const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
-					const configFile = path.basename(configPath);
-					const configName = this.#getConfigName(configFile);
-					const instanceName = `${appName}:${configName}`;
-
-					const app: IApp = new AppClass(this, instanceName, config, filePath);
-					await this.#initializeAndRunApp(app, filePath, instanceName, configPath);
+		if (allConfigFiles.length > 0) {
+			for (const configPath of allConfigFiles) {
+				const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
+				
+				// Check if app is disabled
+				if (config.disabled === true) {
+					this.#logger.logDebug(`App ${appName} está deshabilitada (config: ${path.basename(configPath)})`);
+					continue;
 				}
-			} else {
-				const app: IApp = new AppClass(this, appName, undefined, filePath);
-				await this.#initializeAndRunApp(app, filePath, appName);
+				
+				const configFile = path.basename(configPath);
+				const configName = this.#getConfigName(configFile);
+				const instanceName = `${appName}:${configName}`;
+
+				const app: IApp = new AppClass(this, instanceName, config, filePath);
+				await this.#initializeAndRunApp(app, filePath, instanceName, configPath);
 			}
+		} else {
+			const app: IApp = new AppClass(this, appName, undefined, filePath);
+			await this.#initializeAndRunApp(app, filePath, appName);
+		}
 		} catch (e: any) {
 			if (e.code === "ERR_MODULE_NOT_FOUND") {
 				this.#logger.logError(

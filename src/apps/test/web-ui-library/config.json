@@ -1,0 +1,9 @@
+{
+	"uiModule": {
+		"name": "ui-library",
+		"framework": "astro",
+		"outputDir": "dist-ui",
+		"sharedLibs": ["react"]
+	}
+}
+
