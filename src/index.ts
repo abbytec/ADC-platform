@@ -6,6 +6,23 @@ async function main() {
 	const kernel = new Kernel();
 	await kernel.start();
 
+	// Reinyectar import maps ahora que todos los módulos UI están cargados
+	try {
+		const uiFederation = kernel.getService<any>("UIFederationService");
+		if (uiFederation) {
+			const uiFederationInstance = await uiFederation.getInstance();
+			if (uiFederationInstance && typeof uiFederationInstance.refreshAllImportMaps === 'function') {
+				await uiFederationInstance.refreshAllImportMaps();
+			} else {
+				Logger.warn("refreshAllImportMaps no está disponible en UIFederationService");
+			}
+		} else {
+			Logger.warn("UIFederationService no encontrado");
+		}
+	} catch (error: any) {
+		Logger.error(`Error reinyectando import maps: ${error.message}`);
+	}
+
 	// --- Manejador de Ctrl+C para cierre ordenado ---
 	process.on("SIGINT", async () => {
 		await kernel.stop();

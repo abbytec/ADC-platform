@@ -4,14 +4,18 @@ import { IApp } from "../interfaces/modules/IApp.js";
 import { Logger } from "../utils/logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
+import type { UIModuleConfig } from "../interfaces/modules/IUIModule.js";
+import type { IUIFederationService } from "../services/core/UIFederationService/types.js";
 
 /**
  * Clase base abstracta para todas las Apps.
  * Maneja la inyección del Kernel y la carga de módulos desde archivos de configuración.
+ * Soporta apps UI que se registran automáticamente en UIFederationService.
  */
 export abstract class BaseApp implements IApp {
 	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
 	protected readonly appDir: string;
+	private uiModuleRegistered = false;
 
 	constructor(
 		protected readonly kernel: Kernel,
@@ -35,7 +39,8 @@ export abstract class BaseApp implements IApp {
 	 * Lógica de inicialización.
 	 */
 	public async start() {
-		/* noop */
+		// Si la app tiene configuración UI, registrarla en UIFederationService
+		await this.#registerUIModuleIfNeeded();
 	}
 
 	/**
@@ -47,7 +52,16 @@ export abstract class BaseApp implements IApp {
 	 * Lógica de detención.
 	 */
 	public async stop() {
-		/* noop */
+		// Desregistrar módulo UI si estaba registrado
+		if (this.uiModuleRegistered && this.config?.uiModule) {
+			try {
+				const uiFederation = this.kernel.getService<any>("UIFederationService");
+				const uiFederationInstance = await uiFederation.getInstance() as IUIFederationService;
+				await uiFederationInstance.unregisterUIModule(this.config.uiModule.name);
+			} catch (err) {
+				this.logger.logDebug("No se pudo desregistrar módulo UI", err);
+			}
+		}
 	}
 
 	/**
@@ -116,6 +130,41 @@ export abstract class BaseApp implements IApp {
 		} catch (error) {
 			this.logger.logError(`Error procesando la configuración de módulos: ${error}`);
 			throw error;
+		}
+	}
+
+	/**
+	 * Registra la app como módulo UI si tiene configuración uiModule
+	 */
+	async #registerUIModuleIfNeeded(): Promise<void> {
+		if (!this.config?.uiModule) {
+			return; // No es una app UI
+		}
+
+		try {
+			const uiFederation = this.kernel.getService<any>("UIFederationService");
+			const uiFederationInstance = await uiFederation.getInstance() as IUIFederationService;
+
+			const uiConfig: UIModuleConfig = this.config.uiModule;
+
+			// Extraer el nombre limpio (sin prefijo "web-")
+			// Si el nombre de la app es "web-ui-library", el nombre del módulo UI debería ser "ui-library"
+			const appBaseName = this.name.split(":")[0]; // Remover sufijo de instancia
+			const cleanModuleName = uiConfig.name || (appBaseName.startsWith("web-") 
+				? appBaseName.substring(4) 
+				: appBaseName);
+
+			// Actualizar el nombre en la config
+			uiConfig.name = cleanModuleName;
+
+			this.logger.logInfo(`Registrando módulo UI: ${cleanModuleName}`);
+			await uiFederationInstance.registerUIModule(cleanModuleName, this.appDir, uiConfig);
+			this.uiModuleRegistered = true;
+
+			this.logger.logOk(`Módulo UI ${cleanModuleName} registrado exitosamente`);
+		} catch (error: any) {
+			this.logger.logWarn(`No se pudo registrar como módulo UI: ${error.message}`);
+			// No lanzar error - la app puede funcionar sin UIFederationService
 		}
 	}
 }

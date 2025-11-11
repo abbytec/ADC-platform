@@ -1,0 +1,15 @@
+{
+	"uiModule": {
+		"name": "users-management",
+		"framework": "astro",
+		"outputDir": "dist-ui",
+		"devPort": 3001,
+		"routes": [
+			{ "path": "/users", "page": "index" },
+			{ "path": "/users/list", "page": "list" },
+			{ "path": "/users/:id", "page": "[id]" }
+		],
+		"sharedLibs": ["react"]
+	}
+}
+

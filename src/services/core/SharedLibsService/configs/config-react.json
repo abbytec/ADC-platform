@@ -1,0 +1,13 @@
+{
+	"library": "react",
+	"version": "18.2.0",
+	"importMapKeys": {
+		"react": "/shared/react/index.js",
+		"react-dom": "/shared/react-dom/index.js",
+		"react/": "/shared/react/",
+		"react-dom/": "/shared/react-dom/"
+	},
+	"cdnSource": "https://esm.sh",
+	"useLocal": false
+}
+
