@@ -9,6 +9,9 @@
 			{ "path": "/users/list", "page": "list" },
 			{ "path": "/users/:id", "page": "[id]" }
 		],
+		"astroConfig": {
+			"base": "/users-management"
+		},
 		"sharedLibs": ["react"]
 	}
 }

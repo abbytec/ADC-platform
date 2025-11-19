@@ -7,11 +7,13 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Auto-discovery de componentes
+// Auto-discovery de componentes y utilidades
 function discoverComponents() {
   const componentsDir = path.resolve(__dirname, 'src/components');
+  const utilsDir = path.resolve(__dirname, 'src/utils');
   const entries: Record<string, string> = {};
   
+  // Escanear componentes
   if (fs.existsSync(componentsDir)) {
     const files = fs.readdirSync(componentsDir);
     
@@ -23,8 +25,21 @@ function discoverComponents() {
       }
     }
   }
+
+  // Escanear utilidades
+  if (fs.existsSync(utilsDir)) {
+    const files = fs.readdirSync(utilsDir);
+    
+    for (const file of files) {
+      const ext = path.extname(file);
+      if (['.tsx', '.ts', '.jsx', '.js'].includes(ext)) {
+        const componentName = path.basename(file, ext);
+        entries[`utils/${componentName}`] = path.resolve(utilsDir, file);
+      }
+    }
+  }
   
-  console.log(`🔍 Componentes descubiertos: ${Object.keys(entries).length}`);
+  console.log(`🔍 Módulos descubiertos: ${Object.keys(entries).length}`);
   Object.keys(entries).forEach(key => console.log(`   - ${key}`));
   
   return entries;
@@ -32,7 +47,7 @@ function discoverComponents() {
 
 export default defineConfig({
   plugins: [react()],
-  base: '/ui/ui-library/',
+  base: '/ui-library/',
   define: {
     // Definir process.env para evitar errores en el browser
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),

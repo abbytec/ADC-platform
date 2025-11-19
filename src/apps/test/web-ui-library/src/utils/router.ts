@@ -1,5 +1,3 @@
-import { createElement } from 'react';
-
 export interface RouteConfig {
 	path: string;
 	component: () => Promise<any>;
@@ -13,9 +11,11 @@ export class Router {
 
 	constructor() {
 		// Escuchar cambios en la URL
-		window.addEventListener('popstate', () => {
-			this.navigate(window.location.pathname);
-		});
+		if (typeof window !== 'undefined') {
+			window.addEventListener('popstate', () => {
+				this.navigate(window.location.pathname);
+			});
+		}
 	}
 
 	addRoute(config: RouteConfig) {
@@ -23,7 +23,9 @@ export class Router {
 	}
 
 	async navigate(path: string) {
-		this.currentRoute = path;
+		// Normalizar path para que funcione con o sin trailing slash
+		const normalizedPath = path.endsWith('/') && path.length > 1 ? path.slice(0, -1) : path;
+		this.currentRoute = normalizedPath;
 		
 		// Notificar cambio de ruta
 		if (this.onRouteChange) {
@@ -32,11 +34,13 @@ export class Router {
 
 		// Buscar ruta que coincida
 		const route = this.routes.find(r => {
-			if (r.path === path) return true;
+			const normalizedRoutePath = r.path.endsWith('/') && r.path.length > 1 ? r.path.slice(0, -1) : r.path;
+			
+			if (normalizedRoutePath === normalizedPath) return true;
 			// Match con parámetros (/users/:id)
-			const pattern = r.path.replace(/:[^/]+/g, '([^/]+)');
+			const pattern = normalizedRoutePath.replace(/:[^/]+/g, '([^/]+)');
 			const regex = new RegExp(`^${pattern}$`);
-			return regex.test(path);
+			return regex.test(normalizedPath);
 		});
 
 		if (route && route.component) {
@@ -57,7 +61,10 @@ export class Router {
 	}
 
 	getCurrentRoute() {
-		return this.currentRoute || window.location.pathname;
+		if (typeof window !== 'undefined') {
+			return this.currentRoute || window.location.pathname;
+		}
+		return '/';
 	}
 }
 
