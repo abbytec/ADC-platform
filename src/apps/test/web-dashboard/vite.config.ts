@@ -32,7 +32,7 @@ function discoverComponents() {
 
 export default defineConfig({
   plugins: [react()],
-  base: '/ui/dashboard/',
+  base: '/dashboard/',
   define: {
     // Definir process.env para evitar errores en el browser
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),

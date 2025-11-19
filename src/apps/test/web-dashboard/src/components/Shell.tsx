@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Container } from '@ui-library/components/Container.js';
 import { Header } from '@ui-library/components/Header.js';
+import { router } from '@ui-library/utils/router.js';
 import { Navigation } from './Navigation.tsx';
-import { router } from '../router';
 
 interface ShellProps {
 	children: React.ReactNode;
@@ -18,14 +18,14 @@ export function Shell({ children }: ShellProps) {
 	}, []);
 
 	const navLinks = [
-		{ href: '/ui/dashboard/', label: 'Inicio' },
-		{ href: '/users', label: 'Usuarios' },
-		{ href: '/settings', label: 'Configuración' }
+		{ href: '/dashboard/', label: 'Inicio' },
+		{ href: '/dashboard/users', label: 'Usuarios' },
+		{ href: '/dashboard/config', label: 'Configuración' }
 	];
 
 	const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
 		// Si es una ruta interna, usar el router
-		if (href.startsWith('/') && !href.startsWith('/ui/')) {
+		if (href.startsWith('/dashboard')) {
 			e.preventDefault();
 			router.push(href);
 		}

@@ -8,7 +8,7 @@ import { StatCard } from '@ui-library/components/StatCard.js';
 // Importar componentes locales
 import { StatsGrid } from './components/StatsGrid.tsx';
 import { Shell } from './components/Shell.tsx';
-import { router } from './router';
+import { router } from '@ui-library/utils/router.js';
 
 // Página de inicio/dashboard
 function HomePage() {
@@ -64,6 +64,8 @@ function HomePage() {
 	);
 }
 
+import { ConfigPage } from './pages/Config.tsx';
+
 // Aplicación principal con Shell y Router
 function App() {
 	const [currentComponent, setCurrentComponent] = useState<any>(null);
@@ -71,23 +73,29 @@ function App() {
 	useEffect(() => {
 		// Configurar rutas
 		router.addRoute({
-			path: '/ui/dashboard/',
+			path: '/dashboard/',
 			component: async () => HomePage,
 			element: HomePage
 		});
 
 		router.addRoute({
-			path: '/users',
+			path: '/dashboard/users',
 			component: async () => {
 				// Cargar sub-app de usuarios (iframe o fetch)
 				return () => createElement('div', null,
 					createElement('h2', null, 'Gestión de Usuarios'),
 					createElement('iframe', {
-						src: '/users',
+						src: '/users-management',
 						style: { width: '100%', height: '80vh', border: 'none' }
 					})
 				);
 			}
+		});
+
+		router.addRoute({
+			path: '/dashboard/config',
+			component: async () => ConfigPage,
+			element: ConfigPage
 		});
 
 		// Navegar a la ruta inicial

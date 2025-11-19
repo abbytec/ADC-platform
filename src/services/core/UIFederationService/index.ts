@@ -151,7 +151,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 			// Registrar archivos estáticos en el servidor HTTP
 			if (this.httpProvider && module.outputPath) {
-				const urlPath = `/ui/${name}`;
+				const urlPath = `/${name}`;
 				this.httpProvider.serveStatic(urlPath, module.outputPath);
 				this.logger.logOk(`Módulo UI ${name} servido en ${urlPath}`);
 			}
@@ -367,10 +367,10 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			const framework = module.config.framework || "astro";
 			
 			if (framework === "vite") {
-				imports[`@${name}/`] = `/ui/${name}/`;
+				imports[`@${name}/`] = `/${name}/`;
 			} else {
-				imports[`@${name}`] = `/ui/${name}/index.html`;
-				imports[`@${name}/`] = `/ui/${name}/`;
+				imports[`@${name}`] = `/${name}/index.html`;
+				imports[`@${name}/`] = `/${name}/`;
 			}
 		}
 
