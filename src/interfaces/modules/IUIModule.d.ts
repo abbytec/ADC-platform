@@ -18,6 +18,10 @@ export interface UIModuleConfig {
 	framework?: string;
 	/** Directorio de salida para el build */
 	outputDir: string;
+	/** Si true, genera index.html y entry point para ejecución standalone */
+	standalone?: boolean;
+	/** Puerto para dev server (solo para apps React/Vue en desarrollo) */
+	devPort?: number;
 	/** Rutas UI que la app expone */
 	routes?: UIRouteConfig[];
 	/** Librerías compartidas que este módulo usa (ej: ["react", "vue"]) */

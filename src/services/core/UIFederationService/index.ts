@@ -1,11 +1,24 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { spawn } from "node:child_process";
+import { build, InlineConfig, createServer, ViteDevServer } from "vite";
 import { BaseService } from "../../BaseService.js";
 import { Kernel } from "../../../kernel.js";
 import type { IUIFederationService, RegisteredUIModule } from "./types.js";
 import type { ImportMap, UIModuleConfig } from "../../../interfaces/modules/IUIModule.js";
 import type { IHttpServerProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
+
+// Mapa de plugins soportados
+const FRAMEWORK_PLUGINS = {
+	react: {
+		import: "import react from '@vitejs/plugin-react';",
+		plugin: "react()"
+	},
+	vue: {
+		import: "import vue from '@vitejs/plugin-vue';",
+		plugin: "vue()"
+	}
+};
 
 /**
  * UIFederationService - Gestiona la federación de módulos UI
@@ -36,6 +49,8 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	public readonly name = "UIFederationService";
 
 	private readonly registeredModules = new Map<string, RegisteredUIModule>();
+	private devServers = new Map<string, ViteDevServer>();
+	private watchBuilds = new Map<string, any>(); // Para guardar referencias a builds en watch mode
 	private importMap: ImportMap = { imports: {} };
 	private httpProvider: IHttpServerProvider | null = null;
 	private readonly uiOutputBaseDir: string;
@@ -69,12 +84,12 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			};
 			
 			// Cargar el provider directamente (será reutilizado si ya existe)
-			const provider = await Kernel.moduleLoader.loadProvider(providerConfig);
-			this.kernel.registerProvider(provider.name, provider, provider.type, providerConfig, null);
+				const provider = await Kernel.moduleLoader.loadProvider(providerConfig);
+				this.kernel.registerProvider(provider.name, provider, provider.type, providerConfig, null);
 			
 			// Obtener el provider del kernel
 			const providerModule = this.getProvider<any>("express-server");
-			this.logger.logOk("HttpServerProvider cargado");
+				this.logger.logOk("HttpServerProvider cargado");
 			
 			// Obtener la instancia del provider (no el provider en sí)
 			this.httpProvider = await providerModule.getInstance();
@@ -100,6 +115,18 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		if (this.httpProvider) {
 			await this.httpProvider.stop();
 		}
+
+		// Cerrar dev servers si existen
+		for (const server of this.devServers.values()) {
+			await server.close();
+		}
+		this.devServers.clear();
+
+		// Detener watch builds si existen
+		for (const watcher of this.watchBuilds.values()) {
+			watcher.kill();
+		}
+		this.watchBuilds.clear();
 
 		await super.stop();
 	}
@@ -132,28 +159,82 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		this.registeredModules.set(name, module);
 
+		// Actualizar import map inmediatamente para que otros módulos puedan referenciarlo
+		this.#updateImportMap();
+
 		try {
-			// Generar astro.config.mjs (solo para framework Astro)
 			const framework = config.framework || "astro";
+			const isDevelopment = process.env.NODE_ENV === "development";
+			const isStandalone = config.standalone || false;
+
+			// Si es standalone o tiene devPort (dev server), generar index.html
+			if (isStandalone || (isDevelopment && config.devPort)) {
+				await this.#generateStandaloneFiles(appDir, config);
+			}
+
+			// Generar astro.config.mjs (solo para framework Astro)
 			if (framework === "astro") {
 				const configPath = await this.generateAstroConfig(appDir, config);
 				this.logger.logDebug(`Configuración de Astro generada: ${configPath}`);
 			}
 
-			// Ejecutar build
-			await this.buildUIModule(name);
+			// En desarrollo, si tiene devPort, iniciar dev server
+			// En producción o si es vite, hacer build o copiar archivos
+			if (isDevelopment && config.devPort && (framework === 'react' || framework === 'vue')) {
+				// Iniciar dev server
+				await this.buildUIModule(name);
+			} else {
+				// Solo hacer build en estos casos:
+				// 1. App standalone (necesita HTML completo)
+				// 2. Framework vite (librería con exports)
+				// 3. Framework astro
+				const shouldBuild = isStandalone || framework === "vite" || framework === "astro";
 
-			// Inyectar import maps en HTMLs
-			await this.#injectImportMapsInHTMLs(name);
+				if (shouldBuild) {
+					try {
+						await this.buildUIModule(name);
+						// Inyectar import maps en HTMLs solo si hubo build
+						await this.#injectImportMapsInHTMLs(name);
+					} catch (buildError: any) {
+						// Si falla el build, copiar archivos sin build
+						this.logger.logWarn(`Build falló para ${name}, copiando archivos sin build: ${buildError.message}`);
+						const targetOutputDir = path.join(this.uiOutputBaseDir, name);
+						await fs.rm(targetOutputDir, { recursive: true, force: true });
+						
+						// Si es standalone, copiar también index.html
+						if (isStandalone) {
+							await fs.mkdir(targetOutputDir, { recursive: true });
+							await fs.copyFile(path.join(appDir, 'index.html'), path.join(targetOutputDir, 'index.html'));
+						}
+						
+						await this.#copyDirectory(path.join(appDir, 'src'), path.join(targetOutputDir, 'src'));
+						module.outputPath = targetOutputDir;
+						module.buildStatus = "built";
+						
+						// Inyectar import maps en el HTML copiado
+						await this.#injectImportMapsInHTMLs(name);
+					}
+				} else {
+					// Para apps no standalone sin build, simplemente copiar src al output
+					const targetOutputDir = path.join(this.uiOutputBaseDir, name);
+					await fs.rm(targetOutputDir, { recursive: true, force: true });
+					await this.#copyDirectory(path.join(appDir, 'src'), targetOutputDir);
+					module.outputPath = targetOutputDir;
+					module.buildStatus = "built";
+				}
+			}
 
-			// Actualizar import map
+			// Actualizar import map nuevamente después del build
 			this.#updateImportMap();
 
 			// Registrar archivos estáticos en el servidor HTTP
-			if (this.httpProvider && module.outputPath) {
+			// SOLO si NO tiene devPort (porque apps con devPort se sirven desde su dev server)
+			if (this.httpProvider && module.outputPath && !config.devPort) {
 				const urlPath = `/${name}`;
 				this.httpProvider.serveStatic(urlPath, module.outputPath);
-				this.logger.logOk(`Módulo UI ${name} servido en ${urlPath}`);
+				this.logger.logOk(`Módulo UI ${name} servido en http://localhost:${this.port}${urlPath}`);
+			} else if (isDevelopment && config.devPort && (framework === 'react' || framework === 'vue')) {
+				this.logger.logOk(`Módulo UI ${name} disponible SOLO en Dev Server http://localhost:${config.devPort}`);
 			}
 		} catch (error: any) {
 			module.buildStatus = "error";
@@ -188,6 +269,224 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	 */
 	getImportMap(): ImportMap {
 		return this.importMap;
+	}
+
+	/**
+	 * Construye la configuración de Vite en memoria
+	 */
+	private async getViteConfig(appDir: string, config: UIModuleConfig, isDev: boolean): Promise<InlineConfig> {
+		const framework = config.framework || "vanilla";
+		const outputDir = path.join(this.uiOutputBaseDir, config.name);
+		const base = isDev ? "/" : `/${config.name}/`;
+		const port = config.devPort || 0;
+		const isStandalone = config.standalone || false;
+
+		// Plugins
+		const plugins = [];
+
+		if (isDev) {
+			// Crear referencia a registeredModules para acceso dinámico
+			const registeredModules = this.registeredModules;
+			// eslint-disable-next-line @typescript-eslint/no-this-alias
+			const self = this;
+
+			// Plugin para inyectar import maps en HTML (dinámicamente en cada request)
+			plugins.push({
+				name: "inject-importmap",
+				transformIndexHtml: {
+					order: 'pre',
+					handler(html: string) {
+						// Generar el import map DINÁMICAMENTE en cada request
+						// Esto asegura que siempre tenga los módulos más recientes,
+						// incluso si se registraron después de iniciar este dev server
+						const importMap = self.#generateCompleteImportMap();
+						
+						// Log para debug
+						const moduleCount = Object.keys(importMap).filter(k => k.startsWith('@')).length;
+						self.logger.logDebug(`[${config.name}] Inyectando import map con ${moduleCount} módulos federados`);
+						
+						const importMapScript = `    <script type="importmap">\n${JSON.stringify({ imports: importMap }, null, 6).replace(/\n/g, '\n    ')}\n    </script>`;
+						
+						// Script de debug para ver el import map en la consola
+						const debugScript = `    <script>
+      console.log('[UIFederation] Import map inyectado:', ${JSON.stringify(importMap)});
+      console.log('[UIFederation] Módulos disponibles:', ${JSON.stringify(Object.keys(importMap).filter(k => k.startsWith('@')))});
+    </script>`;
+						
+						if (html.includes('</head>')) {
+							return html.replace('</head>', `${importMapScript}\n${debugScript}\n  </head>`);
+						}
+						return html;
+					}
+				}
+			});
+
+			plugins.push({
+				name: "federation-dev-resolver",
+				enforce: "pre" as const,
+				resolveId(source: string) {
+					// Construir federatedHosts dinámicamente cada vez
+					const federatedHosts: Record<string, string> = {};
+					for (const [moduleName, module] of registeredModules.entries()) {
+						if (module.config.devPort) {
+							federatedHosts[`@${moduleName}/`] = `http://localhost:${module.config.devPort}/`;
+						} else {
+							federatedHosts[`@${moduleName}/`] = `http://localhost:3000/${moduleName}/`;
+						}
+					}
+
+					// Resolver imports de módulos federados
+					for (const prefix of Object.keys(federatedHosts)) {
+						const moduleName = prefix.slice(1, -1); // Quitar @ y /
+						
+						if (source === `@${moduleName}`) {
+							return {
+								id: `${federatedHosts[prefix]}src/App.tsx`,
+								external: true,
+							};
+						}
+						
+						if (source.startsWith(prefix)) {
+							// Para ui-library (vite build), necesitamos rutas con .js
+							// Para otros (dev servers), necesitamos rutas sin .js que Vite resuelve
+							const module = registeredModules.get(moduleName);
+							const remainder = source.substring(prefix.length);
+							
+							if (module && module.config.framework === 'vite') {
+								// ui-library: mantener/agregar .js
+								const withJs = remainder.endsWith('.js') ? remainder : `${remainder}.js`;
+								return {
+									id: `${federatedHosts[prefix]}${withJs}`,
+									external: true,
+								};
+							} else {
+								// Dev servers: remover .js, Vite lo resuelve
+								const withoutJs = remainder.replace(/\.js$/, '');
+								return {
+									id: `${federatedHosts[prefix]}${withoutJs}`,
+									external: true,
+								};
+							}
+						}
+					}
+					return null;
+				},
+			} as any);
+		}
+
+		if (framework === 'react' || framework === 'vue') {
+		if (framework === 'react') {
+			const { default: react } = await import('@vitejs/plugin-react');
+			plugins.push(react());
+			} else if (framework === 'vue') {
+				// Vue support - instalar @vitejs/plugin-vue si es necesario
+				try {
+					// @ts-expect-error - Plugin de Vue opcional, se carga dinámicamente
+					const vueModule: any = await import('@vitejs/plugin-vue');
+					const vue = vueModule.default;
+					plugins.push(vue());
+				} catch {
+					this.logger.logWarn(`[${config.name}] @vitejs/plugin-vue no instalado - ejecuta: npm install --save-dev @vitejs/plugin-vue`);
+				}
+			}
+
+			// Module Federation para sub-apps (Vite)
+			// Layout usa Rspack MF, no necesita este plugin
+			const isLayout = config.name === 'layout';
+			
+			if (!isLayout && isDev) {
+				// Sub-apps en dev: usar @originjs/vite-plugin-federation como remote
+				try {
+					const federationModule: any = await import('@originjs/vite-plugin-federation');
+					const federation = federationModule.default;
+					
+					this.logger.logDebug(`[${config.name}] Configurando Vite como REMOTE (expone ./App)`);
+					
+					const mainExt = framework === 'react' ? '.tsx' : framework === 'vue' ? '.vue' : '.ts';
+					
+					plugins.push(federation({
+						name: config.name,
+						filename: 'remoteEntry.js',
+						exposes: {
+							'./App': `./src/App${mainExt}`,
+						},
+						shared: {
+							react: { singleton: true, requiredVersion: '^18.2.0' },
+							'react-dom': { singleton: true, requiredVersion: '^18.2.0' },
+						}
+					}) as any);
+				} catch (error: any) {
+					this.logger.logWarn(`[${config.name}] Error configurando Vite MF: ${error.message}`);
+				}
+			}
+		}
+		
+		// Módulos federados (apps y librerías registradas)
+		const federatedModules: string[] = [];
+		for (const moduleName of this.registeredModules.keys()) {
+			federatedModules.push(`@${moduleName}`);
+		}
+		
+		// En dev mode, NO externalizar nada - cada dev server tiene su propia copia de React
+		// Esto evita el error "The entry point cannot be marked as external"
+		const externals: (string | RegExp)[] = [];
+
+		// Configuración de build
+		const buildConfig: any = {
+			outDir: outputDir,
+			emptyOutDir: true,
+		};
+
+		if (isStandalone) {
+			// Build standalone: HTML completo con todos los assets
+			buildConfig.rollupOptions = {
+				input: path.resolve(appDir, 'index.html'),
+			};
+		} else {
+			// Build como librería: solo el componente App
+			buildConfig.lib = {
+				entry: path.resolve(appDir, 'src/App.tsx'), 
+				formats: ['es'],
+				fileName: () => 'App.js'
+			};
+			buildConfig.rollupOptions = {
+				external: externals,
+				output: {
+					globals: { react: 'React', 'react-dom': 'ReactDOM' }
+				}
+			};
+		}
+
+		return {
+			configFile: false,
+			root: appDir,
+			base: base,
+			plugins,
+			server: {
+				port: port,
+				strictPort: true,
+				cors: {
+					origin: '*', // Permitir CORS desde cualquier origen para Module Federation
+					credentials: true,
+				},
+				hmr: {
+					protocol: 'ws',
+					host: 'localhost',
+					port: port,
+				},
+			},
+			optimizeDeps: {
+				// Forzar a React a ser pre-bundleado con un hash consistente
+				// para que todos los dev servers compartan la misma versión
+				include: isDev ? ['react', 'react-dom', 'react-dom/client'] : [],
+				// Solo excluir módulos federados
+				exclude: federatedModules,
+			},
+			define: {
+				'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+			},
+			build: buildConfig
+		};
 	}
 
 	/**
@@ -274,30 +573,77 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			const rootDir = path.resolve(process.cwd());
 			const viteBin = path.join(rootDir, "node_modules", ".bin", "vite");
 			const astroBin = path.join(rootDir, "node_modules", ".bin", "astro");
+			const isDevelopment = process.env.NODE_ENV === 'development';
+			const isLayout = name === 'layout';
 
-			// Ejecutar build según framework usando binarios del root
-			if (framework === "vite") {
-				await this.#runCommand(viteBin, ["build"], module.appDir);
+		if (framework === "react" || framework === "vue") {
+			// TODAS las apps React/Vue usan Rspack con Module Federation en desarrollo
+			if (isDevelopment && module.config.devPort) {
+				await this.#startRspackDevServer(module);
+			} else {
+				// Build de producción con Vite
+				const viteConfig = await this.getViteConfig(module.appDir, module.config, false);
+				this.logger.logDebug(`Iniciando build programático para ${name}`);
+				await build(viteConfig);
+				module.outputPath = path.join(this.uiOutputBaseDir, name);
+			}
+			} else if (framework === "vite") {
+				// Build con Vite (CLI o watch mode)
+				const isDevelopment = process.env.NODE_ENV === 'development';
+				
+				if (isDevelopment) {
+					// En desarrollo, iniciar build en watch mode
+					this.logger.logDebug(`Iniciando Vite build en watch mode para ${name}`);
+					const watcher = spawn(viteBin, ["build", "--watch"], {
+						cwd: module.appDir,
+						stdio: "pipe",
+						shell: false,
+					});
+					
+					watcher.stdout?.on("data", (data) => {
+						const output = data.toString();
+						if (output.includes("built in")) {
+							this.logger.logDebug(`Vite build actualizado para ${name}`);
+						}
+					});
+					
+					watcher.stderr?.on("data", (data) => {
+						this.logger.logDebug(`Vite watch ${name}: ${data.toString().slice(0, 200)}`);
+					});
+					
+					this.watchBuilds.set(name, watcher);
+					
+					// Esperar el primer build
+					await new Promise((resolve) => setTimeout(resolve, 3000));
+				} else {
+					// En producción, build normal
+					await this.#runCommand(viteBin, ["build"], module.appDir);
+				}
+				
+				// Copiar output
+				const sourceOutputDir = path.join(module.appDir, module.config.outputDir);
+				const targetOutputDir = path.join(this.uiOutputBaseDir, name);
+				await fs.rm(targetOutputDir, { recursive: true, force: true });
+				await this.#copyDirectory(sourceOutputDir, targetOutputDir);
+				module.outputPath = targetOutputDir;
 			} else if (framework === "astro") {
 				await this.#runCommand(astroBin, ["build"], module.appDir);
+				
+				// Copiar output
+				const sourceOutputDir = path.join(module.appDir, module.config.outputDir);
+				const targetOutputDir = path.join(this.uiOutputBaseDir, name);
+				await fs.rm(targetOutputDir, { recursive: true, force: true });
+				await this.#copyDirectory(sourceOutputDir, targetOutputDir);
+				module.outputPath = targetOutputDir;
 			} else {
 				throw new Error(`Framework no soportado: ${framework}`);
 			}
 
-			// Copiar output a ubicación servible
-			const sourceOutputDir = path.join(module.appDir, module.config.outputDir);
-			const targetOutputDir = path.join(this.uiOutputBaseDir, name);
-
-			// Eliminar directorio anterior si existe
-			await fs.rm(targetOutputDir, { recursive: true, force: true });
-
-			// Copiar nuevo build
-			await this.#copyDirectory(sourceOutputDir, targetOutputDir);
-
-			module.outputPath = targetOutputDir;
 			module.buildStatus = "built";
 
-			this.logger.logOk(`Build completado para ${name}`);
+			if (!isDevelopment) {
+				this.logger.logOk(`Build completado para ${name}`);
+			}
 		} catch (error: any) {
 			module.buildStatus = "error";
 			this.logger.logError(`Error en build de ${name}: ${error.message}`);
@@ -334,7 +680,91 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	}
 
 	/**
-	 * Configura el endpoint del import map
+	 * Genera archivos necesarios para ejecución standalone o dev server
+	 */
+	async #generateStandaloneFiles(appDir: string, config: UIModuleConfig): Promise<void> {
+		const framework = config.framework || "astro";
+		
+		if (framework === "react" || framework === "vue") {
+			// Generar index.html (siempre, para dev servers también)
+			const indexHtmlContent = this.#generateIndexHtml(config);
+			await fs.writeFile(path.join(appDir, "index.html"), indexHtmlContent, "utf-8");
+			this.logger.logDebug(`index.html generado para ${config.name}`);
+
+			// Generar entry point (main.tsx/ts) solo si no existe
+			const mainExt = framework === "react" ? ".tsx" : ".ts";
+			const mainPath = path.join(appDir, "src", `main${mainExt}`);
+			try {
+				await fs.access(mainPath);
+			} catch {
+				// No existe, generarlo
+				const mainContent = this.#generateMainEntryPoint(config);
+				await fs.writeFile(mainPath, mainContent, "utf-8");
+				this.logger.logDebug(`src/main${mainExt} generado para ${config.name}`);
+			}
+		}
+	}
+
+	/**
+	 * Genera el contenido de index.html para una app standalone
+	 */
+	#generateIndexHtml(config: UIModuleConfig): string {
+		const framework = config.framework || "astro";
+		const title = config.name.charAt(0).toUpperCase() + config.name.slice(1).replace(/-/g, ' ');
+		const mainExt = framework === "react" ? ".tsx" : ".ts";
+
+		return `<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${title}</title>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main${mainExt}"></script>
+  </body>
+</html>
+`;
+	}
+
+	/**
+	 * Genera el contenido del entry point (main.tsx/ts)
+	 */
+	#generateMainEntryPoint(config: UIModuleConfig): string {
+		const framework = config.framework || "astro";
+		
+		if (framework === "react") {
+			return `import React from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+
+const container = document.getElementById('root');
+if (container) {
+  const root = createRoot(container);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+}
+`;
+		} else if (framework === "vue") {
+			return `import { createApp } from 'vue';
+import App from './App.vue';
+
+createApp(App).mount('#root');
+`;
+		}
+		
+		return "";
+	}
+
+	/**
+	 * Configura el endpoint del import map y rutas adicionales
 	 */
 	async #setupImportMapEndpoint(): Promise<void> {
 		if (!this.httpProvider) return;
@@ -345,13 +775,24 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			res.json(this.importMap);
 		});
 
-		this.logger.logDebug("Endpoint /importmap.json registrado");
+		// Ruta raíz redirige al layout
+		this.httpProvider.registerRoute("GET", "/", (req, res) => {
+			const layoutModule = this.registeredModules.get("layout");
+			if (layoutModule && layoutModule.config.devPort) {
+				res.redirect(`http://localhost:${layoutModule.config.devPort}/`);
+			} else {
+				res.redirect("/layout/");
+			}
+		});
+
+		this.logger.logDebug("Endpoints registrados: /importmap.json, /");
 	}
 
 	/**
 	 * Genera el import map completo con todas las dependencias
 	 */
 	#generateCompleteImportMap(): Record<string, string> {
+		const isDevelopment = process.env.NODE_ENV === 'development';
 		const imports: Record<string, string> = {
 			// React y sus exports
 			"react": "https://esm.sh/react@18.3.1",
@@ -361,12 +802,22 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			"react/jsx-dev-runtime": "https://esm.sh/react@18.3.1/jsx-dev-runtime",
 		};
 
-		// Agregar TODOS los módulos UI registrados (sin importar su buildStatus)
-		// Esto asegura que todos los import maps tengan todas las rutas necesarias
+		// Agregar TODOS los módulos UI registrados
 		for (const [name, module] of this.registeredModules.entries()) {
 			const framework = module.config.framework || "astro";
 			
-			if (framework === "vite") {
+			if (isDevelopment && module.config.devPort && (framework === 'react' || framework === 'vue')) {
+				// En desarrollo, apuntar al Dev Server para HMR (con extensión .tsx para que el navegador pueda resolverlo)
+				imports[`@${name}`] = `http://localhost:${module.config.devPort}/src/App.tsx`;
+				imports[`@${name}/`] = `http://localhost:${module.config.devPort}/`;
+			} else if (framework === "vite") {
+				// Vite framework: servir archivos buildeados con extensión .js
+				// El trailing slash apunta al directorio
+				imports[`@${name}/`] = isDevelopment 
+					? `http://localhost:${this.port}/${name}/`
+					: `/${name}/`;
+			} else if (framework === "react" || framework === "vue") {
+				imports[`@${name}`] = `/${name}/App.js`;
 				imports[`@${name}/`] = `/${name}/`;
 			} else {
 				imports[`@${name}`] = `/${name}/index.html`;
@@ -431,6 +882,151 @@ ${JSON.stringify({ imports: importMap }, null, 2)}
 				await callback(fullPath, content);
 			}
 		}
+	}
+
+	/**
+	 * Inicia un dev server de Rspack con Module Federation para el layout
+	 */
+	async #startRspackDevServer(module: RegisteredUIModule): Promise<void> {
+		const { rspack } = await import('@rspack/core');
+		const { ModuleFederationPlugin } = await import('@module-federation/enhanced/rspack');
+		
+		const isHost = module.config.name === 'layout';
+		
+		// Convertir nombre a identificador válido (sin guiones)
+		const safeName = module.config.name.replace(/-/g, '_');
+		
+		// Construir remotes dinámicamente SOLO si es el host (layout)
+		const remotes: Record<string, string> = {};
+		if (isHost) {
+			for (const [moduleName, mod] of this.registeredModules.entries()) {
+				if (moduleName !== 'layout' && mod.config.devPort) {
+					const framework = mod.config.framework || 'react';
+					if (framework === 'react' || framework === 'vue') {
+						// Usar nombre seguro para el remote
+						const safeRemoteName = moduleName.replace(/-/g, '_');
+						remotes[moduleName] = `${safeRemoteName}@http://localhost:${mod.config.devPort}/mf-manifest.json`;
+					}
+				}
+			}
+			this.logger.logDebug(`[${module.config.name}] Host Rspack remotes: ${Object.keys(remotes).join(', ')}`);
+		} else {
+			this.logger.logDebug(`[${module.config.name}] Remote Rspack (${safeName}) - expone ./App`);
+		}
+
+		// Configuración de Rspack
+		const rspackConfig: any = {
+			mode: 'development',
+			devtool: 'cheap-module-source-map',
+			context: module.appDir,
+			entry: {
+				main: './src/main.tsx',
+			},
+			output: {
+				path: path.join(this.uiOutputBaseDir, module.config.name),
+				publicPath: 'auto',
+			},
+		resolve: {
+			extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
+			alias: {
+				// Resolver @ui-library a los archivos servidos por el puerto 3000
+				'@ui-library': path.resolve(this.uiOutputBaseDir, 'ui-library'),
+			},
+		},
+		module: {
+				rules: [
+					{
+						test: /\.tsx?$/,
+						use: {
+							loader: 'builtin:swc-loader',
+							options: {
+								jsc: {
+									parser: {
+										syntax: 'typescript',
+										tsx: true,
+									},
+							transform: {
+								react: {
+									runtime: 'automatic',
+									development: true,
+									refresh: false, // Deshabilitado para evitar conflictos con dynamic imports
+								},
+							},
+								},
+							},
+						},
+						exclude: /node_modules/,
+					},
+				],
+			},
+		plugins: [
+			new rspack.HtmlRspackPlugin({
+				template: './index.html',
+			}),
+			// Module Federation: Host (layout) consume remotes, Remotes (sub-apps) exponen ./App
+			new ModuleFederationPlugin({
+				name: safeName, // Usar nombre seguro sin guiones
+				...(isHost ? {
+					// Layout es el HOST
+					remotes,
+				} : {
+					// Sub-apps son REMOTES
+					filename: 'remoteEntry.js',
+					exposes: {
+						'./App': './src/App.tsx',
+					},
+				}),
+			shared: {
+				react: { 
+					singleton: true, 
+					requiredVersion: '^18.2.0', 
+					eager: true, // Eager en todas las apps para evitar async boundary issues
+					strictVersion: false 
+				},
+				'react-dom': { 
+					singleton: true, 
+					requiredVersion: '^18.2.0', 
+					eager: true,
+					strictVersion: false 
+				},
+				'react/jsx-dev-runtime': { 
+					singleton: true, 
+					eager: true, 
+					strictVersion: false 
+				},
+			},
+			}),
+		],
+		devServer: {
+			port: module.config.devPort,
+			hot: true,
+			historyApiFallback: true,
+			headers: {
+				'Access-Control-Allow-Origin': '*',
+				'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+				'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
+			},
+		},
+		ignoreWarnings: [
+			// Suprimir warning de dynamic imports en runtime (Module Federation)
+			/Critical dependency.*expression/,
+		],
+	};
+
+		// Crear compiler
+		const compiler = rspack(rspackConfig);
+
+		// Iniciar dev server
+		const { RspackDevServer } = await import('@rspack/dev-server');
+		const server = new RspackDevServer(rspackConfig.devServer, compiler);
+
+		await server.start();
+		
+		// Guardar referencia (aunque es tipo diferente a ViteDevServer)
+		this.devServers.set(module.config.name, server as any);
+		
+		this.logger.logOk(`${module.config.name} Rspack Dev Server con MF escuchando en http://localhost:${module.config.devPort}`);
+		module.outputPath = undefined; // Se sirve desde memoria
 	}
 
 	/**

@@ -1,10 +1,10 @@
 {
 	"uiModule": {
-		"name": "ui-library",
+		"name": "home",
 		"framework": "react",
 		"outputDir": "dist-ui",
+		"devPort": 3002,
 		"standalone": false,
-		"devPort": 3005,
 		"sharedLibs": ["react"]
 	}
 }
