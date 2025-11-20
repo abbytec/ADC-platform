@@ -1,5 +1,6 @@
 {
 	"compilerOptions": {
+        "jsx": "react",
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
 		"outDir": "./dist",
@@ -20,6 +21,11 @@
 		"**/*.spec.ts",
 		"src/apps/test/web-*/**/*.tsx",
 		"src/apps/test/web-*/**/*.astro",
-		"src/apps/test/web-*/src/**"
+		"src/apps/test/web-*/src/**",
+		"src/apps/test/00-web-*/**/*.tsx",
+		"src/apps/test/00-web-*/**/*.astro",
+		"src/apps/test/00-web-*/src/**",
+		"src/apps/test/users-management/**/*.tsx",
+		"src/apps/test/users-management/src/**"
 	]
 }

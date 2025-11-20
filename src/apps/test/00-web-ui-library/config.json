@@ -1,10 +1,9 @@
 {
 	"uiModule": {
 		"name": "ui-library",
-		"framework": "react",
+		"framework": "vite",
 		"outputDir": "dist-ui",
 		"standalone": false,
-		"devPort": 3005,
 		"sharedLibs": ["react"]
 	}
 }
