@@ -1,8 +1,0 @@
-{
-	"name": "@adc-platform/shared-libs-service",
-	"version": "1.0.0",
-	"private": true,
-	"type": "module",
-	"dependencies": {}
-}
-

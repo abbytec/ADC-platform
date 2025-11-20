@@ -1,34 +1,95 @@
-// Declaraciones de módulos federados para TypeScript
-declare module '@ui-library/components/*.js' {
-	const component: any;
-	export default component;
-	export const Container: any;
-	export const Header: any;
-	export const PrimaryButton: any;
-	export const StatCard: any;
+// ============================================
+// UI LIBRARY - Componentes compartidos
+// ============================================
+
+// Componentes individuales de UI Library
+declare module '@ui-library/components/Container.js' {
+	import React from 'react';
+	export const Container: React.FC<{ children?: React.ReactNode; className?: string }>;
 }
 
-declare module '@ui-library/utils/*.js' {
-	export const router: any;
+declare module '@ui-library/components/Header.js' {
+	import React from 'react';
+	export const Header: React.FC<{ title?: string; children?: React.ReactNode }>;
 }
+
+declare module '@ui-library/components/PrimaryButton.js' {
+	import React from 'react';
+	export const PrimaryButton: React.FC<{
+		onClick?: () => void;
+		children?: React.ReactNode;
+		disabled?: boolean;
+	}>;
+}
+
+declare module '@ui-library/components/StatCard.js' {
+	import React from 'react';
+	export const StatCard: React.FC<{
+		title?: string;
+		value?: string | number;
+		icon?: React.ReactNode;
+	}>;
+}
+
+// Router de UI Library
+declare module '@ui-library/utils/router.js' {
+	export const router: {
+		navigate: (path: string) => void;
+		setOnRouteChange: (callback: (path: string) => void) => void;
+		getCurrentPath: () => string;
+	};
+}
+
+// ============================================
+// MODULE FEDERATION - Apps remotas
+// ============================================
+
+// Home app
+declare module 'home/App' {
+	import React from 'react';
+	const App: React.FC;
+	export default App;
+}
+
+// Users Management app  
+declare module 'users-management/App' {
+	import React from 'react';
+	const App: React.FC;
+	export default App;
+}
+
+// Config app
+declare module 'config/App' {
+	import React from 'react';
+	const App: React.FC;
+	export default App;
+}
+
+// ============================================
+// LEGACY - Import maps (por si se usan)
+// ============================================
 
 declare module '@home' {
-	const component: any;
+	import React from 'react';
+	const component: React.FC;
 	export default component;
 }
 
 declare module '@config' {
-	const component: any;
+	import React from 'react';
+	const component: React.FC;
 	export default component;
 }
 
 declare module '@users-management' {
-	const component: any;
+	import React from 'react';
+	const component: React.FC;
 	export default component;
 }
 
 declare module '@layout' {
-	const component: any;
+	import React from 'react';
+	const component: React.FC;
 	export default component;
 }
 
