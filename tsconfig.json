@@ -6,6 +6,7 @@
 		"outDir": "./dist",
 		"rootDir": "./src",
 		"esModuleInterop": true,
+		"allowImportingTsExtensions": true,
 		"allowSyntheticDefaultImports": true,
 		"skipLibCheck": true,
 		"strict": true,
