@@ -1,31 +1,33 @@
 import React from 'react';
-import { Container } from '@ui-library/components/Container.js';
-import { Header } from '@ui-library/components/Header.js';
-import { PrimaryButton } from '@ui-library/components/PrimaryButton.js';
+import '@ui-library/loader';
 
 export default function App() {
+  const handleCreateUser = () => {
+    console.log('Crear usuario');
+  };
+
   return (
     <div style={{ padding: '20px' }}>
-      <Container>
-        <Header
-          title="Gestión de Usuarios"
+      <adc-container>
+        <adc-header
+          header-title="Gestión de Usuarios"
           subtitle="Administra los usuarios de la plataforma"
         />
         
         <div style={{ marginTop: '20px' }}>
           <div style={{ marginBottom: '20px', padding: '15px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', color: '#15803d' }}>
-            🚀 ¡Ahora estás usando React con JSX uwu real! Mucho mejor DX.
+            🚀 ¡Ahora estás usando Web Components framework-agnostic!
           </div>
 
           <p>Lista de usuarios...</p>
           
           <div style={{ marginTop: '20px' }}>
-            <PrimaryButton onClick={() => console.log('Crear usuario')}>
+            <adc-button onAdcClick={handleCreateUser}>
               Crear Nuevo Usuario
-            </PrimaryButton>
+            </adc-button>
           </div>
         </div>
-      </Container>
+      </adc-container>
     </div>
   );
 }

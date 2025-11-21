@@ -259,6 +259,48 @@ ADC Platform soporta módulos en múltiples lenguajes mediante IPC (named pipes)
 }
 ```
 
+## Sistema UI Framework-Agnostic
+
+El proyecto incluye una librería de componentes UI (`00-web-ui-library`) construida con **Stencil**, que genera Web Components nativos compatibles con cualquier framework (React, Vue, Angular, etc.).
+
+### Características
+
+- **Web Components nativos:** Los componentes se definen una vez y funcionan en cualquier framework
+- **Sin dependencias de framework:** Las apps que consumen los componentes no necesitan instalar React, Vue, etc.
+- **Auto-registro:** Los componentes se registran automáticamente al importar el loader
+- **TypeScript:** Tipado completo con definiciones generadas automáticamente
+
+### Componentes Disponibles
+
+- `<adc-button>`: Botón principal con eventos personalizados
+- `<adc-header>`: Encabezado de página con título y subtítulo
+- `<adc-container>`: Contenedor con padding y max-width
+- `<adc-stat-card>`: Tarjeta para mostrar estadísticas
+
+### Uso en Apps
+
+```typescript
+// En cualquier app React/Vue/etc:
+import '@ui-library/loader';
+
+// Uso en JSX/TSX:
+<adc-button onAdcClick={handleClick}>
+  Click me
+</adc-button>
+
+// Uso en HTML:
+<adc-button>Click me</adc-button>
+```
+
+### UIFederationService
+
+Gestiona el build y servido de módulos UI:
+- Soporta Stencil, React, Vue, Vite y Astro
+- Build automático en desarrollo con watch mode
+- Module Federation con Rspack para apps React/Vue
+- Import maps dinámicos para resolución de módulos
+- Servido estático de componentes compilados
+
 ## Gestión de Dependencias con Workspaces
 
 El proyecto utiliza [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces) para gestionar las dependencias de forma modular. Cada app, provider, utility y service es un "paquete" individual dentro del workspace, lo que permite un manejo de dependencias aislado y eficiente.

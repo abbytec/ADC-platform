@@ -1,13 +1,16 @@
 import React from 'react';
+import { router } from '@ui-library/utils/router.js';
 
-export function Navigation() {
-	// Usar navegación real (con recarga) para evitar conflictos de React
+interface NavigationProps {
+	currentPath: string;
+}
+
+export function Navigation({ currentPath }: NavigationProps) {
 	const handleNavigate = (path: string) => {
-		window.location.href = path;
+		if (path !== currentPath) {
+			router.navigate(path);
+		}
 	};
-
-	// Detectar ruta actual para highlight
-	const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
 	const buttonStyle = (path: string) => ({
 		padding: '8px 16px',
@@ -17,6 +20,7 @@ export function Navigation() {
 		borderRadius: '4px',
 		cursor: 'pointer',
 		fontWeight: currentPath === path ? 'bold' : 'normal',
+		transition: 'background-color 0.2s',
 	});
 
 	return (
