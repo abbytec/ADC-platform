@@ -421,15 +421,21 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			}
 		}
 		
-		// Módulos federados (apps y librerías registradas)
-		const federatedModules: string[] = [];
-		for (const moduleName of this.registeredModules.keys()) {
-			federatedModules.push(`@${moduleName}`);
-		}
-		
-		// En dev mode, NO externalizar nada - cada dev server tiene su propia copia de React
-		// Esto evita el error "The entry point cannot be marked as external"
-		const externals: (string | RegExp)[] = [];
+	// Módulos federados (apps y librerías registradas)
+	const federatedModules: string[] = [];
+	const externalModules: string[] = [];
+	for (const moduleName of this.registeredModules.keys()) {
+		federatedModules.push(`@${moduleName}`);
+		// También marcar como external para que Rollup no intente resolverlos
+		externalModules.push(`@${moduleName}`);
+		externalModules.push(moduleName); // Para importes como 'home/App' en Module Federation
+		externalModules.push(moduleName + '/App');
+		externalModules.push(moduleName + '/App.js');
+	}
+	
+	// En dev mode, NO externalizar nada - cada dev server tiene su propia copia de React
+	// Esto evita el error "The entry point cannot be marked as external"
+	const externals: (string | RegExp)[] = isDev ? [] : externalModules;
 
 		// Configuración de build
 		const buildConfig: any = {
@@ -437,31 +443,40 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			emptyOutDir: true,
 		};
 
-		if (isStandalone) {
-			// Build standalone: HTML completo con todos los assets
-			buildConfig.rollupOptions = {
-				input: path.resolve(appDir, 'index.html'),
-			};
-		} else {
-			// Build como librería: solo el componente App
-			buildConfig.lib = {
-				entry: path.resolve(appDir, 'src/App.tsx'), 
-				formats: ['es'],
-				fileName: () => 'App.js'
-			};
-			buildConfig.rollupOptions = {
-				external: externals,
-				output: {
-					globals: { react: 'React', 'react-dom': 'ReactDOM' }
-				}
-			};
-		}
+	if (isStandalone) {
+		// Build standalone: HTML completo con todos los assets
+		buildConfig.rollupOptions = {
+			input: path.resolve(appDir, 'index.html'),
+			external: externals,
+			output: {
+				globals: { react: 'React', 'react-dom': 'ReactDOM' }
+			}
+		};
+	} else {
+		// Build como librería: solo el componente App
+		buildConfig.lib = {
+			entry: path.resolve(appDir, 'src/App.tsx'), 
+			formats: ['es'],
+			fileName: () => 'App.js'
+		};
+		buildConfig.rollupOptions = {
+			external: externals,
+			output: {
+				globals: { react: 'React', 'react-dom': 'ReactDOM' }
+			}
+		};
+	}
 
 		return {
 			configFile: false,
 			root: appDir,
 			base: base,
 			plugins,
+			resolve: {
+				alias: {
+					'@ui-library': path.resolve(process.cwd(), isDev ? 'src/apps/test/00-web-ui-library/src' : 'dist/apps/test/00-web-ui-library/src'),
+				},
+			},
 			server: {
 				port: port,
 				strictPort: true,
@@ -780,8 +795,6 @@ createApp(App).mount('#root');
 			const layoutModule = this.registeredModules.get("layout");
 			if (layoutModule && layoutModule.config.devPort) {
 				res.redirect(`http://localhost:${layoutModule.config.devPort}/`);
-			} else {
-				res.redirect("/layout/");
 			}
 		});
 

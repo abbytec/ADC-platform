@@ -27,7 +27,7 @@ export default function App() {
 	async function loadStats() {
 		try {
 			const response = await fetch('/api/dashboard/stats');
-			const result = await response.json();
+			const result = await response.json() as { success?: boolean; data?: any };
 			if (result.success) {
 				setStats(result.data);
 			}

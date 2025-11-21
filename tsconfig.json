@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-        "jsx": "react",
+        "jsx": "react-jsx",
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
 		"outDir": "./dist",
@@ -12,21 +12,16 @@
 		"strict": true,
 		"types": ["node"],
 		"target": "ES2022",
-		"lib": ["es2022"],
-		"noEmit": false,
-		"declaration": true
+		"lib": ["es2022", "dom"],
+		"noEmit": true,
+		"baseUrl": "./src",
+		"paths": {
+			"@ui-library/*": ["./apps/test/00-web-ui-library/src/*"]
+		}
 	},
 	"include": ["src", "globals.d.ts", "src/types"],
 	"exclude": [
 		"node_modules",
 		"**/*.spec.ts",
-		"src/apps/test/web-*/**/*.tsx",
-		"src/apps/test/web-*/**/*.astro",
-		"src/apps/test/web-*/src/**",
-		"src/apps/test/00-web-*/**/*.tsx",
-		"src/apps/test/00-web-*/**/*.astro",
-		"src/apps/test/00-web-*/src/**",
-		"src/apps/test/users-management/**/*.tsx",
-		"src/apps/test/users-management/src/**"
 	]
 }

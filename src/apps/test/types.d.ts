@@ -10,7 +10,7 @@ declare module '@ui-library/components/Container.js' {
 
 declare module '@ui-library/components/Header.js' {
 	import React from 'react';
-	export const Header: React.FC<{ title?: string; children?: React.ReactNode }>;
+	export const Header: React.FC<{ title?: string; subtitle?: string; actions?: React.ReactNode; children?: React.ReactNode }>;
 }
 
 declare module '@ui-library/components/PrimaryButton.js' {
@@ -27,6 +27,8 @@ declare module '@ui-library/components/StatCard.js' {
 	export const StatCard: React.FC<{
 		title?: string;
 		value?: string | number;
+		description?: string;
+		color?: string;
 		icon?: React.ReactNode;
 	}>;
 }

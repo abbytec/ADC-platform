@@ -1,5 +1,5 @@
 import React, { createElement, useState, useEffect } from 'react';
-import { Shell } from './components/Shell';
+import { Shell } from './components/Shell.tsx';
 import { router } from '@ui-library/utils/router.js';
 
 // Mapeo de nombres de módulos a nombres seguros para Module Federation
@@ -24,17 +24,14 @@ async function loadRemoteComponent(moduleName: string) {
 		
 		switch (safeName) {
 			case 'home':
-				// @ts-expect-error - Módulo federado resuelto en runtime por Rspack
-				module = await import('home/App');
+				module = await import('home/App' as any);
 				break;
 			case 'users_management':
-				// @ts-expect-error - Módulo federado resuelto en runtime por Rspack MF
 				// IMPORTANTE: El nombre aquí debe coincidir con el configurado en remotes
-				module = await import('users-management/App');
+				module = await import('users-management/App' as any);
 				break;
 			case 'config':
-				// @ts-expect-error - Módulo federado resuelto en runtime por Rspack
-				module = await import('config/App');
+				module = await import('config/App' as any);
 				break;
 			default:
 				throw new Error(`Módulo desconocido: ${safeName}`);
