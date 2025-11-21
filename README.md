@@ -27,21 +27,12 @@ El objetivo principal del proyecto es ofrecer una base sólida y flexible que de
 ### Desarrollo
 ```bash
 npm install
-npm run dev          # Inicia en modo desarrollo con HMR (hot reloading)
-                     # Carga todas las apps incluyendo las de test
+npm run start          # Inicia en modo desarrollo con HMR
 ```
 
 ### Producción
 ```bash
-npm run build        # Compila TypeScript y copia configuraciones
-npm start            # Produce: ejecuta sin apps de test
-npm run start:test   # Produce: ejecuta incluyendo apps de test
-```
-
-### Docker
-```bash
-npm run docker:up    # Inicia servicios Docker (ej: MongoDB)
-npm run docker:down  # Detiene servicios Docker
+npm run start:prod   # Ejecuta sin apps de test
 ```
 
 ## Servicios en Modo Kernel

@@ -3,8 +3,7 @@ import * as path from "node:path";
 import { Logger } from "./logger/Logger.js";
 
 export class VersionResolver {
-	static readonly #isDevelopment = process.env.NODE_ENV === "development";
-	static readonly #fileExtension = this.#isDevelopment ? ".ts" : ".js";
+	static readonly #fileExtension = ".ts";
 
 	/**
 	 * Compara dos versiones semánticas (1.2.3)
@@ -148,7 +147,6 @@ export class VersionResolver {
 	): Promise<{ path: string; version: string } | null> {
 		try {
 			let moduleBaseDir = path.join(modulesDir, moduleName);
-
 			// Verificar si existe el directorio del módulo de forma directa
 			try {
 				await fs.stat(moduleBaseDir);
@@ -203,7 +201,7 @@ export class VersionResolver {
 			}
 
 			// Filtrar por rango de versión
-			let compatible = candidates.filter((c) => this.satisfiesRange(c.version, versionRange));
+			const compatible = candidates.filter((c) => this.satisfiesRange(c.version, versionRange));
 
 			if (compatible.length === 0) {
 				Logger.warn(`[VersionResolver] No hay versión compatible de ${moduleName} para el rango ${versionRange}`);
