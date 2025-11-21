@@ -10,7 +10,7 @@ import { Logger } from "../logger/Logger.js";
 import { VersionResolver } from "../VersionResolver.js";
 
 export class ModuleLoader {
-	readonly #basePath = process.env.NODE_ENV === "development" ? path.resolve(process.cwd(), "src") : path.resolve(process.cwd(), "dist");
+	readonly #basePath = path.resolve(process.cwd(), "src");
 
 	readonly #providersPath = path.resolve(this.#basePath, "providers");
 	readonly #utilitiesPath = path.resolve(this.#basePath, "utilities");

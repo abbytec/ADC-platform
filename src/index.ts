@@ -24,10 +24,38 @@ async function main() {
 	}
 
 	// --- Manejador de Ctrl+C para cierre ordenado ---
-	process.on("SIGINT", async () => {
-		await kernel.stop();
-		process.exit(0);
-	});
+	let isShuttingDown = false;
+	const shutdownHandler = async () => {
+		if (isShuttingDown) {
+			Logger.warn("Cierre en progreso. Presiona Ctrl+C nuevamente para forzar la salida.");
+			// Si presionan Ctrl+C por segunda vez, forzar salida
+			process.on("SIGINT", () => {
+				Logger.error("Forzando salida inmediata...");
+				process.exit(1);
+			});
+			return;
+		}
+		isShuttingDown = true;
+
+		// Timeout de 10 segundos para el cierre
+		const shutdownTimeout = setTimeout(() => {
+			Logger.error("Timeout en el cierre. Forzando salida...");
+			process.exit(1);
+		}, 10000);
+
+		try {
+			await kernel.stop();
+			clearTimeout(shutdownTimeout);
+			process.exit(0);
+		} catch (error: any) {
+			Logger.error(`Error durante el cierre: ${error.message}`);
+			clearTimeout(shutdownTimeout);
+			process.exit(1);
+		}
+	};
+
+	process.on("SIGINT", shutdownHandler);
+	process.on("SIGTERM", shutdownHandler);
 
 	Logger.ok("---------------------------------------");
 	Logger.ok("Kernel en funcionamiento.");

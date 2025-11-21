@@ -3,7 +3,6 @@
 	"private": true,
 	"version": "0.1.0",
 	"description": "Un kernel de módulos dinámicos.",
-	"main": "dist/index.js",
 	"type": "module",
 	"workspaces": [
 		"src/apps/*/*",
@@ -12,11 +11,8 @@
 		"src/services/*/*"
 	],
 	"scripts": {
-		"dev": "cross-env NODE_ENV=development tsx src/index.ts",
-		"build": "rimraf dist && tsc && node scripts/copy-config.mjs",
-		"prestart": "npm run build",
-		"start": "cross-env NODE_ENV=production node dist/index.js",
-		"start:prod": "cross-env NODE_ENV=production EXCLUDE_TESTS=true node dist/index.js",
+		"start": "cross-env NODE_ENV=development tsx src/index.ts",
+		"start:prod": "cross-env NODE_ENV=production EXCLUDE_TESTS=true tsx src/index.ts",
 		"lint": "eslint src --ext .ts --max-warnings 0",
 		"lint:fix": "eslint src --ext .ts --fix",
 		"create:app": "node scripts/create-app.mjs",

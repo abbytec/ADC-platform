@@ -12,6 +12,7 @@ dist-ui/
 # Temporary files
 temp/
 .temp/
+@mf-types
 
 # Environment
 .env

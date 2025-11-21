@@ -75,8 +75,8 @@ export class Kernel {
 
 	// --- Determinación de entorno ---
 	readonly #isDevelopment = process.env.NODE_ENV === "development";
-	readonly #basePath = this.#isDevelopment ? path.resolve(process.cwd(), "src") : path.resolve(process.cwd(), "dist");
-	readonly #fileExtension = this.#isDevelopment ? ".ts" : ".js";
+	readonly #basePath = path.resolve(process.cwd(), "src");
+	readonly #fileExtension = ".ts";
 
 	// --- Rutas ---
 	readonly #providersPath = path.resolve(this.#basePath, "providers");
@@ -551,12 +551,25 @@ export class Kernel {
 	public async stop(): Promise<void> {
 		this.#logger.logInfo("\nIniciando cierre ordenado...");
 
+		// Helper para ejecutar con timeout
+		const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, name: string): Promise<T | undefined> => {
+			const timeoutPromise = new Promise<undefined>((resolve) => {
+				setTimeout(() => {
+					this.#logger.logWarn(`Timeout deteniendo ${name} (${timeoutMs}ms)`);
+					resolve(undefined);
+				}, timeoutMs);
+			});
+			return Promise.race([promise, timeoutPromise]);
+		};
+
 		// Detener Apps
 		this.#logger.logInfo(`Deteniendo Apps...`);
 		for (const [name, instance] of this.#appsRegistry) {
 			try {
 				this.#logger.logDebug(`Deteniendo App ${name}`);
-				await instance.stop?.();
+				if (instance.stop) {
+					await withTimeout(instance.stop(), 3000, `App ${name}`);
+				}
 
 				// Extraer el nombre base de la app (antes del primer ':')
 				const appBaseName = name.split(":")[0];
@@ -565,7 +578,7 @@ export class Kernel {
 				if (this.#appDockerComposeMap.has(appBaseName)) {
 					const appDir = this.#appDockerComposeMap.get(appBaseName)!;
 					try {
-						await this.#stopDockerCompose(appDir);
+						await withTimeout(this.#stopDockerCompose(appDir), 5000, `Docker ${appBaseName}`);
 						this.#appDockerComposeMap.delete(appBaseName);
 					} catch (e) {
 						this.#logger.logWarn(`Error deteniendo Docker para App ${appBaseName}: ${e}`);
@@ -578,13 +591,15 @@ export class Kernel {
 
 		// Detener otros módulos
 		for (const moduleType of ["provider", "utility", "service"] as ModuleType[]) {
-			let capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
+			const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
 			this.#logger.logInfo(`Deteniendo ${capitalizedModuleType == "Utility" ? "Utilitie" : capitalizedModuleType}s...`);
 			const registry = this.#getRegistry(moduleType);
 			for (const [key, instance] of registry) {
 				try {
 					this.#logger.logDebug(`Deteniendo ${capitalizedModuleType} ${key}`);
-					await instance.stop?.();
+					if (instance.stop) {
+						await withTimeout(instance.stop(), 2000, `${capitalizedModuleType} ${key}`);
+					}
 				} catch (e) {
 					this.#logger.logError(`Error deteniendo ${capitalizedModuleType} ${key}: ${e}`);
 				}
@@ -953,39 +968,17 @@ export class Kernel {
 		watcher.on("change", async (srcConfigPath) => {
 			if (this.#isStartingUp) return;
 			this.#logger.logInfo(`Detectado cambio en configuración: ${path.basename(srcConfigPath)}`);
-
-			// Si estamos en producción, copiar el archivo a dist/
-			let targetConfigPath = srcConfigPath;
-			if (!this.#isDevelopment) {
-				const relativePath = path.relative(srcAppsPath, srcConfigPath);
-				const distConfigPath = path.join(this.#appsPath, relativePath);
-				await fs.mkdir(path.dirname(distConfigPath), { recursive: true });
-				await fs.copyFile(srcConfigPath, distConfigPath);
-				targetConfigPath = distConfigPath;
-				this.#logger.logDebug(`Archivo copiado a: ${distConfigPath}`);
-			}
-
-			await this.#reloadAppInstance(targetConfigPath);
+			await this.#reloadAppInstance(srcConfigPath);
 		});
 
 		watcher.on("add", async (srcConfigPath) => {
 			if (this.#isStartingUp) return;
 
-			// Si estamos en producción, copiar el archivo a dist/
-			let targetConfigPath = srcConfigPath;
-			if (!this.#isDevelopment) {
-				const relativePath = path.relative(srcAppsPath, srcConfigPath);
-				const distConfigPath = path.join(this.#appsPath, relativePath);
-				await fs.mkdir(path.dirname(distConfigPath), { recursive: true });
-				await fs.copyFile(srcConfigPath, distConfigPath);
-				targetConfigPath = distConfigPath;
-			}
-
 			// Cuando se agrega un nuevo archivo de configuración, necesitamos cargar la app completa
 			// para crear la nueva instancia
-			const appDirResolved = targetConfigPath.includes("/configs/")
-				? path.dirname(path.dirname(targetConfigPath))
-				: path.dirname(targetConfigPath);
+			const appDirResolved = srcConfigPath.includes("/configs/")
+				? path.dirname(path.dirname(srcConfigPath))
+				: path.dirname(srcConfigPath);
 			const appFilePath = path.join(appDirResolved, `index${this.#fileExtension}`);
 
 			try {
