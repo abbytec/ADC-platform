@@ -136,6 +136,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			unregisterUIModule: this.unregisterUIModule.bind(this),
 			getImportMap: this.getImportMap.bind(this),
 			generateAstroConfig: this.generateAstroConfig.bind(this),
+			generateStencilConfig: this.generateStencilConfig.bind(this),
 			buildUIModule: this.buildUIModule.bind(this),
 			refreshAllImportMaps: this.refreshAllImportMaps.bind(this),
 			getStats: this.getStats.bind(this),
@@ -168,6 +169,9 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			if (framework === "astro") {
 				const configPath = await this.generateAstroConfig(appDir, config);
 				this.logger.logDebug(`Configuración de Astro generada: ${configPath}`);
+			} else if (framework === "stencil") {
+				const configPath = await this.generateStencilConfig(appDir, config);
+				this.logger.logDebug(`Configuración de Stencil generada: ${configPath}`);
 			}
 
 			if (isDevelopment && config.devPort && (framework === 'react' || framework === 'vue')) {
@@ -439,6 +443,42 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		};
 	}
 
+	async generateStencilConfig(appDir: string, config: UIModuleConfig): Promise<string> {
+		const targetDir = path.join(this.uiOutputBaseDir, config.name);
+		const relativeOutputDir = path.relative(appDir, targetDir);
+	
+		const stencilConfig: any = {
+			namespace: config.name,
+			outputTargets: [
+				{
+					type: 'dist',
+					dir: relativeOutputDir,
+				},
+				{
+					type: 'dist-custom-elements',
+					dir: `${relativeOutputDir}/custom-elements`,
+					customElementsExportBehavior: 'auto-define-custom-elements',
+					externalRuntime: false,
+				},
+				{
+					type: 'docs-readme',
+				},
+			],
+			sourceMap: true,
+			buildEs5: false,
+			copy: [
+				{ src: 'utils' }
+			]
+		};
+	
+		const configContent = `import { Config } from '@stencil/core';\n\nexport const config: Config = ${JSON.stringify(stencilConfig, null, 2)};\n`;
+	
+		const configPath = path.join(appDir, "stencil.config.ts");
+		await fs.writeFile(configPath, configContent, "utf-8");
+	
+		return configPath;
+	}
+
 	/**
 	 * Genera el archivo astro.config.mjs para una app
 	 */
@@ -525,19 +565,11 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			if (isDevelopment) {
 				this.logger.logDebug(`Iniciando Stencil build en watch mode para ${name}`);
 				
-				// Spawn en su propio grupo de procesos para poder matar todos los hijos
-				const spawnOptions: any = {
+				const watcher = spawn(stencilBin, ["build", "--watch"], {
 					cwd: module.appDir,
 					stdio: "pipe",
 					shell: false,
-				};
-				
-				// En Unix/Linux, crear un nuevo grupo de procesos
-				if (process.platform !== 'win32') {
-					spawnOptions.detached = false; // No detached para que muera con el padre
-				}
-				
-				const watcher = spawn(stencilBin, ["build", "--watch"], spawnOptions);
+				});
 				
 				watcher.stdout?.on("data", (data) => {
 					const output = data.toString();
@@ -546,71 +578,34 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 					}
 				});
 				
-				watcher.stderr?.on("data", (data) => {
-					this.logger.logDebug(`Stencil watch ${name}: ${data.toString().slice(0, 200)}`);
-				});
-				
-				watcher.on("error", (error) => {
-					this.logger.logError(`Error en watcher de Stencil ${name}: ${error.message}`);
-				});
-				
-				watcher.on("exit", (code, signal) => {
-					this.logger.logDebug(`Stencil watcher ${name} terminado (code: ${code}, signal: ${signal})`);
-				});
+				watcher.stderr?.on("data", (data) => this.logger.logDebug(`Stencil watch ${name}: ${data.toString().slice(0, 200)}`));
+				watcher.on("error", (error) => this.logger.logError(`Error en watcher de Stencil ${name}: ${error.message}`));
+				watcher.on("exit", (code, signal) => this.logger.logDebug(`Stencil watcher ${name} terminado (code: ${code}, signal: ${signal})`));
 				
 				this.watchBuilds.set(name, watcher);
-				
-				await new Promise((resolve) => setTimeout(resolve, 3000));
+				await new Promise((resolve) => setTimeout(resolve, 5000)); // Dar tiempo a que el build inicial termine
 			} else {
 				await this.#runCommand(stencilBin, ["build"], module.appDir);
 			}
 			
-			const sourceOutputDir = path.join(module.appDir, module.config.outputDir);
-			const targetOutputDir = path.join(this.uiOutputBaseDir, name);
-			await fs.rm(targetOutputDir, { recursive: true, force: true });
-			await this.#copyDirectory(sourceOutputDir, targetOutputDir);
-			
-			const loaderSourceDir = path.join(module.appDir, 'loader');
-			const loaderTargetDir = path.join(targetOutputDir, 'loader');
+			module.outputPath = path.join(this.uiOutputBaseDir, name);
+
+			const loaderIndexPath = path.join(module.outputPath, 'loader', 'index.js');
 			try {
-				await fs.access(loaderSourceDir);
-				await fs.mkdir(loaderTargetDir, { recursive: true });
+				await fs.access(loaderIndexPath);
+				let content = await fs.readFile(loaderIndexPath, 'utf-8');
 				
-				const entries = await fs.readdir(loaderSourceDir);
-				for (const entry of entries) {
-					const sourcePath = path.join(loaderSourceDir, entry);
-					const targetPath = path.join(loaderTargetDir, entry);
-					
-					let content = await fs.readFile(sourcePath, 'utf-8');
-					content = content.replace(/\.\.\/dist-ui\//g, '../');
-					content = content.replace(/\.\.\/dist\//g, '../');
-					
-					if (entry === 'index.js') {
-						content = content.replace(
-							"export * from '../esm/loader.js';",
-							`import { defineCustomElements } from '../esm/loader.js';\nexport * from '../esm/loader.js';\ndefineCustomElements(window);`
-						);
-					}
-					
-					await fs.writeFile(targetPath, content, 'utf-8');
+				if (!content.includes('defineCustomElements(window)')) {
+					content = content.replace(
+						"export * from '../esm/loader.js';",
+						`import { defineCustomElements } from '../esm/loader.js';\nexport * from '../esm/loader.js';\ndefineCustomElements(window);`
+					);
+					await fs.writeFile(loaderIndexPath, content, 'utf-8');
+					this.logger.logDebug(`defineCustomElements inyectado en loader para ${name}`);
 				}
-				
-				this.logger.logDebug(`Loader de Stencil copiado y rutas ajustadas para ${name}`);
 			} catch {
-				this.logger.logWarn(`No se encontró directorio loader/ para ${name}`);
+				this.logger.logWarn(`No se encontró loader/index.js para ${name}. El módulo podría no autocargarse.`);
 			}
-			
-			const utilsSourceDir = path.join(module.appDir, 'utils');
-			const utilsTargetDir = path.join(targetOutputDir, 'utils');
-			try {
-				await fs.access(utilsSourceDir);
-				await this.#copyDirectory(utilsSourceDir, utilsTargetDir);
-				this.logger.logDebug(`Utils copiados para ${name}`);
-			} catch {
-				this.logger.logDebug(`No se encontró directorio utils/ para ${name}`);
-			}
-			
-			module.outputPath = targetOutputDir;
 		} else 		if (framework === "react" || framework === "vue") {
 			if (isDevelopment && module.config.devPort) {
 				await this.#startRspackDevServer(module);

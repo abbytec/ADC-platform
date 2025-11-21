@@ -1,6 +1,6 @@
 {
 	"uiModule": {
-		"name": "ui-library",
+		"name": "web-ui-library",
 		"framework": "stencil",
 		"outputDir": "dist-ui",
 		"standalone": false

@@ -43,6 +43,11 @@ export interface IUIFederationService {
 	generateAstroConfig(appDir: string, config: UIModuleConfig): Promise<string>;
 
 	/**
+	 * Genera el stencil.config.ts para una app
+	 */
+	generateStencilConfig(appDir: string, config: UIModuleConfig): Promise<string>;
+
+	/**
 	 * Ejecuta el build de Astro para una app
 	 */
 	buildUIModule(name: string): Promise<void>;
