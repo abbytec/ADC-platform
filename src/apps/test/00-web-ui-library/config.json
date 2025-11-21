@@ -1,10 +1,9 @@
 {
 	"uiModule": {
 		"name": "ui-library",
-		"framework": "vite",
+		"framework": "stencil",
 		"outputDir": "dist-ui",
-		"standalone": false,
-		"sharedLibs": ["react"]
+		"standalone": false
 	}
 }
 

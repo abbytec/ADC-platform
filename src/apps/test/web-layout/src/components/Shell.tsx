@@ -1,22 +1,26 @@
-import React from 'react';
-import { Container } from '@ui-library/components/Container.js';
-import { Header } from '@ui-library/components/Header.js';
+import React, { memo } from 'react';
+import '@ui-library/loader';
 import { Navigation } from './Navigation.tsx';
 
-export function Shell({ children }: { children: React.ReactNode }) {
+interface ShellProps {
+	children: React.ReactNode;
+	currentPath: string;
+}
+
+export const Shell = memo(function Shell({ children, currentPath }: ShellProps) {
 	return (
 		<div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-			<Container>
-				<Header 
-					title="ADC Platform" 
+			<adc-container>
+				<adc-header 
+					header-title="ADC Platform" 
 					subtitle="Sistema de gestión distribuida"
 				/>
-				<Navigation />
+				<Navigation currentPath={currentPath} />
 				<main style={{ marginTop: '20px' }}>
 					{children}
 				</main>
-			</Container>
+			</adc-container>
 		</div>
 	);
-}
+});
 

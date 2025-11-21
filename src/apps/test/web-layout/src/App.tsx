@@ -1,15 +1,45 @@
-import React, { createElement, useState, useEffect } from 'react';
+import React, { createElement, useState, useEffect, useRef } from 'react';
 import { Shell } from './components/Shell.tsx';
 import { router } from '@ui-library/utils/router.js';
 
-// Mapeo de nombres de módulos a nombres seguros para Module Federation
+// Limpieza agresiva de Service Workers y Caches en desarrollo
+if (process.env.NODE_ENV === 'development' && 'serviceWorker' in navigator) {
+	navigator.serviceWorker.getRegistrations().then(registrations => {
+		for (const registration of registrations) {
+			registration.unregister();
+			console.log('[App] SW desregistrado para desarrollo limpio');
+		}
+	});
+	caches.keys().then(names => {
+		for (const name of names) caches.delete(name);
+		console.log('[App] Caches limpiados');
+	});
+}
+
+if ('serviceWorker' in navigator) {
+	window.addEventListener('load', () => {
+		navigator.serviceWorker.register('/service-worker.js')
+			.then((registration) => {
+				console.log('[App] Service Worker registrado:', registration.scope);
+			})
+			.catch((error) => {
+				console.error('[App] Error registrando Service Worker:', error);
+			});
+	});
+}
+
 const moduleToSafeName: Record<string, string> = {
 	'home': 'home',
 	'users-management': 'users_management',
 	'config': 'config',
 };
 
-// Carga dinámica de componentes federados vía Rspack Module Federation
+const routeToModule: Record<string, string> = {
+	'/': 'home',
+	'/users': 'users-management',
+	'/config': 'config',
+};
+
 async function loadRemoteComponent(moduleName: string) {
 	try {
 		const safeName = moduleToSafeName[moduleName];
@@ -17,98 +47,121 @@ async function loadRemoteComponent(moduleName: string) {
 			throw new Error(`Módulo desconocido: ${moduleName}`);
 		}
 		
-		console.log(`[Layout] Cargando módulo federado: ${moduleName} (como ${safeName})`);
-		
-		// Module Federation maneja la carga automáticamente usando nombres seguros
-		let module;
+		const timestamp = Date.now();
+		let RemoteComponent;
 		
 		switch (safeName) {
 			case 'home':
-				module = await import('home/App' as any);
+				const homeModule = await import('home/App' as any);
+				RemoteComponent = homeModule.default ?? homeModule;
 				break;
 			case 'users_management':
-				// IMPORTANTE: El nombre aquí debe coincidir con el configurado en remotes
-				module = await import('users-management/App' as any);
+				const usersModule = await import('users-management/App' as any);
+				RemoteComponent = usersModule.default ?? usersModule;
 				break;
 			case 'config':
-				module = await import('config/App' as any);
+				const configModule = await import('config/App' as any);
+				RemoteComponent = configModule.default ?? configModule;
 				break;
 			default:
 				throw new Error(`Módulo desconocido: ${safeName}`);
 		}
 		
-		console.log(`[Layout] Módulo ${moduleName} cargado exitosamente`);
-		return module.default ?? module;
+		const WrapperComponent = (props: any) => {
+			return React.createElement(
+				'div',
+				{ 
+					'data-module': moduleName,
+					'data-timestamp': timestamp,
+					style: { display: 'contents' }
+				},
+				React.createElement(RemoteComponent, props)
+			);
+		};
+		
+		return { Component: WrapperComponent, moduleName, timestamp };
 	} catch (error) {
-		console.error(`[Layout] Error cargando módulo federado ${moduleName}:`, error);
-		// Componente de error más informativo
-		return () => React.createElement('div', { 
+		console.error(`[Layout] ❌ Error cargando ${moduleName}:`, error);
+		const ErrorComponent = () => React.createElement('div', { 
 			style: { padding: '20px', color: 'red', border: '1px solid red', borderRadius: '4px', margin: '20px 0' } 
 		}, [
-			React.createElement('h3', { key: 'title' }, `Error cargando módulo: ${moduleName}`),
-			React.createElement('p', { key: 'msg', style: { fontSize: '14px' } }, error instanceof Error ? error.message : String(error)),
-			React.createElement('p', { key: 'hint', style: { fontSize: '12px', color: '#666' } }, 'Verifica que el dev server del módulo remoto esté corriendo.')
+			React.createElement('h3', { key: 'title' }, `Error: ${moduleName}`),
+			React.createElement('p', { key: 'msg', style: { fontSize: '14px' } }, error instanceof Error ? error.message : String(error))
 		]);
+		return { Component: ErrorComponent, moduleName, timestamp: Date.now() };
 	}
 }
 
-// Mapeo de rutas a módulos
-const routeToModule: Record<string, string> = {
-	'/': 'home',
-	'/users': 'users-management',
-	'/config': 'config',
-};
-
 export default function App() {
-	const [currentComponent, setCurrentComponent] = useState<any>(null);
+	const [renderKey, setRenderKey] = useState(0);
+	const [currentPath, setCurrentPath] = useState(window.location.pathname);
+	const [moduleData, setModuleData] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
+	const loadingPathRef = useRef<string | null>(null);
+	const isInitialized = useRef(false);
 
 	useEffect(() => {
-		async function loadComponent() {
-			const currentPath = window.location.pathname;
-			console.log('[Layout] Ruta actual:', currentPath);
+		if (isInitialized.current) return;
+		isInitialized.current = true;
+
+		async function loadComponent(path: string) {
+			if (loadingPathRef.current === path) return;
 			
-			const moduleName = routeToModule[currentPath];
+			const moduleName = routeToModule[path];
 			
-			if (moduleName) {
-				const Component = await loadRemoteComponent(moduleName);
-				setCurrentComponent(() => Component);
-			} else {
-				console.warn('[Layout] Ruta no reconocida:', currentPath);
+			// Manejo de ruta no encontrada
+			if (!moduleName) {
+				console.warn('[Layout] Ruta no reconocida:', path);
+				// Opcional: redirigir a home o mostrar 404
+				if (path !== '/') {
+					// router.navigate('/'); // Evitar bucles infinitos
+				}
+				// Permitir renderizar Shell vacía o con error
+				setModuleData({
+					Component: () => <div style={{padding: 20}}>Página no encontrada: {path}</div>,
+					moduleName: 'not-found',
+					timestamp: Date.now()
+				});
+				setLoading(false);
+				return;
 			}
+
+			loadingPathRef.current = path;
+			setLoading(true);
 			
+			// Pequeño delay para dar feedback visual y permitir a React desmontar
+			await new Promise(resolve => setTimeout(resolve, 10));
+			
+			const data = await loadRemoteComponent(moduleName);
+			console.log(`[Layout] ✅ ${data.moduleName} @ ${path}`);
+			
+			setCurrentPath(path);
+			setModuleData(data);
+			setRenderKey(prev => prev + 1);
 			setLoading(false);
+			loadingPathRef.current = null;
 		}
 
-		loadComponent();
-
-		// Escuchar cambios de ruta para navegación SPA
-		router.setOnRouteChange(async (path) => {
-			console.log('[Layout] Cambio de ruta detectado:', path);
-			const moduleName = routeToModule[path];
-			if (moduleName) {
-				setLoading(true);
-				const Component = await loadRemoteComponent(moduleName);
-				setCurrentComponent(() => Component);
-				setLoading(false);
-			}
+		loadComponent(window.location.pathname);
+		router.setOnRouteChange((path) => {
+			console.log('[Layout] 🔄 Route change:', path);
+			loadComponent(path);
 		});
 	}, []);
 
-	return (
-		<Shell>
-			{loading ? (
+	if (!moduleData || loading) {
+		return (
+			<Shell currentPath={currentPath}>
 				<div style={{ padding: '20px', textAlign: 'center' }}>
 					<p>Cargando...</p>
 				</div>
-			) : currentComponent ? (
-				createElement(currentComponent)
-			) : (
-				<div style={{ padding: '20px', color: '#666' }}>
-					<p>Ruta no encontrada: {window.location.pathname}</p>
-					<p style={{ fontSize: '14px' }}>Rutas disponibles: /, /users, /config</p>
-				</div>
-			)}
+			</Shell>
+		);
+	}
+
+	return (
+		<Shell key={renderKey} currentPath={currentPath}>
+			{createElement(moduleData.Component)}
 		</Shell>
 	);
 }

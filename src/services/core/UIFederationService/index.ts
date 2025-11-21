@@ -72,20 +72,61 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	}
 
 	async stop(): Promise<void> {
+		this.logger.logInfo("Deteniendo UIFederationService...");
+		
 		if (this.httpProvider) {
 			await this.httpProvider.stop();
 		}
 
-		for (const server of this.devServers.values()) {
-			await server.close();
+		// Cerrar dev servers
+		for (const [name, server] of this.devServers.entries()) {
+			try {
+				this.logger.logDebug(`Cerrando dev server: ${name}`);
+				await server.close();
+			} catch (error: any) {
+				this.logger.logWarn(`Error cerrando dev server ${name}: ${error.message}`);
+			}
 		}
 		this.devServers.clear();
 
-		for (const watcher of this.watchBuilds.values()) {
-			watcher.kill();
+		// Matar procesos de build watch de manera más agresiva
+		for (const [name, watcher] of this.watchBuilds.entries()) {
+			try {
+				this.logger.logDebug(`Deteniendo watcher: ${name}`);
+				
+				if (watcher && typeof watcher.kill === 'function') {
+					// Intentar primero con SIGTERM
+					watcher.kill('SIGTERM');
+					
+					// Esperar un poco
+					await new Promise(resolve => setTimeout(resolve, 1000));
+					
+					// Si todavía está vivo, forzar con SIGKILL
+					if (!watcher.killed) {
+						this.logger.logDebug(`Forzando terminación de watcher: ${name}`);
+						watcher.kill('SIGKILL');
+					}
+					
+					// Si tiene PID, también matar el grupo de procesos completo
+					if (watcher.pid) {
+						try {
+							// Matar el grupo de procesos (todos los hijos)
+							if (process.platform !== 'win32') {
+								process.kill(-watcher.pid, 'SIGKILL');
+							}
+						} catch (error: any) {
+							// Ignorar errores (el proceso ya puede estar muerto)
+							this.logger.logDebug(`Error matando grupo de procesos ${watcher.pid}: ${error.message}`);
+						}
+					}
+				}
+			} catch (error: any) {
+				this.logger.logWarn(`Error deteniendo watcher ${name}: ${error.message}`);
+			}
 		}
 		this.watchBuilds.clear();
 
+		this.logger.logOk("UIFederationService detenido");
 		await super.stop();
 	}
 
@@ -132,7 +173,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			if (isDevelopment && config.devPort && (framework === 'react' || framework === 'vue')) {
 				await this.buildUIModule(name);
 			} else {
-				const shouldBuild = isStandalone || framework === "vite" || framework === "astro";
+				const shouldBuild = isStandalone || framework === "vite" || framework === "astro" || framework === "stencil";
 
 				if (shouldBuild) {
 					try {
@@ -474,28 +515,132 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			const rootDir = path.resolve(process.cwd());
 			const viteBin = path.join(rootDir, "node_modules", ".bin", "vite");
 			const astroBin = path.join(rootDir, "node_modules", ".bin", "astro");
+			const stencilBin = path.join(rootDir, "node_modules", ".bin", "stencil");
 			const isDevelopment = process.env.NODE_ENV === 'development';
 			const isLayout = name === 'layout';
 
-		if (framework === "react" || framework === "vue") {
+		if (framework === "stencil") {
+			const isDevelopment = process.env.NODE_ENV === 'development';
+			
+			if (isDevelopment) {
+				this.logger.logDebug(`Iniciando Stencil build en watch mode para ${name}`);
+				
+				// Spawn en su propio grupo de procesos para poder matar todos los hijos
+				const spawnOptions: any = {
+					cwd: module.appDir,
+					stdio: "pipe",
+					shell: false,
+				};
+				
+				// En Unix/Linux, crear un nuevo grupo de procesos
+				if (process.platform !== 'win32') {
+					spawnOptions.detached = false; // No detached para que muera con el padre
+				}
+				
+				const watcher = spawn(stencilBin, ["build", "--watch"], spawnOptions);
+				
+				watcher.stdout?.on("data", (data) => {
+					const output = data.toString();
+					if (output.includes("build finished")) {
+						this.logger.logDebug(`Stencil build actualizado para ${name}`);
+					}
+				});
+				
+				watcher.stderr?.on("data", (data) => {
+					this.logger.logDebug(`Stencil watch ${name}: ${data.toString().slice(0, 200)}`);
+				});
+				
+				watcher.on("error", (error) => {
+					this.logger.logError(`Error en watcher de Stencil ${name}: ${error.message}`);
+				});
+				
+				watcher.on("exit", (code, signal) => {
+					this.logger.logDebug(`Stencil watcher ${name} terminado (code: ${code}, signal: ${signal})`);
+				});
+				
+				this.watchBuilds.set(name, watcher);
+				
+				await new Promise((resolve) => setTimeout(resolve, 3000));
+			} else {
+				await this.#runCommand(stencilBin, ["build"], module.appDir);
+			}
+			
+			const sourceOutputDir = path.join(module.appDir, module.config.outputDir);
+			const targetOutputDir = path.join(this.uiOutputBaseDir, name);
+			await fs.rm(targetOutputDir, { recursive: true, force: true });
+			await this.#copyDirectory(sourceOutputDir, targetOutputDir);
+			
+			const loaderSourceDir = path.join(module.appDir, 'loader');
+			const loaderTargetDir = path.join(targetOutputDir, 'loader');
+			try {
+				await fs.access(loaderSourceDir);
+				await fs.mkdir(loaderTargetDir, { recursive: true });
+				
+				const entries = await fs.readdir(loaderSourceDir);
+				for (const entry of entries) {
+					const sourcePath = path.join(loaderSourceDir, entry);
+					const targetPath = path.join(loaderTargetDir, entry);
+					
+					let content = await fs.readFile(sourcePath, 'utf-8');
+					content = content.replace(/\.\.\/dist-ui\//g, '../');
+					content = content.replace(/\.\.\/dist\//g, '../');
+					
+					if (entry === 'index.js') {
+						content = content.replace(
+							"export * from '../esm/loader.js';",
+							`import { defineCustomElements } from '../esm/loader.js';\nexport * from '../esm/loader.js';\ndefineCustomElements(window);`
+						);
+					}
+					
+					await fs.writeFile(targetPath, content, 'utf-8');
+				}
+				
+				this.logger.logDebug(`Loader de Stencil copiado y rutas ajustadas para ${name}`);
+			} catch {
+				this.logger.logWarn(`No se encontró directorio loader/ para ${name}`);
+			}
+			
+			const utilsSourceDir = path.join(module.appDir, 'utils');
+			const utilsTargetDir = path.join(targetOutputDir, 'utils');
+			try {
+				await fs.access(utilsSourceDir);
+				await this.#copyDirectory(utilsSourceDir, utilsTargetDir);
+				this.logger.logDebug(`Utils copiados para ${name}`);
+			} catch {
+				this.logger.logDebug(`No se encontró directorio utils/ para ${name}`);
+			}
+			
+			module.outputPath = targetOutputDir;
+		} else 		if (framework === "react" || framework === "vue") {
 			if (isDevelopment && module.config.devPort) {
 				await this.#startRspackDevServer(module);
 			} else {
 				const viteConfig = await this.getViteConfig(module.appDir, module.config, false);
 				this.logger.logDebug(`Iniciando build programático para ${name}`);
 				await build(viteConfig);
-				module.outputPath = path.join(this.uiOutputBaseDir, name);
+				const outputPath = path.join(this.uiOutputBaseDir, name);
+				module.outputPath = outputPath;
+				await this.#copyPublicFiles(module.appDir, outputPath);
 			}
 			} else if (framework === "vite") {
 				const isDevelopment = process.env.NODE_ENV === 'development';
 				
 				if (isDevelopment) {
 					this.logger.logDebug(`Iniciando Vite build en watch mode para ${name}`);
-					const watcher = spawn(viteBin, ["build", "--watch"], {
+					
+					// Spawn en su propio grupo de procesos para poder matar todos los hijos
+					const spawnOptions: any = {
 						cwd: module.appDir,
 						stdio: "pipe",
 						shell: false,
-					});
+					};
+					
+					// En Unix/Linux, crear un nuevo grupo de procesos
+					if (process.platform !== 'win32') {
+						spawnOptions.detached = false; // No detached para que muera con el padre
+					}
+					
+					const watcher = spawn(viteBin, ["build", "--watch"], spawnOptions);
 					
 					watcher.stdout?.on("data", (data) => {
 						const output = data.toString();
@@ -506,6 +651,14 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 					
 					watcher.stderr?.on("data", (data) => {
 						this.logger.logDebug(`Vite watch ${name}: ${data.toString().slice(0, 200)}`);
+					});
+					
+					watcher.on("error", (error) => {
+						this.logger.logError(`Error en watcher de Vite ${name}: ${error.message}`);
+					});
+					
+					watcher.on("exit", (code, signal) => {
+						this.logger.logDebug(`Vite watcher ${name} terminado (code: ${code}, signal: ${signal})`);
 					});
 					
 					this.watchBuilds.set(name, watcher);
@@ -582,6 +735,22 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				await fs.writeFile(mainPath, mainContent, "utf-8");
 				this.logger.logDebug(`src/main${mainExt} generado para ${config.name}`);
 			}
+		}
+	}
+
+	async #copyPublicFiles(appDir: string, outputDir: string): Promise<void> {
+		const publicDir = path.join(appDir, 'public');
+		try {
+			await fs.access(publicDir);
+			const entries = await fs.readdir(publicDir);
+			for (const entry of entries) {
+				const sourcePath = path.join(publicDir, entry);
+				const targetPath = path.join(outputDir, entry);
+				await fs.copyFile(sourcePath, targetPath);
+			}
+			this.logger.logDebug(`Archivos públicos copiados desde ${publicDir}`);
+		} catch {
+			this.logger.logDebug(`No hay directorio public/ en ${appDir}`);
 		}
 	}
 
@@ -671,7 +840,17 @@ createApp(App).mount('#root');
 		for (const [name, module] of this.registeredModules.entries()) {
 			const framework = module.config.framework || "astro";
 			
-			if (isDevelopment && module.config.devPort && (framework === 'react' || framework === 'vue')) {
+			if (framework === "stencil") {
+				imports[`@${name}/loader`] = isDevelopment 
+					? `http://localhost:${this.port}/${name}/loader/index.js`
+					: `/${name}/loader/index.js`;
+				imports[`@${name}/dist`] = isDevelopment 
+					? `http://localhost:${this.port}/${name}/dist/`
+					: `/${name}/dist/`;
+				imports[`@${name}/`] = isDevelopment 
+					? `http://localhost:${this.port}/${name}/`
+					: `/${name}/`;
+			} else if (isDevelopment && module.config.devPort && (framework === 'react' || framework === 'vue')) {
 				imports[`@${name}`] = `http://localhost:${module.config.devPort}/src/App.tsx`;
 				imports[`@${name}/`] = `http://localhost:${module.config.devPort}/`;
 			} else if (framework === "vite") {
@@ -768,10 +947,13 @@ ${JSON.stringify({ imports: importMap }, null, 2)}
 			output: {
 				path: path.join(this.uiOutputBaseDir, module.config.name),
 				publicPath: 'auto',
+				uniqueName: safeName, // CRÍTICO: Evita colisiones de chunks en el global scope
 			},
-		resolve: {
+			resolve: {
 			extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
 			alias: {
+				'@ui-library/loader': path.resolve(this.uiOutputBaseDir, 'ui-library', 'loader'),
+				'@ui-library/utils': path.resolve(this.uiOutputBaseDir, 'ui-library', 'utils'),
 				'@ui-library': path.resolve(this.uiOutputBaseDir, 'ui-library'),
 			},
 		},
@@ -840,6 +1022,10 @@ ${JSON.stringify({ imports: importMap }, null, 2)}
 			port: module.config.devPort,
 			hot: true,
 			historyApiFallback: true,
+			static: {
+				directory: path.join(module.appDir, 'public'),
+				publicPath: '/',
+			},
 			headers: {
 				'Access-Control-Allow-Origin': '*',
 				'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
