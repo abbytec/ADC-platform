@@ -46,6 +46,7 @@
 		"@rspack/cli": "^1.6.4",
 		"@rspack/core": "^1.6.4",
 		"@rspack/dev-server": "^1.1.4",
+		"@stencil/core": "^4.25.2",
 		"@types/node": "^20.14.2",
 		"@types/react": "^18.2.0",
 		"@types/react-dom": "^18.2.0",
