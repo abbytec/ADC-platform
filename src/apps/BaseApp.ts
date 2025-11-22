@@ -4,6 +4,7 @@ import { IApp } from "../interfaces/modules/IApp.js";
 import { Logger } from "../utils/logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
+import { IModuleConfig } from "../interfaces/modules/IModule.js";
 import type { UIModuleConfig } from "../interfaces/modules/IUIModule.js";
 import type { IUIFederationService } from "../services/core/UIFederationService/types.js";
 
@@ -20,7 +21,7 @@ export abstract class BaseApp implements IApp {
 	constructor(
 		protected readonly kernel: Kernel,
 		public readonly name: string = this.constructor.name,
-		protected config?: any,
+		protected config?: IModuleConfig,
 		_appFilePath?: string
 	) {
 		if (_appFilePath) {
@@ -56,7 +57,7 @@ export abstract class BaseApp implements IApp {
 		if (this.uiModuleRegistered && this.config?.uiModule) {
 			try {
 				const uiFederation = this.kernel.getService<any>("UIFederationService");
-				const uiFederationInstance = await uiFederation.getInstance() as IUIFederationService;
+				const uiFederationInstance = (await uiFederation.getInstance()) as IUIFederationService;
 				await uiFederationInstance.unregisterUIModule(this.config.uiModule.name);
 			} catch (err) {
 				this.logger.logDebug("No se pudo desregistrar módulo UI", err);
@@ -71,7 +72,7 @@ export abstract class BaseApp implements IApp {
 	async #mergeModuleConfigs(): Promise<void> {
 		const appDir = this.appDir;
 
-		let baseConfig: any = {};
+		let baseConfig: Partial<IModuleConfig> = {};
 		try {
 			const defaultConfigPath = path.join(appDir, "default.json");
 			const content = await fs.readFile(defaultConfigPath, "utf-8");
@@ -80,41 +81,41 @@ export abstract class BaseApp implements IApp {
 			// No hay archivo default.json, lo cual es aceptable.
 		}
 
-		const instanceConfig = this.config || {};
+		const instanceConfig: Partial<IModuleConfig> = this.config || {};
 
-	// Función auxiliar para fusionar módulos por nombre
-	const mergeModules = (base: any[] = [], instance: any[] = []): any[] => {
-		const byName = new Map(base.map((item) => [item.name, item]));
-		for (const item of instance) {
-			const existing = byName.get(item.name) || {};
-			byName.set(item.name, { ...existing, ...item });
-		}
-		return Array.from(byName.values());
-	};
+		// Función auxiliar para fusionar módulos por nombre
+		const mergeModules = (base: IModuleConfig[] = [], instance: IModuleConfig[] = []): IModuleConfig[] => {
+			const byName = new Map(base.map((item) => [item.name, item]));
+			for (const item of instance) {
+				const existing = byName.get(item.name) || {};
+				byName.set(item.name, { ...existing, ...item } as IModuleConfig);
+			}
+			return Array.from(byName.values());
+		};
 
-	const mergedProviders = mergeModules(baseConfig.providers, instanceConfig.providers);
-	const mergedUtilities = mergeModules(baseConfig.utilities, instanceConfig.utilities);
-	const mergedServices = mergeModules(baseConfig.services, instanceConfig.services);
-	
-	// Los servicios SIN providers propios heredan los globales
-	// Esto permite que usen la configuración correcta del provider global
-	const servicesWithInheritedProviders = mergedServices.map((service: any) => {
-		if (!service.providers || service.providers.length === 0) {
-			return { ...service, providers: mergedProviders };
-		}
-		return service;
-	});
+		const mergedProviders = mergeModules(baseConfig.providers, instanceConfig.providers);
+		const mergedUtilities = mergeModules(baseConfig.utilities, instanceConfig.utilities);
+		const mergedServices = mergeModules(baseConfig.services, instanceConfig.services);
 
-	const mergedConfig: any = {
-		...baseConfig,
-		...instanceConfig,
-		failOnError: instanceConfig.failOnError ?? baseConfig.failOnError,
-		providers: mergedProviders,
-		utilities: mergedUtilities,
-		services: servicesWithInheritedProviders,
-	};
+		// Los servicios SIN providers propios heredan los globales
+		// Esto permite que usen la configuración correcta del provider global
+		const servicesWithInheritedProviders = mergedServices.map((service: IModuleConfig) => {
+			if (!service.providers || service.providers.length === 0) {
+				return { ...service, providers: mergedProviders };
+			}
+			return service;
+		});
 
-		this.config = mergedConfig;
+		const mergedConfig: Partial<IModuleConfig> = {
+			...baseConfig,
+			...instanceConfig,
+			failOnError: instanceConfig.failOnError ?? baseConfig.failOnError,
+			providers: mergedProviders,
+			utilities: mergedUtilities,
+			services: servicesWithInheritedProviders,
+		};
+
+		this.config = mergedConfig as IModuleConfig;
 		Object.freeze(this.config); // Freezes config from modifications
 	}
 
@@ -143,16 +144,14 @@ export abstract class BaseApp implements IApp {
 
 		try {
 			const uiFederation = this.kernel.getService<any>("UIFederationService");
-			const uiFederationInstance = await uiFederation.getInstance() as IUIFederationService;
+			const uiFederationInstance = (await uiFederation.getInstance()) as IUIFederationService;
 
 			const uiConfig: UIModuleConfig = this.config.uiModule;
 
 			// Extraer el nombre limpio (sin prefijo "web-")
 			// Si el nombre de la app es "web-ui-library", el nombre del módulo UI debería ser "ui-library"
 			const appBaseName = this.name.split(":")[0]; // Remover sufijo de instancia
-			const cleanModuleName = uiConfig.name || (appBaseName.startsWith("web-") 
-				? appBaseName.substring(4) 
-				: appBaseName);
+			const cleanModuleName = uiConfig.name || (appBaseName.startsWith("web-") ? appBaseName.substring(4) : appBaseName);
 
 			// Actualizar el nombre en la config
 			uiConfig.name = cleanModuleName;

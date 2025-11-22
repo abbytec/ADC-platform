@@ -11,7 +11,7 @@ const execAsync = promisify(exec);
  */
 async function killAllChildProcesses(): Promise<void> {
 	const pid = process.pid;
-	
+
 	try {
 		// En Linux/Unix, matar todos los procesos del grupo de procesos
 		if (process.platform !== "win32") {
@@ -19,11 +19,11 @@ async function killAllChildProcesses(): Promise<void> {
 			try {
 				await execAsync(`pkill -TERM -P ${pid}`);
 				Logger.info("Enviando SIGTERM a procesos hijos...");
-				await new Promise(resolve => setTimeout(resolve, 2000));
+				await new Promise((resolve) => setTimeout(resolve, 2000));
 			} catch {
 				// Ignorar si no hay procesos
 			}
-			
+
 			// Luego forzar con SIGKILL
 			try {
 				await execAsync(`pkill -KILL -P ${pid}`);
@@ -31,7 +31,7 @@ async function killAllChildProcesses(): Promise<void> {
 			} catch {
 				// Ignorar si no hay procesos
 			}
-			
+
 			// Matar específicamente procesos de Stencil y Node workers
 			try {
 				await execAsync("pkill -9 -f 'stencil build --watch'");
@@ -62,7 +62,7 @@ async function main() {
 		const uiFederation = kernel.getService<any>("UIFederationService");
 		if (uiFederation) {
 			const uiFederationInstance = await uiFederation.getInstance();
-			if (uiFederationInstance && typeof uiFederationInstance.refreshAllImportMaps === 'function') {
+			if (uiFederationInstance && typeof uiFederationInstance.refreshAllImportMaps === "function") {
 				await uiFederationInstance.refreshAllImportMaps();
 			} else {
 				Logger.warn("refreshAllImportMaps no está disponible en UIFederationService");
@@ -77,7 +77,7 @@ async function main() {
 	// --- Manejador de señales para cierre ordenado ---
 	let isShuttingDown = false;
 	let forceExitCount = 0;
-	
+
 	const shutdownHandler = async (signal: string) => {
 		if (isShuttingDown) {
 			forceExitCount++;
@@ -102,12 +102,19 @@ async function main() {
 		}, 15000);
 
 		try {
-			// Detener el kernel (esto debe detener todos los servicios incluyendo UIFederationService)
-			await kernel.stop();
-			
-			// Asegurar que todos los child processes estén muertos
+			// 1. Intentar detener el kernel de forma ordenada
+			try {
+				Logger.info("Deteniendo el kernel...");
+				await kernel.stop();
+				Logger.ok("Kernel detenido correctamente.");
+			} catch (kernelError: any) {
+				Logger.error(`Error durante el stop del kernel (la limpieza forzosa continuará): ${kernelError.message}`);
+			}
+
+			// 2. Asegurar que todos los procesos hijos restantes mueran
+			Logger.info("Ejecutando limpieza forzosa final...");
 			await killAllChildProcesses();
-			
+
 			clearTimeout(shutdownTimeout);
 			Logger.ok("Cierre completado exitosamente.");
 			process.exit(0);
@@ -120,11 +127,11 @@ async function main() {
 	};
 
 	// Capturar múltiples señales
-	process.on("SIGINT", () => shutdownHandler("SIGINT"));   // Ctrl+C
+	process.on("SIGINT", () => shutdownHandler("SIGINT")); // Ctrl+C
 	process.on("SIGTERM", () => shutdownHandler("SIGTERM")); // kill
-	process.on("SIGHUP", () => shutdownHandler("SIGHUP"));   // Terminal cerrada
+	process.on("SIGHUP", () => shutdownHandler("SIGHUP")); // Terminal cerrada
 	process.on("SIGQUIT", () => shutdownHandler("SIGQUIT")); // Ctrl+\
-	
+
 	// Manejar excepciones no capturadas
 	process.on("uncaughtException", async (error) => {
 		Logger.error(`Excepción no capturada: ${error.message}`);
@@ -132,7 +139,7 @@ async function main() {
 			await shutdownHandler("UNCAUGHT_EXCEPTION");
 		}
 	});
-	
+
 	process.on("unhandledRejection", async (reason: any) => {
 		Logger.error(`Promesa rechazada no manejada: ${reason?.message || reason}`);
 		if (!isShuttingDown) {

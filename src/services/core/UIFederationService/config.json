@@ -1,7 +1,7 @@
 {
 	"kernelMode": true,
 	"global": true,
-	"config": {
+	"custom": {
 		"port": 3000,
 		"astroDefaults": {
 			"output": "static",
@@ -11,4 +11,3 @@
 		}
 	}
 }
-

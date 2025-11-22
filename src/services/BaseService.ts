@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { IModulesDefinition } from "../interfaces/modules/IModule.js";
+import { IModuleConfig } from "../interfaces/modules/IModule.js";
 import * as fs from "node:fs/promises";
 import { IService } from "../interfaces/modules/IService.js";
 import { Logger } from "../utils/logger/Logger.js";
@@ -8,17 +8,21 @@ import { Kernel } from "../kernel.js";
 
 /**
  * Clase base abstracta para todos los Services.
- * Maneja la inyección del Kernel y la carga de módulos desde modules.json.
+ * Maneja la inyección del Kernel y la carga de módulos desde config.json.
  */
 export abstract class BaseService<T = any> implements IService<T> {
 	/** Nombre único del service */
 	abstract readonly name: string;
 
 	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
-	protected config: IModulesDefinition;
+	protected config: IModuleConfig;
 
-	constructor(protected readonly kernel: Kernel, protected readonly options?: any) {
-		this.config = {};
+	constructor(protected readonly kernel: Kernel, protected readonly options?: IModuleConfig) {
+		// Inicialización parcial segura
+		this.config = {
+			name: "unknown",
+			...options,
+		} as IModuleConfig;
 	}
 
 	/**
@@ -37,7 +41,7 @@ export abstract class BaseService<T = any> implements IService<T> {
 		this.logger.logInfo(`Inicializando ${this.name}...`);
 
 		try {
-			let baseConfig: IModulesDefinition = {};
+			let baseConfig: Partial<IModuleConfig> = {};
 			try {
 				const configContent = await fs.readFile(modulesConfigPath, "utf-8");
 				baseConfig = JSON.parse(configContent);
@@ -49,7 +53,7 @@ export abstract class BaseService<T = any> implements IService<T> {
 			// - Si la app proporciona providers (options.providers), usar esos
 			// - Si no, cargar los del modules.json (dependencias por defecto del servicio)
 			let providersToUse = this.options?.providers || [];
-			
+
 			if (!providersToUse || providersToUse.length === 0) {
 				// No hay providers de la app, usar los del modules.json
 				if (baseConfig.providers && Array.isArray(baseConfig.providers)) {
@@ -59,16 +63,17 @@ export abstract class BaseService<T = any> implements IService<T> {
 						try {
 							const provider = await Kernel.moduleLoader.loadProvider(providerConfig);
 							this.kernel.registerProvider(provider.name, provider, provider.type, providerConfig);
-							
+
 							// También registrar por el nombre del módulo/configuración
 							if (providerConfig.name !== provider.name) {
 								this.kernel.registerProvider(providerConfig.name, provider, undefined, providerConfig);
 							}
-							
+
 							// Agregar como dependencia de la app actual
 							this.kernel.addModuleDependency("provider", providerConfig.name, providerConfig.config);
 						} catch (error) {
 							const message = `Error cargando provider ${providerConfig.name}: ${error}`;
+							// failOnError puede venir del config.json del servicio
 							if (baseConfig.failOnError) throw new Error(message);
 							this.logger.logWarn(message);
 						}
@@ -80,13 +85,13 @@ export abstract class BaseService<T = any> implements IService<T> {
 			// Prioridad: utilities de la app (options) > utilities del config.json del servicio
 			// Estas utilities son globales (no limitadas a una app específica)
 			const utilitiesToLoad = this.options?.utilities || baseConfig.utilities || [];
-			
+
 			if (utilitiesToLoad && Array.isArray(utilitiesToLoad)) {
 				for (const utilityConfig of utilitiesToLoad) {
 					try {
 						const utility = await Kernel.moduleLoader.loadUtility(utilityConfig);
 						this.kernel.registerUtility(utility.name, utility, utilityConfig, null);
-						
+
 						// Si el nombre contiene "/", también registrar con el nombre base como alias
 						if (utilityConfig.name.includes("/")) {
 							const baseName = utilityConfig.name.split("/").pop()!;
@@ -102,10 +107,12 @@ export abstract class BaseService<T = any> implements IService<T> {
 			}
 
 			this.config = {
+				name: this.name,
 				...baseConfig,
+				...this.options, // options tiene prioridad
 				providers: providersToUse,
-				utilities: this.options?.utilities || baseConfig.utilities || [],
-			};
+				utilities: utilitiesToLoad,
+			} as IModuleConfig;
 
 			this.logger.logOk(`Inicialización completada`);
 		} catch (error) {

@@ -9,7 +9,7 @@ export interface RegisteredUIModule {
 	/** Directorio de la app */
 	appDir: string;
 	/** Configuración del módulo UI */
-	config: UIModuleConfig;
+	uiConfig: UIModuleConfig;
 	/** Timestamp de registro */
 	registeredAt: number;
 	/** Estado del build */

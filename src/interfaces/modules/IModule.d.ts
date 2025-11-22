@@ -1,12 +1,13 @@
 import { ILifecycle } from "../behaviours/ILifecycle.d.ts";
 
 /**
- * Configuración de un módulo en config.json
+ * Configuración de un módulo específico (Service, Provider, Utility).
+ * Corresponde al `config.json` de un módulo, o una entrada en las listas `providers`/`utilities`.
  */
 export interface IModuleConfig {
 	/** Nombre del módulo */
 	name: string;
-	/** Tipo de módulo */
+	/** Tipo de módulo (service, provider, utility) */
 	type?: string;
 	/** Versión a cargar - puede ser exacta (1.0.0) o con rango (^1.0.0, >=1.0.0) */
 	version?: string;
@@ -15,25 +16,19 @@ export interface IModuleConfig {
 	/** Lenguaje del módulo (default: 'typescript') */
 	language?: string;
 	/** Configuración personalizada para pasar al constructor del módulo */
-	config?: Record<string, any>;
+	custom?: Record<string, any>;
 	/** Providers que este módulo necesita como dependencias */
 	providers?: IModuleConfig[];
 	/** Utilities que este módulo necesita como dependencias */
 	utilities?: IModuleConfig[];
-}
-
-/**
- * Definición de los módulos requeridos por una app
- */
-export interface IModulesDefinition {
 	/** Si true, los errores al cargar módulos no detendrán la app */
 	failOnError?: boolean;
-	/** Lista de services a cargar */
-	services?: IModuleConfig[];
-	/** Lista de utilities a cargar */
-	utilities?: IModuleConfig[];
-	/** Lista de providers a cargar */
-	providers?: IModuleConfig[];
+
+	/**
+	 * Permite propiedades adicionales.
+	 * Ej: metadatos internos (__modulePath) o propiedades específicas de configuración.
+	 */
+	[key: string]: any;
 }
 
 export interface IModule extends ILifecycle {
