@@ -1,11 +1,11 @@
 {
 	"uiModule": {
 		"name": "config",
-		"framework": "react",
+		"framework": "vue",
 		"outputDir": "dist-ui",
 		"devPort": 3003,
 		"standalone": false,
-		"sharedLibs": ["react"]
+		"sharedLibs": ["vue"]
 	}
 }
 

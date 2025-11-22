@@ -1,10 +1,13 @@
 {
 	"extends": "../tsconfig.json",
 	"compilerOptions": {
-		"baseUrl": ".."
+		"baseUrl": "..",
+		"jsx": "preserve",
+		"types": []
 	},
 	"include": [
-		"src/**/*",
+		"src/**/*.ts",
+		"src/**/*.vue",
 		"../../../globals.d.ts"
 	],
 	"exclude": [

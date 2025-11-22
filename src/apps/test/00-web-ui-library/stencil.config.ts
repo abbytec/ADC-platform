@@ -21,7 +21,8 @@ export const config: Config = {
   "buildEs5": false,
   "copy": [
     {
-      "src": "utils"
+      "src": "../utils",
+      "dest": "utils"
     }
   ]
 };
