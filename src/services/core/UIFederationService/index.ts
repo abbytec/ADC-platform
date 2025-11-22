@@ -288,8 +288,11 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 						const moduleName = prefix.slice(1, -1); // Quitar @ y /
 
 						if (source === `@${moduleName}`) {
+							const module = registeredModules.get(moduleName);
+							const framework = module?.uiConfig.framework || "react";
+							const appExtension = framework === "vue" ? ".vue" : ".tsx";
 							return {
-								id: `${federatedHosts[prefix]}src/App.tsx`,
+								id: `${federatedHosts[prefix]}src/App${appExtension}`,
 								external: true,
 							};
 						}
@@ -389,8 +392,9 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				},
 			};
 		} else {
+			const appExtension = framework === "vue" ? ".vue" : ".tsx";
 			buildConfig.lib = {
-				entry: path.resolve(appDir, "src/App.tsx"),
+				entry: path.resolve(appDir, `src/App${appExtension}`),
 				formats: ["es"],
 				fileName: () => "App.js",
 			};
@@ -409,6 +413,8 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			plugins,
 			resolve: {
 				alias: {
+					"@ui-library/utils": path.resolve(process.cwd(), "src/apps/test/00-web-ui-library/utils"),
+					"@ui-library/loader": path.resolve(this.uiOutputBaseDir, "web-ui-library", "loader"),
 					"@ui-library": path.resolve(process.cwd(), "src/apps/test/00-web-ui-library/src"),
 				},
 			},
@@ -459,7 +465,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			],
 			sourceMap: true,
 			buildEs5: false,
-			copy: [{ src: "utils" }],
+			copy: [{ src: "../utils", dest: "utils" }],
 		};
 
 		const configContent = `import { Config } from '@stencil/core';\n\nexport const config: Config = ${JSON.stringify(
@@ -893,13 +899,14 @@ ${JSON.stringify({ imports: importMap }, null, 2)}
 	async #generateRspackConfig(module: RegisteredUIModule): Promise<string> {
 		const isHost = module.uiConfig.name === "layout";
 		const safeName = module.uiConfig.name.replace(/-/g, "_");
+		const framework = module.uiConfig.framework || "react";
 		const remotes: Record<string, string> = {};
 
 		if (isHost) {
 			for (const [moduleName, mod] of this.registeredModules.entries()) {
 				if (moduleName !== "layout" && mod.uiConfig.devPort) {
-					const framework = mod.uiConfig.framework || "react";
-					if (framework === "react" || framework === "vue") {
+					const remoteFramework = mod.uiConfig.framework || "react";
+					if (remoteFramework === "react" || remoteFramework === "vue") {
 						const safeRemoteName = moduleName.replace(/-/g, "_");
 						remotes[moduleName] = `${safeRemoteName}@http://localhost:${mod.uiConfig.devPort}/mf-manifest.json`;
 					}
@@ -907,40 +914,15 @@ ${JSON.stringify({ imports: importMap }, null, 2)}
 			}
 		}
 
-		// Use temp directory for config
 		const configDir = path.resolve(process.cwd(), "temp", "configs", module.uiConfig.name);
 		await fs.mkdir(configDir, { recursive: true });
 
-		// Generar dinámicamente el contenido del fichero de configuración de Rspack
-		const configContent = `
-import * as path from 'node:path';
-import { rspack } from '@rspack/core';
-import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack';
+		const isVue = framework === "vue";
+		const mainEntry = isVue ? "./src/main.ts" : "./src/main.tsx";
+		const appExtension = isVue ? ".vue" : ".tsx";
+		const extensions = isVue ? "['.vue', '.tsx', '.ts', '.jsx', '.js', '.json']" : "['.tsx', '.ts', '.jsx', '.js', '.json']";
 
-// const __dirname = path.dirname(new URL(import.meta.url).pathname);
-
-export default {
-    mode: 'development',
-    devtool: 'cheap-module-source-map',
-    context: '${module.appDir.replace(/\\/g, "\\\\")}',
-    entry: {
-        main: './src/main.tsx',
-    },
-    output: {
-        path: '${path.join(this.uiOutputBaseDir, module.uiConfig.name).replace(/\\/g, "\\\\")}',
-        publicPath: 'auto',
-        uniqueName: '${safeName}',
-    },
-    resolve: {
-        extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
-        alias: {
-            '@ui-library/loader': '${path.resolve(this.uiOutputBaseDir, "ui-library", "loader").replace(/\\/g, "\\\\")}',
-            '@ui-library/utils': '${path.resolve(this.uiOutputBaseDir, "ui-library", "utils").replace(/\\/g, "\\\\")}',
-            '@ui-library': '${path.resolve(this.uiOutputBaseDir, "ui-library").replace(/\\/g, "\\\\")}',
-        },
-    },
-    module: {
-        rules: [
+		let moduleRules = `
             {
                 test: /\\.tsx?$/,
                 use: {
@@ -953,29 +935,103 @@ export default {
                     },
                 },
                 exclude: /node_modules/,
-            },
-        ],
-    },
-    plugins: [
+            }
+    `;
+
+		let plugins = `
         new rspack.HtmlRspackPlugin({
             template: './index.html',
         }),
+    `;
+
+		let imports = `
+import * as path from 'node:path';
+import { rspack } from '@rspack/core';
+import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack';
+    `;
+
+		if (isVue) {
+			imports += `
+import { VueLoaderPlugin } from 'vue-loader';
+      `;
+
+			moduleRules += `,
+            {
+                test: /\\.vue$/,
+                use: 'vue-loader',
+                exclude: /node_modules/,
+            },
+            {
+                test: /\\.css$/,
+                use: ['style-loader', 'css-loader'],
+            }
+      `;
+			plugins += `
+        new VueLoaderPlugin(),
+      `;
+			this.logger.logWarn(
+				`[${module.uiConfig.name}] Vue project detected. Make sure you have 'vue-loader', 'style-loader' and 'css-loader' installed.`
+			);
+		}
+
+		// El host necesita todos los frameworks, los remotes solo el suyo
+		const shared = isHost
+			? `{
+        react: { singleton: true, requiredVersion: '^18.2.0', eager: true, strictVersion: false },
+        'react-dom': { singleton: true, requiredVersion: '^18.2.0', eager: true, strictVersion: false },
+        'react/jsx-dev-runtime': { singleton: true, eager: true, strictVersion: false },
+        vue: { singleton: true, eager: true },
+    }`
+			: isVue
+			? `{ vue: { singleton: true, eager: true } }`
+			: `{
+        react: { singleton: true, requiredVersion: '^18.2.0', eager: true, strictVersion: false },
+        'react-dom': { singleton: true, requiredVersion: '^18.2.0', eager: true, strictVersion: false },
+        'react/jsx-dev-runtime': { singleton: true, eager: true, strictVersion: false },
+    }`;
+
+		const configContent = `
+${imports}
+
+export default {
+    mode: 'development',
+    devtool: 'cheap-module-source-map',
+    context: '${module.appDir.replace(/\\/g, "\\\\")}',
+    entry: {
+        main: '${mainEntry}',
+    },
+    output: {
+        path: '${path.join(this.uiOutputBaseDir, module.uiConfig.name).replace(/\\/g, "\\\\")}',
+        publicPath: 'auto',
+        uniqueName: '${safeName}',
+    },
+    resolve: {
+        extensions: ${extensions},
+        alias: {
+            '@ui-library/loader': '${path.resolve(this.uiOutputBaseDir, "web-ui-library", "loader").replace(/\\/g, "\\\\")}',
+            '@ui-library/utils': '${path.resolve(process.cwd(), "src/apps/test/00-web-ui-library/utils").replace(/\\/g, "\\\\")}',
+            '@ui-library': '${path.resolve(this.uiOutputBaseDir, "web-ui-library").replace(/\\/g, "\\\\")}',
+        },
+    },
+    module: {
+        rules: [
+            ${moduleRules}
+        ],
+    },
+    plugins: [
+        ${plugins}
         new ModuleFederationPlugin({
             name: '${safeName}',
             ${
-				isHost
-					? `remotes: ${JSON.stringify(remotes, null, 4)},`
-					: `
+							isHost
+								? `remotes: ${JSON.stringify(remotes, null, 4)},`
+								: `
             filename: 'remoteEntry.js',
             exposes: {
-                './App': './src/App.tsx',
+                './App': './src/App${appExtension}',
             },`
-			}
-            shared: {
-                react: { singleton: true, requiredVersion: '^18.2.0', eager: true, strictVersion: false },
-                'react-dom': { singleton: true, requiredVersion: '^18.2.0', eager: true, strictVersion: false },
-                'react/jsx-dev-runtime': { singleton: true, eager: true, strictVersion: false },
-            },
+						}
+            shared: ${shared},
         }),
     ],
     devServer: {

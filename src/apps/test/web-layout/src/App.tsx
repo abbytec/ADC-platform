@@ -1,6 +1,7 @@
 import React, { createElement, useState, useEffect, useRef } from 'react';
 import { Shell } from './components/Shell.tsx';
 import { router } from '@ui-library/utils/router.js';
+import { createApp } from 'vue';
 
 // Limpieza agresiva de Service Workers y Caches en desarrollo
 if (process.env.NODE_ENV === 'development' && 'serviceWorker' in navigator) {
@@ -34,6 +35,12 @@ const moduleToSafeName: Record<string, string> = {
 	'config': 'config',
 };
 
+const moduleFramework: Record<string, 'react' | 'vue'> = {
+	'home': 'react',
+	'users-management': 'react',
+	'config': 'vue',
+};
+
 const routeToModule: Record<string, string> = {
 	'/': 'home',
 	'/users': 'users-management',
@@ -43,6 +50,8 @@ const routeToModule: Record<string, string> = {
 async function loadRemoteComponent(moduleName: string) {
 	try {
 		const safeName = moduleToSafeName[moduleName];
+		const framework = moduleFramework[moduleName];
+		
 		if (!safeName) {
 			throw new Error(`Módulo desconocido: ${moduleName}`);
 		}
@@ -67,17 +76,58 @@ async function loadRemoteComponent(moduleName: string) {
 				throw new Error(`Módulo desconocido: ${safeName}`);
 		}
 		
-		const WrapperComponent = (props: any) => {
-			return React.createElement(
-				'div',
-				{ 
-					'data-module': moduleName,
-					'data-timestamp': timestamp,
-					style: { display: 'contents' }
-				},
-				React.createElement(RemoteComponent, props)
-			);
-		};
+		let WrapperComponent;
+		
+		// Para componentes Vue, crear un wrapper que monte la instancia Vue
+		if (framework === 'vue') {
+			WrapperComponent = (props: any) => {
+				const containerRef = React.useRef<HTMLDivElement>(null);
+				const vueAppRef = React.useRef<any>(null);
+				
+				React.useEffect(() => {
+					if (containerRef.current && !vueAppRef.current) {
+						// Montar la app Vue
+						vueAppRef.current = createApp(RemoteComponent, props);
+						vueAppRef.current.mount(containerRef.current);
+						console.log(`[Layout] Vue app montada: ${moduleName}`);
+					}
+					
+					return () => {
+						// Desmontar la app Vue cuando el componente React se desmonte
+						if (vueAppRef.current) {
+							vueAppRef.current.unmount();
+							vueAppRef.current = null;
+							console.log(`[Layout] Vue app desmontada: ${moduleName}`);
+						}
+					};
+				}, []);
+				
+				return React.createElement(
+					'div',
+					{ 
+						'data-module': moduleName,
+						'data-framework': 'vue',
+						'data-timestamp': timestamp,
+						style: { display: 'contents' }
+					},
+					React.createElement('div', { ref: containerRef })
+				);
+			};
+		} else {
+			// Para componentes React, usar el wrapper normal
+			WrapperComponent = (props: any) => {
+				return React.createElement(
+					'div',
+					{ 
+						'data-module': moduleName,
+						'data-framework': 'react',
+						'data-timestamp': timestamp,
+						style: { display: 'contents' }
+					},
+					React.createElement(RemoteComponent, props)
+				);
+			};
+		}
 		
 		return { Component: WrapperComponent, moduleName, timestamp };
 	} catch (error) {
