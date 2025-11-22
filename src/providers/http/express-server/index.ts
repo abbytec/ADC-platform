@@ -2,7 +2,7 @@ import express, { Application, RequestHandler } from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import { Server } from "node:http";
-import { BaseProvider, ProviderType } from "../../BaseProvider.js";
+import { BaseProvider } from "../../BaseProvider.js";
 import { IHttpServerProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
 
 /**
@@ -31,7 +31,7 @@ class ExpressServer implements IHttpServerProvider {
 
 		// Log de peticiones en desarrollo
 		if (process.env.NODE_ENV === "development") {
-			this.app.use((req: any, res:any, next:any) => {
+			this.app.use((req: any, _res: any, next: any) => {
 				this.logger.logDebug(`${req.method} ${req.path}`);
 				next();
 			});
@@ -112,7 +112,7 @@ export default class HttpServerProvider extends BaseProvider<IHttpServerProvider
 
 	private expressServer: ExpressServer | null = null;
 
-	async getInstance(options?: any): Promise<IHttpServerProvider> {
+	async getInstance(_options?: any): Promise<IHttpServerProvider> {
 		this.expressServer ??= new ExpressServer(this.logger);
 		return this.expressServer;
 	}
@@ -124,4 +124,3 @@ export default class HttpServerProvider extends BaseProvider<IHttpServerProvider
 		await super.stop();
 	}
 }
-

@@ -5,11 +5,7 @@ import type { UIModuleConfig } from "../../../../interfaces/modules/IUIModule.js
 /**
  * Genera el archivo stencil.config.ts para una app
  */
-export async function generateStencilConfig(
-	appDir: string,
-	config: UIModuleConfig,
-	uiOutputBaseDir: string
-): Promise<string> {
+export async function generateStencilConfig(appDir: string, config: UIModuleConfig, uiOutputBaseDir: string): Promise<string> {
 	const targetDir = path.join(uiOutputBaseDir, config.name);
 	const relativeOutputDir = path.relative(appDir, targetDir);
 
@@ -32,7 +28,6 @@ export async function generateStencilConfig(
 		],
 		sourceMap: true,
 		buildEs5: false,
-		copy: [{ src: "../utils", dest: "utils" }],
 	};
 
 	const configContent = `import { Config } from '@stencil/core';\n\nexport const config: Config = ${JSON.stringify(
@@ -46,4 +41,3 @@ export async function generateStencilConfig(
 
 	return configPath;
 }
-

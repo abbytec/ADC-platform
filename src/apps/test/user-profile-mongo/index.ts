@@ -1,5 +1,5 @@
 import { BaseApp } from "../../BaseApp.js";
-import { IIdentityManager, User, Role, Group } from "../../../services/core/IdentityManagerService/index.js";
+import { IIdentityManager, Role } from "../../../services/core/IdentityManagerService/index.js";
 import { Logger } from "../../../utils/logger/Logger.js";
 
 interface IdentityTestData {
@@ -23,16 +23,16 @@ export default class UserProfileApp extends BaseApp {
 		// Obtener el IdentityManager del kernel
 		try {
 			const identityService = this.kernel.getService<any>("IdentityManagerService");
-			
+
 			// El kernel retorna la instancia del servicio (BaseService)
 			// Llamar a getInstance() si existe (es un método de BaseService)
-			if (typeof identityService?.getInstance === 'function') {
+			if (typeof identityService?.getInstance === "function") {
 				this.identityManager = await identityService.getInstance();
 			} else {
 				// Si no es una instancia de BaseService, asumir que ya es la interfaz
 				this.identityManager = identityService;
 			}
-			
+
 			Logger.ok(`[${this.name}] IdentityManagerService disponible`);
 		} catch (err) {
 			Logger.warn(`[${this.name}] IdentityManagerService no disponible: ${err}`);
@@ -101,20 +101,14 @@ export default class UserProfileApp extends BaseApp {
 			Logger.ok(`[${this.name}] ✓ Rol creado: ${role.name}`);
 
 			// 2. Crear grupo
-			const group = await this.identityManager.createGroup(
-				`test-group-${Date.now()}`,
-				"Grupo de prueba para user-profile",
-				[role.id]
-			);
+			const group = await this.identityManager.createGroup(`test-group-${Date.now()}`, "Grupo de prueba para user-profile", [role.id]);
 			this.testData.groupIds.push(group.id);
 			Logger.ok(`[${this.name}] ✓ Grupo creado: ${group.name}`);
 
 			// 3. Crear usuario
-			const user = await this.identityManager.createUser(
-				`test-user-${Date.now()}`,
-				`pwd-${Math.random().toString(36).substring(7)}`,
-				[role.id]
-			);
+			const user = await this.identityManager.createUser(`test-user-${Date.now()}`, `pwd-${Math.random().toString(36).substring(7)}`, [
+				role.id,
+			]);
 			this.testData.userIds.push(user.id);
 			Logger.ok(`[${this.name}] ✓ Usuario creado: ${user.username}`);
 
@@ -140,13 +134,9 @@ export default class UserProfileApp extends BaseApp {
 	 * Crea un rol de prueba
 	 */
 	async #createTestRole(): Promise<Role> {
-		return await this.identityManager.createRole(
-			`test-role-${Date.now()}`,
-			"Rol de prueba para user-profile",
-			[
-				{ resource: "user-profile", action: "read" },
-				{ resource: "user-profile", action: "write", scope: "self" },
-			]
-		);
+		return await this.identityManager.createRole(`test-role-${Date.now()}`, "Rol de prueba para user-profile", [
+			{ resource: "user-profile", action: "read" },
+			{ resource: "user-profile", action: "write", scope: "self" },
+		]);
 	}
 }

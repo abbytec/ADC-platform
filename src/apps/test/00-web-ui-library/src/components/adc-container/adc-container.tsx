@@ -1,12 +1,12 @@
-import { Component, Prop, h, Host } from '@stencil/core';
+import { Component, Prop, h, Host } from "@stencil/core";
 
 @Component({
-	tag: 'adc-container',
+	tag: "adc-container",
 	shadow: true,
 })
 export class AdcContainer {
-	@Prop() maxWidth: string = '1200px';
-	@Prop() padding: string = '20px';
+	@Prop() maxWidth: string = "1200px";
+	@Prop() padding: string = "20px";
 
 	render() {
 		return (
@@ -15,11 +15,11 @@ export class AdcContainer {
 					<div
 						style={{
 							maxWidth: this.maxWidth,
-							margin: '0 auto',
-							background: 'white',
-							padding: '30px',
-							borderRadius: '8px',
-							boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+							margin: "0 auto",
+							background: "white",
+							padding: "30px",
+							borderRadius: "8px",
+							boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
 						}}
 					>
 						<slot></slot>
@@ -29,4 +29,3 @@ export class AdcContainer {
 		);
 	}
 }
-

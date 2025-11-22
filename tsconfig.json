@@ -1,27 +1,8 @@
 {
+	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
-        "jsx": "react-jsx",
-		"module": "NodeNext",
-		"moduleResolution": "NodeNext",
-		"outDir": "./dist",
-		"rootDir": "./src",
-		"esModuleInterop": true,
-		"allowImportingTsExtensions": true,
-		"allowSyntheticDefaultImports": true,
-		"skipLibCheck": true,
-		"strict": true,
-		"types": ["node"],
-		"target": "ES2022",
-		"lib": ["es2022", "dom"],
-		"noEmit": true,
-		"baseUrl": "./src",
-		"paths": {
-			"@ui-library/*": ["./apps/test/00-web-ui-library/src/*"]
-		}
+		"jsx": "react-jsx",
+		"jsxImportSource": "react"
 	},
-	"include": ["src", "globals.d.ts", "src/types"],
-	"exclude": [
-		"node_modules",
-		"**/*.spec.ts",
-	]
+	"exclude": ["node_modules", "**/node_modules", "**/*.spec.ts", "**/00-*"]
 }

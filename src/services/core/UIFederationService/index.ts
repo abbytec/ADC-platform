@@ -16,13 +16,7 @@ import { generateAstroConfig } from "./config-generators/astro.js";
 import { generateStencilConfig } from "./config-generators/stencil.js";
 
 // Builders
-import {
-	startRspackDevServer,
-	buildStencilModule,
-	buildViteModule,
-	buildReactVueModule,
-	buildAstroModule,
-} from "./builders/module-builder.js";
+import { startRspackDevServer, buildStencilModule, buildViteModule, buildReactVueModule, buildAstroModule } from "./builders/module-builder.js";
 
 export default class UIFederationService extends BaseService<IUIFederationService> {
 	public readonly name = "UIFederationService";
@@ -260,13 +254,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				}
 			} else if (framework === "react" || framework === "vue") {
 				if (isDevelopment && module.uiConfig.devPort) {
-					const watcher = await startRspackDevServer(
-						module,
-						rspackBin,
-						this.registeredModules,
-						this.uiOutputBaseDir,
-						this.logger
-					);
+					const watcher = await startRspackDevServer(module, rspackBin, this.registeredModules, this.uiOutputBaseDir, this.logger);
 					this.watchBuilds.set(module.uiConfig.name, watcher);
 				} else {
 					await buildReactVueModule(module, this.registeredModules, this.uiOutputBaseDir, this.port, this.logger);
@@ -338,12 +326,12 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	async #setupImportMapEndpoint(): Promise<void> {
 		if (!this.httpProvider) return;
 
-		this.httpProvider.registerRoute("GET", "/importmap.json", (req, res) => {
+		this.httpProvider.registerRoute("GET", "/importmap.json", (_req, res) => {
 			res.setHeader("Content-Type", "application/json");
 			res.json(this.importMap);
 		});
 
-		this.httpProvider.registerRoute("GET", "/", (req, res) => {
+		this.httpProvider.registerRoute("GET", "/", (_req, res) => {
 			const layoutModule = this.registeredModules.get("layout");
 			if (layoutModule && layoutModule.uiConfig.devPort) {
 				res.redirect(`http://localhost:${layoutModule.uiConfig.devPort}/`);

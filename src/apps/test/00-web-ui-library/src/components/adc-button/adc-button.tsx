@@ -1,45 +1,46 @@
-import { Component, Prop, h, Event, EventEmitter, Host } from '@stencil/core';
+import { Component, Prop, h, Event, EventEmitter, Host } from "@stencil/core";
+import { MouseEventHandler } from "react";
 
 @Component({
-	tag: 'adc-button',
+	tag: "adc-button",
 	shadow: true,
 })
 export class AdcButton {
 	@Prop() disabled: boolean = false;
-	@Prop() buttonType: 'button' | 'submit' | 'reset' = 'button';
-	@Prop() variant: 'primary' | 'secondary' = 'primary';
-	
-	@Event() adcClick: EventEmitter<MouseEvent>;
+	@Prop() buttonType: "button" | "submit" | "reset" = "button";
+	@Prop() variant: "primary" | "secondary" = "primary";
 
-	private handleClick = (event: MouseEvent) => {
+	@Event() adcClick: EventEmitter<MouseEvent> | undefined;
+
+	private handleClick = (event: MouseEventHandler<HTMLButtonElement>) => {
 		if (!this.disabled) {
-			this.adcClick.emit(event);
+			this.adcClick?.emit(event as unknown as MouseEvent);
 		}
 	};
 
 	render() {
-		const isPrimary = this.variant === 'primary';
-		const backgroundColor = this.disabled ? '#ccc' : (isPrimary ? '#0066cc' : '#6b7280');
-		const hoverColor = isPrimary ? '#0052a3' : '#4b5563';
+		const isPrimary = this.variant === "primary";
+		const backgroundColor = this.disabled ? "#ccc" : isPrimary ? "#0066cc" : "#6b7280";
+		const hoverColor = isPrimary ? "#0052a3" : "#4b5563";
 
 		return (
 			<Host>
 				<button
 					type={this.buttonType}
-					onClick={this.handleClick}
+					onClick={() => this.handleClick}
 					disabled={this.disabled}
 					class="adc-button"
 					style={{
 						backgroundColor,
-						color: 'white',
-						padding: '0.75rem 1.5rem',
-						border: 'none',
-						borderRadius: '0.375rem',
-						fontSize: '1rem',
-						fontWeight: '500',
-						cursor: this.disabled ? 'not-allowed' : 'pointer',
-						transition: 'background-color 0.2s',
-						'--hover-color': hoverColor,
+						color: "white",
+						padding: "0.75rem 1.5rem",
+						border: "none",
+						borderRadius: "0.375rem",
+						fontSize: "1rem",
+						fontWeight: "500",
+						cursor: this.disabled ? "not-allowed" : "pointer",
+						transition: "background-color 0.2s",
+						"--hover-color": hoverColor,
 					}}
 					onMouseEnter={(e) => {
 						if (!this.disabled) {
@@ -58,4 +59,3 @@ export class AdcButton {
 		);
 	}
 }
-

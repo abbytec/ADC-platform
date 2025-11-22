@@ -40,8 +40,8 @@ export class VersionResolver {
 		// ^ (Compatible con versión: cambios menores y patches)
 		if (range.startsWith("^")) {
 			const baseVersion = range.substring(1);
-			const [baseMajor, baseMinor] = baseVersion.split(".");
-			const [major, minor] = version.split(".");
+			const [baseMajor, _baseMinor] = baseVersion.split(".");
+			const [major, _minor] = version.split(".");
 
 			// Mismo major, version >= base
 			if (Number(major) === Number(baseMajor)) {
@@ -89,12 +89,7 @@ export class VersionResolver {
 	 * Busca recursivamente un módulo en subdirectorios
 	 * Retorna el primer directorio que contiene index.ts/index.js
 	 */
-	static async #findModuleRecursively(
-		searchDir: string,
-		moduleName: string,
-		depth: number = 0,
-		maxDepth: number = 3
-	): Promise<string | null> {
+	static async #findModuleRecursively(searchDir: string, moduleName: string, depth: number = 0, maxDepth: number = 3): Promise<string | null> {
 		if (depth > maxDepth) return null;
 
 		try {

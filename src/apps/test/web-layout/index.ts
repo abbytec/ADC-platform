@@ -15,10 +15,10 @@ export default class WebLayoutApp extends BaseApp {
 	async #registerAPIEndpoints() {
 		try {
 			const httpProvider = this.kernel.getProvider<any>("express-server");
-			const httpInstance = await httpProvider.getInstance() as IHttpServerProvider;
+			const httpInstance = (await httpProvider.getInstance()) as IHttpServerProvider;
 
 			// API para obtener estadísticas del dashboard
-			httpInstance.registerRoute("GET", "/api/dashboard/stats", async (req, res) => {
+			httpInstance.registerRoute("GET", "/api/dashboard/stats", async (_req, res) => {
 				// Obtener stats del IdentityManagerService
 				try {
 					const identityService = this.kernel.getService<any>("IdentityManagerService");
@@ -30,13 +30,13 @@ export default class WebLayoutApp extends BaseApp {
 						data: {
 							totalUsers: stats.users,
 							activeUsers: stats.activeUsers || Math.floor(stats.users * 0.7),
-							totalRoles: stats.roles
-						}
+							totalRoles: stats.roles,
+						},
 					});
 				} catch (error: any) {
 					res.status(500).json({
 						success: false,
-						error: error.message
+						error: error.message,
 					});
 				}
 			});
@@ -47,4 +47,3 @@ export default class WebLayoutApp extends BaseApp {
 		}
 	}
 }
-

@@ -12,7 +12,7 @@ import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModule, IModuleConfig } from "./interfaces/modules/IModule.js";
 
 type ModuleType = "provider" | "utility" | "service";
-type Module = IProvider<any> | IUtility<any> | IService<any>
+type Module = IProvider<any> | IUtility<any> | IService<any>;
 
 export class Kernel {
 	#isStartingUp = true;
@@ -204,13 +204,7 @@ export class Kernel {
 		}
 	}
 
-	#registerModule<T>(
-		moduleType: "utility" | "service",
-		name: string,
-		instance: IModule,
-		config: IModuleConfig,
-		appName?: string | null
-	): void {
+	#registerModule(moduleType: "utility" | "service", name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
 		const uniqueKey = this.#getUniqueKey(name, config.config);
 		this.#addModuleToRegistry(moduleType, name, uniqueKey, instance, appName);
 	}
@@ -299,11 +293,11 @@ export class Kernel {
 		return instance;
 	}
 
-	public registerUtility<T>(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
+	public registerUtility(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
 		this.#registerModule("utility", name, instance, config, appName);
 	}
 
-	public registerService<T>(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
+	public registerService(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
 		this.#registerModule("service", name, instance, config, appName);
 	}
 
@@ -639,10 +633,7 @@ export class Kernel {
 		}
 	}
 
-	async #loadAndRegisterSpecificModule(
-		moduleType: ModuleType,
-		config: IModuleConfig
-	): Promise<Module> {
+	async #loadAndRegisterSpecificModule(moduleType: ModuleType, config: IModuleConfig): Promise<Module> {
 		let module: Module;
 
 		switch (moduleType) {
@@ -785,10 +776,10 @@ export class Kernel {
 		const dockerComposeFile = path.join(appDir, "docker-compose.yml");
 		try {
 			await fs.stat(dockerComposeFile);
-			
+
 			// Archivo existe, ejecutar docker-compose up -d
 			this.#logger.logInfo(`Iniciando servicios Docker para app en ${appDir}...`);
-			
+
 			const { spawn } = await import("node:child_process");
 			const docker = spawn("docker", ["compose", "-f", dockerComposeFile, "up", "-d"], {
 				cwd: appDir,
@@ -831,9 +822,9 @@ export class Kernel {
 		const dockerComposeFile = path.join(appDir, "docker-compose.yml");
 		try {
 			await fs.stat(dockerComposeFile);
-			
+
 			this.#logger.logInfo(`Deteniendo servicios Docker para app en ${appDir}...`);
-			
+
 			const { spawn } = await import("node:child_process");
 			const docker = spawn("docker", ["compose", "-f", dockerComposeFile, "down"], {
 				cwd: appDir,
@@ -872,29 +863,29 @@ export class Kernel {
 			const AppClass = module.default;
 			if (!AppClass) return;
 
-		const appDir = path.dirname(filePath);
-		const appName = path.basename(appDir);
+			const appDir = path.dirname(filePath);
+			const appName = path.basename(appDir);
 
-		// Verificar si la app está deshabilitada en default.json
-		try {
-			const defaultConfigPath = path.join(appDir, "default.json");
-			const defaultConfigContent = await fs.readFile(defaultConfigPath, "utf-8");
-			const defaultConfig = JSON.parse(defaultConfigContent);
-			
-			if (defaultConfig.disabled === true) {
-				this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
-				return; // No continuar con esta app
+			// Verificar si la app está deshabilitada en default.json
+			try {
+				const defaultConfigPath = path.join(appDir, "default.json");
+				const defaultConfigContent = await fs.readFile(defaultConfigPath, "utf-8");
+				const defaultConfig = JSON.parse(defaultConfigContent);
+
+				if (defaultConfig.disabled === true) {
+					this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
+					return; // No continuar con esta app
+				}
+			} catch (error) {
+				// No hay default.json o no se puede leer, continuar normalmente
 			}
-		} catch (error) {
-			// No hay default.json o no se puede leer, continuar normalmente
-		}
 
-		// Ejecutar docker-compose si existe
-		try {
-			await this.#startDockerCompose(appDir, appName);
-		} catch {
-			this.#logger.logDebug(`docker-compose no disponible o no configurado para ${appName}`);
-		}
+			// Ejecutar docker-compose si existe
+			try {
+				await this.#startDockerCompose(appDir, appName);
+			} catch {
+				this.#logger.logDebug(`docker-compose no disponible o no configurado para ${appName}`);
+			}
 
 			const configDirs = [appDir, path.join(appDir, "configs")];
 			const allConfigFiles: string[] = [];
@@ -914,27 +905,27 @@ export class Kernel {
 				}
 			}
 
-		if (allConfigFiles.length > 0) {
-			for (const configPath of allConfigFiles) {
-				const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
-				
-				// Check if app is disabled
-				if (config.disabled === true) {
-					this.#logger.logDebug(`App ${appName} está deshabilitada (config: ${path.basename(configPath)})`);
-					continue;
-				}
-				
-				const configFile = path.basename(configPath);
-				const configName = this.#getConfigName(configFile);
-				const instanceName = `${appName}:${configName}`;
+			if (allConfigFiles.length > 0) {
+				for (const configPath of allConfigFiles) {
+					const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
 
-				const app: IApp = new AppClass(this, instanceName, config, filePath);
-				await this.#initializeAndRunApp(app, filePath, instanceName, configPath);
+					// Check if app is disabled
+					if (config.disabled === true) {
+						this.#logger.logDebug(`App ${appName} está deshabilitada (config: ${path.basename(configPath)})`);
+						continue;
+					}
+
+					const configFile = path.basename(configPath);
+					const configName = this.#getConfigName(configFile);
+					const instanceName = `${appName}:${configName}`;
+
+					const app: IApp = new AppClass(this, instanceName, config, filePath);
+					await this.#initializeAndRunApp(app, filePath, instanceName, configPath);
+				}
+			} else {
+				const app: IApp = new AppClass(this, appName, undefined, filePath);
+				await this.#initializeAndRunApp(app, filePath, appName);
 			}
-		} else {
-			const app: IApp = new AppClass(this, appName, undefined, filePath);
-			await this.#initializeAndRunApp(app, filePath, appName);
-		}
 		} catch (e: any) {
 			if (e.code === "ERR_MODULE_NOT_FOUND") {
 				this.#logger.logError(
@@ -957,7 +948,7 @@ export class Kernel {
 			ignoreInitial: true,
 			ignored: (filePath) => {
 				// Ignorar archivos default.json
-				return path.basename(filePath) === "default.json";
+				return ["default.json", "tsonfig.json"].includes(path.basename(filePath));
 			},
 			awaitWriteFinish: {
 				stabilityThreshold: 2000,
@@ -976,9 +967,7 @@ export class Kernel {
 
 			// Cuando se agrega un nuevo archivo de configuración, necesitamos cargar la app completa
 			// para crear la nueva instancia
-			const appDirResolved = srcConfigPath.includes("/configs/")
-				? path.dirname(path.dirname(srcConfigPath))
-				: path.dirname(srcConfigPath);
+			const appDirResolved = srcConfigPath.includes("/configs/") ? path.dirname(path.dirname(srcConfigPath)) : path.dirname(srcConfigPath);
 			const appFilePath = path.join(appDirResolved, `index${this.#fileExtension}`);
 
 			try {
