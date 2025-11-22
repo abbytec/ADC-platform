@@ -53,52 +53,46 @@
   </div>
 </template>
 
-<script>
-import '@ui-library/loader';
+<script setup>
+import { reactive, ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import '@ui-library/loader'
 
-export default {
-  name: 'App',
-  data() {
-    return {
-      config: {
-        siteName: 'ADC Platform',
-        language: 'es',
-        theme: 'light'
-      },
-      configuredOptions: 3,
-      pendingChanges: 0
-    };
-  },
-  mounted() {
-    // Escuchar evento del web component
-    const saveButton = this.$refs.saveButton;
-    if (saveButton) {
-      saveButton.addEventListener('adcClick', this.handleSave);
-    }
-  },
-  beforeUnmount() {
-    // Limpiar evento
-    const saveButton = this.$refs.saveButton;
-    if (saveButton) {
-      saveButton.removeEventListener('adcClick', this.handleSave);
-    }
-  },
-  methods: {
-    handleSave() {
-      console.log('[Config] Guardando configuración:', this.config);
-      this.pendingChanges = 0;
-      alert('✅ Configuración guardada exitosamente');
-    }
-  },
-  watch: {
-    config: {
-      handler() {
-        this.pendingChanges++;
-      },
-      deep: true
-    }
-  }
+const saveButton = ref(null)
+
+const config = reactive({
+  siteName: 'ADC Platform',
+  language: 'es',
+  theme: 'light'
+})
+
+const configuredOptions = ref(3)
+const pendingChanges = ref(0)
+
+const handleSave = () => {
+  console.log('[Config] Guardando configuración:', config)
+  pendingChanges.value = 0
+  alert('✅ Configuración guardada exitosamente')
 }
+
+onMounted(() => {
+  if (saveButton.value) {
+    saveButton.value.addEventListener('adcClick', handleSave)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (saveButton.value) {
+    saveButton.value.removeEventListener('adcClick', handleSave)
+  }
+})
+
+watch(
+  () => config,
+  () => {
+    pendingChanges.value++
+  },
+  { deep: true }
+)
 </script>
 
 <style>
