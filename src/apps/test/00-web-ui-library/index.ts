@@ -1,4 +1,4 @@
-import { BaseApp } from "../../BaseApp.js";
+import { BaseApp } from "../../BaseApp.ts";
 
 export default class UILibraryApp extends BaseApp {
 	async run(): Promise<void> {
@@ -6,4 +6,3 @@ export default class UILibraryApp extends BaseApp {
 		this.logger.logOk(`${this.name} - Componentes Stencil listos para ser consumidos en cualquier framework`);
 	}
 }
-
