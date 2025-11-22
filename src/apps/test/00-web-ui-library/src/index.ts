@@ -1,1 +1,1 @@
-export type * from "./components.d.ts";
+export type * from "./components.js";
