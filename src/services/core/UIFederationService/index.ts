@@ -335,7 +335,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			const layoutModule = this.registeredModules.get("layout");
 			if (layoutModule && layoutModule.uiConfig.devPort) {
 				res.redirect(`http://localhost:${layoutModule.uiConfig.devPort}/`);
-			}
+			} else res.send("UIModuleFederation listo!");
 		});
 
 		this.logger.logDebug("Endpoints registrados: /importmap.json, /");
