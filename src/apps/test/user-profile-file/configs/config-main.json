@@ -6,13 +6,12 @@
 			"name": "json-file-crud",
 			"version": "latest",
 			"language": "typescript",
-			"config": {},
 			"providers": [
 				{
 					"name": "file-storage",
 					"version": "latest",
 					"language": "typescript",
-					"config": {
+					"custom": {
 						"basePath": "./temp/storage2"
 					}
 				}

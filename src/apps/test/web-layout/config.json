@@ -12,7 +12,7 @@
 			"name": "mongo",
 			"version": "latest",
 			"language": "typescript",
-			"config": {
+			"custom": {
 				"uri": "mongodb://admin:password@localhost:27018/adc-dashboard?authSource=admin",
 				"maxRetries": 5,
 				"retryDelay": 5000

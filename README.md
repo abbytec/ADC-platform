@@ -25,12 +25,14 @@ El objetivo principal del proyecto es ofrecer una base sólida y flexible que de
 ## Quick Start
 
 ### Desarrollo
+
 ```bash
 npm install
 npm run start          # Inicia en modo desarrollo con HMR
 ```
 
 ### Producción
+
 ```bash
 npm run start:prod   # Ejecuta sin apps de test
 ```
@@ -39,8 +41,8 @@ npm run start:prod   # Ejecuta sin apps de test
 
 Los servicios en modo kernel se cargan automáticamente antes que las apps:
 
-- **ExecutionManagerService:** Gestión distribuida de workers y balanceo de carga
-- **IdentityManagerService:** Gestión centralizada de usuarios, roles y grupos con persistencia en MongoDB
+-   **ExecutionManagerService:** Gestión distribuida de workers y balanceo de carga
+-   **IdentityManagerService:** Gestión centralizada de usuarios, roles y grupos con persistencia en MongoDB
 
 ## Gestión de Identidades
 
@@ -83,28 +85,30 @@ Si una app contiene un archivo `docker-compose.yml`, el kernel lo ejecutará aut
 
 ```yaml
 # src/apps/test/user-profile/docker-compose.yml
-version: '3.8'
+version: "3.8"
 services:
-  mongo:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
+    mongo:
+        image: mongo:latest
+        ports:
+            - "27017:27017"
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: admin
+            MONGO_INITDB_ROOT_PASSWORD: password
 ```
 
 Luego en la configuración de la app (`default.json`), referencia el provider:
 
 ```json
 {
-  "providers": [{
-    "name": "mongo",
-    "global": true,
-    "config": {
-      "uri": "mongodb://admin:password@localhost:27017/db-name"
-    }
-  }]
+	"providers": [
+		{
+			"name": "mongo",
+			"global": true,
+			"custom": {
+				"uri": "mongodb://admin:password@localhost:27017/db-name"
+			}
+		}
+	]
 }
 ```
 
@@ -130,8 +134,8 @@ src/
 
 Cada módulo usa `package.json` para gestionar dependencias y un archivo de configuración según el tipo:
 
-- **Providers:** `config.json` (opcional)
-- **Services:** `config.json` (para definir providers/utilities internas)
-- **Apps:** `default.json` + `configs/*.json` (múltiples instancias)
+-   **Providers:** `config.json` (opcional)
+-   **Services:** `config.json` (para definir providers/utilities internas)
+-   **Apps:** `default.json` + `configs/*.json` (múltiples instancias)
 
 Para una descripción técnica detallada, consulta [ARCHITECTURE.md](./ARCHITECTURE.md).

@@ -59,54 +59,62 @@ Los archivos de configuración de instancia (e.g., `config-main.json`) también 
 ### Loaders (Sistema Modular)
 
 Sistema de carga de módulos con soporte para:
-- Versionado semántico
-- Múltiples lenguajes (TypeScript, Python)
-- Interoperabilidad cross-language via IPC (named pipes)
+
+-   Versionado semántico
+-   Múltiples lenguajes (TypeScript, Python)
+-   Interoperabilidad cross-language via IPC (named pipes)
 
 ### ExecutionManagerService (Distribución de Carga)
 
 Servicio en modo kernel que gestiona la ejecución distribuida:
-- **Pool de Workers:** Administra workers dinámicamente según la carga del sistema
-- **Monitoreo de Recursos:** Mide CPU y memoria para optimizar distribución
-- **Decorador @Distributed:** Los módulos anotados pueden ejecutarse en workers
-- **Preparado para Clusterización:** Arquitectura diseñada para soportar nodos remotos en el futuro
+
+-   **Pool de Workers:** Administra workers dinámicamente según la carga del sistema
+-   **Monitoreo de Recursos:** Mide CPU y memoria para optimizar distribución
+-   **Decorador @Distributed:** Los módulos anotados pueden ejecutarse en workers
+-   **Preparado para Clusterización:** Arquitectura diseñada para soportar nodos remotos en el futuro
 
 **Uso:**
+
 ```typescript
 @Distributed
 class MyService extends BaseService {
-  async heavyComputation() {
-    // Se ejecuta en worker si el ExecutionManager lo asigna
-  }
+	async heavyComputation() {
+		// Se ejecuta en worker si el ExecutionManager lo asigna
+	}
 }
 ```
 
 ### IdentityManagerService (Gestión de Identidades)
 
 Servicio en modo kernel para gestión centralizada de usuarios, roles y grupos:
-- **8 Roles Predefinidos:** SYSTEM, Admin, Network Manager, Security Manager, Data Manager, App Manager, Config Manager, User
-- **Usuario SYSTEM:** Auto-creado con credenciales aleatorias en cada arranque (solo disponible durante la sesión)
-- **Persistencia en MongoDB:** Cuando el mongo-provider está disponible (fallback a memoria en caso contrario)
-- **Seguridad:** Contraseñas hasheadas con PBKDF2 (100,000 iteraciones) y salt de 16 bytes
-- **Permisos Granulares:** Por recurso, acción y alcance (self/group/all)
-- **Roles Personalizados:** Posibilidad de crear nuevos roles con permisos específicos
+
+-   **8 Roles Predefinidos:** SYSTEM, Admin, Network Manager, Security Manager, Data Manager, App Manager, Config Manager, User
+-   **Usuario SYSTEM:** Auto-creado con credenciales aleatorias en cada arranque (solo disponible durante la sesión)
+-   **Persistencia en MongoDB:** Cuando el mongo-provider está disponible (fallback a memoria en caso contrario)
+-   **Seguridad:** Contraseñas hasheadas con PBKDF2 (100,000 iteraciones) y salt de 16 bytes
+-   **Permisos Granulares:** Por recurso, acción y alcance (self/group/all)
+-   **Roles Personalizados:** Posibilidad de crear nuevos roles con permisos específicos
 
 **Alerta de Configuración:**
 Si MongoDB no está configurado en las apps, el servicio muestra una alerta:
+
 ```
 ⚠️  MongoDB no está configurado. IdentityManagerService funcionará con datos en memoria.
 ```
 
 **Ejemplo de Configuración en App:**
+
 ```json
 {
-  "providers": [{
-    "name": "mongo",
-    "global": true,
-    "config": {
-      "uri": "mongodb://admin:password@localhost:27017/db-name"
-    }
-  }]
+	"providers": [
+		{
+			"name": "mongo",
+			"global": true,
+			"custom": {
+				"uri": "mongodb://admin:password@localhost:27017/db-name"
+			}
+		}
+	]
 }
 ```
 
@@ -176,12 +184,14 @@ Y editas `config-main.json`, solo se reiniciará la instancia `user-profile:main
 El Kernel detecta automáticamente archivos `docker-compose.yml` en las apps y los ejecuta antes de iniciar la aplicación:
 
 **Funcionalidades:**
-- Si una app contiene `docker-compose.yml`, el Kernel ejecuta `docker-compose up -d` al cargar la app
-- Los servicios se inician en background y el Kernel espera 3 segundos para estabilización
-- Si docker-compose falla o no está disponible, continúa sin error (degradación graciosa)
-- Recomendado para apps que requieren servicios como MongoDB, Redis, etc.
+
+-   Si una app contiene `docker-compose.yml`, el Kernel ejecuta `docker-compose up -d` al cargar la app
+-   Los servicios se inician en background y el Kernel espera 3 segundos para estabilización
+-   Si docker-compose falla o no está disponible, continúa sin error (degradación graciosa)
+-   Recomendado para apps que requieren servicios como MongoDB, Redis, etc.
 
 **Ejemplo:**
+
 ```
 src/apps/test/user-profile/
 ├── index.ts
@@ -190,6 +200,7 @@ src/apps/test/user-profile/
 ```
 
 **Antes del Arranque:**
+
 ```
 1. Kernel detecta docker-compose.yml
 2. Ejecuta: docker-compose -f docker-compose.yml up -d
@@ -230,7 +241,7 @@ Soportados: `1.0.0` (exacta), `^1.0.0` (caret), `~1.2.3` (tilde), `>=1.0.0`, `>1
 			"name": "JsonFileCrud",
 			"version": "^1.0.0",
 			"language": "typescript",
-			"config": {}
+			"custom": {}
 		}
 	]
 }
@@ -247,15 +258,16 @@ ADC Platform soporta módulos en múltiples lenguajes mediante IPC (named pipes)
 **Serialización:** Buffers y datos complejos se serializan automáticamente (base64 para JSON).
 
 **Ejemplo:**
+
 ```json
 {
-  "utilities": [
-    {
-      "name": "json-file-adapter",
-      "version": "1.0.0-py",
-      "language": "python"
-    }
-  ]
+	"utilities": [
+		{
+			"name": "json-file-adapter",
+			"version": "1.0.0-py",
+			"language": "python"
+		}
+	]
 }
 ```
 
@@ -265,17 +277,17 @@ El proyecto incluye una librería de componentes UI (`00-web-ui-library`) constr
 
 ### Características
 
-- **Web Components nativos:** Los componentes se definen una vez y funcionan en cualquier framework
-- **Sin dependencias de framework:** Las apps que consumen los componentes no necesitan instalar React, Vue, etc.
-- **Auto-registro:** Los componentes se registran automáticamente al importar el loader
-- **TypeScript:** Tipado completo con definiciones generadas automáticamente
+-   **Web Components nativos:** Los componentes se definen una vez y funcionan en cualquier framework
+-   **Sin dependencias de framework:** Las apps que consumen los componentes no necesitan instalar React, Vue, etc.
+-   **Auto-registro:** Los componentes se registran automáticamente al importar el loader
+-   **TypeScript:** Tipado completo con definiciones generadas automáticamente
 
 ### Componentes Disponibles
 
-- `<adc-button>`: Botón principal con eventos personalizados
-- `<adc-header>`: Encabezado de página con título y subtítulo
-- `<adc-container>`: Contenedor con padding y max-width
-- `<adc-stat-card>`: Tarjeta para mostrar estadísticas
+-   `<adc-button>`: Botón principal con eventos personalizados
+-   `<adc-header>`: Encabezado de página con título y subtítulo
+-   `<adc-container>`: Contenedor con padding y max-width
+-   `<adc-stat-card>`: Tarjeta para mostrar estadísticas
 
 ### Uso en Apps
 
@@ -295,11 +307,12 @@ import '@ui-library/loader';
 ### UIFederationService
 
 Gestiona el build y servido de módulos UI:
-- Soporta Stencil, React, Vue, Vite y Astro
-- Build automático en desarrollo con watch mode
-- Module Federation con Rspack para apps React/Vue
-- Import maps dinámicos para resolución de módulos
-- Servido estático de componentes compilados
+
+-   Soporta Stencil, React, Vue, Vite y Astro
+-   Build automático en desarrollo con watch mode
+-   Module Federation con Rspack para apps React/Vue
+-   Import maps dinámicos para resolución de módulos
+-   Servido estático de componentes compilados
 
 ## Gestión de Dependencias con Workspaces
 

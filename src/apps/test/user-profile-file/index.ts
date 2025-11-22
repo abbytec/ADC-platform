@@ -37,7 +37,7 @@ export default class UserProfileFileApp extends BaseApp {
 		Logger.info(`\n[${this.name}] =============== INICIANDO PRUEBA ===============`);
 
 		try {
-			const profileKey = this.config.PROFILE_KEY || "user_profile";
+			const profileKey = this.config?.PROFILE_KEY || "user_profile";
 			
 			// 1. Intentar cargar el perfil existente
 			let data = await this.crud.read<UserProfile>(profileKey);

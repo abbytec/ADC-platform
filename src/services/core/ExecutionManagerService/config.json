@@ -2,9 +2,8 @@
 	"global": true,
 	"kernelMode": true,
 	"failOnError": true,
-	"config": {
+	"custom": {
 		"minWorkers": 2,
 		"maxWorkers": 4
 	}
 }
-

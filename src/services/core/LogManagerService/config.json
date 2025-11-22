@@ -1,0 +1,14 @@
+{
+	"name": "LogManagerService",
+	"type": "service",
+	"version": "1.0.0",
+	"global": true,
+	"language": "typescript",
+	"custom": {
+		"retentionDays": 3,
+		"retentionCount": 10,
+		"logsDir": "temp/logs"
+	},
+	"providers": [],
+	"utilities": []
+}
