@@ -1,0 +1,26 @@
+{
+	"compilerOptions": {
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"outDir": "./dist",
+		"rootDir": "./src",
+		"esModuleInterop": true,
+		"allowImportingTsExtensions": true,
+		"allowSyntheticDefaultImports": true,
+		"allowUnreachableCode": false,
+		"skipLibCheck": true,
+		"strict": true,
+		"types": ["node"],
+		"target": "ES2022",
+		"lib": ["es2022", "dom", "dom.iterable"],
+		"noEmit": true,
+		"paths": {
+			"@ui-library/*": ["./src/apps/test/00-web-ui-library/src/*"]
+		},
+		"declaration": false,
+		"experimentalDecorators": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true
+	},
+	"include": ["src", "globals.d.ts", "src/types"]
+}

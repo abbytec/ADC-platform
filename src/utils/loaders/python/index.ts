@@ -53,7 +53,7 @@ class PythonProviderWrapper extends PythonModuleWrapper implements IProvider<any
 		return new Proxy(
 			{},
 			{
-				get: (target, prop) => {
+				get: (_target, prop) => {
 					if (typeof prop === "string") {
 						return async (...args: any[]) => {
 							return await ipcManager.call(this.name, this.moduleVersion, "python", prop, args);
@@ -80,7 +80,7 @@ class PythonUtilityWrapper extends PythonModuleWrapper implements IUtility<any> 
 		this.cachedInstance = new Proxy(
 			{},
 			{
-				get: (target, prop) => {
+				get: (_target, prop) => {
 					// Ignorar propiedades de Promise y símbolos especiales
 					if (typeof prop === "symbol" || prop === "then" || prop === "catch" || prop === "finally") {
 						return undefined;
@@ -113,7 +113,7 @@ class PythonServiceWrapper extends PythonModuleWrapper implements IService<any> 
 		return new Proxy(
 			{},
 			{
-				get: (target, prop) => {
+				get: (_target, prop) => {
 					if (typeof prop === "string") {
 						return async (...args: any[]) => {
 							return await ipcManager.call(this.name, this.moduleVersion, "python", prop, args);
@@ -166,7 +166,7 @@ export class PythonLoader implements IModuleLoader {
 		// Determinar el path base según el entorno
 		const basePath = process.env.NODE_ENV === "development" ? "src" : "dist";
 		const pythonPath = path.resolve(process.cwd(), basePath, "interfaces", "interop", "py");
-		
+
 		const env = {
 			...process.env,
 			ADC_MODULE_NAME: moduleName,
@@ -184,52 +184,52 @@ export class PythonLoader implements IModuleLoader {
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 
-	// Helper para parsear y loguear mensajes con el nivel correcto
-	const logPythonMessage = (data: Buffer) => {
-		const message = data.toString().trim();
-		if (!message) return;
+		// Helper para parsear y loguear mensajes con el nivel correcto
+		const logPythonMessage = (data: Buffer) => {
+			const message = data.toString().trim();
+			if (!message) return;
 
-		// Intentar parsear el nivel de log del formato: [NIVEL] [módulo] mensaje
-		const levelMatch = message.match(/^\[(DEBUG|INFO|OK|WARN|ERROR)\]\s+(.*)/i);
-		
-		if (levelMatch) {
-			const level = levelMatch[1].toUpperCase();
-			const rest = levelMatch[2];
-			
-			// Loguear con el nivel correcto
-			switch (level) {
-				case "DEBUG":
-					Logger.debug(`[Python:${moduleName}] ${rest}`);
-					break;
-				case "INFO":
-					Logger.info(`[Python:${moduleName}] ${rest}`);
-					break;
-				case "OK":
-					Logger.ok(`[Python:${moduleName}] ${rest}`);
-					break;
-				case "WARN":
-					Logger.warn(`[Python:${moduleName}] ${rest}`);
-					break;
-				case "ERROR":
-					Logger.error(`[Python:${moduleName}] ${rest}`);
-					break;
-				default:
-					Logger.info(`[Python:${moduleName}] ${message}`);
+			// Intentar parsear el nivel de log del formato: [NIVEL] [módulo] mensaje
+			const levelMatch = message.match(/^\[(DEBUG|INFO|OK|WARN|ERROR)\]\s+(.*)/i);
+
+			if (levelMatch) {
+				const level = levelMatch[1].toUpperCase();
+				const rest = levelMatch[2];
+
+				// Loguear con el nivel correcto
+				switch (level) {
+					case "DEBUG":
+						Logger.debug(`[Python:${moduleName}] ${rest}`);
+						break;
+					case "INFO":
+						Logger.info(`[Python:${moduleName}] ${rest}`);
+						break;
+					case "OK":
+						Logger.ok(`[Python:${moduleName}] ${rest}`);
+						break;
+					case "WARN":
+						Logger.warn(`[Python:${moduleName}] ${rest}`);
+						break;
+					case "ERROR":
+						Logger.error(`[Python:${moduleName}] ${rest}`);
+						break;
+					default:
+						Logger.info(`[Python:${moduleName}] ${message}`);
+				}
+			} else {
+				// Si no hay nivel explícito, loguear como info
+				Logger.info(`[Python:${moduleName}] ${message}`);
 			}
-		} else {
-			// Si no hay nivel explícito, loguear como info
-			Logger.info(`[Python:${moduleName}] ${message}`);
-		}
-	};
+		};
 
-	// Capturar salida estándar y de errores (ambos van a stderr desde Python)
-	pythonProcess.stdout?.on("data", (data) => {
-		logPythonMessage(data);
-	});
+		// Capturar salida estándar y de errores (ambos van a stderr desde Python)
+		pythonProcess.stdout?.on("data", (data) => {
+			logPythonMessage(data);
+		});
 
-	pythonProcess.stderr?.on("data", (data) => {
-		logPythonMessage(data);
-	});
+		pythonProcess.stderr?.on("data", (data) => {
+			logPythonMessage(data);
+		});
 
 		// Manejar salida del proceso
 		pythonProcess.on("exit", (code) => {
@@ -284,7 +284,7 @@ export class PythonLoader implements IModuleLoader {
 		}
 	}
 
-	async loadService(modulePath: string, kernel: Kernel, config?: Record<string, any> | IModuleConfig): Promise<IService<any>> {
+	async loadService(modulePath: string, _kernel: Kernel, config?: Record<string, any> | IModuleConfig): Promise<IService<any>> {
 		try {
 			const moduleConfig = config as IModuleConfig;
 			const moduleName = moduleConfig?.name || path.basename(modulePath);

@@ -110,7 +110,6 @@ export async function getViteConfig(
 			plugins.push(react());
 		} else if (framework === "vue") {
 			try {
-				// @ts-expect-error - Plugin de Vue opcional
 				const vueModule: any = await import("@vitejs/plugin-vue");
 				const vue = vueModule.default;
 				plugins.push(vue());
@@ -224,4 +223,3 @@ export async function getViteConfig(
 		build: buildConfig,
 	};
 }
-

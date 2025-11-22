@@ -15,7 +15,7 @@
 		"start:prod": "cross-env NODE_ENV=production EXCLUDE_TESTS=true tsx src/index.ts",
 		"lint": "eslint src --ext .ts --max-warnings 0",
 		"lint:fix": "eslint src --ext .ts --fix",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "bash scripts/recursive-typecheck.sh",
 		"cleanup": "bash scripts/cleanup-processes.sh",
 		"create:app": "node scripts/create-app.mjs",
 		"create:service": "node scripts/create-service.mjs",
