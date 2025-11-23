@@ -2,6 +2,7 @@ import React, { createElement, useState, useEffect, useRef } from 'react';
 import { Shell } from './components/Shell.tsx';
 import { router } from '@ui-library/utils/router.js';
 import { createApp } from 'vue';
+import '@ui-library/loader';
 
 // Limpieza agresiva de Service Workers y Caches en desarrollo
 if (process.env.NODE_ENV === 'development' && 'serviceWorker' in navigator) {
@@ -35,8 +36,8 @@ const moduleToSafeName: Record<string, string> = {
 	'config': 'config',
 };
 
-const moduleFramework: Record<string, 'react' | 'vue'> = {
-	'home': 'react',
+const moduleFramework: Record<string, 'react' | 'vue' | 'vanilla'> = {
+	'home': 'vanilla',
 	'users-management': 'react',
 	'config': 'vue',
 };
@@ -60,20 +61,31 @@ async function loadRemoteComponent(moduleName: string) {
 		let RemoteComponent;
 		
 		switch (safeName) {
-			case 'home':
+			case 'home': {
 				const homeModule = await import('home/App' as any);
 				RemoteComponent = homeModule.default ?? homeModule;
+				console.log('[Layout] HomeApp cargada:', typeof RemoteComponent, RemoteComponent);
 				break;
-			case 'users_management':
+			}
+			case 'users_management': {
 				const usersModule = await import('users-management/App' as any);
 				RemoteComponent = usersModule.default ?? usersModule;
 				break;
-			case 'config':
+			}
+			case 'config': {
 				const configModule = await import('config/App' as any);
 				RemoteComponent = configModule.default ?? configModule;
 				break;
+			}
 			default:
 				throw new Error(`Módulo desconocido: ${safeName}`);
+		}
+		
+		console.log('[Layout] Framework detectado para', moduleName, ':', framework);
+		console.log('[Layout] RemoteComponent es:', typeof RemoteComponent, RemoteComponent);
+		
+		if (!framework) {
+			throw new Error(`Framework no definido para el módulo: ${moduleName}`);
 		}
 		
 		let WrapperComponent;
@@ -113,6 +125,41 @@ async function loadRemoteComponent(moduleName: string) {
 					React.createElement('div', { ref: containerRef })
 				);
 			};
+		} else if (framework === 'vanilla') {
+			// Para componentes Vanilla JS, crear un wrapper que llame mount/unmount
+			WrapperComponent = () => {
+				const containerRef = React.useRef<HTMLDivElement>(null);
+				const appInstanceRef = React.useRef<any>(null);
+				
+				React.useEffect(() => {
+					if (containerRef.current && !appInstanceRef.current) {
+						// Crear instancia de la clase y montar
+						appInstanceRef.current = new RemoteComponent();
+						appInstanceRef.current.mount(containerRef.current);
+						console.log(`[Layout] Vanilla JS app montada: ${moduleName}`);
+					}
+					
+					return () => {
+						// Desmontar la app Vanilla JS cuando el componente React se desmonte
+						if (appInstanceRef.current && appInstanceRef.current.unmount) {
+							appInstanceRef.current.unmount();
+							appInstanceRef.current = null;
+							console.log(`[Layout] Vanilla JS app desmontada: ${moduleName}`);
+						}
+					};
+				}, []);
+				
+				return React.createElement(
+					'div',
+					{ 
+						'data-module': moduleName,
+						'data-framework': 'vanilla',
+						'data-timestamp': timestamp,
+						style: { display: 'contents' }
+					},
+					React.createElement('div', { ref: containerRef })
+				);
+			};
 		} else {
 			// Para componentes React, usar el wrapper normal
 			WrapperComponent = (props: any) => {
@@ -132,12 +179,36 @@ async function loadRemoteComponent(moduleName: string) {
 		return { Component: WrapperComponent, moduleName, timestamp };
 	} catch (error) {
 		console.error(`[Layout] ❌ Error cargando ${moduleName}:`, error);
-		const ErrorComponent = () => React.createElement('div', { 
-			style: { padding: '20px', color: 'red', border: '1px solid red', borderRadius: '4px', margin: '20px 0' } 
-		}, [
-			React.createElement('h3', { key: 'title' }, `Error: ${moduleName}`),
-			React.createElement('p', { key: 'msg', style: { fontSize: '14px' } }, error instanceof Error ? error.message : String(error))
-		]);
+		
+		// Determinar el código de error HTTP si es un error de red
+		let httpError: number | undefined;
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		
+		if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CONNECTION_REFUSED')) {
+			httpError = 503; // Service Unavailable
+		} else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+			httpError = 404;
+		}
+		
+		// Componente de error como React component (no necesita wrapper)
+		const ErrorComponent = () => {
+			return React.createElement(
+				'div',
+				{ 
+					'data-module': moduleName,
+					'data-framework': 'error',
+					'data-timestamp': Date.now(),
+					style: { display: 'contents' }
+				},
+				React.createElement('adc-error', { 
+					'http-error': httpError,
+					'error-title': httpError ? undefined : `Aplicación no disponible`,
+					'error-description': httpError ? undefined : `En estos momentos, ${moduleName} no está disponible`,
+					color: '#ef4444'
+				})
+			);
+		};
+		
 		return { Component: ErrorComponent, moduleName, timestamp: Date.now() };
 	}
 }

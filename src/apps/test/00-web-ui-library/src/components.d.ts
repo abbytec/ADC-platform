@@ -8,27 +8,49 @@ import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
 export namespace Components {
     interface AdcButton {
         /**
-          * @default 'button'
+          * @default "button"
          */
-        "buttonType": 'button' | 'submit' | 'reset';
+        "buttonType": "button" | "submit" | "reset";
         /**
           * @default false
          */
         "disabled": boolean;
         /**
-          * @default 'primary'
+          * @default "primary"
          */
-        "variant": 'primary' | 'secondary';
+        "variant": "primary" | "secondary";
     }
     interface AdcContainer {
         /**
-          * @default '1200px'
+          * @default "1200px"
          */
         "maxWidth": string;
         /**
-          * @default '20px'
+          * @default "20px"
          */
         "padding": string;
+    }
+    /**
+     * Componente de error centrado para mostrar cuando una aplicación falla
+     */
+    interface AdcError {
+        /**
+          * Color del icono y borde (por defecto #ef4444 - rojo)
+          * @default '#ef4444'
+         */
+        "color": string;
+        /**
+          * Descripción personalizada del error
+         */
+        "errorDescription"?: string;
+        /**
+          * Título personalizado del error
+         */
+        "errorTitle"?: string;
+        /**
+          * Código de error HTTP (ej: 404, 500, 503)
+         */
+        "httpError"?: number;
     }
     interface AdcHeader {
         "headerTitle": string;
@@ -37,7 +59,7 @@ export namespace Components {
     interface AdcStatCard {
         "cardTitle": string;
         /**
-          * @default '#0066cc'
+          * @default "#0066cc"
          */
         "color": string;
         "description"?: string;
@@ -50,7 +72,7 @@ export interface AdcButtonCustomEvent<T> extends CustomEvent<T> {
 }
 declare global {
     interface HTMLAdcButtonElementEventMap {
-        "adcClick": MouseEvent;
+        "adcClick": any;
     }
     interface HTMLAdcButtonElement extends Components.AdcButton, HTMLStencilElement {
         addEventListener<K extends keyof HTMLAdcButtonElementEventMap>(type: K, listener: (this: HTMLAdcButtonElement, ev: AdcButtonCustomEvent<HTMLAdcButtonElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
@@ -72,6 +94,15 @@ declare global {
         prototype: HTMLAdcContainerElement;
         new (): HTMLAdcContainerElement;
     };
+    /**
+     * Componente de error centrado para mostrar cuando una aplicación falla
+     */
+    interface HTMLAdcErrorElement extends Components.AdcError, HTMLStencilElement {
+    }
+    var HTMLAdcErrorElement: {
+        prototype: HTMLAdcErrorElement;
+        new (): HTMLAdcErrorElement;
+    };
     interface HTMLAdcHeaderElement extends Components.AdcHeader, HTMLStencilElement {
     }
     var HTMLAdcHeaderElement: {
@@ -87,6 +118,7 @@ declare global {
     interface HTMLElementTagNameMap {
         "adc-button": HTMLAdcButtonElement;
         "adc-container": HTMLAdcContainerElement;
+        "adc-error": HTMLAdcErrorElement;
         "adc-header": HTMLAdcHeaderElement;
         "adc-stat-card": HTMLAdcStatCardElement;
     }
@@ -94,28 +126,50 @@ declare global {
 declare namespace LocalJSX {
     interface AdcButton {
         /**
-          * @default 'button'
+          * @default "button"
          */
-        "buttonType"?: 'button' | 'submit' | 'reset';
+        "buttonType"?: "button" | "submit" | "reset";
         /**
           * @default false
          */
         "disabled"?: boolean;
-        "onAdcClick"?: (event: AdcButtonCustomEvent<MouseEvent>) => void;
+        "onAdcClick"?: (event: AdcButtonCustomEvent<any>) => void;
         /**
-          * @default 'primary'
+          * @default "primary"
          */
-        "variant"?: 'primary' | 'secondary';
+        "variant"?: "primary" | "secondary";
     }
     interface AdcContainer {
         /**
-          * @default '1200px'
+          * @default "1200px"
          */
         "maxWidth"?: string;
         /**
-          * @default '20px'
+          * @default "20px"
          */
         "padding"?: string;
+    }
+    /**
+     * Componente de error centrado para mostrar cuando una aplicación falla
+     */
+    interface AdcError {
+        /**
+          * Color del icono y borde (por defecto #ef4444 - rojo)
+          * @default '#ef4444'
+         */
+        "color"?: string;
+        /**
+          * Descripción personalizada del error
+         */
+        "errorDescription"?: string;
+        /**
+          * Título personalizado del error
+         */
+        "errorTitle"?: string;
+        /**
+          * Código de error HTTP (ej: 404, 500, 503)
+         */
+        "httpError"?: number;
     }
     interface AdcHeader {
         "headerTitle": string;
@@ -124,7 +178,7 @@ declare namespace LocalJSX {
     interface AdcStatCard {
         "cardTitle": string;
         /**
-          * @default '#0066cc'
+          * @default "#0066cc"
          */
         "color"?: string;
         "description"?: string;
@@ -133,6 +187,7 @@ declare namespace LocalJSX {
     interface IntrinsicElements {
         "adc-button": AdcButton;
         "adc-container": AdcContainer;
+        "adc-error": AdcError;
         "adc-header": AdcHeader;
         "adc-stat-card": AdcStatCard;
     }
@@ -143,6 +198,10 @@ declare module "@stencil/core" {
         interface IntrinsicElements {
             "adc-button": LocalJSX.AdcButton & JSXBase.HTMLAttributes<HTMLAdcButtonElement>;
             "adc-container": LocalJSX.AdcContainer & JSXBase.HTMLAttributes<HTMLAdcContainerElement>;
+            /**
+             * Componente de error centrado para mostrar cuando una aplicación falla
+             */
+            "adc-error": LocalJSX.AdcError & JSXBase.HTMLAttributes<HTMLAdcErrorElement>;
             "adc-header": LocalJSX.AdcHeader & JSXBase.HTMLAttributes<HTMLAdcHeaderElement>;
             "adc-stat-card": LocalJSX.AdcStatCard & JSXBase.HTMLAttributes<HTMLAdcStatCardElement>;
         }
