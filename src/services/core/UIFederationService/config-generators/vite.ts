@@ -1,8 +1,55 @@
 import * as path from "node:path";
+import * as fs from "node:fs/promises";
 import type { InlineConfig } from "vite";
 import type { UIModuleConfig } from "../../../../interfaces/modules/IUIModule.js";
 import type { RegisteredUIModule } from "../types.js";
 import { generateCompleteImportMap } from "../utils/import-map.js";
+
+/**
+ * Detecta apps deshabilitadas en el directorio de apps
+ */
+async function getDisabledApps(appsDir: string): Promise<Set<string>> {
+	const disabledApps = new Set<string>();
+	
+	try {
+		const entries = await fs.readdir(appsDir, { withFileTypes: true });
+		
+		for (const entry of entries) {
+			if (entry.isDirectory()) {
+				const appDir = path.join(appsDir, entry.name);
+				
+				// Verificar default.json
+				try {
+					const defaultConfigPath = path.join(appDir, "default.json");
+					const content = await fs.readFile(defaultConfigPath, "utf-8");
+					const config = JSON.parse(content);
+					if (config.disabled === true) {
+						disabledApps.add(entry.name);
+						continue;
+					}
+				} catch {
+					// No hay default.json, continuar
+				}
+				
+				// Verificar config.json
+				try {
+					const configPath = path.join(appDir, "config.json");
+					const content = await fs.readFile(configPath, "utf-8");
+					const config = JSON.parse(content);
+					if (config.disabled === true || (config.uiModule && config.uiModule.disabled === true)) {
+						disabledApps.add(entry.name);
+					}
+				} catch {
+					// No hay config.json, continuar
+				}
+			}
+		}
+	} catch (error) {
+		// Si no se puede leer el directorio, retornar set vacío
+	}
+	
+	return disabledApps;
+}
 
 /**
  * Obtiene la configuración de Vite para un módulo
@@ -156,6 +203,33 @@ export async function getViteConfig(
 		externalModules.push(moduleName);
 		externalModules.push(moduleName + "/App");
 		externalModules.push(moduleName + "/App.js");
+	}
+	
+	// Agregar apps deshabilitadas a externals
+	const isProduction = process.env.NODE_ENV === "production";
+	const appsBasePath = isProduction 
+		? path.resolve(process.cwd(), "dist", "apps", "test")
+		: path.resolve(process.cwd(), "src", "apps", "test");
+	const disabledApps = await getDisabledApps(appsBasePath);
+	
+	for (const disabledApp of disabledApps) {
+		const appConfigPath = path.join(appsBasePath, disabledApp, "config.json");
+		try {
+			const configContent = await fs.readFile(appConfigPath, "utf-8");
+			const config = JSON.parse(configContent);
+			const moduleName = config.uiModule?.name || disabledApp;
+			externalModules.push(`@${moduleName}`);
+			externalModules.push(moduleName);
+			externalModules.push(moduleName + "/App");
+			externalModules.push(moduleName + "/App.js");
+			logger?.logDebug(`[${config.name}] App deshabilitada agregada a externals: ${moduleName}`);
+		} catch {
+			// Si no se puede leer el config, asumir que el nombre del módulo es el nombre de la carpeta
+			externalModules.push(`@${disabledApp}`);
+			externalModules.push(disabledApp);
+			externalModules.push(disabledApp + "/App");
+			externalModules.push(disabledApp + "/App.js");
+		}
 	}
 
 	const externals: (string | RegExp)[] = isDev ? [] : externalModules;

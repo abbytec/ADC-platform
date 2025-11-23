@@ -866,19 +866,33 @@ export class Kernel {
 			const appDir = path.dirname(filePath);
 			const appName = path.basename(appDir);
 
-			// Verificar si la app está deshabilitada en default.json
-			try {
-				const defaultConfigPath = path.join(appDir, "default.json");
-				const defaultConfigContent = await fs.readFile(defaultConfigPath, "utf-8");
-				const defaultConfig = JSON.parse(defaultConfigContent);
+		// Verificar si la app está deshabilitada en default.json o config.json
+		try {
+			const defaultConfigPath = path.join(appDir, "default.json");
+			const defaultConfigContent = await fs.readFile(defaultConfigPath, "utf-8");
+			const defaultConfig = JSON.parse(defaultConfigContent);
 
-				if (defaultConfig.disabled === true) {
-					this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
-					return; // No continuar con esta app
-				}
-			} catch (error) {
-				// No hay default.json o no se puede leer, continuar normalmente
+			if (defaultConfig.disabled === true) {
+				this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
+				return; // No continuar con esta app
 			}
+		} catch (error) {
+			// No hay default.json o no se puede leer, intentar config.json
+		}
+
+		// También verificar en config.json
+		try {
+			const configPath = path.join(appDir, "config.json");
+			const configContent = await fs.readFile(configPath, "utf-8");
+			const config = JSON.parse(configContent);
+
+			if (config.disabled === true) {
+				this.#logger.logDebug(`App ${appName} está deshabilitada (config.json)`);
+				return; // No continuar con esta app
+			}
+		} catch (error) {
+			// No hay config.json o no se puede leer, continuar normalmente
+		}
 
 			// Ejecutar docker-compose si existe
 			try {

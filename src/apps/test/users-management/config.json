@@ -1,4 +1,5 @@
 {
+	"disabled": false,
 	"uiModule": {
 		"name": "users-management",
 		"framework": "react",

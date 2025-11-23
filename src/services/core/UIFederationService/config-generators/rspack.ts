@@ -3,6 +3,52 @@ import * as path from "node:path";
 import type { RegisteredUIModule } from "../types.js";
 
 /**
+ * Detecta apps deshabilitadas en el directorio de apps
+ */
+async function getDisabledApps(appsDir: string): Promise<Set<string>> {
+	const disabledApps = new Set<string>();
+	
+	try {
+		const entries = await fs.readdir(appsDir, { withFileTypes: true });
+		
+		for (const entry of entries) {
+			if (entry.isDirectory()) {
+				const appDir = path.join(appsDir, entry.name);
+				
+				// Verificar default.json
+				try {
+					const defaultConfigPath = path.join(appDir, "default.json");
+					const content = await fs.readFile(defaultConfigPath, "utf-8");
+					const config = JSON.parse(content);
+					if (config.disabled === true) {
+						disabledApps.add(entry.name);
+						continue;
+					}
+				} catch {
+					// No hay default.json, continuar
+				}
+				
+				// Verificar config.json
+				try {
+					const configPath = path.join(appDir, "config.json");
+					const content = await fs.readFile(configPath, "utf-8");
+					const config = JSON.parse(content);
+					if (config.disabled === true || (config.uiModule && config.uiModule.disabled === true)) {
+						disabledApps.add(entry.name);
+					}
+				} catch {
+					// No hay config.json, continuar
+				}
+			}
+		}
+	} catch (error) {
+		// Si no se puede leer el directorio, retornar set vacío
+	}
+	
+	return disabledApps;
+}
+
+/**
  * Genera la configuración de Rspack para Module Federation
  */
 export async function generateRspackConfig(
@@ -15,6 +61,7 @@ export async function generateRspackConfig(
 	const safeName = module.uiConfig.name.replace(/-/g, "_");
 	const framework = module.uiConfig.framework || "react";
 	const remotes: Record<string, string> = {};
+	const externals: string[] = [];
 	
 	// Detectar frameworks usados por los remotes
 	const usedFrameworks = new Set<string>();
@@ -28,6 +75,29 @@ export async function generateRspackConfig(
 	}
 
 	if (isHost) {
+		// Detectar apps deshabilitadas
+		const isDevelopment = process.env.NODE_ENV === "development";
+		const appsBasePath = isDevelopment 
+			? path.resolve(process.cwd(), "src", "apps", "test")
+			: path.resolve(process.cwd(), "dist", "apps", "test");
+		const disabledApps = await getDisabledApps(appsBasePath);
+		
+		// Agregar apps deshabilitadas como externals
+		for (const disabledApp of disabledApps) {
+			const appConfigPath = path.join(appsBasePath, disabledApp, "config.json");
+			try {
+				const configContent = await fs.readFile(appConfigPath, "utf-8");
+				const config = JSON.parse(configContent);
+				if (config.uiModule && config.uiModule.name) {
+					externals.push(`${config.uiModule.name}/App`);
+					logger?.logDebug(`[${module.uiConfig.name}] App deshabilitada agregada a externals: ${config.uiModule.name}`);
+				}
+			} catch {
+				// Si no se puede leer el config, asumir que el nombre del módulo es el nombre de la carpeta
+				externals.push(`${disabledApp}/App`);
+			}
+		}
+		
 		for (const [moduleName, mod] of registeredModules.entries()) {
 			if (moduleName !== "layout" && mod.uiConfig.devPort) {
 				const remoteFramework = mod.uiConfig.framework || "react";
@@ -47,6 +117,9 @@ export async function generateRspackConfig(
 
 	const isVue = framework === "vue";
 	const isVanilla = framework === "vanilla";
+	const isProduction = process.env.NODE_ENV === "production";
+	const isDevelopmentMode = !isProduction;
+	const developmentValue = isDevelopmentMode ? 'true' : 'false'; // Como literal de JavaScript
 	const mainEntry = isVanilla ? "./src/main.js" : (isVue ? "./src/main.ts" : "./src/main.tsx");
 	const appExtension = isVanilla ? ".js" : (isVue ? ".vue" : ".tsx");
 	const extensions = isVanilla ? "['.js', '.json']" : (isVue ? "['.vue', '.tsx', '.ts', '.jsx', '.js', '.json']" : "['.tsx', '.ts', '.jsx', '.js', '.json']");
@@ -62,7 +135,7 @@ export async function generateRspackConfig(
                     options: {
                         jsc: {
                             parser: { syntax: 'typescript', tsx: true },
-                            transform: { react: { runtime: 'automatic', development: true, refresh: false } },
+                            transform: { react: { runtime: 'automatic', development: ${developmentValue}, refresh: false } },
                         },
                     },
                 },
@@ -139,12 +212,17 @@ import { VueLoaderPlugin } from 'vue-loader';
 		logger?.logInfo(`[${module.uiConfig.name}] Frameworks detectados: ${Array.from(usedFrameworks).join(", ")}`);
 	}
 
+	// Configuración dinámica según modo (ya detectado arriba)
+	const mode = isProduction ? 'production' : 'development';
+	const devtool = isProduction ? 'false' : "'cheap-module-source-map'";
+	const hotReload = !isProduction;
+
 	const configContent = `
 ${imports}
 
 export default {
-    mode: 'development',
-    devtool: 'cheap-module-source-map',
+    mode: '${mode}',
+    devtool: ${devtool},
     context: '${module.appDir.replace(/\\/g, "\\\\")}',
     entry: {
         main: '${mainEntry}',
@@ -161,7 +239,8 @@ export default {
             '@ui-library/utils': '${path.resolve(process.cwd(), "src/apps/test/00-web-ui-library/utils").replace(/\\/g, "\\\\")}',
             '@ui-library': '${path.resolve(uiOutputBaseDir, "web-ui-library").replace(/\\/g, "\\\\")}',
         },
-    },
+    },${externals.length > 0 ? `
+    externals: ${JSON.stringify(externals)},` : ''}
     module: {
         rules: [
             ${moduleRules}
@@ -185,7 +264,7 @@ export default {
     ],
     devServer: {
         port: ${module.uiConfig.devPort},
-        hot: true,
+        hot: ${hotReload},
         historyApiFallback: true,
         static: {
             directory: '${path.join(module.appDir, "public").replace(/\\/g, "\\\\")}',

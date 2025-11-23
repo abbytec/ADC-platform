@@ -140,7 +140,8 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			const isDevelopment = process.env.NODE_ENV === "development";
 			const isStandalone = uiConfig.standalone || false;
 
-			if (isStandalone || (isDevelopment && uiConfig.devPort)) {
+			// Generar archivos standalone si es necesario
+			if (isStandalone || uiConfig.devPort) {
 				await this.#generateStandaloneFiles(appDir, uiConfig);
 			}
 
@@ -152,9 +153,12 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				this.logger.logDebug(`Configuración de Stencil generada: ${configPath}`);
 			}
 
-			if (isDevelopment && uiConfig.devPort && (framework === "react" || framework === "vue" || framework === "vanilla")) {
+			// Módulos con devPort: siempre servir en su puerto (dev o prod)
+			if (uiConfig.devPort && (framework === "react" || framework === "vue" || framework === "vanilla")) {
 				await this.buildUIModule(name);
-			} else {
+			}
+			// Módulos sin devPort: build estático servido desde puerto 3000
+			else {
 				const shouldBuild = isStandalone || framework === "vite" || framework === "astro" || framework === "stencil";
 
 				if (shouldBuild) {
@@ -188,12 +192,16 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 			this.#updateImportMap();
 
-			if (this.httpProvider && module.outputPath && !uiConfig.devPort) {
+			// Módulos con devPort: se sirven en su propio puerto (dev o prod)
+			if (uiConfig.devPort && (framework === "react" || framework === "vue" || framework === "vanilla")) {
+				const mode = isDevelopment ? "Dev Server" : "Production Server";
+				this.logger.logOk(`Módulo UI ${name} disponible en ${mode} http://localhost:${uiConfig.devPort}`);
+			}
+			// Módulos sin devPort: servir estáticamente desde httpProvider
+			else if (this.httpProvider && module.outputPath) {
 				const urlPath = `/${name}`;
 				this.httpProvider.serveStatic(urlPath, module.outputPath);
 				this.logger.logOk(`Módulo UI ${name} servido en http://localhost:${this.port}${urlPath}`);
-			} else if (isDevelopment && uiConfig.devPort && (framework === "react" || framework === "vue" || framework === "vanilla")) {
-				this.logger.logOk(`Módulo UI ${name} disponible SOLO en Dev Server http://localhost:${uiConfig.devPort}`);
 			}
 		} catch (error: any) {
 			module.buildStatus = "error";
@@ -253,10 +261,13 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 					this.watchBuilds.set(name, watcher);
 				}
 			} else if (framework === "react" || framework === "vue" || framework === "vanilla") {
-				if (isDevelopment && module.uiConfig.devPort) {
+				// Con devPort: iniciar servidor en el puerto configurado (dev o prod)
+				if (module.uiConfig.devPort) {
 					const watcher = await startRspackDevServer(module, rspackBin, this.registeredModules, this.uiOutputBaseDir, this.logger);
 					this.watchBuilds.set(module.uiConfig.name, watcher);
-				} else {
+				}
+				// Sin devPort: build estático
+				else {
 					await buildReactVueModule(module, this.registeredModules, this.uiOutputBaseDir, this.port, this.logger);
 				}
 			} else if (framework === "vite") {
@@ -333,9 +344,19 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		this.httpProvider.registerRoute("GET", "/", (_req, res) => {
 			const layoutModule = this.registeredModules.get("layout");
+			
+			// Si layout tiene devPort: redirigir a su servidor (dev o prod)
 			if (layoutModule && layoutModule.uiConfig.devPort) {
 				res.redirect(`http://localhost:${layoutModule.uiConfig.devPort}/`);
-			} else res.send("UIModuleFederation listo!");
+			}
+			// Si no hay devPort pero hay layout: redirigir al estático
+			else if (layoutModule) {
+				res.redirect(`/layout/`);
+			}
+			// Si no hay layout: mensaje por defecto
+			else {
+				res.send("UIModuleFederation listo!");
+			}
 		});
 
 		this.logger.logDebug("Endpoints registrados: /importmap.json, /");
