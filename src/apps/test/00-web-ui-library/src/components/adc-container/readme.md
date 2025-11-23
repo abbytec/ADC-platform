@@ -9,8 +9,8 @@
 
 | Property   | Attribute   | Description | Type     | Default    |
 | ---------- | ----------- | ----------- | -------- | ---------- |
-| `maxWidth` | `max-width` |             | `string` | `'1200px'` |
-| `padding`  | `padding`   |             | `string` | `'20px'`   |
+| `maxWidth` | `max-width` |             | `string` | `"1200px"` |
+| `padding`  | `padding`   |             | `string` | `"20px"`   |
 
 
 ----------------------------------------------

@@ -9,16 +9,16 @@
 
 | Property     | Attribute     | Description | Type                              | Default     |
 | ------------ | ------------- | ----------- | --------------------------------- | ----------- |
-| `buttonType` | `button-type` |             | `"button" \| "reset" \| "submit"` | `'button'`  |
+| `buttonType` | `button-type` |             | `"button" \| "reset" \| "submit"` | `"button"`  |
 | `disabled`   | `disabled`    |             | `boolean`                         | `false`     |
-| `variant`    | `variant`     |             | `"primary" \| "secondary"`        | `'primary'` |
+| `variant`    | `variant`     |             | `"primary" \| "secondary"`        | `"primary"` |
 
 
 ## Events
 
-| Event      | Description | Type                      |
-| ---------- | ----------- | ------------------------- |
-| `adcClick` |             | `CustomEvent<MouseEvent>` |
+| Event      | Description | Type               |
+| ---------- | ----------- | ------------------ |
+| `adcClick` |             | `CustomEvent<any>` |
 
 
 ----------------------------------------------

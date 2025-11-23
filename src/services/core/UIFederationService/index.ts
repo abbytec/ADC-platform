@@ -152,7 +152,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				this.logger.logDebug(`Configuración de Stencil generada: ${configPath}`);
 			}
 
-			if (isDevelopment && uiConfig.devPort && (framework === "react" || framework === "vue")) {
+			if (isDevelopment && uiConfig.devPort && (framework === "react" || framework === "vue" || framework === "vanilla")) {
 				await this.buildUIModule(name);
 			} else {
 				const shouldBuild = isStandalone || framework === "vite" || framework === "astro" || framework === "stencil";
@@ -192,7 +192,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				const urlPath = `/${name}`;
 				this.httpProvider.serveStatic(urlPath, module.outputPath);
 				this.logger.logOk(`Módulo UI ${name} servido en http://localhost:${this.port}${urlPath}`);
-			} else if (isDevelopment && uiConfig.devPort && (framework === "react" || framework === "vue")) {
+			} else if (isDevelopment && uiConfig.devPort && (framework === "react" || framework === "vue" || framework === "vanilla")) {
 				this.logger.logOk(`Módulo UI ${name} disponible SOLO en Dev Server http://localhost:${uiConfig.devPort}`);
 			}
 		} catch (error: any) {
@@ -252,7 +252,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				if (watcher) {
 					this.watchBuilds.set(name, watcher);
 				}
-			} else if (framework === "react" || framework === "vue") {
+			} else if (framework === "react" || framework === "vue" || framework === "vanilla") {
 				if (isDevelopment && module.uiConfig.devPort) {
 					const watcher = await startRspackDevServer(module, rspackBin, this.registeredModules, this.uiOutputBaseDir, this.logger);
 					this.watchBuilds.set(module.uiConfig.name, watcher);

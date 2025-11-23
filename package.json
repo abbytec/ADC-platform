@@ -13,6 +13,7 @@
 	"scripts": {
 		"start": "cross-env NODE_ENV=development tsx src/index.ts",
 		"start:prod": "cross-env NODE_ENV=production EXCLUDE_TESTS=true tsx src/index.ts",
+		"start:prodtests": "cross-env NODE_ENV=production EXCLUDE_TESTS=false tsx src/index.ts",
 		"lint": "eslint src --ext .ts --max-warnings 0",
 		"lint:fix": "eslint src --ext .ts --fix",
 		"typecheck": "bash scripts/recursive-typecheck.sh",

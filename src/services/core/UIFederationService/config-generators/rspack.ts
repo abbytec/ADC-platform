@@ -18,7 +18,9 @@ export async function generateRspackConfig(
 	
 	// Detectar frameworks usados por los remotes
 	const usedFrameworks = new Set<string>();
-	usedFrameworks.add(framework); // Agregar el framework del módulo actual
+	if (framework !== "vanilla") {
+		usedFrameworks.add(framework); // Agregar el framework del módulo actual solo si no es vanilla
+	}
 	
 	// Agregar frameworks especificados manualmente en sharedLibs
 	if (module.uiConfig.sharedLibs) {
@@ -29,10 +31,12 @@ export async function generateRspackConfig(
 		for (const [moduleName, mod] of registeredModules.entries()) {
 			if (moduleName !== "layout" && mod.uiConfig.devPort) {
 				const remoteFramework = mod.uiConfig.framework || "react";
-				if (remoteFramework === "react" || remoteFramework === "vue") {
+				if (remoteFramework === "react" || remoteFramework === "vue" || remoteFramework === "vanilla") {
 					const safeRemoteName = moduleName.replace(/-/g, "_");
 					remotes[moduleName] = `${safeRemoteName}@http://localhost:${mod.uiConfig.devPort}/mf-manifest.json`;
-					usedFrameworks.add(remoteFramework);
+					if (remoteFramework !== "vanilla") {
+						usedFrameworks.add(remoteFramework);
+					}
 				}
 			}
 		}
@@ -42,11 +46,15 @@ export async function generateRspackConfig(
 	await fs.mkdir(configDir, { recursive: true });
 
 	const isVue = framework === "vue";
-	const mainEntry = isVue ? "./src/main.ts" : "./src/main.tsx";
-	const appExtension = isVue ? ".vue" : ".tsx";
-	const extensions = isVue ? "['.vue', '.tsx', '.ts', '.jsx', '.js', '.json']" : "['.tsx', '.ts', '.jsx', '.js', '.json']";
+	const isVanilla = framework === "vanilla";
+	const mainEntry = isVanilla ? "./src/main.js" : (isVue ? "./src/main.ts" : "./src/main.tsx");
+	const appExtension = isVanilla ? ".js" : (isVue ? ".vue" : ".tsx");
+	const extensions = isVanilla ? "['.js', '.json']" : (isVue ? "['.vue', '.tsx', '.ts', '.jsx', '.js', '.json']" : "['.tsx', '.ts', '.jsx', '.js', '.json']");
 
-	let moduleRules = `
+	let moduleRules = "";
+	
+	if (!isVanilla) {
+		moduleRules = `
             {
                 test: /\\.tsx?$/,
                 use: {
@@ -61,6 +69,15 @@ export async function generateRspackConfig(
                 exclude: /node_modules/,
             }
     `;
+	} else {
+		moduleRules = `
+            {
+                test: /\\.js$/,
+                exclude: /node_modules/,
+                type: 'javascript/auto',
+            }
+    `;
+	}
 
 	let plugins = `
         new rspack.HtmlRspackPlugin({
