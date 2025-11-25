@@ -58,7 +58,8 @@ export async function generateRspackConfig(
 	logger?: any
 ): Promise<string> {
 	const namespace = module.namespace || "default";
-	const isHost = module.uiConfig.name === "layout";
+	const isHost = module.uiConfig.name.includes("layout");
+	const hasI18n = module.uiConfig.i18n;
 	const safeName = module.uiConfig.name.replace(/-/g, "_");
 	const framework = module.uiConfig.framework || "react";
 	const remotes: Record<string, string> = {};
@@ -155,9 +156,31 @@ export async function generateRspackConfig(
     `;
 	}
 
+	// Inyectar adc-i18n.js solo en layouts
+	const i18nScript = isHost && hasI18n ? `
+            scriptLoading: 'blocking',
+            inject: 'body',
+            templateContent: ({ htmlWebpackPlugin }) => \`
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${module.uiConfig.name}</title>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; }
+    </style>
+    <script src="/adc-i18n.js"></scr` + `ipt>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+\`,` : `
+            template: './index.html',`;
+
 	let plugins = `
-        new rspack.HtmlRspackPlugin({
-            template: './index.html',
+        new rspack.HtmlRspackPlugin({${i18nScript}
         }),
     `;
 
@@ -222,7 +245,7 @@ import { VueLoaderPlugin } from 'vue-loader';
 
 	// Buscar la ui-library específica del namespace
 	let uiLibraryModule: RegisteredUIModule | null = null;
-	for (const [modName, mod] of registeredModules.entries()) {
+	for (const mod of registeredModules.values()) {
 		if (mod.uiConfig.framework === "stencil" && mod.namespace === namespace) {
 			uiLibraryModule = mod;
 			break;
@@ -295,6 +318,13 @@ export default {
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
             'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
         },
+        proxy: [
+            {
+                context: ['/adc-sw.js', '/adc-i18n.js', '/api/i18n'],
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+            },
+        ],
     },
     ignoreWarnings: [
         /Critical dependency.*expression/,

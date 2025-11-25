@@ -1,0 +1,9 @@
+{
+	"kernelMode": true,
+	"global": true,
+	"custom": {
+		"defaultLocale": "en",
+		"fallbackLocale": "en"
+	}
+}
+

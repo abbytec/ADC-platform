@@ -6,7 +6,9 @@
 		"outputDir": "dist-ui",
 		"standalone": true,
 		"devPort": 3014,
-		"sharedLibs": ["react"]
+		"sharedLibs": ["react"],
+		"i18n": true,
+		"serviceWorker": true
 	},
 	"providers": [
 		{

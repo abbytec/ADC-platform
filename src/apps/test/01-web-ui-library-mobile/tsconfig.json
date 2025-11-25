@@ -1,17 +1,19 @@
 {
 	"compilerOptions": {
 		"allowSyntheticDefaultImports": true,
+		"declaration": true,
 		"experimentalDecorators": true,
-		"lib": ["DOM", "ES2022"],
+		"lib": ["dom", "es2017"],
+		"module": "esnext",
 		"moduleResolution": "node",
-		"module": "ESNext",
-		"target": "ES2022",
+		"target": "es2017",
 		"jsx": "react",
 		"jsxFactory": "h",
 		"jsxFragmentFactory": "Fragment",
-		"strict": true
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"types": []
 	},
 	"include": ["src"],
 	"exclude": ["node_modules"]
 }
-

@@ -5,11 +5,13 @@ import { Kernel } from "../../../kernel.js";
 import type { IUIFederationService, RegisteredUIModule } from "./types.js";
 import type { ImportMap, UIModuleConfig } from "../../../interfaces/modules/IUIModule.js";
 import type { IHttpServerProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
+import type { ILangManagerService } from "../LangManagerService/types.js";
 
 // Utilidades
 import { copyDirectory } from "./utils/file-operations.js";
 import { generateCompleteImportMap, createImportMapObject } from "./utils/import-map.js";
 import { injectImportMapsInHTMLs, generateIndexHtml, generateMainEntryPoint } from "./utils/html-processor.js";
+import { generateServiceWorker, generateI18nClientCode } from "./utils/service-worker-generator.js";
 
 // Generadores de configuración
 import { generateAstroConfig } from "./config-generators/astro.js";
@@ -29,6 +31,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	// Import maps por namespace
 	private importMaps = new Map<string, ImportMap>();
 	private httpProvider: IHttpServerProvider | null = null;
+	private langManager: ILangManagerService | null = null;
 	private readonly uiOutputBaseDir: string;
 	private port: number = 3000;
 
@@ -64,6 +67,15 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		} catch (error: any) {
 			this.logger.logError(`Error cargando HttpServerProvider: ${error.message}`);
 			throw error;
+		}
+
+		// Obtener LangManagerService si está disponible
+		try {
+			const langService = this.kernel.getService<any>("LangManagerService");
+			this.langManager = await langService.getInstance();
+			this.logger.logDebug("LangManagerService conectado");
+		} catch {
+			this.logger.logDebug("LangManagerService no disponible, i18n deshabilitado");
 		}
 
 		await super.start();
@@ -242,6 +254,16 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				this.httpProvider.serveStatic(urlPath, module.outputPath);
 				this.logger.logOk(`Módulo UI ${name} [${namespace}] servido en http://localhost:${this.port}${urlPath}`);
 			}
+
+			// Registrar traducciones i18n si está habilitado
+			if (uiConfig.i18n && this.langManager) {
+				await this.langManager.registerNamespace(name, appDir);
+			}
+
+			// Generar y registrar service worker si está habilitado (solo para layouts/hosts)
+			if (uiConfig.serviceWorker && name === "layout") {
+				await this.#registerServiceWorkerEndpoints(namespace);
+			}
 		} catch (error: any) {
 			module.buildStatus = "error";
 			this.logger.logError(`Error registrando módulo UI ${name}: ${error.message}`);
@@ -382,7 +404,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		for (const [namespace, modules] of this.registeredModules.entries()) {
 			for (const [name, module] of modules.entries()) {
-				if (module.buildStatus === "built" && module.outputPath) {
+			if (module.buildStatus === "built" && module.outputPath) {
 					await this.#injectImportMapsInModuleHTMLs(name, namespace);
 				}
 			}
@@ -458,11 +480,45 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			});
 		});
 
+		// Endpoints i18n
+		this.httpProvider.registerRoute("GET", "/api/i18n/:namespace", (req, res) => {
+			const namespace = (req.params as any).namespace;
+			const locale = (req.query as any).locale;
+			
+			if (!this.langManager) {
+				res.status(503).json({ error: "LangManagerService no disponible" });
+				return;
+			}
+			
+			const translations = this.langManager.getTranslations(namespace, locale);
+			res.setHeader("Content-Type", "application/json");
+			res.json(translations);
+		});
+
+		this.httpProvider.registerRoute("GET", "/api/i18n", (req, res) => {
+			const namespaces = ((req.query as any).namespaces || "").split(",").filter(Boolean);
+			const locale = (req.query as any).locale;
+			
+			if (!this.langManager) {
+				res.status(503).json({ error: "LangManagerService no disponible" });
+				return;
+			}
+			
+			if (namespaces.length === 0) {
+				res.json(this.langManager.getStats());
+				return;
+			}
+			
+			const translations = this.langManager.getBundledTranslations(namespaces, locale);
+			res.setHeader("Content-Type", "application/json");
+			res.json(translations);
+		});
+
 		// Ruta raíz: redirigir al layout del namespace default
 		this.httpProvider.registerRoute("GET", "/", (_req, res) => {
 			const defaultModules = this.registeredModules.get(DEFAULT_NAMESPACE);
 			const layoutModule = defaultModules?.get("layout");
-
+			
 			// Si layout tiene devPort: redirigir a su servidor (dev o prod)
 			if (layoutModule && layoutModule.uiConfig.devPort) {
 				res.redirect(`http://localhost:${layoutModule.uiConfig.devPort}/`);
@@ -514,6 +570,43 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		const importMap = generateCompleteImportMap(namespaceModules, this.port, namespace);
 		await injectImportMapsInHTMLs(module.outputPath, importMap, this.logger);
 		this.logger.logDebug(`Import maps inyectados en HTMLs de ${moduleName} [${namespace}]`);
+	}
+
+	async #registerServiceWorkerEndpoints(namespace: string): Promise<void> {
+		if (!this.httpProvider) return;
+
+		const namespaceModules = this.#getNamespaceModules(namespace);
+		const layoutModule = namespaceModules.get("layout");
+		
+		if (!layoutModule) return;
+
+		// Generar service worker para este namespace
+		const swContent = generateServiceWorker(layoutModule, namespaceModules, this.port);
+		const i18nClientContent = generateI18nClientCode(layoutModule, namespaceModules, this.port);
+
+		// Endpoint para el service worker (servido desde la raíz del namespace o del devPort)
+		const swPath = layoutModule.uiConfig.devPort ? "/adc-sw.js" : `/${namespace}/adc-sw.js`;
+		const i18nPath = layoutModule.uiConfig.devPort ? "/adc-i18n.js" : `/${namespace}/adc-i18n.js`;
+
+		// Registrar rutas solo si no están ya registradas
+		try {
+			this.httpProvider.registerRoute("GET", swPath, (_req, res) => {
+				res.setHeader("Content-Type", "application/javascript");
+				res.setHeader("Service-Worker-Allowed", "/");
+				res.send(swContent);
+			});
+
+			this.httpProvider.registerRoute("GET", i18nPath, (_req, res) => {
+				res.setHeader("Content-Type", "application/javascript");
+				res.send(i18nClientContent);
+			});
+
+			this.logger.logDebug(`Service Worker [${namespace}] registrado en ${swPath}`);
+			this.logger.logDebug(`i18n Client [${namespace}] registrado en ${i18nPath}`);
+		} catch (error: any) {
+			// Las rutas ya podrían existir si se recargó el módulo
+			this.logger.logDebug(`Endpoints SW ya registrados para ${namespace}`);
+		}
 	}
 }
 

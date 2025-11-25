@@ -345,6 +345,97 @@ El sistema soporta múltiples conjuntos de UI (librerías, layouts, apps) que no
 -   `GET /:namespace/importmap.json` - Import map del namespace
 -   `GET /importmap.json` - Import map del namespace default
 
+### LangManagerService (i18n)
+
+Servicio en modo kernel para internacionalización compartida entre apps UI.
+
+**Características:**
+
+-   Lee archivos de traducción desde `/i18n/{locale}.js` o `.json` de cada app
+-   Soporta locales con región (`es-AR`) y sin ella (`es`, `pt`, `en`)
+-   Cada app tiene su propio namespace de traducciones (evita colisiones de keys)
+-   Interpolación de parámetros con sintaxis `{{param}}`
+-   Fallback automático a locale base y luego a locale por defecto
+
+**Configuración en app:**
+
+```json
+{
+	"uiModule": {
+		"name": "home",
+		"i18n": true
+	}
+}
+```
+
+**Estructura de archivos:**
+
+```
+src/apps/test/web-home-mobile/
+├── i18n/
+│   ├── en.js
+│   ├── es.js
+│   └── pt-BR.js
+└── ...
+```
+
+**Formato de archivos de traducción:**
+
+```javascript
+// i18n/es.js
+export default {
+	title: "Estadísticas",
+	stats: {
+		totalUsers: "Usuarios Totales",
+		welcome: "Bienvenido, {{name}}"
+	}
+};
+```
+
+**Endpoints:**
+
+-   `GET /api/i18n/:namespace?locale=es` - Traducciones de un namespace
+-   `GET /api/i18n?namespaces=home,layout&locale=es` - Traducciones combinadas
+
+**Uso client-side:**
+
+Las apps con `serviceWorker: true` en su layout reciben automáticamente:
+
+```javascript
+// Función t() global para traducciones
+t('stats.totalUsers')                    // → "Usuarios Totales"
+t('welcome', { name: 'Juan' }, 'home')  // → "Bienvenido, Juan"
+
+// Cambiar idioma (persiste en localStorage)
+setLocale('en');
+
+// Obtener idioma actual
+getLocale(); // → "es" (de localStorage o navegador)
+```
+
+El locale se detecta automáticamente: `localStorage.language` → `navigator.language` → `'en'`
+
+### Service Worker Dinámico
+
+UIFederationService genera automáticamente un service worker cuando `serviceWorker: true`:
+
+```json
+{
+	"uiModule": {
+		"name": "layout",
+		"serviceWorker": true,
+		"i18n": true
+	}
+}
+```
+
+**Características del SW generado:**
+
+-   Cache stale-while-revalidate para `/api/i18n/*`
+-   Cache-first para assets estáticos (`.js`, `.css`, imágenes)
+-   Network-first para el resto
+-   Preload de traducciones al registrar el SW
+
 ## Gestión de Dependencias con Workspaces
 
 El proyecto utiliza [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces) para gestionar las dependencias de forma modular. Cada app, provider, utility y service es un "paquete" individual dentro del workspace, lo que permite un manejo de dependencias aislado y eficiente.

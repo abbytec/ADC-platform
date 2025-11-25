@@ -4,17 +4,8 @@ import { router } from '@ui-library/utils/router.js';
 import { createApp } from 'vue';
 import '@ui-library/loader';
 
-// Limpieza de Service Workers en desarrollo
-if (process.env.NODE_ENV === 'development' && 'serviceWorker' in navigator) {
-	navigator.serviceWorker.getRegistrations().then(registrations => {
-		for (const registration of registrations) {
-			registration.unregister();
-		}
-	});
-	caches.keys().then(names => {
-		for (const name of names) caches.delete(name);
-	});
-}
+// Las funciones t(), setLocale(), getLocale() están disponibles globalmente
+// desde adc-i18n.js (cargado en index.html)
 
 const moduleToSafeName: Record<string, string> = {
 	'home': 'home',
