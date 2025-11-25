@@ -1,0 +1,10 @@
+{
+	"uiModule": {
+		"name": "web-ui-library-mobile",
+		"uiNamespace": "mobile",
+		"framework": "stencil",
+		"outputDir": "dist-ui",
+		"standalone": false
+	}
+}
+
