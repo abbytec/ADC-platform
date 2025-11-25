@@ -97,8 +97,6 @@ export async function buildStencilModule(
 	logger?: any,
 	namespace: string = "default"
 ): Promise<any> {
-	const logName = `${namespace}-${module.uiConfig.name}`;
-	
 	// Asegurar que el directorio de salida existe
 	const outputDir = path.join(uiOutputBaseDir, module.uiConfig.name);
 	await fs.mkdir(outputDir, { recursive: true });
@@ -151,14 +149,26 @@ async function injectDefineCustomElements(module: RegisteredUIModule, logger?: a
 		let content = await fs.readFile(loaderIndexPath, "utf-8");
 
 		if (!content.includes("defineCustomElements(window)")) {
-			content = content.replace(
-				"export * from '../esm/loader.js';",
-				`import { defineCustomElements } from '../esm/loader.js';\nexport * from '../esm/loader.js';\ndefineCustomElements(window);`
-			);
+			// Buscar la línea de export para insertar el import y la llamada
+			if (content.includes("export * from '../esm/loader.js';")) {
+				content = content.replace(
+					"export * from '../esm/loader.js';",
+					`import { defineCustomElements } from '../esm/loader.js';\nexport * from '../esm/loader.js';\ndefineCustomElements(window);`
+				);
+			} else if (content.includes("export * from '../esm/loader.js'")) {
+				// Sin punto y coma al final
+				content = content.replace(
+					"export * from '../esm/loader.js'",
+					`import { defineCustomElements } from '../esm/loader.js';\nexport * from '../esm/loader.js';\ndefineCustomElements(window);`
+				);
+			} else {
+				// Agregar al final como fallback
+				content += `\nimport { defineCustomElements } from '../esm/loader.js';\ndefineCustomElements(window);`;
+			}
 			await fs.writeFile(loaderIndexPath, content, "utf-8");
 			logger?.logDebug(`defineCustomElements inyectado en loader para ${module.uiConfig.name}`);
 		}
-	} catch {
+	} catch (error) {
 		logger?.logWarn(`No se encontró loader/index.js para ${module.uiConfig.name}. El módulo podría no autocargarse.`);
 	}
 }
@@ -174,8 +184,6 @@ export async function buildViteModule(
 	logger?: any,
 	namespace: string = "default"
 ): Promise<any> {
-	const logName = `${namespace}-${module.uiConfig.name}`;
-	
 	if (isDevelopment) {
 		logger?.logDebug(`Iniciando Vite build en watch mode para ${module.uiConfig.name} [${namespace}]`);
 

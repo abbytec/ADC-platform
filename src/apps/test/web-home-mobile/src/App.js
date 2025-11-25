@@ -1,14 +1,67 @@
 import '@ui-library/loader';
 
+// Traducciones locales (fallback si i18n del servidor no está disponible)
+const localTranslations = {
+	es: {
+		title: "📊 Estadísticas",
+		reload: "↻ Actualizar",
+		loading: "Cargando...",
+		stats: {
+			totalUsers: "Usuarios Totales",
+			activeUsers: "Usuarios Activos",
+			roles: "Roles"
+		}
+	},
+	en: {
+		title: "📊 Statistics",
+		reload: "↻ Refresh",
+		loading: "Loading...",
+		stats: {
+			totalUsers: "Total Users",
+			activeUsers: "Active Users",
+			roles: "Roles"
+		}
+	}
+};
+
 /**
  * App de Home Mobile en Vanilla JavaScript
  * Interfaz optimizada para dispositivos móviles con tema oscuro
+ * 
+ * Las funciones t(), setLocale(), getLocale() están disponibles globalmente
+ * desde adc-i18n.js (cargado en index.html del layout)
  */
 export default class HomeApp {
 	constructor() {
 		this.stats = null;
 		this.loading = true;
 		this.container = null;
+		this.locale = window.getLocale ? window.getLocale() : this.detectLocale();
+	}
+	
+	detectLocale() {
+		const stored = localStorage.getItem('language');
+		if (stored) return stored.split('-')[0];
+		return (navigator.language || 'en').split('-')[0];
+	}
+	
+	t(key) {
+		// Si existe t() global, usarla primero
+		if (window.t && window.__ADC_I18N__?.loaded) {
+			return window.t(key, null, 'home');
+		}
+		// Fallback a traducciones locales
+		const dict = localTranslations[this.locale] || localTranslations.en;
+		const keys = key.split('.');
+		let value = dict;
+		for (const k of keys) {
+			if (value && typeof value === 'object' && k in value) {
+				value = value[k];
+			} else {
+				return key;
+			}
+		}
+		return typeof value === 'string' ? value : key;
 	}
 
 	/**
@@ -92,7 +145,7 @@ export default class HomeApp {
 							animation: spin 1s linear infinite;
 							margin: 0 auto 16px;
 						"></div>
-						<p style="margin: 0;">Cargando...</p>
+						<p style="margin: 0;">${this.t('loading')}</p>
 					</div>
 				</div>
 				<style>
@@ -110,12 +163,12 @@ export default class HomeApp {
 					font-size: 1.25rem;
 					font-weight: 600;
 				">
-					📊 Estadísticas
+					${this.t('title')}
 				</h2>
 				
 				<div style="margin-bottom: 20px;">
 					<adc-button id="reload-btn">
-						↻ Actualizar
+						${this.t('reload')}
 					</adc-button>
 				</div>
 
@@ -126,17 +179,17 @@ export default class HomeApp {
 						gap: 16px;
 					">
 						<adc-stat-card
-							card-title="Usuarios Totales"
+							card-title="${this.t('stats.totalUsers')}"
 							value="${this.stats.totalUsers}"
 							color="#805ad5"
 						></adc-stat-card>
 						<adc-stat-card
-							card-title="Usuarios Activos"
+							card-title="${this.t('stats.activeUsers')}"
 							value="${this.stats.activeUsers}"
 							color="#48bb78"
 						></adc-stat-card>
 						<adc-stat-card
-							card-title="Roles"
+							card-title="${this.t('stats.roles')}"
 							value="${this.stats.totalRoles}"
 							color="#ed8936"
 						></adc-stat-card>

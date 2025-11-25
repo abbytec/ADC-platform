@@ -30,6 +30,10 @@ export interface UIModuleConfig {
 	sharedLibs?: string[];
 	/** Configuración personalizada de Astro */
 	astroConfig?: Record<string, any>;
+	/** Habilita i18n para esta app (lee archivos de /i18n/*.js) */
+	i18n?: boolean;
+	/** Habilita service worker con cache stale-while-revalidate */
+	serviceWorker?: boolean;
 }
 
 /**

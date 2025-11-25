@@ -4,31 +4,8 @@ import { router } from '@ui-library/utils/router.js';
 import { createApp } from 'vue';
 import '@ui-library/loader';
 
-// Limpieza agresiva de Service Workers y Caches en desarrollo
-if (process.env.NODE_ENV === 'development' && 'serviceWorker' in navigator) {
-	navigator.serviceWorker.getRegistrations().then(registrations => {
-		for (const registration of registrations) {
-			registration.unregister();
-			console.log('[App] SW desregistrado para desarrollo limpio');
-		}
-	});
-	caches.keys().then(names => {
-		for (const name of names) caches.delete(name);
-		console.log('[App] Caches limpiados');
-	});
-}
-
-if ('serviceWorker' in navigator) {
-	window.addEventListener('load', () => {
-		navigator.serviceWorker.register('/service-worker.js')
-			.then((registration) => {
-				console.log('[App] Service Worker registrado:', registration.scope);
-			})
-			.catch((error) => {
-				console.error('[App] Error registrando Service Worker:', error);
-			});
-	});
-}
+// Las funciones t(), setLocale(), getLocale() están disponibles globalmente
+// desde adc-i18n.js (cargado en index.html)
 
 const moduleToSafeName: Record<string, string> = {
 	'home': 'home',
@@ -64,7 +41,6 @@ async function loadRemoteComponent(moduleName: string) {
 			case 'home': {
 				const homeModule = await import('home/App' as any);
 				RemoteComponent = homeModule.default ?? homeModule;
-				console.log('[Layout] HomeApp cargada:', typeof RemoteComponent, RemoteComponent);
 				break;
 			}
 			case 'users_management': {
@@ -82,7 +58,6 @@ async function loadRemoteComponent(moduleName: string) {
 		}
 		
 		console.log('[Layout] Framework detectado para', moduleName, ':', framework);
-		console.log('[Layout] RemoteComponent es:', typeof RemoteComponent, RemoteComponent);
 		
 		if (!framework) {
 			throw new Error(`Framework no definido para el módulo: ${moduleName}`);

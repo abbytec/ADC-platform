@@ -5,7 +5,8 @@
 		"outputDir": "dist-ui",
 		"devPort": 3002,
 		"standalone": false,
-		"sharedLibs": []
+		"sharedLibs": [],
+		"i18n": true
 	}
 }
 
