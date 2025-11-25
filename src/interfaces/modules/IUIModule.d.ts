@@ -14,6 +14,8 @@ export interface UIRouteConfig {
 export interface UIModuleConfig {
 	/** Nombre del módulo en el import map (sin prefijo "web-") */
 	name: string;
+	/** Namespace UI para agrupar módulos (ej: "default", "mobile"). Default: "default" */
+	uiNamespace?: string;
 	/** Framework utilizado (astro, react, vue, etc.) */
 	framework?: string;
 	/** Directorio de salida para el build */

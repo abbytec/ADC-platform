@@ -15,16 +15,18 @@ export async function startRspackDevServer(
 	rspackBin: string,
 	registeredModules: Map<string, RegisteredUIModule>,
 	uiOutputBaseDir: string,
-	logger?: any
+	logger?: any,
+	namespace: string = "default"
 ): Promise<any> {
 	const configPath = await generateRspackConfig(module, registeredModules, uiOutputBaseDir, logger);
 
-	logger?.logInfo(`Iniciando Rspack dev server para ${module.uiConfig.name} via spawn...`);
+	const logName = `${namespace}-${module.uiConfig.name}`;
+	logger?.logInfo(`Iniciando Rspack dev server para ${module.uiConfig.name} [${namespace}] via spawn...`);
 
-	// Setup log redirection
+	// Setup log redirection - incluir namespace en el nombre del archivo
 	const logsDir = path.resolve(process.cwd(), "temp", "logs");
 	await fs.mkdir(logsDir, { recursive: true });
-	const logFile = path.join(logsDir, `${module.uiConfig.name}.log`);
+	const logFile = path.join(logsDir, `${logName}.log`);
 
 	// Add initial timestamp
 	await fs.appendFile(logFile, `\n--- Start of Session: ${new Date().toISOString()} ---\n`);
@@ -58,7 +60,7 @@ export async function startRspackDevServer(
 	});
 
 	watcher.on("error", (error) => {
-		logger?.logError(`Error en watcher de Rspack ${module.uiConfig.name}: ${error.message}`);
+		logger?.logError(`Error en watcher de Rspack ${module.uiConfig.name} [${namespace}]: ${error.message}`);
 		module.buildStatus = "error";
 		fs.appendFile(logFile, `[ERROR] Spawn error: ${error.message}\n`).catch(() => {});
 	});
@@ -68,14 +70,14 @@ export async function startRspackDevServer(
 		fs.appendFile(logFile, exitMsg).catch(() => {});
 
 		if (code !== 0 && signal !== "SIGTERM" && signal !== "SIGKILL" && signal !== "SIGINT") {
-			logger?.logWarn(`Rspack watcher ${module.uiConfig.name} terminado inesperadamente. Ver logs en ${logFile}`);
+			logger?.logWarn(`Rspack watcher ${module.uiConfig.name} [${namespace}] terminado inesperadamente. Ver logs en ${logFile}`);
 			module.buildStatus = "error";
 		} else {
-			logger?.logDebug(`Rspack watcher ${module.uiConfig.name} terminado (code: ${code}, signal: ${signal})`);
+			logger?.logDebug(`Rspack watcher ${module.uiConfig.name} [${namespace}] terminado (code: ${code}, signal: ${signal})`);
 		}
 	});
 
-	logger?.logOk(`${module.uiConfig.name} Rspack Dev Server iniciado. Logs: temp/logs/${module.uiConfig.name}.log`);
+	logger?.logOk(`${module.uiConfig.name} [${namespace}] Rspack Dev Server iniciado. Logs: temp/logs/${logName}.log`);
 
 	// Darle tiempo al servidor para que arranque antes de continuar
 	await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -92,10 +94,17 @@ export async function buildStencilModule(
 	stencilBin: string,
 	uiOutputBaseDir: string,
 	isDevelopment: boolean,
-	logger?: any
+	logger?: any,
+	namespace: string = "default"
 ): Promise<any> {
+	const logName = `${namespace}-${module.uiConfig.name}`;
+	
+	// Asegurar que el directorio de salida existe
+	const outputDir = path.join(uiOutputBaseDir, module.uiConfig.name);
+	await fs.mkdir(outputDir, { recursive: true });
+	
 	if (isDevelopment) {
-		logger?.logDebug(`Iniciando Stencil build en watch mode para ${module.uiConfig.name}`);
+		logger?.logDebug(`Iniciando Stencil build en watch mode para ${module.uiConfig.name} [${namespace}]`);
 
 		const watcher = spawn(stencilBin, ["build", "--watch"], {
 			cwd: module.appDir,
@@ -107,19 +116,19 @@ export async function buildStencilModule(
 		watcher.stdout?.on("data", (data) => {
 			const output = data.toString();
 			if (output.includes("build finished")) {
-				logger?.logDebug(`Stencil build actualizado para ${module.uiConfig.name}`);
+				logger?.logDebug(`Stencil build actualizado para ${module.uiConfig.name} [${namespace}]`);
 			}
 		});
 
-		watcher.stderr?.on("data", (data) => logger?.logDebug(`Stencil watch ${module.uiConfig.name}: ${data.toString().slice(0, 200)}`));
-		watcher.on("error", (error) => logger?.logError(`Error en watcher de Stencil ${module.uiConfig.name}: ${error.message}`));
+		watcher.stderr?.on("data", (data) => logger?.logDebug(`Stencil watch ${module.uiConfig.name} [${namespace}]: ${data.toString().slice(0, 200)}`));
+		watcher.on("error", (error) => logger?.logError(`Error en watcher de Stencil ${module.uiConfig.name} [${namespace}]: ${error.message}`));
 		watcher.on("exit", (code, signal) =>
-			logger?.logDebug(`Stencil watcher ${module.uiConfig.name} terminado (code: ${code}, signal: ${signal})`)
+			logger?.logDebug(`Stencil watcher ${module.uiConfig.name} [${namespace}] terminado (code: ${code}, signal: ${signal})`)
 		);
 
 		await new Promise((resolve) => setTimeout(resolve, 5000)); // Dar tiempo a que el build inicial termine
 		
-		module.outputPath = path.join(uiOutputBaseDir, module.uiConfig.name);
+		module.outputPath = outputDir;
 
 		// Inyectar defineCustomElements en loader
 		await injectDefineCustomElements(module, logger);
@@ -127,7 +136,7 @@ export async function buildStencilModule(
 		return watcher;
 	} else {
 		await runCommand(stencilBin, ["build"], module.appDir, logger);
-		module.outputPath = path.join(uiOutputBaseDir, module.uiConfig.name);
+		module.outputPath = outputDir;
 		await injectDefineCustomElements(module, logger);
 		return null;
 	}
@@ -162,10 +171,13 @@ export async function buildViteModule(
 	viteBin: string,
 	uiOutputBaseDir: string,
 	isDevelopment: boolean,
-	logger?: any
+	logger?: any,
+	namespace: string = "default"
 ): Promise<any> {
+	const logName = `${namespace}-${module.uiConfig.name}`;
+	
 	if (isDevelopment) {
-		logger?.logDebug(`Iniciando Vite build en watch mode para ${module.uiConfig.name}`);
+		logger?.logDebug(`Iniciando Vite build en watch mode para ${module.uiConfig.name} [${namespace}]`);
 
 		const spawnOptions: any = {
 			cwd: module.appDir,
@@ -179,20 +191,20 @@ export async function buildViteModule(
 		watcher.stdout?.on("data", (data) => {
 			const output = data.toString();
 			if (output.includes("built in")) {
-				logger?.logDebug(`Vite build actualizado para ${module.uiConfig.name}`);
+				logger?.logDebug(`Vite build actualizado para ${module.uiConfig.name} [${namespace}]`);
 			}
 		});
 
 		watcher.stderr?.on("data", (data) => {
-			logger?.logDebug(`Vite watch ${module.uiConfig.name}: ${data.toString().slice(0, 200)}`);
+			logger?.logDebug(`Vite watch ${module.uiConfig.name} [${namespace}]: ${data.toString().slice(0, 200)}`);
 		});
 
 		watcher.on("error", (error) => {
-			logger?.logError(`Error en watcher de Vite ${module.uiConfig.name}: ${error.message}`);
+			logger?.logError(`Error en watcher de Vite ${module.uiConfig.name} [${namespace}]: ${error.message}`);
 		});
 
 		watcher.on("exit", (code, signal) => {
-			logger?.logDebug(`Vite watcher ${module.uiConfig.name} terminado (code: ${code}, signal: ${signal})`);
+			logger?.logDebug(`Vite watcher ${module.uiConfig.name} [${namespace}] terminado (code: ${code}, signal: ${signal})`);
 		});
 
 		await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -259,4 +271,3 @@ export async function buildAstroModule(
 	await copyDirectory(sourceOutputDir, targetOutputDir);
 	module.outputPath = targetOutputDir;
 }
-

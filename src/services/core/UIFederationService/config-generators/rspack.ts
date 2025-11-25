@@ -57,6 +57,7 @@ export async function generateRspackConfig(
 	uiOutputBaseDir: string,
 	logger?: any
 ): Promise<string> {
+	const namespace = module.namespace || "default";
 	const isHost = module.uiConfig.name === "layout";
 	const safeName = module.uiConfig.name.replace(/-/g, "_");
 	const framework = module.uiConfig.framework || "react";
@@ -98,8 +99,10 @@ export async function generateRspackConfig(
 			}
 		}
 		
+		// Solo agregar remotes del mismo namespace
 		for (const [moduleName, mod] of registeredModules.entries()) {
-			if (moduleName !== "layout" && mod.uiConfig.devPort) {
+			const modNamespace = mod.namespace || "default";
+			if (moduleName !== "layout" && mod.uiConfig.devPort && modNamespace === namespace) {
 				const remoteFramework = mod.uiConfig.framework || "react";
 				if (remoteFramework === "react" || remoteFramework === "vue" || remoteFramework === "vanilla") {
 					const safeRemoteName = moduleName.replace(/-/g, "_");
@@ -112,7 +115,7 @@ export async function generateRspackConfig(
 		}
 	}
 
-	const configDir = path.resolve(process.cwd(), "temp", "configs", module.uiConfig.name);
+	const configDir = path.resolve(process.cwd(), "temp", "configs", namespace, module.uiConfig.name);
 	await fs.mkdir(configDir, { recursive: true });
 
 	const isVue = framework === "vue";
@@ -209,13 +212,30 @@ import { VueLoaderPlugin } from 'vue-loader';
     }`;
 	
 	if (isHost) {
-		logger?.logInfo(`[${module.uiConfig.name}] Frameworks detectados: ${Array.from(usedFrameworks).join(", ")}`);
+		logger?.logInfo(`[${module.uiConfig.name}] [${namespace}] Frameworks detectados: ${Array.from(usedFrameworks).join(", ")}`);
 	}
 
 	// Configuración dinámica según modo (ya detectado arriba)
 	const mode = isProduction ? 'production' : 'development';
 	const devtool = isProduction ? 'false' : "'cheap-module-source-map'";
 	const hotReload = !isProduction;
+
+	// Buscar la ui-library específica del namespace
+	let uiLibraryModule: RegisteredUIModule | null = null;
+	for (const [modName, mod] of registeredModules.entries()) {
+		if (mod.uiConfig.framework === "stencil" && mod.namespace === namespace) {
+			uiLibraryModule = mod;
+			break;
+		}
+	}
+	
+	// Paths para aliases basados en el módulo UI library encontrado
+	const namespaceUiLibraryName = uiLibraryModule?.name || "web-ui-library";
+	const namespaceUiLibraryLoaderPath = path.resolve(uiOutputBaseDir, namespaceUiLibraryName, "loader").replace(/\\/g, "\\\\");
+	const namespaceUiLibraryPath = path.resolve(uiOutputBaseDir, namespaceUiLibraryName).replace(/\\/g, "\\\\");
+	const namespaceUiLibraryUtilsPath = uiLibraryModule 
+		? path.resolve(uiLibraryModule.appDir, "utils").replace(/\\/g, "\\\\")
+		: path.resolve(process.cwd(), "src/apps/test/00-web-ui-library/utils").replace(/\\/g, "\\\\");
 
 	const configContent = `
 ${imports}
@@ -235,9 +255,9 @@ export default {
     resolve: {
         extensions: ${extensions},
         alias: {
-            '@ui-library/loader': '${path.resolve(uiOutputBaseDir, "web-ui-library", "loader").replace(/\\/g, "\\\\")}',
-            '@ui-library/utils': '${path.resolve(process.cwd(), "src/apps/test/00-web-ui-library/utils").replace(/\\/g, "\\\\")}',
-            '@ui-library': '${path.resolve(uiOutputBaseDir, "web-ui-library").replace(/\\/g, "\\\\")}',
+            '@ui-library/loader': '${namespaceUiLibraryLoaderPath}',
+            '@ui-library/utils': '${namespaceUiLibraryUtilsPath}',
+            '@ui-library': '${namespaceUiLibraryPath}',
         },
     },${externals.length > 0 ? `
     externals: ${JSON.stringify(externals)},` : ''}
@@ -284,7 +304,6 @@ export default {
 
 	const configPath = path.join(configDir, "rspack.config.mjs");
 	await fs.writeFile(configPath, configContent, "utf-8");
-	logger?.logDebug(`Generated Rspack config for ${module.uiConfig.name} at ${configPath}`);
+	logger?.logDebug(`Generated Rspack config for ${module.uiConfig.name} [${namespace}] at ${configPath}`);
 	return configPath;
 }
-

@@ -6,6 +6,8 @@ import { ImportMap, UIModuleConfig } from "../../../interfaces/modules/IUIModule
 export interface RegisteredUIModule {
 	/** Nombre del módulo (ej: "ui-library", "dashboard") */
 	name: string;
+	/** Namespace UI al que pertenece */
+	namespace: string;
 	/** Directorio de la app */
 	appDir: string;
 	/** Configuración del módulo UI */
@@ -30,7 +32,7 @@ export interface IUIFederationService {
 	/**
 	 * Desregistra un módulo UI
 	 */
-	unregisterUIModule(name: string): Promise<void>;
+	unregisterUIModule(name: string, namespace?: string): Promise<void>;
 
 	/**
 	 * Obtiene el import map actual
@@ -48,9 +50,9 @@ export interface IUIFederationService {
 	generateStencilConfig(appDir: string, config: UIModuleConfig): Promise<string>;
 
 	/**
-	 * Ejecuta el build de Astro para una app
+	 * Ejecuta el build de un módulo UI
 	 */
-	buildUIModule(name: string): Promise<void>;
+	buildUIModule(name: string, namespace?: string): Promise<void>;
 
 	/**
 	 * Reinyecta import maps en todos los módulos registrados

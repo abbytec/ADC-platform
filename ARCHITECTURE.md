@@ -313,6 +313,37 @@ Gestiona el build y servido de módulos UI:
 -   Module Federation con Rspack para apps React/Vue
 -   Import maps dinámicos para resolución de módulos
 -   Servido estático de componentes compilados
+-   **Soporte Multi-UI con Namespaces:** Permite usar múltiples librerías UI sin colisiones
+
+### UI Namespaces
+
+El sistema soporta múltiples conjuntos de UI (librerías, layouts, apps) que no colisionan entre sí mediante namespaces. Cada namespace tiene su propio import map y rutas.
+
+**Configuración:**
+
+```json
+{
+	"uiModule": {
+		"name": "layout",
+		"uiNamespace": "mobile",
+		"framework": "react",
+		"devPort": 3014
+	}
+}
+```
+
+**Características:**
+
+-   Los módulos del mismo namespace comparten la misma UI library
+-   Import maps separados por namespace (`/:namespace/importmap.json`)
+-   Rutas estáticas por namespace (`/:namespace/:moduleName/`)
+-   El namespace `default` se usa cuando no se especifica
+
+**Endpoints:**
+
+-   `GET /api/ui/namespaces` - Lista namespaces disponibles
+-   `GET /:namespace/importmap.json` - Import map del namespace
+-   `GET /importmap.json` - Import map del namespace default
 
 ## Gestión de Dependencias con Workspaces
 

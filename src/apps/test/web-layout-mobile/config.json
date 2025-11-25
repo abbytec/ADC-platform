@@ -1,0 +1,31 @@
+{
+	"uiModule": {
+		"name": "layout",
+		"uiNamespace": "mobile",
+		"framework": "react",
+		"outputDir": "dist-ui",
+		"standalone": true,
+		"devPort": 3014,
+		"sharedLibs": ["react"]
+	},
+	"providers": [
+		{
+			"name": "mongo",
+			"version": "latest",
+			"language": "typescript",
+			"custom": {
+				"uri": "mongodb://admin:password@localhost:27018/adc-dashboard?authSource=admin",
+				"maxRetries": 5,
+				"retryDelay": 5000
+			}
+		}
+	],
+	"services": [
+		{
+			"name": "IdentityManagerService",
+			"version": "latest",
+			"language": "typescript"
+		}
+	]
+}
+

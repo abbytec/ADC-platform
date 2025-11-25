@@ -1,0 +1,12 @@
+{
+	"uiModule": {
+		"name": "home",
+		"uiNamespace": "mobile",
+		"framework": "vanilla",
+		"outputDir": "dist-ui",
+		"devPort": 3012,
+		"standalone": false,
+		"sharedLibs": []
+	}
+}
+
