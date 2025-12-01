@@ -4,6 +4,7 @@
 		"moduleResolution": "NodeNext",
 		"outDir": "./dist",
 		"rootDir": "./src",
+		"baseUrl": ".",
 		"esModuleInterop": true,
 		"allowImportingTsExtensions": true,
 		"allowSyntheticDefaultImports": true,
@@ -14,9 +15,7 @@
 		"target": "ES2022",
 		"lib": ["es2022", "dom", "dom.iterable"],
 		"noEmit": true,
-		"paths": {
-			"@ui-library/*": ["./src/apps/test/00-web-ui-library/src/*"]
-		},
+		"paths": {},
 		"declaration": false,
 		"experimentalDecorators": true,
 		"noUnusedLocals": true,

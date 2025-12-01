@@ -7,10 +7,10 @@
 
 ## Properties
 
-| Property                   | Attribute      | Description | Type                  | Default     |
-| -------------------------- | -------------- | ----------- | --------------------- | ----------- |
-| `headerTitle` _(required)_ | `header-title` |             | `string`              | `undefined` |
-| `subtitle`                 | `subtitle`     |             | `string \| undefined` | `undefined` |
+| Property                   | Attribute      | Description | Type     | Default     |
+| -------------------------- | -------------- | ----------- | -------- | ----------- |
+| `headerTitle` _(required)_ | `header-title` |             | `string` | `undefined` |
+| `subtitle`                 | `subtitle`     |             | `string` | `undefined` |
 
 
 ----------------------------------------------

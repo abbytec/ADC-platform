@@ -34,6 +34,8 @@ export interface UIModuleConfig {
 	i18n?: boolean;
 	/** Habilita service worker con cache stale-while-revalidate */
 	serviceWorker?: boolean;
+	/** Exports que este módulo expone globalmente (ej: { "loader": "./loader", "utils": "./utils" }) */
+	exports?: Record<string, string>;
 }
 
 /**

@@ -49,6 +49,53 @@ async function getDisabledApps(appsDir: string): Promise<Set<string>> {
 }
 
 /**
+ * Genera aliases dinámicos basados en los exports de la ui-library del namespace
+ * y las utilidades del core según las sharedLibs del módulo
+ */
+function generateDynamicAliases(
+	uiLibraryModule: RegisteredUIModule | null,
+	uiOutputBaseDir: string,
+	moduleConfig: RegisteredUIModule
+): string {
+	const aliases: Record<string, string> = {};
+	
+	if (uiLibraryModule) {
+		const exports = uiLibraryModule.uiConfig.exports || {};
+		
+		for (const [exportName, exportPath] of Object.entries(exports)) {
+			const aliasKey = `@ui-library/${exportName}`;
+			
+			if (exportName === "loader") {
+				aliases[aliasKey] = path.resolve(uiOutputBaseDir, uiLibraryModule.name, exportPath).replace(/\\/g, "\\\\");
+			} else {
+				aliases[aliasKey] = path.resolve(uiLibraryModule.appDir, exportPath).replace(/\\/g, "\\\\");
+			}
+		}
+		
+		aliases["@ui-library"] = path.resolve(uiOutputBaseDir, uiLibraryModule.name).replace(/\\/g, "\\\\");
+	}
+	
+	// Agregar @adc/utils si el módulo usa React (framework o sharedLibs)
+	const usesReact = moduleConfig.uiConfig.framework === "react" || 
+		(moduleConfig.uiConfig.sharedLibs && moduleConfig.uiConfig.sharedLibs.includes("react"));
+	
+	if (usesReact) {
+		aliases["@adc/utils"] = path.resolve(process.cwd(), "src/utils").replace(/\\/g, "\\\\");
+	}
+	
+	if (Object.keys(aliases).length === 0) {
+		return "{}";
+	}
+	
+	// Formatear como objeto JavaScript para el config
+	const aliasEntries = Object.entries(aliases)
+		.map(([key, value]) => `            '${key}': '${value}'`)
+		.join(",\n");
+	
+	return `{\n${aliasEntries}\n        }`;
+}
+
+/**
  * Genera la configuración de Rspack para Module Federation
  */
 export async function generateRspackConfig(
@@ -252,13 +299,8 @@ import { VueLoaderPlugin } from 'vue-loader';
 		}
 	}
 	
-	// Paths para aliases basados en el módulo UI library encontrado
-	const namespaceUiLibraryName = uiLibraryModule?.name || "web-ui-library";
-	const namespaceUiLibraryLoaderPath = path.resolve(uiOutputBaseDir, namespaceUiLibraryName, "loader").replace(/\\/g, "\\\\");
-	const namespaceUiLibraryPath = path.resolve(uiOutputBaseDir, namespaceUiLibraryName).replace(/\\/g, "\\\\");
-	const namespaceUiLibraryUtilsPath = uiLibraryModule 
-		? path.resolve(uiLibraryModule.appDir, "utils").replace(/\\/g, "\\\\")
-		: path.resolve(process.cwd(), "src/apps/test/00-web-ui-library/utils").replace(/\\/g, "\\\\");
+	// Generar aliases dinámicos basados en los exports de la ui-library y sharedLibs
+	const aliasesObject = generateDynamicAliases(uiLibraryModule, uiOutputBaseDir, module);
 
 	const configContent = `
 ${imports}
@@ -277,11 +319,7 @@ export default {
     },
     resolve: {
         extensions: ${extensions},
-        alias: {
-            '@ui-library/loader': '${namespaceUiLibraryLoaderPath}',
-            '@ui-library/utils': '${namespaceUiLibraryUtilsPath}',
-            '@ui-library': '${namespaceUiLibraryPath}',
-        },
+        alias: ${aliasesObject},
     },${externals.length > 0 ? `
     externals: ${JSON.stringify(externals)},` : ''}
     module: {

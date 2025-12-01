@@ -34,12 +34,13 @@ declare module '@ui-library/components/StatCard.js' {
 }
 
 // Router de UI Library
-declare module '@ui-library/utils/router.js' {
-	export const router: {
-		navigate: (path: string) => void;
-		setOnRouteChange: (callback: (path: string) => void) => void;
-		getCurrentPath: () => string;
-	};
+declare module '@ui-library/utils/router' {
+	export class Router {
+		navigate(path: string): void;
+		setOnRouteChange(callback: (path: string) => void): () => void;
+		getCurrentPath(): string;
+	}
+	export const router: Router;
 }
 
 // ============================================
