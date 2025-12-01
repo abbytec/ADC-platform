@@ -1,0 +1,13 @@
+{
+	"extends": "../../../../tsconfig.base.json",
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"baseUrl": "../../../..",
+		"paths": {
+			"@adc/utils/*": ["./src/utils/*"],
+			"@ui-library/utils/*": ["./src/apps/test/01-web-ui-library-mobile/utils/*"],
+			"@ui-library/*": ["./src/apps/test/01-web-ui-library-mobile/src/*"]
+		}
+	},
+	"include": ["src/**/*", "*.ts"]
+}

@@ -52,6 +52,59 @@ async function getDisabledApps(appsDir: string): Promise<Set<string>> {
 }
 
 /**
+ * Genera aliases dinámicos basados en los exports de la ui-library del namespace
+ * y las utilidades del core según las sharedLibs del módulo
+ */
+function generateDynamicAliases(
+	registeredModules: Map<string, RegisteredUIModule>,
+	uiOutputBaseDir: string,
+	namespace: string,
+	moduleConfig: UIModuleConfig
+): Record<string, string> {
+	const aliases: Record<string, string> = {};
+	
+	// Buscar la ui-library del namespace (framework === "stencil")
+	let uiLibraryModule: RegisteredUIModule | null = null;
+	for (const mod of registeredModules.values()) {
+		const modNamespace = mod.namespace || "default";
+		if (mod.uiConfig.framework === "stencil" && modNamespace === namespace) {
+			uiLibraryModule = mod;
+			break;
+		}
+	}
+	
+	if (uiLibraryModule) {
+		// Generar aliases basados en los exports definidos en el config de la ui-library
+		const exports = uiLibraryModule.uiConfig.exports || {};
+		
+		for (const [exportName, exportPath] of Object.entries(exports)) {
+			const aliasKey = `@ui-library/${exportName}`;
+			
+			if (exportName === "loader") {
+				// El loader se genera en el output
+				aliases[aliasKey] = path.resolve(uiOutputBaseDir, uiLibraryModule.name, exportPath);
+			} else {
+				// Otros exports (como utils) vienen del source
+				aliases[aliasKey] = path.resolve(uiLibraryModule.appDir, exportPath);
+			}
+		}
+		
+		// Alias base @ui-library apunta al output compilado
+		aliases["@ui-library"] = path.resolve(uiOutputBaseDir, uiLibraryModule.name);
+	}
+	
+	// Agregar @adc/utils si el módulo usa React (framework o sharedLibs)
+	const usesReact = moduleConfig.framework === "react" || 
+		(moduleConfig.sharedLibs && moduleConfig.sharedLibs.includes("react"));
+	
+	if (usesReact) {
+		aliases["@adc/utils"] = path.resolve(process.cwd(), "src/utils");
+	}
+	
+	return aliases;
+}
+
+/**
  * Obtiene la configuración de Vite para un módulo
  */
 export async function getViteConfig(
@@ -64,6 +117,7 @@ export async function getViteConfig(
 	logger?: any
 ): Promise<InlineConfig> {
 	const framework = config.framework || "vanilla";
+	const namespace = config.uiNamespace || "default";
 	const outputDir = path.join(uiOutputBaseDir, config.name);
 	const base = isDev ? "/" : `/${config.name}/`;
 	const devPort = config.devPort || 0;
@@ -216,8 +270,8 @@ export async function getViteConfig(
 		const appConfigPath = path.join(appsBasePath, disabledApp, "config.json");
 		try {
 			const configContent = await fs.readFile(appConfigPath, "utf-8");
-			const config = JSON.parse(configContent);
-			const moduleName = config.uiModule?.name || disabledApp;
+			const appConfig = JSON.parse(configContent);
+			const moduleName = appConfig.uiModule?.name || disabledApp;
 			externalModules.push(`@${moduleName}`);
 			externalModules.push(moduleName);
 			externalModules.push(moduleName + "/App");
@@ -262,17 +316,16 @@ export async function getViteConfig(
 		};
 	}
 
+	// Generar aliases dinámicos basados en la ui-library del namespace y sharedLibs
+	const dynamicAliases = generateDynamicAliases(registeredModules, uiOutputBaseDir, namespace, config);
+
 	return {
 		configFile: false,
 		root: appDir,
 		base: base,
 		plugins,
 		resolve: {
-			alias: {
-				"@ui-library/utils": path.resolve(process.cwd(), "src/apps/test/00-web-ui-library/utils"),
-				"@ui-library/loader": path.resolve(uiOutputBaseDir, "web-ui-library", "loader"),
-				"@ui-library": path.resolve(process.cwd(), "src/apps/test/00-web-ui-library/src"),
-			},
+			alias: dynamicAliases,
 		},
 		server: {
 			port: devPort,

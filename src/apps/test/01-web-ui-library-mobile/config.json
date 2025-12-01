@@ -4,7 +4,10 @@
 		"uiNamespace": "mobile",
 		"framework": "stencil",
 		"outputDir": "dist-ui",
-		"standalone": false
+		"standalone": false,
+		"exports": {
+			"loader": "./loader",
+			"utils": "./utils"
+		}
 	}
 }
-

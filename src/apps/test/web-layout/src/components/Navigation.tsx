@@ -1,4 +1,4 @@
-import { router } from "@ui-library/utils/router.js";
+import { router } from "@ui-library/utils/router";
 
 interface NavigationProps {
 	currentPath: string;
