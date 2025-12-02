@@ -1,0 +1,7 @@
+/**
+ * Tailwind CSS - Global styles para ADC UI Library
+ * 
+ * Este archivo contiene los estilos globales de Tailwind para los web components.
+ * Los estilos dentro de Shadow DOM usan @apply en los CSS de cada componente.
+ */
+@import "tailwindcss";

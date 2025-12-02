@@ -1,57 +1,45 @@
 import { Component, Prop, h, Event, EventEmitter, Host } from "@stencil/core";
-import { MouseEventHandler } from "react";
 
+/**
+ * ADC Button - Componente de botón con Tailwind CSS
+ * 
+ * Usa clases de Tailwind via CSS personalizado con @apply
+ * para mantener el encapsulamiento del Shadow DOM
+ */
 @Component({
 	tag: "adc-button",
+	styleUrl: "adc-button.css",
 	shadow: true,
 })
 export class AdcButton {
 	@Prop() disabled: boolean = false;
 	@Prop() buttonType: "button" | "submit" | "reset" = "button";
-	@Prop() variant: "primary" | "secondary" = "primary";
+	@Prop() variant: "primary" | "secondary" | "success" | "warning" | "danger" = "primary";
+	@Prop() size: "sm" | "md" | "lg" = "md";
 
 	@Event() adcClick: EventEmitter<MouseEvent> | undefined;
 
-	private handleClick = (event: MouseEventHandler<HTMLButtonElement>) => {
+	private handleClick = (event: MouseEvent) => {
 		if (!this.disabled) {
-			this.adcClick?.emit(event as unknown as MouseEvent);
+			this.adcClick?.emit(event);
 		}
 	};
 
 	render() {
-		const isPrimary = this.variant === "primary";
-		const backgroundColor = this.disabled ? "#ccc" : isPrimary ? "#0066cc" : "#6b7280";
-		const hoverColor = isPrimary ? "#0052a3" : "#4b5563";
+		const classes = {
+			"adc-btn": true,
+			[`adc-btn--${this.variant}`]: true,
+			[`adc-btn--${this.size}`]: true,
+			"adc-btn--disabled": this.disabled,
+		};
 
 		return (
 			<Host>
 				<button
 					type={this.buttonType}
-					onClick={() => this.handleClick}
+					onClick={this.handleClick}
 					disabled={this.disabled}
-					class="adc-button"
-					style={{
-						backgroundColor,
-						color: "white",
-						padding: "0.75rem 1.5rem",
-						border: "none",
-						borderRadius: "0.375rem",
-						fontSize: "1rem",
-						fontWeight: "500",
-						cursor: this.disabled ? "not-allowed" : "pointer",
-						transition: "background-color 0.2s",
-						"--hover-color": hoverColor,
-					}}
-					onMouseEnter={(e) => {
-						if (!this.disabled) {
-							(e.target as HTMLElement).style.backgroundColor = hoverColor;
-						}
-					}}
-					onMouseLeave={(e) => {
-						if (!this.disabled) {
-							(e.target as HTMLElement).style.backgroundColor = backgroundColor;
-						}
-					}}
+					class={classes}
 				>
 					<slot></slot>
 				</button>

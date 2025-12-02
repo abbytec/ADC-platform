@@ -1,0 +1,35 @@
+/**
+ * Tailwind CSS - Estilos para Layout App (Shell principal)
+ * 
+ * Solo se incluyen las clases de Tailwind que se usan en esta app.
+ * Tailwind v4 usa @import en lugar de @tailwind directives.
+ */
+@import "tailwindcss";
+
+/* Custom components para el layout */
+.nav-btn {
+	@apply px-4 py-2 rounded-md font-medium transition-all duration-200
+		   text-white bg-blue-600 hover:bg-blue-700
+		   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
+
+.nav-btn--active {
+	@apply bg-blue-800 font-bold shadow-inner;
+}
+
+/* Animaciones */
+@utility animate-slide-in {
+	animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+	from {
+		opacity: 0;
+		transform: translateX(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+

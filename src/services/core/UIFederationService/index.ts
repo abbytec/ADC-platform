@@ -200,7 +200,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				const configPath = await generateAstroConfig(appDir, uiConfig, this.options);
 				this.logger.logDebug(`Configuración de Astro generada: ${configPath}`);
 			} else if (framework === "stencil") {
-				const configPath = await generateStencilConfig(appDir, uiConfig, path.join(this.uiOutputBaseDir, namespace));
+				const configPath = await generateStencilConfig(appDir, uiConfig, path.join(this.uiOutputBaseDir, namespace), this.logger);
 				this.logger.logDebug(`Configuración de Stencil generada: ${configPath}`);
 			}
 
@@ -311,7 +311,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 	async generateStencilConfig(appDir: string, config: UIModuleConfig): Promise<string> {
 		const namespace = config.uiNamespace || DEFAULT_NAMESPACE;
-		return generateStencilConfig(appDir, config, path.join(this.uiOutputBaseDir, namespace));
+		return generateStencilConfig(appDir, config, path.join(this.uiOutputBaseDir, namespace), this.logger);
 	}
 
 	/**

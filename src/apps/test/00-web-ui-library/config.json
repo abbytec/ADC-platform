@@ -6,7 +6,8 @@
 		"standalone": false,
 		"exports": {
 			"loader": "./loader",
-			"utils": "./utils"
+			"utils": "./utils",
+			"tailwind-preset": "./utils/tailwind-preset.js"
 		}
 	}
 }

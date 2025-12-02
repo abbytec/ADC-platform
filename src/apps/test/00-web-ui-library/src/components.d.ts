@@ -6,6 +6,11 @@
  */
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
 export namespace Components {
+    /**
+     * ADC Button - Componente de botón con Tailwind CSS
+     * Usa clases de Tailwind via CSS personalizado con
+     * @apply para mantener el encapsulamiento del Shadow DOM
+     */
     interface AdcButton {
         /**
           * @default "button"
@@ -16,9 +21,13 @@ export namespace Components {
          */
         "disabled": boolean;
         /**
+          * @default "md"
+         */
+        "size": "sm" | "md" | "lg";
+        /**
           * @default "primary"
          */
-        "variant": "primary" | "secondary";
+        "variant": "primary" | "secondary" | "success" | "warning" | "danger";
     }
     interface AdcContainer {
         /**
@@ -56,12 +65,17 @@ export namespace Components {
         "headerTitle": string;
         "subtitle"?: string;
     }
+    /**
+     * ADC Stat Card - Componente de tarjeta de estadísticas con Tailwind CSS
+     * Usa clases de Tailwind via CSS personalizado con
+     * @apply 
+     */
     interface AdcStatCard {
         "cardTitle": string;
         /**
-          * @default "#0066cc"
+          * @default "primary"
          */
-        "color": string;
+        "color": "primary" | "success" | "warning" | "danger" | "default";
         "description"?: string;
         "value": string | number;
     }
@@ -74,6 +88,11 @@ declare global {
     interface HTMLAdcButtonElementEventMap {
         "adcClick": any;
     }
+    /**
+     * ADC Button - Componente de botón con Tailwind CSS
+     * Usa clases de Tailwind via CSS personalizado con
+     * @apply para mantener el encapsulamiento del Shadow DOM
+     */
     interface HTMLAdcButtonElement extends Components.AdcButton, HTMLStencilElement {
         addEventListener<K extends keyof HTMLAdcButtonElementEventMap>(type: K, listener: (this: HTMLAdcButtonElement, ev: AdcButtonCustomEvent<HTMLAdcButtonElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
         addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
@@ -109,6 +128,11 @@ declare global {
         prototype: HTMLAdcHeaderElement;
         new (): HTMLAdcHeaderElement;
     };
+    /**
+     * ADC Stat Card - Componente de tarjeta de estadísticas con Tailwind CSS
+     * Usa clases de Tailwind via CSS personalizado con
+     * @apply 
+     */
     interface HTMLAdcStatCardElement extends Components.AdcStatCard, HTMLStencilElement {
     }
     var HTMLAdcStatCardElement: {
@@ -124,6 +148,11 @@ declare global {
     }
 }
 declare namespace LocalJSX {
+    /**
+     * ADC Button - Componente de botón con Tailwind CSS
+     * Usa clases de Tailwind via CSS personalizado con
+     * @apply para mantener el encapsulamiento del Shadow DOM
+     */
     interface AdcButton {
         /**
           * @default "button"
@@ -135,9 +164,13 @@ declare namespace LocalJSX {
         "disabled"?: boolean;
         "onAdcClick"?: (event: AdcButtonCustomEvent<any>) => void;
         /**
+          * @default "md"
+         */
+        "size"?: "sm" | "md" | "lg";
+        /**
           * @default "primary"
          */
-        "variant"?: "primary" | "secondary";
+        "variant"?: "primary" | "secondary" | "success" | "warning" | "danger";
     }
     interface AdcContainer {
         /**
@@ -175,12 +208,17 @@ declare namespace LocalJSX {
         "headerTitle": string;
         "subtitle"?: string;
     }
+    /**
+     * ADC Stat Card - Componente de tarjeta de estadísticas con Tailwind CSS
+     * Usa clases de Tailwind via CSS personalizado con
+     * @apply 
+     */
     interface AdcStatCard {
         "cardTitle": string;
         /**
-          * @default "#0066cc"
+          * @default "primary"
          */
-        "color"?: string;
+        "color"?: "primary" | "success" | "warning" | "danger" | "default";
         "description"?: string;
         "value": string | number;
     }
@@ -196,6 +234,11 @@ export { LocalJSX as JSX };
 declare module "@stencil/core" {
     export namespace JSX {
         interface IntrinsicElements {
+            /**
+             * ADC Button - Componente de botón con Tailwind CSS
+             * Usa clases de Tailwind via CSS personalizado con
+             * @apply para mantener el encapsulamiento del Shadow DOM
+             */
             "adc-button": LocalJSX.AdcButton & JSXBase.HTMLAttributes<HTMLAdcButtonElement>;
             "adc-container": LocalJSX.AdcContainer & JSXBase.HTMLAttributes<HTMLAdcContainerElement>;
             /**
@@ -203,6 +246,11 @@ declare module "@stencil/core" {
              */
             "adc-error": LocalJSX.AdcError & JSXBase.HTMLAttributes<HTMLAdcErrorElement>;
             "adc-header": LocalJSX.AdcHeader & JSXBase.HTMLAttributes<HTMLAdcHeaderElement>;
+            /**
+             * ADC Stat Card - Componente de tarjeta de estadísticas con Tailwind CSS
+             * Usa clases de Tailwind via CSS personalizado con
+             * @apply 
+             */
             "adc-stat-card": LocalJSX.AdcStatCard & JSXBase.HTMLAttributes<HTMLAdcStatCardElement>;
         }
     }
