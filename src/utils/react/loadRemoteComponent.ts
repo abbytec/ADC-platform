@@ -40,6 +40,7 @@ function createVueWrapper(
 
 		React.useEffect(() => {
 			if (containerRef.current && !vueAppRef.current) {
+				// NOTA: isCustomElement se configura en vue-loader (build-time), no aquí
 				vueAppRef.current = createApp(RemoteComponent, props);
 				vueAppRef.current.mount(containerRef.current);
 				console.log(`[Layout] Vue app montada: ${moduleName}`);
