@@ -1,4 +1,5 @@
 import '@ui-library/loader';
+import './styles/tailwind.css';
 
 // Traducciones locales (fallback si i18n del servidor no está disponible)
 const translations = {
@@ -27,6 +28,8 @@ const translations = {
 /**
  * App de Home en Vanilla JavaScript
  * Funciona como standalone y como microfrontend en web-layout
+ * 
+ * Usa Tailwind CSS para estilos optimizados
  */
 export default class HomeApp {
 	constructor() {
@@ -118,47 +121,47 @@ export default class HomeApp {
 	}
 
 	/**
-	 * Renderiza la interfaz
+	 * Renderiza la interfaz con clases de Tailwind CSS
 	 */
 	render() {
 		if (!this.container) return;
 
 		if (this.loading) {
 			this.container.innerHTML = `
-				<div class="loading">${this.t('loading')}</div>
+				<div class="flex items-center justify-center p-8">
+					<div class="animate-pulse flex flex-col items-center gap-4">
+						<div class="w-12 h-12 bg-blue-500 rounded-full animate-bounce"></div>
+						<span class="text-gray-500 font-medium">${this.t('loading')}</span>
+					</div>
+				</div>
 			`;
 			return;
 		}
 
 		this.container.innerHTML = `
-			<div>
-				<h2 style="margin-bottom: 20px;">${this.t('title')}</h2>
+			<div class="p-4">
+				<h2 class="text-2xl font-bold text-gray-800 mb-6">${this.t('title')}</h2>
 				
-				<adc-button id="reload-btn">
+				<adc-button id="reload-btn" variant="primary" size="md">
 					${this.t('reload')}
 				</adc-button>
 
 				${this.stats ? `
-					<div class="stats-grid" style="
-						display: grid; 
-						gap: 20px; 
-						grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-						margin-top: 20px;
-					">
+					<div class="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mt-6">
 						<adc-stat-card
 							card-title="${this.t('stats.totalUsers')}"
 							value="${this.stats.totalUsers}"
-							color="#0066cc"
+							color="primary"
 						></adc-stat-card>
 						<adc-stat-card
 							card-title="${this.t('stats.activeUsers')}"
 							value="${this.stats.activeUsers}"
-							color="#10b981"
+							color="success"
 						></adc-stat-card>
 						<adc-stat-card
 							card-title="${this.t('stats.roles')}"
 							value="${this.stats.totalRoles}"
-							color="#f59e0b"
+							color="warning"
 						></adc-stat-card>
 					</div>
 				` : ''}

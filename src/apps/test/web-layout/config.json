@@ -5,7 +5,7 @@
 		"outputDir": "dist-ui",
 		"standalone": true,
 		"devPort": 3004,
-		"sharedLibs": ["react"],
+		"sharedLibs": ["react", "tailwind"],
 		"i18n": true,
 		"serviceWorker": true
 	},

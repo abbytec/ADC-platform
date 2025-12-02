@@ -11,34 +11,30 @@ export function Navigation({ currentPath }: NavigationProps) {
 		}
 	};
 
-	const buttonStyle = (path: string) => ({
-		padding: "8px 16px",
-		background: currentPath === path ? "#0052a3" : "#0066cc",
-		color: "white",
-		border: "none",
-		borderRadius: "4px",
-		cursor: "pointer",
-		fontWeight: currentPath === path ? "bold" : "normal",
-		transition: "background-color 0.2s",
-	});
+	const getButtonClasses = (path: string) => {
+		const baseClasses = "nav-btn";
+		const activeClasses = currentPath === path ? "nav-btn--active" : "";
+		return `${baseClasses} ${activeClasses}`.trim();
+	};
 
 	return (
-		<nav
-			style={{
-				display: "flex",
-				gap: "10px",
-				padding: "15px 0",
-				borderBottom: "2px solid #e0e0e0",
-				marginBottom: "20px",
-			}}
-		>
-			<button onClick={() => handleNavigate("/")} style={buttonStyle("/")}>
+		<nav className="flex gap-3 py-4 border-b-2 border-gray-200 mb-5">
+			<button 
+				onClick={() => handleNavigate("/")} 
+				className={getButtonClasses("/")}
+			>
 				Inicio
 			</button>
-			<button onClick={() => handleNavigate("/users")} style={buttonStyle("/users")}>
+			<button 
+				onClick={() => handleNavigate("/users")} 
+				className={getButtonClasses("/users")}
+			>
 				Usuarios
 			</button>
-			<button onClick={() => handleNavigate("/config")} style={buttonStyle("/config")}>
+			<button 
+				onClick={() => handleNavigate("/config")} 
+				className={getButtonClasses("/config")}
+			>
 				Configuración
 			</button>
 		</nav>

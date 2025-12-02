@@ -1,0 +1,123 @@
+/**
+ * ADC Button - Estilos con Tailwind CSS v4
+ * 
+ * Usa estilos directos ya que @apply tiene limitaciones en Shadow DOM.
+ * Tailwind v4 procesa estos estilos y los optimiza.
+ */
+
+/* Estilos base del botón */
+.adc-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 500;
+	border-radius: 0.375rem;
+	transition: all 0.2s ease-in-out;
+	border: none;
+	cursor: pointer;
+	outline: none;
+}
+
+.adc-btn:focus {
+	box-shadow: 0 0 0 2px var(--ring-offset-color, white), 0 0 0 4px var(--ring-color, #3b82f6);
+}
+
+/* Tamaños */
+.adc-btn--sm {
+	padding: 0.375rem 0.75rem;
+	font-size: 0.875rem;
+}
+
+.adc-btn--md {
+	padding: 0.5rem 1rem;
+	font-size: 1rem;
+}
+
+.adc-btn--lg {
+	padding: 0.75rem 1.5rem;
+	font-size: 1.125rem;
+}
+
+/* Variantes de color */
+.adc-btn--primary {
+	background-color: #2563eb;
+	color: white;
+	--ring-color: #3b82f6;
+}
+
+.adc-btn--primary:hover {
+	background-color: #1d4ed8;
+}
+
+.adc-btn--primary:active {
+	background-color: #1e40af;
+}
+
+.adc-btn--secondary {
+	background-color: #6b7280;
+	color: white;
+	--ring-color: #9ca3af;
+}
+
+.adc-btn--secondary:hover {
+	background-color: #4b5563;
+}
+
+.adc-btn--secondary:active {
+	background-color: #374151;
+}
+
+.adc-btn--success {
+	background-color: #10b981;
+	color: white;
+	--ring-color: #34d399;
+}
+
+.adc-btn--success:hover {
+	background-color: #059669;
+}
+
+.adc-btn--success:active {
+	background-color: #047857;
+}
+
+.adc-btn--warning {
+	background-color: #f59e0b;
+	color: white;
+	--ring-color: #fbbf24;
+}
+
+.adc-btn--warning:hover {
+	background-color: #d97706;
+}
+
+.adc-btn--warning:active {
+	background-color: #b45309;
+}
+
+.adc-btn--danger {
+	background-color: #ef4444;
+	color: white;
+	--ring-color: #f87171;
+}
+
+.adc-btn--danger:hover {
+	background-color: #dc2626;
+}
+
+.adc-btn--danger:active {
+	background-color: #b91c1c;
+}
+
+/* Estado deshabilitado */
+.adc-btn--disabled {
+	background-color: #d1d5db;
+	color: #6b7280;
+	cursor: not-allowed;
+}
+
+.adc-btn--disabled:hover,
+.adc-btn--disabled:active {
+	background-color: #d1d5db;
+}
+

@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { RegisteredUIModule } from "../types.js";
+import { generateTailwindConfig, generatePostCSSConfig, hasTailwindEnabled } from "./tailwind.js";
 
 /**
  * Detecta apps deshabilitadas en el directorio de apps
@@ -173,9 +174,48 @@ export async function generateRspackConfig(
 	const developmentValue = isDevelopmentMode ? 'true' : 'false'; // Como literal de JavaScript
 	const mainEntry = isVanilla ? "./src/main.js" : (isVue ? "./src/main.ts" : "./src/main.tsx");
 	const appExtension = isVanilla ? ".js" : (isVue ? ".vue" : ".tsx");
-	const extensions = isVanilla ? "['.js', '.json']" : (isVue ? "['.vue', '.tsx', '.ts', '.jsx', '.js', '.json']" : "['.tsx', '.ts', '.jsx', '.js', '.json']");
+	const extensions = isVanilla ? "['.js', '.json', '.css']" : (isVue ? "['.vue', '.tsx', '.ts', '.jsx', '.js', '.json', '.css']" : "['.tsx', '.ts', '.jsx', '.js', '.json', '.css']");
+
+	// Detectar si Tailwind está habilitado
+	const tailwindEnabled = hasTailwindEnabled(module);
+	let postcssConfigPath = "";
+	
+	if (tailwindEnabled) {
+		logger?.logInfo(`[${module.uiConfig.name}] Tailwind CSS habilitado, generando configuración en temp/...`);
+		const tailwindConfigPath = await generateTailwindConfig(module, registeredModules, configDir, logger);
+		postcssConfigPath = await generatePostCSSConfig(tailwindConfigPath, configDir, logger);
+	}
 
 	let moduleRules = "";
+	
+	// Regla de CSS base (sin Tailwind)
+	let cssRule = `
+            {
+                test: /\\.css$/,
+                use: ['style-loader', 'css-loader'],
+                type: 'javascript/auto',
+            }`;
+	
+	// Si Tailwind está habilitado, usar PostCSS
+	if (tailwindEnabled && postcssConfigPath) {
+		cssRule = `
+            {
+                test: /\\.css$/,
+                use: [
+                    'style-loader',
+                    'css-loader',
+                    {
+                        loader: 'postcss-loader',
+                        options: {
+                            postcssOptions: {
+                                config: '${postcssConfigPath.replace(/\\/g, "/")}',
+                            },
+                        },
+                    },
+                ],
+                type: 'javascript/auto',
+            }`;
+	}
 	
 	if (!isVanilla) {
 		moduleRules = `
@@ -191,7 +231,7 @@ export async function generateRspackConfig(
                     },
                 },
                 exclude: /node_modules/,
-            }
+            },${cssRule}
     `;
 	} else {
 		moduleRules = `
@@ -199,7 +239,7 @@ export async function generateRspackConfig(
                 test: /\\.js$/,
                 exclude: /node_modules/,
                 type: 'javascript/auto',
-            }
+            },${cssRule}
     `;
 	}
 

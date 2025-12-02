@@ -5,7 +5,7 @@
 		"outputDir": "dist-ui",
 		"devPort": 3002,
 		"standalone": false,
-		"sharedLibs": [],
+		"sharedLibs": ["tailwind"],
 		"i18n": true
 	}
 }
