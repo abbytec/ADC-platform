@@ -266,7 +266,15 @@ export async function generateRspackConfig(
 \`,` : `
             template: './index.html',`;
 
-	let plugins = `
+	// Feature flags de Vue (requeridos para tree-shaking en producción)
+	const vueFeatureFlags = usedFrameworks.has("vue") ? `
+        new rspack.DefinePlugin({
+            __VUE_OPTIONS_API__: true,
+            __VUE_PROD_DEVTOOLS__: false,
+            __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+        }),` : "";
+
+	let plugins = `${vueFeatureFlags}
         new rspack.HtmlRspackPlugin({${i18nScript}
         }),
     `;
@@ -285,7 +293,13 @@ import { VueLoaderPlugin } from 'vue-loader';
 		moduleRules += `,
             {
                 test: /\\.vue$/,
-                use: 'vue-loader',
+                loader: 'vue-loader',
+                options: {
+                    compilerOptions: {
+                        // Reconocer web components con prefijo "adc-"
+                        isCustomElement: (tag) => tag.startsWith('adc-'),
+                    },
+                },
                 exclude: /node_modules/,
             },
             {
@@ -407,6 +421,11 @@ export default {
     ignoreWarnings: [
         /Critical dependency.*expression/,
     ],
+    performance: {
+        hints: ${isProduction ? "'warning'" : 'false'},
+        maxAssetSize: 512000,      // 500 KiB
+        maxEntrypointSize: 512000, // 500 KiB
+    },
 };
 `;
 
