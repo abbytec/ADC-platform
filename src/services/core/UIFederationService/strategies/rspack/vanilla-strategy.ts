@@ -1,0 +1,90 @@
+import { RspackBaseStrategy } from "./base.js";
+import type { IBuildContext } from "../types.js";
+
+/**
+ * Estrategia Rspack para JavaScript Vanilla con Module Federation
+ */
+export class VanillaRspackStrategy extends RspackBaseStrategy {
+	readonly name = "Vanilla JS (Rspack)";
+	readonly framework = "vanilla";
+
+	protected getFileExtension(): string {
+		return ".js";
+	}
+
+	protected getResolveExtensions(): string[] {
+		return [".js", ".json", ".css"];
+	}
+
+	protected getMainEntry(): string {
+		return "./src/main.js";
+	}
+
+	protected getImports(): string {
+		return `
+import * as path from 'node:path';
+import { rspack } from '@rspack/core';
+import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack';
+`;
+	}
+
+	protected getModuleRules(_isProduction: boolean, postcssConfigPath: string): string {
+		const cssRule = postcssConfigPath
+			? `
+            {
+                test: /\\.css$/,
+                use: [
+                    'style-loader',
+                    'css-loader',
+                    {
+                        loader: 'postcss-loader',
+                        options: {
+                            postcssOptions: {
+                                config: '${postcssConfigPath.replace(/\\/g, "/")}',
+                            },
+                        },
+                    },
+                ],
+                type: 'javascript/auto',
+            }`
+			: `
+            {
+                test: /\\.css$/,
+                use: ['style-loader', 'css-loader'],
+                type: 'javascript/auto',
+            }`;
+
+		return `
+            {
+                test: /\\.js$/,
+                exclude: /node_modules/,
+                type: 'javascript/auto',
+            },${cssRule}
+    `;
+	}
+
+	protected getPlugins(context: IBuildContext, isHost: boolean, usedFrameworks: Set<string>): string {
+		const hasI18n = context.module.uiConfig.i18n;
+		const moduleName = context.module.uiConfig.name;
+
+		const i18nScript = isHost && hasI18n ? this.getI18nTemplate(moduleName) : `
+            template: './index.html',`;
+
+		// Vue/React feature flags si los remotes los usan
+		let featureFlags = "";
+
+		if (usedFrameworks.has("vue")) {
+			featureFlags += `
+        new rspack.DefinePlugin({
+            __VUE_OPTIONS_API__: true,
+            __VUE_PROD_DEVTOOLS__: false,
+            __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+        }),`;
+		}
+
+		return `${featureFlags}
+        new rspack.HtmlRspackPlugin({${i18nScript}
+        }),
+    `;
+	}
+}

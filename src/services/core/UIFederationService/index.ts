@@ -8,17 +8,13 @@ import type { IHttpServerProvider } from "../../../interfaces/modules/providers/
 import type { ILangManagerService } from "../LangManagerService/types.js";
 
 // Utilidades
-import { copyDirectory } from "./utils/file-operations.js";
 import { generateCompleteImportMap, createImportMapObject } from "./utils/import-map.js";
 import { injectImportMapsInHTMLs, generateIndexHtml, generateMainEntryPoint } from "./utils/html-processor.js";
 import { generateServiceWorker, generateI18nClientCode } from "./utils/service-worker-generator.js";
 
-// Generadores de configuración
-import { generateAstroConfig } from "./config-generators/astro.js";
-import { generateStencilConfig } from "./config-generators/stencil.js";
-
-// Builders
-import { startRspackDevServer, buildStencilModule, buildViteModule, buildReactVueModule, buildAstroModule } from "./builders/module-builder.js";
+// Strategy Pattern
+import { getStrategy, isFrameworkSupported, getSupportedFrameworks, parseFramework } from "./strategies/index.js";
+import type { IBuildContext } from "./strategies/types.js";
 
 const DEFAULT_NAMESPACE = "default";
 
@@ -129,8 +125,6 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			registerUIModule: this.registerUIModule.bind(this),
 			unregisterUIModule: this.unregisterUIModule.bind(this),
 			getImportMap: this.getImportMap.bind(this),
-			generateAstroConfig: this.generateAstroConfig.bind(this),
-			generateStencilConfig: this.generateStencilConfig.bind(this),
 			buildUIModule: this.buildUIModule.bind(this),
 			refreshAllImportMaps: this.refreshAllImportMaps.bind(this),
 			getStats: this.getStats.bind(this),
@@ -168,11 +162,27 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		return null;
 	}
 
+	/**
+	 * Registra un módulo UI
+	 */
 	async registerUIModule(name: string, appDir: string, uiConfig: UIModuleConfig): Promise<void> {
 		const namespace = uiConfig.uiNamespace || DEFAULT_NAMESPACE;
-		this.logger.logInfo(`Registrando módulo UI: ${name} [namespace: ${namespace}]`);
+		const framework = uiConfig.framework || "astro";
+
+		// Validar framework soportado
+		if (!isFrameworkSupported(framework)) {
+			throw new Error(`Framework "${framework}" no soportado. ` + `Opciones: ${getSupportedFrameworks().join(", ")}`);
+		}
+
+		// Obtener y validar estrategia
+		const strategy = getStrategy(framework);
+		strategy.validateConfig(uiConfig);
+
+		this.logger.logInfo(`Registrando módulo UI: ${name} [${namespace}] (${strategy.name})`);
 
 		const namespaceModules = this.#getNamespaceModules(namespace);
+		const isDevelopment = process.env.NODE_ENV === "development";
+		const isStandalone = uiConfig.standalone || false;
 
 		const module: RegisteredUIModule = {
 			name,
@@ -187,73 +197,23 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		this.#updateImportMap(namespace);
 
 		try {
-			const framework = uiConfig.framework || "astro";
-			const isDevelopment = process.env.NODE_ENV === "development";
-			const isStandalone = uiConfig.standalone || false;
-
 			// Generar archivos standalone si es necesario
-			if (isStandalone || uiConfig.devPort) {
+			if (isStandalone || strategy.requiresDevPort()) {
 				await this.#generateStandaloneFiles(appDir, uiConfig);
 			}
 
-			if (framework === "astro") {
-				const configPath = await generateAstroConfig(appDir, uiConfig, this.options);
-				this.logger.logDebug(`Configuración de Astro generada: ${configPath}`);
-			} else if (framework === "stencil") {
-				const configPath = await generateStencilConfig(appDir, uiConfig, path.join(this.uiOutputBaseDir, namespace), this.logger);
-				this.logger.logDebug(`Configuración de Stencil generada: ${configPath}`);
-			}
+			// Build del módulo usando la estrategia
+			await this.#buildUIModuleInternal(module, namespace);
 
-			// Módulos con devPort: siempre servir en su puerto (dev o prod)
-			if (uiConfig.devPort && (framework === "react" || framework === "vue" || framework === "vanilla")) {
-				await this.#buildUIModuleInternal(module, namespace);
-			}
-			// Módulos sin devPort: build estático servido desde puerto 3000
-			else {
-				const shouldBuild = isStandalone || framework === "vite" || framework === "astro" || framework === "stencil";
-
-				if (shouldBuild) {
-					try {
-						await this.#buildUIModuleInternal(module, namespace);
-						await this.#injectImportMapsInModuleHTMLs(name, namespace);
-					} catch (buildError: any) {
-						this.logger.logWarn(`Build falló para ${name}, copiando archivos sin build: ${buildError.message}`);
-						const targetOutputDir = path.join(this.uiOutputBaseDir, namespace, name);
-						await fs.rm(targetOutputDir, { recursive: true, force: true });
-
-						if (isStandalone) {
-							await fs.mkdir(targetOutputDir, { recursive: true });
-							await fs.copyFile(path.join(appDir, "index.html"), path.join(targetOutputDir, "index.html"));
-						}
-
-						await copyDirectory(path.join(appDir, "src"), path.join(targetOutputDir, "src"));
-						module.outputPath = targetOutputDir;
-						module.buildStatus = "built";
-
-						await this.#injectImportMapsInModuleHTMLs(name, namespace);
-					}
-				} else {
-					const targetOutputDir = path.join(this.uiOutputBaseDir, namespace, name);
-					await fs.rm(targetOutputDir, { recursive: true, force: true });
-					await copyDirectory(path.join(appDir, "src"), targetOutputDir);
-					module.outputPath = targetOutputDir;
-					module.buildStatus = "built";
-				}
+			// Post-build: inyectar import maps si tiene output
+			if (module.outputPath) {
+				await this.#injectImportMapsInModuleHTMLs(name, namespace);
 			}
 
 			this.#updateImportMap(namespace);
 
-			// Módulos con devPort: se sirven en su propio puerto (dev o prod)
-			if (uiConfig.devPort && (framework === "react" || framework === "vue" || framework === "vanilla")) {
-				const mode = isDevelopment ? "Dev Server" : "Production Server";
-				this.logger.logOk(`Módulo UI ${name} [${namespace}] disponible en ${mode} http://localhost:${uiConfig.devPort}`);
-			}
-			// Módulos sin devPort: servir estáticamente desde httpProvider
-			else if (this.httpProvider && module.outputPath) {
-				const urlPath = `/${namespace}/${name}`;
-				this.httpProvider.serveStatic(urlPath, module.outputPath);
-				this.logger.logOk(`Módulo UI ${name} [${namespace}] servido en http://localhost:${this.port}${urlPath}`);
-			}
+			// Servir módulo según su configuración
+			await this.#serveModule(module, namespace, isDevelopment);
 
 			// Registrar traducciones i18n si está habilitado
 			if (uiConfig.i18n && this.langManager) {
@@ -268,6 +228,25 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			module.buildStatus = "error";
 			this.logger.logError(`Error registrando módulo UI ${name}: ${error.message}`);
 			throw error;
+		}
+	}
+
+	/**
+	 * Sirve el módulo según su configuración
+	 */
+	async #serveModule(module: RegisteredUIModule, namespace: string, isDevelopment: boolean): Promise<void> {
+		const { bundler } = parseFramework(module.uiConfig.framework || "astro");
+
+		// Módulos con devPort (rspack/vite): se sirven en su propio puerto
+		if (module.uiConfig.devPort && (bundler === "rspack" || bundler === "vite")) {
+			const mode = isDevelopment ? "Dev Server" : "Production Server";
+			this.logger.logOk(`Módulo UI ${module.name} [${namespace}] disponible en ${mode} http://localhost:${module.uiConfig.devPort}`);
+		}
+		// Módulos sin devPort o CLI: servir estáticamente desde httpProvider
+		else if (this.httpProvider && module.outputPath) {
+			const urlPath = `/${namespace}/${module.name}`;
+			this.httpProvider.serveStatic(urlPath, module.outputPath);
+			this.logger.logOk(`Módulo UI ${module.name} [${namespace}] servido en http://localhost:${this.port}${urlPath}`);
 		}
 	}
 
@@ -305,15 +284,6 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		return this.importMaps.get(ns) || { imports: {} };
 	}
 
-	async generateAstroConfig(appDir: string, config: UIModuleConfig): Promise<string> {
-		return generateAstroConfig(appDir, config, this.options);
-	}
-
-	async generateStencilConfig(appDir: string, config: UIModuleConfig): Promise<string> {
-		const namespace = config.uiNamespace || DEFAULT_NAMESPACE;
-		return generateStencilConfig(appDir, config, path.join(this.uiOutputBaseDir, namespace), this.logger);
-	}
-
 	/**
 	 * Build público (para retrocompatibilidad)
 	 */
@@ -339,62 +309,50 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	}
 
 	/**
-	 * Build interno usando el módulo directamente
+	 * Build interno usando Strategy Pattern
 	 */
 	async #buildUIModuleInternal(module: RegisteredUIModule, namespace: string): Promise<void> {
-		const name = module.name;
+		const framework = module.uiConfig.framework || "astro";
+		const strategy = getStrategy(framework);
 		const namespaceModules = this.#getNamespaceModules(namespace);
+		const namespaceOutputDir = path.join(this.uiOutputBaseDir, namespace);
 
 		module.buildStatus = "building";
-		this.logger.logInfo(`Ejecutando build para ${name} [${namespace}]...`);
+		this.logger.logInfo(`Build: ${module.name} [${namespace}] usando ${strategy.name}`);
 
 		try {
-			const framework = module.uiConfig.framework || "astro";
-			const rootDir = path.resolve(process.cwd());
-			const viteBin = path.join(rootDir, "node_modules", ".bin", "vite");
-			const astroBin = path.join(rootDir, "node_modules", ".bin", "astro");
-			const stencilBin = path.join(rootDir, "node_modules", ".bin", "stencil");
-			const rspackBin = path.join(rootDir, "node_modules", ".bin", "rspack");
-			const isDevelopment = process.env.NODE_ENV === "development";
-			const namespaceOutputDir = path.join(this.uiOutputBaseDir, namespace);
+			// Crear contexto de build
+			const context: IBuildContext = {
+				module,
+				namespace,
+				registeredModules: namespaceModules,
+				uiOutputBaseDir: namespaceOutputDir,
+				logger: this.logger,
+				isDevelopment: process.env.NODE_ENV === "development",
+			};
 
-			// Identificador único para el watcher incluyendo namespace
-			const watcherKey = `${namespace}:${name}`;
+			// Ejecutar build con la estrategia
+			const result = await strategy.build(context);
 
-			if (framework === "stencil") {
-				const watcher = await buildStencilModule(module, stencilBin, namespaceOutputDir, isDevelopment, this.logger, namespace);
-				if (watcher) {
-					this.watchBuilds.set(watcherKey, watcher);
-				}
-			} else if (framework === "react" || framework === "vue" || framework === "vanilla") {
-				// Con devPort: iniciar servidor en el puerto configurado (dev o prod)
-				if (module.uiConfig.devPort) {
-					const watcher = await startRspackDevServer(module, rspackBin, namespaceModules, namespaceOutputDir, this.logger, namespace);
-					this.watchBuilds.set(watcherKey, watcher);
-				}
-				// Sin devPort: build estático
-				else {
-					await buildReactVueModule(module, namespaceModules, namespaceOutputDir, this.port, this.logger);
-				}
-			} else if (framework === "vite") {
-				const watcher = await buildViteModule(module, viteBin, namespaceOutputDir, isDevelopment, this.logger, namespace);
-				if (watcher) {
-					this.watchBuilds.set(watcherKey, watcher);
-				}
-			} else if (framework === "astro") {
-				await buildAstroModule(module, astroBin, namespaceOutputDir, this.logger);
-			} else {
-				throw new Error(`Framework no soportado: ${framework}`);
+			// Guardar watcher si existe
+			if (result.watcher) {
+				const watcherKey = `${namespace}:${module.name}`;
+				this.watchBuilds.set(watcherKey, result.watcher);
+			}
+
+			// Guardar output path
+			if (result.outputPath) {
+				module.outputPath = result.outputPath;
 			}
 
 			module.buildStatus = "built";
 
-			if (!isDevelopment) {
-				this.logger.logOk(`Build completado para ${name} [${namespace}]`);
+			if (!context.isDevelopment) {
+				this.logger.logOk(`Build completado para ${module.name} [${namespace}]`);
 			}
 		} catch (error: any) {
 			module.buildStatus = "error";
-			this.logger.logError(`Error en build de ${name}: ${error.message}`);
+			this.logger.logError(`Error en build de ${module.name}: ${error.message}`);
 			throw error;
 		}
 	}
@@ -404,7 +362,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		for (const [namespace, modules] of this.registeredModules.entries()) {
 			for (const [name, module] of modules.entries()) {
-			if (module.buildStatus === "built" && module.outputPath) {
+				if (module.buildStatus === "built" && module.outputPath) {
 					await this.#injectImportMapsInModuleHTMLs(name, namespace);
 				}
 			}
@@ -435,19 +393,19 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	}
 
 	async #generateStandaloneFiles(appDir: string, config: UIModuleConfig): Promise<void> {
-		const framework = config.framework || "astro";
+		const { baseFramework } = parseFramework(config.framework || "astro");
 
-		if (framework === "react" || framework === "vue") {
-			const indexHtmlContent = generateIndexHtml(config.name, framework);
+		if (baseFramework === "react" || baseFramework === "vue") {
+			const indexHtmlContent = generateIndexHtml(config.name, baseFramework);
 			await fs.writeFile(path.join(appDir, "index.html"), indexHtmlContent, "utf-8");
 			this.logger.logDebug(`index.html generado para ${config.name}`);
 
-			const mainExt = framework === "react" ? ".tsx" : ".ts";
+			const mainExt = baseFramework === "react" ? ".tsx" : ".ts";
 			const mainPath = path.join(appDir, "src", `main${mainExt}`);
 			try {
 				await fs.access(mainPath);
 			} catch {
-				const mainContent = generateMainEntryPoint(framework);
+				const mainContent = generateMainEntryPoint(baseFramework);
 				await fs.writeFile(mainPath, mainContent, "utf-8");
 				this.logger.logDebug(`src/main${mainExt} generado para ${config.name}`);
 			}
@@ -484,12 +442,12 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		this.httpProvider.registerRoute("GET", "/api/i18n/:namespace", (req, res) => {
 			const namespace = (req.params as any).namespace;
 			const locale = (req.query as any).locale;
-			
+
 			if (!this.langManager) {
 				res.status(503).json({ error: "LangManagerService no disponible" });
 				return;
 			}
-			
+
 			const translations = this.langManager.getTranslations(namespace, locale);
 			res.setHeader("Content-Type", "application/json");
 			res.json(translations);
@@ -498,17 +456,17 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		this.httpProvider.registerRoute("GET", "/api/i18n", (req, res) => {
 			const namespaces = ((req.query as any).namespaces || "").split(",").filter(Boolean);
 			const locale = (req.query as any).locale;
-			
+
 			if (!this.langManager) {
 				res.status(503).json({ error: "LangManagerService no disponible" });
 				return;
 			}
-			
+
 			if (namespaces.length === 0) {
 				res.json(this.langManager.getStats());
 				return;
 			}
-			
+
 			const translations = this.langManager.getBundledTranslations(namespaces, locale);
 			res.setHeader("Content-Type", "application/json");
 			res.json(translations);
@@ -518,7 +476,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		this.httpProvider.registerRoute("GET", "/", (_req, res) => {
 			const defaultModules = this.registeredModules.get(DEFAULT_NAMESPACE);
 			const layoutModule = defaultModules?.get("layout");
-			
+
 			// Si layout tiene devPort: redirigir a su servidor (dev o prod)
 			if (layoutModule && layoutModule.uiConfig.devPort) {
 				res.redirect(`http://localhost:${layoutModule.uiConfig.devPort}/`);
@@ -537,14 +495,16 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 					<body style="font-family: system-ui; padding: 20px;">
 						<h1>UI Namespaces Disponibles</h1>
 						<ul>
-							${namespaces.map((ns) => {
-								const nsModules = this.registeredModules.get(ns);
-								const nsLayout = nsModules?.get("layout");
-								if (nsLayout?.uiConfig.devPort) {
-									return `<li><a href="http://localhost:${nsLayout.uiConfig.devPort}/">${ns}</a></li>`;
-								}
-								return `<li><a href="/${ns}/layout/">${ns}</a></li>`;
-							}).join("")}
+							${namespaces
+								.map((ns) => {
+									const nsModules = this.registeredModules.get(ns);
+									const nsLayout = nsModules?.get("layout");
+									if (nsLayout?.uiConfig.devPort) {
+										return `<li><a href="http://localhost:${nsLayout.uiConfig.devPort}/">${ns}</a></li>`;
+									}
+									return `<li><a href="/${ns}/layout/">${ns}</a></li>`;
+								})
+								.join("")}
 						</ul>
 					</body>
 					</html>
@@ -577,7 +537,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		const namespaceModules = this.#getNamespaceModules(namespace);
 		const layoutModule = namespaceModules.get("layout");
-		
+
 		if (!layoutModule) return;
 
 		// Generar service worker para este namespace
