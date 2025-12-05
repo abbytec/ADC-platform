@@ -40,16 +40,6 @@ export interface IUIFederationService {
 	getImportMap(): ImportMap;
 
 	/**
-	 * Genera el astro.config.mjs para una app
-	 */
-	generateAstroConfig(appDir: string, config: UIModuleConfig): Promise<string>;
-
-	/**
-	 * Genera el stencil.config.ts para una app
-	 */
-	generateStencilConfig(appDir: string, config: UIModuleConfig): Promise<string>;
-
-	/**
 	 * Ejecuta el build de un módulo UI
 	 */
 	buildUIModule(name: string, namespace?: string): Promise<void>;
@@ -68,4 +58,3 @@ export interface IUIFederationService {
 		modules: RegisteredUIModule[];
 	};
 }
-

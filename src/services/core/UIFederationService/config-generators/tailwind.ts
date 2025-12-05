@@ -23,7 +23,7 @@ export interface TailwindConfig {
  * Genera la configuración base de Tailwind compartida
  * Esta es la configuración común que todos los módulos heredan
  */
-export function getBaseTailwindConfig(): TailwindConfig {
+function getBaseTailwindConfig(): TailwindConfig {
 	return {
 		content: [],
 		theme: {
@@ -89,7 +89,7 @@ export function getBaseTailwindConfig(): TailwindConfig {
 					"adc-xl": "2rem",
 				},
 				borderRadius: {
-					"adc": "0.375rem",
+					adc: "0.375rem",
 				},
 			},
 		},
@@ -114,10 +114,7 @@ export async function generateTailwindConfig(
 
 	// Agregar paths del módulo actual
 	const moduleExtensions = getExtensionsForFramework(framework);
-	contentPaths.push(
-		`${module.appDir}/src/**/*.{${moduleExtensions}}`,
-		`${module.appDir}/index.html`
-	);
+	contentPaths.push(`${module.appDir}/src/**/*.{${moduleExtensions}}`, `${module.appDir}/index.html`);
 
 	// Si es un host (layout), incluir paths de componentes compartidos
 	const isHost = module.uiConfig.name.includes("layout");
@@ -158,7 +155,7 @@ export async function generateTailwindConfig(
 
 	// Crear el archivo tailwind.config.js
 	await fs.mkdir(configDir, { recursive: true });
-	
+
 	const configContent = `/** @type {import('tailwindcss').Config} */
 export default ${JSON.stringify(tailwindConfig, null, 2).replace(/"require\('([^']+)'\)"/g, "require('$1')")};
 `;
@@ -174,11 +171,7 @@ export default ${JSON.stringify(tailwindConfig, null, 2).replace(/"require\('([^
  * Genera el archivo postcss.config.js necesario para procesar Tailwind
  * Usa @tailwindcss/postcss (Tailwind CSS v4+)
  */
-export async function generatePostCSSConfig(
-	tailwindConfigPath: string,
-	configDir: string,
-	logger?: any
-): Promise<string> {
+export async function generatePostCSSConfig(tailwindConfigPath: string, configDir: string, logger?: any): Promise<string> {
 	// Tailwind CSS v4+ requiere @tailwindcss/postcss
 	const configContent = `import tailwindcss from '@tailwindcss/postcss';
 import autoprefixer from 'autoprefixer';
@@ -223,4 +216,3 @@ export function hasTailwindEnabled(module: RegisteredUIModule): boolean {
 	const sharedLibs = module.uiConfig.sharedLibs || [];
 	return sharedLibs.includes("tailwind") || sharedLibs.includes("tailwindcss");
 }
-
