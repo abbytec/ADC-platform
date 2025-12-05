@@ -387,8 +387,8 @@ export default {
 	title: "Estadísticas",
 	stats: {
 		totalUsers: "Usuarios Totales",
-		welcome: "Bienvenido, {{name}}"
-	}
+		welcome: "Bienvenido, {{name}}",
+	},
 };
 ```
 
@@ -403,11 +403,11 @@ Las apps con `serviceWorker: true` en su layout reciben automáticamente:
 
 ```javascript
 // Función t() global para traducciones
-t('stats.totalUsers')                    // → "Usuarios Totales"
-t('welcome', { name: 'Juan' }, 'home')  // → "Bienvenido, Juan"
+t("stats.totalUsers"); // → "Usuarios Totales"
+t("welcome", { name: "Juan" }, "home"); // → "Bienvenido, Juan"
 
 // Cambiar idioma (persiste en localStorage)
-setLocale('en');
+setLocale("en");
 
 // Obtener idioma actual
 getLocale(); // → "es" (de localStorage o navegador)
