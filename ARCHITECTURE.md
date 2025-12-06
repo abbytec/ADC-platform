@@ -345,6 +345,87 @@ El sistema soporta múltiples conjuntos de UI (librerías, layouts, apps) que no
 -   `GET /:namespace/importmap.json` - Import map del namespace
 -   `GET /importmap.json` - Import map del namespace default
 
+### Host-Based Routing (Producción)
+
+En producción (`npm run start` o `npm run start:prodtests`), las apps UI se sirven mediante **virtual hosts** basados en dominios y subdominios, permitiendo que múltiples apps compartan el mismo puerto.
+
+**Configuración en `config.json`:**
+
+```json
+{
+	"uiModule": {
+		"name": "layout",
+		"hosting": {
+			"hosts": [
+				{
+					"domain": "local.com",
+					"subdomains": ["cloud", "users", "config", "*"]
+				}
+			]
+		}
+	}
+}
+```
+
+**Formatos de configuración de hosting:**
+
+```json
+// Opción 1: Hosts con subdominios específicos
+"hosting": {
+  "hosts": [
+    { "domain": "example.com", "subdomains": ["app", "admin", "*"] }
+  ]
+}
+
+// Opción 2: Subdominios simples (usa dominio por defecto: local.com)
+"hosting": {
+  "subdomains": ["cloud", "users", "*"]
+}
+
+// Opción 3: Dominios completos
+"hosting": {
+  "domains": ["app.example.com", "admin.example.com"]
+}
+```
+
+**Prioridad de hosts:**
+- Hosts específicos (`cloud.local.com`) tienen mayor prioridad
+- Comodines (`*.local.com`) tienen menor prioridad
+- Esto evita colisiones cuando múltiples apps usan comodines
+
+**Puertos:**
+- `npm run start` → puerto 80 (producción real)
+- `npm run start:prodtests` → puerto 3000 (pruebas de producción)
+
+**Modo Desarrollo vs Producción:**
+
+| Modo | Comando | Provider | Comportamiento |
+|------|---------|----------|----------------|
+| Desarrollo | `npm run start:dev` | Express | Dev servers en puertos separados (3001, 3003, etc.) |
+| Producción (test) | `npm run start:prodtests` | Fastify | Builds compiladas, host-based routing, puerto 3000 |
+| Producción | `npm run start` | Fastify | Builds compiladas, host-based routing, puerto 80 |
+
+**Versiones Mobile:**
+
+Las versiones mobile se distinguen usando prefijos o subdominios dedicados:
+
+```json
+// web-layout-mobile/config.json
+{
+	"uiModule": {
+		"uiNamespace": "mobile",
+		"hosting": {
+			"hosts": [
+				{ "domain": "local.com", "subdomains": ["m-cloud", "m-users", "m-*"] },
+				{ "domain": "m.local.com", "subdomains": ["cloud", "users", "*"] }
+			]
+		}
+	}
+}
+```
+
+Esto permite acceder a la versión mobile via `m-cloud.local.com` o `cloud.m.local.com`.
+
 ### LangManagerService (i18n)
 
 Servicio en modo kernel para internacionalización compartida entre apps UI.

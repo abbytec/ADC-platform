@@ -38,7 +38,9 @@ src/
 ├── providers/
 │   ├── BaseProvider.ts
 │   ├── files/            # Filesystem
-│   ├── http/             # HTTP client
+│   ├── http/             # HTTP servers
+│   │   ├── express-server/   # Express (desarrollo)
+│   │   └── fastify-server/   # Fastify + host routing (producción)
 │   └── object/           # Object storage
 ├── utilities/
 │   ├── BaseUtility.ts
@@ -99,6 +101,31 @@ src/
 | `@Distributed` | Decorador para ejecutar en worker |
 | Namespace UI | Múltiples UI libraries sin colisiones |
 | Workspaces | Cada módulo es un npm package aislado |
+| `hosting` | Config de dominios/subdominios para producción |
+
+## Production Hosting
+
+En producción, las apps UI se sirven mediante **virtual hosts** (dominios/subdominios).
+
+**Providers HTTP:**
+- `express-server`: usado en desarrollo (`npm run start:dev`)
+- `fastify-server`: usado en producción con host-based routing
+
+**Puertos:**
+- `npm run start` → puerto 80 (producción real)
+- `npm run start:prodtests` → puerto 3000 (tests de producción)
+- `npm run start:dev` → puerto 3000 + dev servers en puertos separados
+
+**Configuración de hosting en `config.json`:**
+```json
+{
+  "uiModule": {
+    "hosting": {
+      "hosts": [{ "domain": "local.com", "subdomains": ["cloud", "users", "*"] }]
+    }
+  }
+}
+```
 
 ## Code Style
 

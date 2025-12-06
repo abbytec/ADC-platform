@@ -9,6 +9,28 @@ export interface UIRouteConfig {
 }
 
 /**
+ * Configuración de host para servir un módulo UI
+ */
+export interface UIHostConfig {
+	/** Dominio base (ej: "local.com", "example.com") */
+	domain: string;
+	/** Lista de subdominios o "*" para comodín (ej: ["cloud", "users", "*"]) */
+	subdomains?: string[];
+}
+
+/**
+ * Configuración de hosting para un módulo UI en producción
+ */
+export interface UIHostingConfig {
+	/** Configuración de hosts específicos */
+	hosts?: UIHostConfig[];
+	/** Lista simple de subdominios (usa dominio por defecto del sistema) */
+	subdomains?: string[];
+	/** Lista de dominios completos donde servir (ej: ["cloud.local.com"]) */
+	domains?: string[];
+}
+
+/**
  * Configuración de un módulo UI en config.json
  */
 export interface UIModuleConfig {
@@ -36,6 +58,8 @@ export interface UIModuleConfig {
 	serviceWorker?: boolean;
 	/** Exports que este módulo expone globalmente (ej: { "loader": "./loader", "utils": "./utils" }) */
 	exports?: Record<string, string>;
+	/** Configuración de hosting para producción (dominios/subdominios) */
+	hosting?: UIHostingConfig;
 }
 
 /**
