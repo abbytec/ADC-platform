@@ -1,7 +1,12 @@
 import * as path from "node:path";
+import * as fs from "node:fs";
 
 const isDevelopment = process.env.NODE_ENV === "development";
-export const outputBasePath = isDevelopment ? path.resolve(process.cwd(), "src") : path.resolve(process.cwd(), "dist");
+const distPath = path.resolve(process.cwd(), "dist");
+const srcPath = path.resolve(process.cwd(), "src");
+
+// En producción, usar dist si existe; si no, caer a src (desarrollo sin compilación)
+export const outputBasePath = isDevelopment || !fs.existsSync(distPath) ? srcPath : distPath;
 
 /** Obtiene el directorio de configuración para un módulo específico */
 export const getConfigDir = (namespace: string, moduleName: string) => path.resolve(process.cwd(), "temp", "configs", namespace, moduleName);

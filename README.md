@@ -28,13 +28,13 @@ El objetivo principal del proyecto es ofrecer una base sólida y flexible que de
 
 ```bash
 npm install
-npm run start          # Inicia en modo desarrollo con HMR
+npm run start:dev          # Inicia en modo desarrollo con HMR
 ```
 
 ### Producción
 
 ```bash
-npm run start:prod   # Ejecuta sin apps de test
+npm run start   # Ejecuta sin apps de test
 ```
 
 ## Servicios en Modo Kernel

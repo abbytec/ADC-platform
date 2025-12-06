@@ -121,31 +121,62 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 	 * Inicia el dev server de Vite
 	 */
 	async startDevServer(context: IBuildContext): Promise<IBuildResult> {
-		const { module, namespace } = context;
+		const { module, namespace, isDevelopment } = context;
 
-		// Importar createServer dinámicamente
-		const { createServer } = await import("vite");
-		const viteConfig = await this.getViteConfig(context, true);
+		if (isDevelopment) {
+			// En desarrollo: usar createServer con HMR
+			const { createServer } = await import("vite");
+			const viteConfig = await this.getViteConfig(context, true);
 
-		context.logger?.logInfo(`Iniciando Vite dev server para ${module.uiConfig.name} [${namespace}]...`);
+			context.logger?.logInfo(`Iniciando Vite Dev Server para ${module.uiConfig.name} [${namespace}]...`);
 
-		const server = await createServer(viteConfig);
-		await server.listen();
+			const server = await createServer(viteConfig);
+			await server.listen();
 
-		const address = server.httpServer?.address();
-		const port = typeof address === "object" && address ? address.port : module.uiConfig.devPort;
+			const address = server.httpServer?.address();
+			const port = typeof address === "object" && address ? address.port : module.uiConfig.devPort;
 
-		context.logger?.logOk(`${module.uiConfig.name} [${namespace}] Vite Dev Server en http://localhost:${port}`);
+			context.logger?.logOk(`${module.uiConfig.name} [${namespace}] Vite Dev Server en http://localhost:${port}`);
 
-		// Retornar un pseudo-watcher para compatibilidad
-		return {
-			watcher: {
-				kill: async () => {
-					await server.close();
+			return {
+				watcher: {
+					kill: async () => {
+						await server.close();
+					},
+				} as any,
+				outputPath: undefined,
+			};
+		} else {
+			// En producción: primero build, luego preview
+			context.logger?.logInfo(`Build + Preview Vite para ${module.uiConfig.name} [${namespace}]...`);
+
+			// Hacer el build primero
+			const buildResult = await this.buildStatic(context);
+
+			// Luego iniciar preview server
+			const { preview } = await import("vite");
+			const viteConfig = await this.getViteConfig(context, false);
+
+			const previewServer = await preview({
+				...viteConfig,
+				preview: {
+					port: module.uiConfig.devPort,
+					strictPort: true,
+					cors: true,
 				},
-			} as any,
-			outputPath: undefined,
-		};
+			});
+
+			context.logger?.logOk(`${module.uiConfig.name} [${namespace}] Vite Production Server en http://localhost:${module.uiConfig.devPort}`);
+
+			return {
+				watcher: {
+					kill: async () => {
+						await previewServer.close();
+					},
+				} as any,
+				outputPath: buildResult.outputPath,
+			};
+		}
 	}
 
 	/**
