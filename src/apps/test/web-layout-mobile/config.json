@@ -8,7 +8,19 @@
 		"devPort": 3014,
 		"sharedLibs": ["react"],
 		"i18n": true,
-		"serviceWorker": true
+		"serviceWorker": true,
+		"hosting": {
+			"hosts": [
+				{
+					"domain": "local.com",
+					"subdomains": ["m-cloud", "m-users", "m-config", "m-*"]
+				},
+				{
+					"domain": "m.local.com",
+					"subdomains": ["cloud", "users", "config", "*"]
+				}
+			]
+		}
 	},
 	"providers": [
 		{

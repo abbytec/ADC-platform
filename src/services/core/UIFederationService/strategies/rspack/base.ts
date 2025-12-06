@@ -129,10 +129,12 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const serverMode = context.isDevelopment ? "Dev Server" : "Production Server";
 		context.logger?.logOk(`${module.uiConfig.name} [${namespace}] Rspack ${serverMode} iniciado. Logs: temp/logs/${logName}.log`);
 
-		// Dar tiempo al servidor para arrancar
+		// Dar tiempo al servidor para arrancar y compilar
 		await new Promise((resolve) => setTimeout(resolve, 5000));
 
-		return { watcher, outputPath: undefined };
+		// El output path donde rspack genera los archivos (configurado en rspack.config.mjs)
+		const outputPath = path.join(context.uiOutputBaseDir, module.uiConfig.name);
+		return { watcher, outputPath };
 	}
 
 	/**
@@ -322,8 +324,8 @@ export default {
 
 		if (usedFrameworks.has("react")) {
 			sharedLibs.push(
-				"react: { singleton: true, requiredVersion: '^18.2.0', eager: true, strictVersion: false }",
-				"'react-dom': { singleton: true, requiredVersion: '^18.2.0', eager: true, strictVersion: false }",
+				"react: { singleton: true, requiredVersion: '^19.2.1', eager: true, strictVersion: false }",
+				"'react-dom': { singleton: true, requiredVersion: '^19.2.1', eager: true, strictVersion: false }",
 				"'react/jsx-dev-runtime': { singleton: true, eager: true, strictVersion: false }"
 			);
 		}

@@ -60,8 +60,8 @@ export class ReactViteStrategy extends ViteBaseStrategy {
 								"./App": "./src/App.tsx",
 							},
 							shared: {
-								react: { singleton: true, requiredVersion: "^18.2.0" },
-								"react-dom": { singleton: true, requiredVersion: "^18.2.0" },
+								react: { singleton: true, requiredVersion: "^19.2.1" },
+								"react-dom": { singleton: true, requiredVersion: "^19.2.1" },
 							},
 						})
 					);

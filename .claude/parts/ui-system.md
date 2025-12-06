@@ -33,10 +33,30 @@ import '@ui-library/loader';
 		"framework": "react",
 		"devPort": 3014,
 		"serviceWorker": true,
-		"i18n": true
+		"i18n": true,
+		"hosting": {
+			"hosts": [{ "domain": "local.com", "subdomains": ["cloud", "users", "*"] }]
+		}
 	}
 }
 ```
+
+## Hosting (Producción)
+
+En producción, las apps se sirven por dominio/subdominio en un solo puerto:
+
+```json
+"hosting": {
+  "hosts": [{ "domain": "local.com", "subdomains": ["cloud", "users", "*"] }]
+}
+```
+
+**Opciones:**
+- `hosts`: Lista de dominios con subdominios
+- `subdomains`: Lista simple (usa dominio por defecto `local.com`)
+- `domains`: Dominios completos
+
+**Prioridad:** hosts específicos > comodines (`*`)
 
 ## Namespaces
 

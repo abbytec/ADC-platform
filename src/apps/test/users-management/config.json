@@ -6,7 +6,15 @@
 		"outputDir": "dist-ui",
 		"standalone": true,
 		"devPort": 3001,
-		"sharedLibs": ["react"]
+		"sharedLibs": ["react"],
+		"hosting": {
+			"hosts": [
+				{
+					"domain": "local.com",
+					"subdomains": ["s-users", "stan-users"]
+				}
+			]
+		}
 	}
 }
 

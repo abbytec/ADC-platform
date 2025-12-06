@@ -13,10 +13,11 @@ export default class WebHomeApp extends BaseApp {
 
 	async #registerAPIEndpoints() {
 		try {
-			const httpProvider = this.kernel.getProvider<any>("express-server");
+			// Usar el tipo del provider (http-server-provider) para obtener el correcto según el entorno
+			const httpProvider = this.kernel.getProvider<any>("http-server-provider");
 			const httpInstance = (await httpProvider.getInstance()) as IHttpServerProvider;
 
-			httpInstance.registerRoute("GET", "/api/dashboard/stats", async (_req, res) => {
+			httpInstance.registerRoute("GET", "/api/dashboard/stats", async (_req: any, res: any) => {
 				try {
 					const identityService = this.kernel.getService<any>("IdentityManagerService");
 					const identityInstance = await identityService.getInstance();
