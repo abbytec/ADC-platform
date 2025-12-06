@@ -30,10 +30,11 @@ export abstract class BaseFrameworkStrategy implements IFrameworkStrategy {
 	}
 
 	/**
-	 * Determina si debe iniciar un dev server
+	 * Determina si debe iniciar un servidor (dev o prod)
+	 * En producción local también se inicia el servidor para poder probar
 	 */
 	protected shouldStartDevServer(context: IBuildContext): boolean {
-		return !!(context.module.uiConfig.devPort && context.isDevelopment);
+		return !!context.module.uiConfig.devPort;
 	}
 
 	/**

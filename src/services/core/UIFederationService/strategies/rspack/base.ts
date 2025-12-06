@@ -126,7 +126,8 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 			}
 		});
 
-		context.logger?.logOk(`${module.uiConfig.name} [${namespace}] Rspack Dev Server iniciado. Logs: temp/logs/${logName}.log`);
+		const serverMode = context.isDevelopment ? "Dev Server" : "Production Server";
+		context.logger?.logOk(`${module.uiConfig.name} [${namespace}] Rspack ${serverMode} iniciado. Logs: temp/logs/${logName}.log`);
 
 		// Dar tiempo al servidor para arrancar
 		await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -141,7 +142,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		// Rspack strategies requieren devPort, pero podemos generar un build de producción
 		const configPath = await this.generateConfig(context);
 		const rspackBin = getBinPath("rspack");
-		const outputPath = path.join(context.namespace, context.module.uiConfig.name);
+		const outputPath = path.join(context.uiOutputBaseDir, context.module.uiConfig.name);
 
 		context.logger?.logInfo(`Ejecutando build de producción para ${context.module.uiConfig.name}...`);
 

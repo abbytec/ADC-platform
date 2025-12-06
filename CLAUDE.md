@@ -60,9 +60,9 @@ src/
 
 | Command | Description |
 |---------|-------------|
-| `npm start` | Dev mode (hot reload) |
-| `npm run start:prod` | Producción (sin tests) |
-| `npm run start:prodtests` | Producción con tests |
+| `npm run start` | Producción (sin tests) |
+| `npm start:dev` | Dev mode (hot reload) |
+| `npm run start:prodtests` | Simular producción + tests habilitados |
 | `npm run typecheck` | TypeScript + ts-prune |
 | `npm run lint` | ESLint |
 | `npm run lint:fix` | ESLint autofix |
@@ -111,24 +111,46 @@ src/
 
 ## CLI Tools para búsquedas en el proyecto
 
-Usa la herramienta adecuada según el objetivo:
+Si necesitas buscar algo, usa la herramienta adecuada (evita herramientas genéricas como `find`/`grep` salvo casos especiales).
 
-- **Archivos → `fd`**
-- **Texto → `rg`**
-- **Patrones/AST → `ast-grep`**
-- **JSON → `jq`**
-- **YAML → `yq`**
+| Objetivo | Herramienta recomendada | Binario original | Reemplaza o mejora frente a | Cuándo usarla |
+|---|---|---|---|---|
+| Buscar **archivos** por nombre/extensión | `fd` | `fdfind` (Debian/Ubuntu) | `find` | "¿Dónde está este archivo?" |
+| Buscar **texto** dentro de archivos | `rg` | `ripgrep` | `grep`, `ag` | "¿Dónde aparece este string?" |
+| Buscar **estructura de código (AST)** | `ast-grep` | `ast-grep` | `grep/rg` cuando fallan por texto | "Encontrar patrones de código, no solo texto" |
+| Filtrar resultados de forma interactiva | `fzf` | `fzf` | `select`, `fzf` UI sobre cualquier lista | "Elegir entre muchos resultados" |
+| Leer/filtrar **JSON** | `jq` | `jq` | `grep + sed + cat` sobre json | "Necesito un valor de package.json" |
+| Leer/filtrar **YAML** | `yq` | `yq` | `grep + sed + cat` sobre yaml | "Necesito algo de compose.yml" |
 
-Guías rápidas:
+### Guías rápidas (con casos prácticos frecuentes):
 
-```sh
-fd *.tsx              # Buscar archivos
-rg "pattern" -t ts    # Buscar texto en TS
-ast-grep -p '...'     # Coincidencias por estructura de código
-jq '.key' file.json   # Leer valores de JSON
-yq '.services' file.yml
-```
-Si detectás ambigüedad en búsquedas, sugerí fzf para selección interactiva.
+# Buscar ARCHIVOS (mejor que find)
+fd "*.tsx"                   # Archivos TSX en el repo
+fd config --type f           # Archivos con 'config' en el nombre
+fd -e ts -e tsx              # Extensiones específicas
+
+# Buscar TEXTO (mejor que grep/ack/ag)
+rg "TODO" -t ts              # Solo TypeScript
+rg "useEffect" -g "*.tsx"    # En componentes UI
+rg "apiKey" -l               # Mostrar solo archivos que contienen el texto
+
+# Buscar PATRONES DE CÓDIGO (AST-aware)
+ast-grep -p 'async function $NAME($_)' -l ts    # Funciones async
+ast-grep -p 'useEffect($FN, [])' -l tsx         # useEffect sin deps
+ast-grep -p 'class $N extends BaseApp'          # Herencias específicas
+
+# Selección INTERACTIVA
+fd src | fzf                 # Buscar archivo y seleccionar para abrir
+rg "hook" | fzf              # Elegir resultado entre muchos
+
+# JSON
+jq '.dependencies' package.json         # Ver dependencias
+jq '.scripts | keys' package.json       # Listar scripts
+
+# YAML
+yq '.services' docker-compose.yml       # Listar servicios
+yq '.services.api.image' file.yml       # Extraer valores
+
 Para documentación completa usa .claude/cli-tools.md.
 
 
