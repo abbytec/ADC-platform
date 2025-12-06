@@ -1,6 +1,6 @@
 import { createElement, useState, useEffect, useRef } from "react";
 import { Shell } from "./components/Shell.tsx";
-import { router } from "@ui-library/utils/router";
+import { router, type RouteDefinition } from "@ui-library/utils/router";
 import { loadRemoteComponent, type Framework } from "@adc/utils/react/loadRemoteComponent";
 import "@ui-library/loader";
 
@@ -27,11 +27,11 @@ const moduleDefinitions: Record<string, ModuleDefinition> = {
 	},
 };
 
-const routeToModule: Record<string, string> = {
-	"/": "home",
-	"/users": "users-management",
-	"/config": "config",
-};
+const routes: RouteDefinition[] = [
+	{ module: "home", path: "/" },
+	{ module: "users-management", path: "/users", subdomain: "users" },
+	{ module: "config", path: "/config", subdomain: "config" },
+];
 
 export default function App() {
 	const [renderKey, setRenderKey] = useState(0);
@@ -41,6 +41,18 @@ export default function App() {
 	const loadingPathRef = useRef<string | null>(null);
 	const isInitialized = useRef(false);
 
+	// Determina el path de navegación considerando subdominios
+	const getNavPath = (): string => {
+		const subdomain = router.getSubdomain();
+		if (subdomain) {
+			const subdomainRoute = routes.find((r) => r.subdomain === subdomain);
+			if (subdomainRoute?.path) {
+				return subdomainRoute.path;
+			}
+		}
+		return window.location.pathname;
+	};
+
 	useEffect(() => {
 		if (isInitialized.current) return;
 		isInitialized.current = true;
@@ -48,9 +60,8 @@ export default function App() {
 		async function loadComponent(path: string) {
 			if (loadingPathRef.current === path) return;
 
-			const moduleName = routeToModule[path];
+			const moduleName = router.resolveModule(routes);
 
-			// Manejo de ruta no encontrada
 			if (!moduleName || !moduleDefinitions[moduleName]) {
 				console.warn("[Layout] Ruta no reconocida:", path);
 				setModuleData({
@@ -77,7 +88,7 @@ export default function App() {
 
 			console.log(`[Layout] ✅ ${data.moduleName} @ ${path}`);
 
-			setCurrentPath(path);
+			setCurrentPath(getNavPath());
 			setModuleData(data);
 			setRenderKey((prev) => prev + 1);
 			setLoading(false);

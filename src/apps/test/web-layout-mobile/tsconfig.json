@@ -6,8 +6,8 @@
 		"jsx": "react-jsx",
 		"paths": {
 			"@adc/utils/*": ["./../../../utils/*"],
-			"@ui-library/utils/*": ["./../01-web-ui-library-mobile/utils/*"],
-			"@ui-library/*": ["./../01-web-ui-library-mobile/src/*"]
+			"@ui-library/utils/*": ["../00-web-ui-library-mobile/utils/*"],
+			"@ui-library/*": ["../00-web-ui-library-mobile/src/*"]
 		}
 	},
 	"include": ["src/**/*", "*.ts"]

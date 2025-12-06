@@ -1,6 +1,6 @@
 import { createElement, useState, useEffect, useRef } from "react";
 import { Shell } from "./components/Shell.tsx";
-import { router } from "@ui-library/utils/router";
+import { router, type RouteDefinition } from "@ui-library/utils/router";
 import { loadRemoteComponent, type Framework } from "@adc/utils/react/loadRemoteComponent";
 import "@ui-library/loader";
 
@@ -19,9 +19,7 @@ const moduleDefinitions: Record<string, ModuleDefinition> = {
 	},
 };
 
-const routeToModule: Record<string, string> = {
-	"/": "home",
-};
+const routes: RouteDefinition[] = [{ module: "home", path: "/" }];
 
 export default function App() {
 	const [renderKey, setRenderKey] = useState(0);
@@ -38,9 +36,9 @@ export default function App() {
 		async function loadComponent(path: string) {
 			if (loadingPathRef.current === path) return;
 
-			const moduleName = routeToModule[path] || routeToModule["/"];
+			const moduleName = router.resolveModule(routes);
 
-			if (!moduleDefinitions[moduleName]) {
+			if (!moduleName || !moduleDefinitions[moduleName]) {
 				console.warn("[Layout Mobile] Módulo no encontrado:", moduleName);
 				setModuleData({
 					Component: () => <div style={{ padding: 20, textAlign: "center", color: "#a0aec0" }}>Página no encontrada</div>,
