@@ -283,6 +283,7 @@ export default {
         port: ${module.uiConfig.devPort},
         hot: ${hotReload},
         historyApiFallback: true,
+        allowedHosts: 'all',
         static: {
             directory: '${normalizeForConfig(path.join(module.appDir, "public"))}',
             publicPath: '/',
