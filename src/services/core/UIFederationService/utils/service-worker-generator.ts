@@ -214,7 +214,6 @@ export function generateI18nClientCode(
 		if (stored) return stored;
 		
 		const browserLang = navigator.language || navigator.languages?.[0] || 'en';
-		// Extraer solo el código de idioma base (ej: "es" de "es-AR")
 		return browserLang.split('-')[0];
 	}
 	
@@ -224,20 +223,18 @@ export function generateI18nClientCode(
 		const ns = namespace || I18N_NAMESPACES[0] || 'default';
 		const translations = state.translations[ns] || {};
 		
-		// Buscar key anidada (ej: "stats.totalUsers")
 		const keys = key.split('.');
 		let value = translations;
 		for (const k of keys) {
 			if (value && typeof value === 'object' && k in value) {
 				value = value[k];
 			} else {
-				return key; // Retornar key si no existe
+				return key;
 			}
 		}
 		
 		if (typeof value !== 'string') return key;
 		
-		// Interpolación de parámetros {{param}}
 		if (params) {
 			return value.replace(/\\{\\{(\\w+)\\}\\}/g, (_, p) => params[p] ?? \`{{\${p}}}\`);
 		}
@@ -245,7 +242,7 @@ export function generateI18nClientCode(
 		return value;
 	};
 	
-	// Cargar traducciones (usa URLs relativas para que funcione con proxy)
+	// Cargar traducciones
 	async function loadTranslations(locale) {
 		const state = window.__ADC_I18N__;
 		if (state.loading) return;
@@ -264,7 +261,6 @@ export function generateI18nClientCode(
 			state.loaded = true;
 			console.log('[i18n] Traducciones cargadas:', Object.keys(state.translations));
 			
-			// Disparar evento para que las apps reaccionen
 			window.dispatchEvent(new CustomEvent('adc:i18n:loaded', { 
 				detail: { locale, namespaces: Object.keys(state.translations) }
 			}));
@@ -280,7 +276,6 @@ export function generateI18nClientCode(
 		localStorage.setItem(STORAGE_KEY, locale);
 		loadTranslations(locale);
 		
-		// Notificar al service worker para precargar
 		if (navigator.serviceWorker?.controller) {
 			navigator.serviceWorker.controller.postMessage({
 				type: 'PRELOAD_I18N',
@@ -307,7 +302,6 @@ export function generateI18nClientCode(
 				.then((registration) => {
 					console.log('[SW] Service Worker registrado:', registration.scope);
 					
-					// Precargar i18n cuando el SW esté listo
 					navigator.serviceWorker.ready.then(() => {
 						if (navigator.serviceWorker.controller) {
 							navigator.serviceWorker.controller.postMessage({
@@ -334,6 +328,8 @@ export function generateI18nClientCode(
 			}
 		});
 		` : ''}
+	} else {
+		console.warn('[SW] Service Workers solo estan disponible en localhost o https');
 	}
 	` : '// Service Worker deshabilitado para este módulo'}
 })();
