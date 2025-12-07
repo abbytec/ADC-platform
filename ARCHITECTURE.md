@@ -389,21 +389,23 @@ En producción (`npm run start` o `npm run start:prodtests`), las apps UI se sir
 ```
 
 **Prioridad de hosts:**
-- Hosts específicos (`cloud.local.com`) tienen mayor prioridad
-- Comodines (`*.local.com`) tienen menor prioridad
-- Esto evita colisiones cuando múltiples apps usan comodines
+
+-   Hosts específicos (`cloud.local.com`) tienen mayor prioridad
+-   Comodines (`*.local.com`) tienen menor prioridad
+-   Esto evita colisiones cuando múltiples apps usan comodines
 
 **Puertos:**
-- `npm run start` → puerto 80 (producción real)
-- `npm run start:prodtests` → puerto 3000 (pruebas de producción)
+
+-   `npm run start` → puerto 80 (producción real)
+-   `npm run start:prodtests` → puerto 3000 (pruebas de producción)
 
 **Modo Desarrollo vs Producción:**
 
-| Modo | Comando | Provider | Comportamiento |
-|------|---------|----------|----------------|
-| Desarrollo | `npm run start:dev` | Express | Dev servers en puertos separados (3001, 3003, etc.) |
-| Producción (test) | `npm run start:prodtests` | Fastify | Builds compiladas, host-based routing, puerto 3000 |
-| Producción | `npm run start` | Fastify | Builds compiladas, host-based routing, puerto 80 |
+| Modo              | Comando                   | Provider | Comportamiento                                      |
+| ----------------- | ------------------------- | -------- | --------------------------------------------------- |
+| Desarrollo        | `npm run dev`             | Express  | Dev servers en puertos separados (3001, 3003, etc.) |
+| Producción (test) | `npm run start:prodtests` | Fastify  | Builds compiladas, host-based routing, puerto 3000  |
+| Producción        | `npm run start`           | Fastify  | Builds compiladas, host-based routing, puerto 80    |
 
 **Versiones Mobile:**
 

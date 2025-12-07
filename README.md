@@ -28,7 +28,7 @@ El objetivo principal del proyecto es ofrecer una base sólida y flexible que de
 
 ```bash
 npm install
-npm run start:dev          # Inicia en modo desarrollo con HMR
+npm run dev          # Inicia en modo desarrollo con HMR
 ```
 
 ### Producción

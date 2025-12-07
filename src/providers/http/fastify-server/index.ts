@@ -12,13 +12,18 @@ interface RegisteredHost {
 	directory: string;
 	options: HostOptions;
 	priority: number;
-	routes: Map<string, Map<string, (req: FastifyRequest, reply: FastifyReply) => void>>;
+	routes: Map<string, Map<string, (req: FastifyRequest, reply: FastifyReply, params?: Record<string, string>) => void>>;
 }
 
 interface GlobalRoute {
 	method: string;
 	path: string;
-	handler: (req: FastifyRequest, reply: FastifyReply) => void;
+	handler: (req: FastifyRequest, reply: FastifyReply, params?: Record<string, string>) => void;
+}
+
+interface PathMatchResult {
+	matched: boolean;
+	params: Record<string, string>;
 }
 
 /**
@@ -27,9 +32,7 @@ interface GlobalRoute {
  * "cloud.local.com" -> /^cloud\.local\.com$/
  */
 function hostPatternToRegex(pattern: string): RegExp {
-	const escaped = pattern
-		.replace(/\./g, "\\.")
-		.replace(/\*/g, "(.+)");
+	const escaped = pattern.replace(/\./g, "\\.").replace(/\*/g, "(.+)");
 	return new RegExp(`^${escaped}$`, "i");
 }
 
@@ -62,7 +65,9 @@ class FastifyServer implements IHostBasedHttpProvider {
 	constructor(private readonly logger: any) {
 		this.app = Fastify({
 			logger: false,
-			ignoreTrailingSlash: true,
+			routerOptions: {
+				ignoreTrailingSlash: true,
+			},
 		});
 		this.setupMiddleware();
 	}
@@ -115,8 +120,7 @@ class FastifyServer implements IHostBasedHttpProvider {
 
 	private matchHost(hostname: string): RegisteredHost | null {
 		// Ordenar hosts por prioridad (mayor primero)
-		const sortedHosts = Array.from(this.registeredHosts.values())
-			.sort((a, b) => b.priority - a.priority);
+		const sortedHosts = Array.from(this.registeredHosts.values()).sort((a, b) => b.priority - a.priority);
 
 		for (const host of sortedHosts) {
 			if (host.regex.test(hostname)) {
@@ -132,12 +136,13 @@ class FastifyServer implements IHostBasedHttpProvider {
 		let urlPath = request.url.split("?")[0];
 
 		// Primero verificar rutas globales
-		const globalRoute = this.globalRoutes.find(
-			(r) => r.method.toUpperCase() === request.method && this.matchPath(r.path, urlPath)
-		);
+		for (const route of this.globalRoutes) {
+			if (route.method.toUpperCase() !== request.method) continue;
 
-		if (globalRoute) {
-			return globalRoute.handler(request, reply);
+			const matchResult = this.matchPath(route.path, urlPath);
+			if (matchResult.matched) {
+				return route.handler(request, reply, matchResult.params);
+			}
 		}
 
 		// Si no hay host matcheado, intentar con rutas estáticas globales
@@ -159,8 +164,9 @@ class FastifyServer implements IHostBasedHttpProvider {
 		const hostRoutes = matchedHost.routes.get(request.method.toUpperCase());
 		if (hostRoutes) {
 			for (const [routePath, handler] of hostRoutes) {
-				if (this.matchPath(routePath, urlPath)) {
-					return handler(request, reply);
+				const matchResult = this.matchPath(routePath, urlPath);
+				if (matchResult.matched) {
+					return handler(request, reply, matchResult.params);
 				}
 			}
 		}
@@ -174,21 +180,33 @@ class FastifyServer implements IHostBasedHttpProvider {
 		await this.serveFile(filePath, matchedHost.directory, reply, matchedHost.options);
 	}
 
-	private matchPath(pattern: string, path: string): boolean {
-		// Convertir patrón Express a regex simple
+	private matchPath(pattern: string, urlPath: string): PathMatchResult {
+		// Extraer nombres de parámetros del patrón
+		const paramNames: string[] = [];
 		const regexPattern = pattern
-			.replace(/:[^/]+/g, "[^/]+")
+			.replace(/:([^/]+)/g, (_match, paramName) => {
+				paramNames.push(paramName);
+				return "([^/]+)";
+			})
 			.replace(/\*/g, ".*");
+
 		const regex = new RegExp(`^${regexPattern}$`);
-		return regex.test(path);
+		const match = urlPath.match(regex);
+
+		if (!match) {
+			return { matched: false, params: {} };
+		}
+
+		// Extraer valores de parámetros
+		const params: Record<string, string> = {};
+		paramNames.forEach((name, index) => {
+			params[name] = match[index + 1];
+		});
+
+		return { matched: true, params };
 	}
 
-	private async serveFile(
-		filePath: string,
-		baseDir: string,
-		reply: FastifyReply,
-		options?: HostOptions
-	): Promise<void> {
+	private async serveFile(filePath: string, baseDir: string, reply: FastifyReply, options?: HostOptions): Promise<void> {
 		try {
 			// Verificar que el archivo existe
 			if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -327,14 +345,17 @@ class FastifyServer implements IHostBasedHttpProvider {
 	}
 
 	/**
-	 * Adapta un handler de Express a Fastify
+	 * Adapta un handler de Express a Fastify con soporte para params extraídos
 	 */
-	private adaptHandler(handler: any): (req: FastifyRequest, reply: FastifyReply) => void {
-		return async (req: FastifyRequest, reply: FastifyReply) => {
+	private adaptHandler(handler: any): (req: FastifyRequest, reply: FastifyReply, params?: Record<string, string>) => void {
+		return async (req: FastifyRequest, reply: FastifyReply, extractedParams?: Record<string, string>) => {
 			// Crear objetos compatibles con Express
+			// Combinar params de Fastify con los extraídos manualmente
+			const combinedParams = { ...(req.params as object), ...extractedParams };
+
 			const expressReq = {
 				...req,
-				params: req.params,
+				params: combinedParams,
 				query: req.query,
 				body: req.body,
 				path: req.url,
@@ -342,6 +363,9 @@ class FastifyServer implements IHostBasedHttpProvider {
 				headers: req.headers,
 				get: (header: string) => req.headers[header.toLowerCase()],
 			};
+
+			// Track content-type para aplicarlo antes de send
+			let pendingContentType: string | null = null;
 
 			const expressRes = {
 				status: (code: number) => {
@@ -353,11 +377,34 @@ class FastifyServer implements IHostBasedHttpProvider {
 					return expressRes;
 				},
 				json: (data: any) => reply.send(data),
-				send: (data: any) => reply.send(data),
+				send: (data: any) => {
+					// Aplicar content-type antes de enviar para evitar que Fastify lo infiera
+					if (pendingContentType) {
+						reply.type(pendingContentType);
+					}
+					return reply.send(data);
+				},
 				redirect: (url: string) => reply.redirect(url),
-				setHeader: (key: string, value: string) => reply.header(key, value),
-				header: (key: string, value: string) => reply.header(key, value),
-				type: (contentType: string) => reply.type(contentType),
+				setHeader: (key: string, value: string) => {
+					// Capturar Content-Type para aplicarlo antes de send
+					if (key.toLowerCase() === "content-type") {
+						pendingContentType = value;
+					}
+					reply.header(key, value);
+					return expressRes;
+				},
+				header: (key: string, value: string) => {
+					if (key.toLowerCase() === "content-type") {
+						pendingContentType = value;
+					}
+					reply.header(key, value);
+					return expressRes;
+				},
+				type: (contentType: string) => {
+					pendingContentType = contentType;
+					reply.type(contentType);
+					return expressRes;
+				},
 			};
 
 			try {

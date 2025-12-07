@@ -1,0 +1,22 @@
+{
+	"allowedTools": [],
+	"mcpContextUris": [],
+	"mcpServers": {
+		"serena": {
+			"type": "stdio",
+			"command": "/home/abby/.local/bin/serena-mcp-server",
+			"args": ["--context", "claude-code", "--project", "/home/abby/Escritorio/proyectos/personales/ADC-platform"],
+			"env": {}
+		}
+	},
+	"enabledMcpjsonServers": [],
+	"disabledMcpjsonServers": [],
+	"hasTrustDialogAccepted": true,
+	"projectOnboardingSeenCount": 0,
+	"hasClaudeMdExternalIncludesApproved": false,
+	"hasClaudeMdExternalIncludesWarningShown": false,
+	"exampleFiles": ["kernel.ts", "BaseApp.ts", "UIFederationService", "ModuleLoader.ts", "BaseService.ts"],
+	"exampleFilesGeneratedAt": 1764964335508,
+	"hasCompletedProjectOnboarding": true,
+	"lastTotalWebSearchRequests": 0
+}
