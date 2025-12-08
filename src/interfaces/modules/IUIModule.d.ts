@@ -42,8 +42,14 @@ export interface UIModuleConfig {
 	framework?: string;
 	/** Directorio de salida para el build */
 	outputDir: string;
-	/** Si true, genera index.html y entry point para ejecución standalone */
+	/** @deprecated Usar isHost en su lugar. Si true, genera index.html y entry point para ejecución standalone */
 	standalone?: boolean;
+	/** Si true, este módulo es un host de Module Federation que consume remotes */
+	isHost?: boolean;
+	/** Si true, este módulo se expone como remote para ser consumido por hosts */
+	isRemote?: boolean;
+	/** Lista de nombres de apps UI de las que depende este módulo (deben cargarse primero) */
+	uiDependencies?: string[];
 	/** Puerto para dev server (solo para apps React/Vue en desarrollo) */
 	devPort?: number;
 	/** Rutas UI que la app expone */

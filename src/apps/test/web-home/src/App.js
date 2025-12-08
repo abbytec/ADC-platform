@@ -1,6 +1,3 @@
-import '@ui-library/loader';
-import './styles/tailwind.css';
-
 // Traducciones locales (fallback si i18n del servidor no está disponible)
 const translations = {
 	es: {

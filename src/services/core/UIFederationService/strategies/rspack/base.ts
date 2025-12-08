@@ -187,21 +187,32 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 	 * Detecta remotes para Module Federation (solo para hosts)
 	 */
 	protected async detectRemotes(context: IBuildContext): Promise<Record<string, string>> {
-		const { namespace, registeredModules } = context;
+		const { namespace, registeredModules, module: currentModule, logger } = context;
 		const remotes: Record<string, string> = {};
+
+		logger?.logDebug(`[detectRemotes] ${currentModule.uiConfig.name} - namespace: ${namespace}, registered: ${Array.from(registeredModules.keys()).join(", ")}`);
 
 		for (const [moduleName, mod] of registeredModules.entries()) {
 			const modNamespace = mod.namespace || "default";
-			if (moduleName !== "layout" && mod.uiConfig.devPort && modNamespace === namespace) {
+			// Excluir: módulos layout (hosts), el módulo actual, y módulos sin devPort o de otro namespace
+			const isLayoutModule = moduleName.includes("layout");
+			const isCurrentModule = moduleName === currentModule.uiConfig.name;
+
+			// Solo incluir módulos que tengan devPort y estén en el mismo namespace
+			if (!isLayoutModule && !isCurrentModule && mod.uiConfig.devPort && modNamespace === namespace) {
 				const framework = mod.uiConfig.framework || "react";
 				// Solo incluir frameworks soportados por rspack
 				if (["react", "vue", "vanilla"].includes(framework)) {
 					const safeRemoteName = this.getSafeName(moduleName);
 					remotes[moduleName] = `${safeRemoteName}@http://localhost:${mod.uiConfig.devPort}/mf-manifest.json`;
+					logger?.logDebug(`[detectRemotes] Added remote: ${moduleName}`);
 				}
 			}
 		}
 
+		if (Object.keys(remotes).length > 0) {
+			logger?.logDebug(`[detectRemotes] Total: ${Object.keys(remotes).length} remotes for ${currentModule.uiConfig.name}`);
+		}
 		return remotes;
 	}
 

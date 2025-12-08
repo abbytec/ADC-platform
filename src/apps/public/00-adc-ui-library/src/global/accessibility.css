@@ -1,0 +1,108 @@
+/* Mejoras de accesibilidad */
+
+/* Asegurar que todos los elementos interactivos tengan un tamaño mínimo táctil */
+@media only screen and (max-width: 768px) {
+    button,
+    a,
+    input,
+    select,
+    textarea,
+    [role="button"],
+    [role="link"] {
+        min-height: 44px;
+        min-width: 44px;
+        touch-action: manipulation;
+    }
+}
+
+/* Mejorar el contraste de foco para navegación por teclado */
+*:focus {
+    outline: 2px solid #c97e5d;
+    outline-offset: 2px;
+}
+
+*:focus:not(:focus-visible) {
+    outline: none;
+}
+
+*:focus-visible {
+    outline: 2px solid #c97e5d;
+    outline-offset: 2px;
+}
+
+/* Asegurar que el texto sea legible */
+body {
+    line-height: 1.5;
+    color: #1a1a1a;
+}
+
+/* Mejorar el espaciado entre elementos interactivos */
+.flex.gap-3 > * + * {
+    margin-left: 12px;
+}
+
+/* Asegurar que los iconos decorativos no interfieran con lectores de pantalla */
+[aria-hidden="true"] {
+    pointer-events: none;
+}
+
+/* Mejorar la legibilidad de enlaces */
+a {
+    text-decoration-skip-ink: auto;
+}
+
+a:focus {
+    text-decoration: underline;
+}
+
+/* Asegurar que los elementos con role="menuitem" tengan el tamaño adecuado */
+[role="menuitem"] {
+    min-height: 44px;
+    padding: 8px 16px;
+}
+
+/* Mejorar la visibilidad de elementos de formulario */
+input,
+select,
+textarea {
+    border: 1px solid #c97e5d;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: #5d3a2f;
+    box-shadow: 0 0 0 2px rgba(197, 126, 93, 0.2);
+}
+
+/* Mejorar la legibilidad en dispositivos de alto contraste */
+@media (prefers-contrast: high) {
+    * {
+        border-color: currentColor !important;
+    }
+
+    button,
+    .button,
+    [role="button"] {
+        border: 2px solid currentColor;
+    }
+}
+
+/* Reducir movimiento para usuarios que lo prefieren */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Mejorar la legibilidad del texto */
+@media (prefers-contrast: more) {
+    body {
+        color: #000;
+        background-color: #fff;
+    }
+}

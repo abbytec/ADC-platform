@@ -1,5 +1,4 @@
 import React, { memo } from "react";
-import "@ui-library/loader";
 import { Navigation } from "./Navigation.tsx";
 
 interface ShellProps {

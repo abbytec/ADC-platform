@@ -196,7 +196,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		const namespaceModules = this.#getNamespaceModules(namespace);
 		const isDevelopment = process.env.NODE_ENV === "development";
-		const isStandalone = uiConfig.standalone || false;
+		const isHost = uiConfig.isHost ?? false;
 
 		const module: RegisteredUIModule = {
 			name,
@@ -211,12 +211,12 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		this.#updateImportMap(namespace);
 
 		try {
-			// Generar archivos standalone si es necesario
-			if (isStandalone || strategy.requiresDevPort()) {
+			// Generar archivos standalone SOLO para hosts (index.html, entry point)
+			if (isHost) {
 				await this.#generateStandaloneFiles(appDir, uiConfig);
 			}
 
-			// Build del módulo usando la estrategia
+			// Build del módulo usando la estrategia (genera Module Federation para hosts y remotes)
 			await this.#buildUIModuleInternal(module, namespace);
 
 			// Post-build: inyectar import maps si tiene output
@@ -234,14 +234,75 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				await this.langManager.registerNamespace(name, appDir);
 			}
 
-			// Generar y registrar service worker si está habilitado (solo para layouts/hosts)
+				// Generar y registrar service worker si está habilitado (solo para layouts/hosts)
 			if (uiConfig.serviceWorker && name === "layout") {
 				await this.#registerServiceWorkerEndpoints(namespace);
+			}
+
+			// Si este es un módulo remote (no host), regenerar configs de hosts en el mismo namespace
+			if (!isHost && uiConfig.devPort) {
+				await this.#regenerateLayoutConfigsForNamespace(namespace);
 			}
 		} catch (error: any) {
 			module.buildStatus = "error";
 			this.logger.logError(`Error registrando módulo UI ${name}: ${error.message}`);
 			throw error;
+		}
+	}
+
+	/**
+	 * Regenera configuraciones de layouts cuando se registra un nuevo remote
+	 */
+	async #regenerateLayoutConfigsForNamespace(namespace: string): Promise<void> {
+		const namespaceModules = this.#getNamespaceModules(namespace);
+
+		for (const [moduleName, module] of namespaceModules.entries()) {
+			const isHost = module.uiConfig.isHost ?? false;
+			// Solo regenerar hosts que ya fueron construidos
+			if (isHost && module.buildStatus === "built") {
+				this.logger.logInfo(`Regenerando config de ${moduleName} por nuevo remote en ${namespace}`);
+
+				const strategy = getStrategy(module.uiConfig.framework || "react");
+
+				// Solo regenerar si tiene devPort (dev server de rspack/vite)
+				if (module.uiConfig.devPort && process.env.NODE_ENV === "development") {
+					try {
+						// Matar el watcher actual si existe
+						if (module.watcher && !module.watcher.killed) {
+							this.logger.logDebug(`Deteniendo dev server de ${moduleName}...`);
+							module.watcher.kill("SIGTERM");
+							// Esperar un momento para que el proceso termine
+							await new Promise((resolve) => setTimeout(resolve, 1000));
+						}
+
+						const namespaceOutputDir = path.join(this.uiOutputBaseDir, namespace);
+
+						const context = {
+							module,
+							namespace,
+							registeredModules: namespaceModules,
+							uiOutputBaseDir: namespaceOutputDir,
+							isDevelopment: true,
+							logger: this.logger,
+						};
+
+						this.logger.logDebug(`Reiniciando dev server de ${moduleName}...`);
+						// Reiniciar el dev server con el nuevo config
+						const result = await strategy.startDevServer(context);
+
+						// Actualizar el watcher
+						if (result.watcher) {
+							module.watcher = result.watcher;
+							const watcherKey = `${namespace}:${moduleName}`;
+							this.watchBuilds.set(watcherKey, result.watcher);
+						}
+
+						this.logger.logOk(`Dev server reiniciado para ${moduleName} con nuevos remotes`);
+					} catch (error: any) {
+						this.logger.logWarn(`Error regenerando config de ${moduleName}: ${error.message}`);
+					}
+				}
+			}
 		}
 	}
 
@@ -410,6 +471,17 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		const namespaceModules = this.#getNamespaceModules(namespace);
 		const namespaceOutputDir = path.join(this.uiOutputBaseDir, namespace);
 
+		// Si NO es una UI library (stencil), esperar a que la UI library del namespace termine
+		if (framework !== "stencil") {
+			await this.#waitForUILibraryBuild(namespace, module.name);
+		}
+
+		// Si es un host, esperar a que sus remotes declarados estén registrados
+		const isHost = module.uiConfig.isHost ?? false;
+		if (isHost) {
+			await this.#waitForDeclaredRemotes(module, namespace);
+		}
+
 		module.buildStatus = "building";
 		this.logger.logInfo(`Build: ${module.name} [${namespace}] usando ${strategy.name}`);
 
@@ -431,6 +503,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			if (result.watcher) {
 				const watcherKey = `${namespace}:${module.name}`;
 				this.watchBuilds.set(watcherKey, result.watcher);
+				module.watcher = result.watcher; // También guardarlo en el módulo
 			}
 
 			// Guardar output path
@@ -447,6 +520,117 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			module.buildStatus = "error";
 			this.logger.logError(`Error en build de ${module.name}: ${error.message}`);
 			throw error;
+		}
+	}
+
+	/**
+	 * Espera a que la UI library (Stencil) del namespace termine de construirse
+	 */
+	async #waitForUILibraryBuild(namespace: string, waitingModuleName: string): Promise<void> {
+		const namespaceModules = this.#getNamespaceModules(namespace);
+
+		// Buscar la UI library (Stencil) del namespace
+		let uiLibrary: RegisteredUIModule | null = null;
+		for (const mod of namespaceModules.values()) {
+			if (mod.uiConfig.framework === "stencil") {
+				uiLibrary = mod;
+				break;
+			}
+		}
+
+		if (!uiLibrary) {
+			// No hay UI library en este namespace, continuar
+			return;
+		}
+
+		// Si ya está built, no hay que esperar
+		if (uiLibrary.buildStatus === "built") {
+			return;
+		}
+
+		// Si está building o pending, esperar
+		if (uiLibrary.buildStatus === "building" || uiLibrary.buildStatus === "pending") {
+			this.logger.logDebug(`${waitingModuleName} esperando a que ${uiLibrary.name} termine de construirse...`);
+
+			const maxWaitTime = 60000; // 60 segundos máximo
+			const checkInterval = 500;
+			let elapsed = 0;
+
+			while (elapsed < maxWaitTime) {
+				if (uiLibrary.buildStatus === "built") {
+					this.logger.logDebug(`${uiLibrary.name} listo, ${waitingModuleName} puede continuar`);
+					return;
+				}
+
+				if (uiLibrary.buildStatus === "error") {
+					this.logger.logWarn(`${uiLibrary.name} falló, ${waitingModuleName} continuará sin UI library`);
+					return;
+				}
+
+				await new Promise((resolve) => setTimeout(resolve, checkInterval));
+				elapsed += checkInterval;
+			}
+
+			this.logger.logWarn(`Timeout esperando ${uiLibrary.name}, ${waitingModuleName} continuará de todas formas`);
+		}
+	}
+
+	/**
+	 * Espera a que los remotes declarados en uiDependencies estén registrados
+	 * Esto asegura que cuando el host haga su build, los remotes ya estén en registeredModules
+	 */
+	async #waitForDeclaredRemotes(hostModule: RegisteredUIModule, namespace: string): Promise<void> {
+		const uiDependencies = hostModule.uiConfig.uiDependencies || [];
+		if (uiDependencies.length === 0) return;
+
+		const namespaceModules = this.#getNamespaceModules(namespace);
+		const missingRemotes: string[] = [];
+
+		// Filtrar dependencias que son remotes (excluir UI libraries que ya fueron esperadas)
+		for (const depName of uiDependencies) {
+			const depModule = namespaceModules.get(depName);
+			// Si no existe o no está construido, necesitamos esperar
+			if (!depModule || (depModule.buildStatus !== "built" && depModule.uiConfig.framework !== "stencil")) {
+				missingRemotes.push(depName);
+			}
+		}
+
+		if (missingRemotes.length === 0) return;
+
+		this.logger.logDebug(`${hostModule.name} esperando remotes: ${missingRemotes.join(", ")}`);
+
+		const maxWaitTime = 30000; // 30 segundos máximo
+		const checkInterval = 500;
+		let elapsed = 0;
+
+		while (elapsed < maxWaitTime && missingRemotes.length > 0) {
+			// Verificar qué remotes ya están listos
+			const stillMissing: string[] = [];
+			for (const remoteName of missingRemotes) {
+				const remoteModule = namespaceModules.get(remoteName);
+				if (!remoteModule || remoteModule.buildStatus === "pending" || remoteModule.buildStatus === "building") {
+					stillMissing.push(remoteName);
+				}
+			}
+
+			if (stillMissing.length === 0) {
+				this.logger.logDebug(`Todos los remotes listos para ${hostModule.name}`);
+				return;
+			}
+
+			await new Promise((resolve) => setTimeout(resolve, checkInterval));
+			elapsed += checkInterval;
+
+			// Actualizar lista de remotes faltantes
+			missingRemotes.length = 0;
+			missingRemotes.push(...stillMissing);
+		}
+
+		if (missingRemotes.length > 0) {
+			this.logger.logWarn(
+				`Timeout esperando remotes para ${hostModule.name}: ${missingRemotes.join(", ")}. ` +
+				`El host se construirá sin ellos (se agregarán cuando se registren).`
+			);
 		}
 	}
 

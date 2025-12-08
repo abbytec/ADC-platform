@@ -12,4 +12,5 @@ declare namespace JSX {
 		"adc-error": any;
 	}
 }
-declare module "@ui-library/loader";
+declare module "@ui-library";
+declare module "@ui-library/styles";

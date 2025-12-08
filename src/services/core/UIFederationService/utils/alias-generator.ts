@@ -20,18 +20,27 @@ function findUILibrary(modules: Map<string, RegisteredUIModule>, namespace: stri
 
 function addUILibraryAliases(aliases: Record<string, string>, uiLibrary: RegisteredUIModule, uiOutputBaseDir: string): void {
 	const exports = uiLibrary.uiConfig.exports || {};
+	const uiModuleName = uiLibrary.uiConfig.name;
+	const outputDir = path.resolve(uiOutputBaseDir, uiModuleName);
 
+	// Exports declarados en config.json
 	for (const [exportName, exportPath] of Object.entries(exports)) {
 		const aliasKey = `@ui-library/${exportName}`;
 
 		if (exportName === "loader") {
-			aliases[aliasKey] = path.resolve(uiOutputBaseDir, uiLibrary.name, exportPath);
+			// Loader está en el output dir
+			aliases[aliasKey] = path.resolve(outputDir, exportPath);
 		} else {
+			// Otros exports (utils, etc.) están en el source
 			aliases[aliasKey] = path.resolve(uiLibrary.appDir, exportPath);
 		}
 	}
 
-	aliases["@ui-library"] = path.resolve(uiOutputBaseDir, uiLibrary.name);
+	// @ui-library -> init.js (auto-ejecuta loader + registra componentes)
+	aliases["@ui-library"] = path.resolve(outputDir, "init.js");
+
+	// @ui-library/styles -> CSS base de la UI library (para Tailwind)
+	aliases["@ui-library/styles"] = path.resolve(outputDir, "styles.css");
 }
 
 function usesReact(module: RegisteredUIModule): boolean {

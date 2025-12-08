@@ -1,4 +1,7 @@
 import HomeApp from './App.js';
+import "@ui-library"; // Auto-registra Web Components
+import "@ui-library/styles"; // CSS base de la UI Library
+import "./styles/tailwind.css"; // Extensiones locales
 
 // Crear instancia de la app
 const app = new HomeApp();

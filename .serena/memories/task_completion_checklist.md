@@ -3,52 +3,30 @@
 ## Before Considering a Task Complete
 
 ### 1. Run TypeScript Check
-
 ```bash
 npm run typecheck
 ```
 
-This runs TypeScript compiler + ts-prune for dead code detection.
-
 ### 2. Run Linting
-
 ```bash
 npm run lint
 ```
-
 Must pass with zero warnings (`--max-warnings 0`).
 
-### 3. Fix Linting Issues (if any)
-
-```bash
-npm run lint:fix
-```
-
-### 4. Test in Development Mode
-
+### 3. Test in Development Mode
 ```bash
 npm run dev
 ```
 
-Verify hot reload works and no runtime errors.
+## Documentation Updates
 
-### 5. Test in Production Mode (if applicable)
+When modifying a module:
+- Update its `README.md` if behavior changes (max 15 lines)
+- `config.json` documents dependencies - update if needed
 
-```bash
-npm run start:prodtests
-```
+When adding new modules:
+- Create `README.md` in the module directory (ultra-brief)
 
-Verify production build works correctly.
-
-## Critical Documentation Rule
-
-From CLAUDE.md:
-
-> **Si durante una tarea modificas la estructura de carpetas, añades un nuevo servicio/app/provider, o cambias una decisión arquitectónica clave, DEBES actualizar el archivo `CLAUDE.md` y/o los archivos en `.claude/parts/` como parte de tus cambios.**
-
-## What to Update When
-
--   New app/service/provider/utility → Update relevant `.claude/parts/*.md`
--   Architecture changes → Update `ARCHITECTURE.md`
--   New commands → Update `CLAUDE.md` Commands table
--   New concepts → Update `CLAUDE.md` Key Concepts table
+Architecture changes:
+- Update Serena memories for internal details
+- Update `CLAUDE.md` only for fundamental concepts

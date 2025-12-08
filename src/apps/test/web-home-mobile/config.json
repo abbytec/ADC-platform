@@ -5,7 +5,8 @@
 		"framework": "vanilla",
 		"outputDir": "dist-ui",
 		"devPort": 3012,
-		"standalone": false,
+		"isHost": false,
+		"isRemote": true,
 		"sharedLibs": [],
 		"i18n": true
 	}

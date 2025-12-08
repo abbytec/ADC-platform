@@ -1,0 +1,63 @@
+/* Improved contrast for light bg code blocks */
+.token.keyword {
+  color: #5a2ca0; /* deep purple */
+  font-weight: 600;
+}
+
+.token.function {
+  color: #004d85;
+}
+
+.token.type {
+  color: #1666d3;
+  font-weight: 600;
+}
+
+.token.comment {
+  color: #6a737d; /* muted gray for comments */
+  font-style: italic;
+}
+
+.token.preprocessor {
+  color: #6f42c1; /* purple */
+  font-weight: 500;
+}
+
+.token.operator {
+  color: #d73a49; /* red */
+  font-weight: 600;
+}
+
+.token.string {
+  color: #22863a; /* green */
+}
+
+/* HTML-specific tokens */
+.token.tag {
+  color: #1f6feb; /* blue for tag names */
+  font-weight: 600;
+}
+
+.token.attr-name {
+  color: #cf222e; /* red for attribute names */
+}
+
+.token.attr-value {
+  color: #116329; /* darker green for attribute values */
+}
+
+.token.punctuation {
+  color: #57606a; /* gray for <, >, =, / */
+}
+
+/* Ensure base code color remains readable on alt background */
+pre code {
+  color: #1a1a1a;
+  display: block;
+  padding-left: 20px;
+}
+
+pre {
+  display: flex;
+  flex-direction: column;
+}

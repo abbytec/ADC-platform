@@ -48,25 +48,22 @@ export class StencilStrategy extends BaseCLIStrategy {
  * Los componentes usan CSS puro (compatible con Shadow DOM).
  */
 export const config: Config = {
-	namespace: '${module.uiConfig.name}',
-	cacheDir: '${relativeCacheDir}',
-	outputTargets: [
-		{
-			type: 'dist',
-			dir: '${relativeOutputDir}',
-		},
-		{
-			type: 'dist-custom-elements',
-			dir: '${relativeOutputDir}/custom-elements',
-			customElementsExportBehavior: 'auto-define-custom-elements',
-			externalRuntime: false,
-		},
-		{
-			type: 'docs-readme',
-		},
-	],
-	sourceMap: true,
-	buildEs5: false,
+    namespace: '${module.uiConfig.name}',
+    cacheDir: '${relativeCacheDir}',
+    outputTargets: [
+        {
+            type: 'dist',
+            dir: '${relativeOutputDir}',
+        },
+        {
+            type: 'dist-custom-elements',
+            dir: '${relativeOutputDir}/custom-elements',
+            customElementsExportBehavior: 'auto-define-custom-elements',
+            externalRuntime: true,
+        },
+    ],
+    sourceMap: true,
+    buildEs5: false,
 };
 `;
 
@@ -100,6 +97,9 @@ export const config: Config = {
 		// Generar config antes del watch
 		await this.generateConfig(context);
 
+		// Asignar outputPath antes de iniciar el watcher (se usa en generateAutoInit)
+		module.outputPath = outputDir;
+
 		const watcher = spawn(stencilBin, ["build", "--watch"], {
 			cwd: module.appDir,
 			stdio: "pipe",
@@ -107,10 +107,15 @@ export const config: Config = {
 			detached: process.platform !== "win32",
 		});
 
+		// Handler para regenerar auto-init después de cada rebuild
 		watcher.stdout?.on("data", (data: Buffer) => {
 			const output = data.toString();
 			if (output.includes("build finished")) {
 				context.logger?.logDebug(`Stencil build actualizado para ${module.uiConfig.name} [${namespace}]`);
+				// Regenerar init.js y styles.css después de cada rebuild
+				this.generateAutoInit(module, context.logger).catch((err) => {
+					context.logger?.logDebug(`Error regenerando auto-init: ${err.message}`);
+				});
 			}
 		});
 
@@ -126,13 +131,31 @@ export const config: Config = {
 			context.logger?.logDebug(`Stencil watcher ${module.uiConfig.name} terminado (code: ${code}, signal: ${signal})`);
 		});
 
-		// Dar tiempo a que el build inicial termine
-		await new Promise((resolve) => setTimeout(resolve, 5000));
+		// Esperar a que el build inicial termine (máximo 30 segundos)
+		const loaderPath = path.join(outputDir, "loader", "index.js");
+		const maxWaitTime = 30000;
+		const checkInterval = 500;
+		let elapsed = 0;
 
-		module.outputPath = outputDir;
+		context.logger?.logDebug(`Esperando build inicial de Stencil para ${module.uiConfig.name}...`);
 
-		// Inyectar defineCustomElements en loader
-		await this.injectDefineCustomElements(module, context.logger);
+		while (elapsed < maxWaitTime) {
+			try {
+				await fs.access(loaderPath);
+				context.logger?.logDebug(`Build inicial de Stencil completado para ${module.uiConfig.name}`);
+				break;
+			} catch {
+				await new Promise((resolve) => setTimeout(resolve, checkInterval));
+				elapsed += checkInterval;
+			}
+		}
+
+		if (elapsed >= maxWaitTime) {
+			context.logger?.logWarn(`Timeout esperando build de Stencil para ${module.uiConfig.name}. El loader podría no estar disponible.`);
+		}
+
+		// Generar archivos de auto-init (init.js + styles.css)
+		await this.generateAutoInit(module, context.logger);
 
 		return { watcher, outputPath: outputDir };
 	}
@@ -157,8 +180,8 @@ export const config: Config = {
 
 		module.outputPath = outputDir;
 
-		// Inyectar defineCustomElements en loader
-		await this.injectDefineCustomElements(module, context.logger);
+		// Generar archivos de auto-init (init.js + styles.css)
+		await this.generateAutoInit(module, context.logger);
 
 		context.logger?.logOk(`Build Stencil completado para ${module.uiConfig.name}`);
 
@@ -166,37 +189,95 @@ export const config: Config = {
 	}
 
 	/**
-	 * Inyecta defineCustomElements en el loader para auto-registro
+	 * Genera archivos de auto-init para la UI library:
+	 * - init.js: auto-ejecuta defineCustomElements al importarse
+	 * - styles.css: CSS base copiado de la UI library
 	 */
-	private async injectDefineCustomElements(module: any, logger?: any): Promise<void> {
+	private async generateAutoInit(module: any, logger?: any): Promise<void> {
 		if (!module.outputPath) return;
 
-		const loaderIndexPath = path.join(module.outputPath, "loader", "index.js");
+		const outputDir = module.outputPath;
+		const appDir = module.appDir;
 
-		try {
-			await fs.access(loaderIndexPath);
-			let content = await fs.readFile(loaderIndexPath, "utf-8");
+		// init.js
+		const initContent = `/**
+ * Auto-init para ${module.uiConfig.name}
+ */
+import { defineCustomElements } from './loader/index.js';
 
-			if (!content.includes("defineCustomElements(window)")) {
-				if (content.includes("export * from '../esm/loader.js';")) {
-					content = content.replace(
-						"export * from '../esm/loader.js';",
-						`import { defineCustomElements } from '../esm/loader.js';\nexport * from '../esm/loader.js';\ndefineCustomElements(window);`
-					);
-				} else if (content.includes("export * from '../esm/loader.js'")) {
-					content = content.replace(
-						"export * from '../esm/loader.js'",
-						`import { defineCustomElements } from '../esm/loader.js';\nexport * from '../esm/loader.js';\ndefineCustomElements(window);`
-					);
-				} else {
-					content += `\nimport { defineCustomElements } from '../esm/loader.js';\ndefineCustomElements(window);`;
-				}
+if (typeof window !== 'undefined') defineCustomElements(window);
 
-				await fs.writeFile(loaderIndexPath, content, "utf-8");
-				logger?.logDebug(`defineCustomElements inyectado en loader para ${module.uiConfig.name}`);
+export * from './loader/index.js';
+`;
+		await fs.writeFile(path.join(outputDir, "init.js"), initContent, "utf-8");
+		logger?.logDebug(`init.js generado para ${module.uiConfig.name}`);
+
+		// CSS
+		const possibleCssPaths = [
+			path.join(appDir, "src/global/tailwind.css"),
+			path.join(appDir, "src/styles/tailwind.css"),
+			path.join(appDir, "src/global/styles.css"),
+			path.join(appDir, "src/global/accessibility.css"),
+		];
+
+		const stylesPath = path.join(outputDir, "styles.css");
+		let combinedCss = "";
+
+		for (const cssPath of possibleCssPaths) {
+			try {
+				await fs.access(cssPath);
+
+				const cssContent = await fs.readFile(cssPath, "utf-8");
+				combinedCss += "\n/* ---- " + path.basename(cssPath) + " ---- */\n";
+				combinedCss += this.extractPureCss(cssContent, module.uiConfig.name);
+
+				logger?.logDebug(`CSS agregado desde: ${cssPath}`);
+			} catch {
+				// ignorar si no existe
 			}
-		} catch {
-			logger?.logWarn(`No se encontró loader/index.js para ${module.uiConfig.name}. El módulo podría no autocargarse.`);
 		}
+
+		if (combinedCss.trim()) {
+			await fs.writeFile(stylesPath, combinedCss, "utf-8");
+			logger?.logDebug(`styles.css combinado generado para ${module.uiConfig.name}`);
+		} else {
+			await fs.writeFile(stylesPath, `/* ${module.uiConfig.name} - No CSS source found */\n`, "utf-8");
+			logger?.logDebug(`styles.css placeholder creado para ${module.uiConfig.name}`);
+		}
+	}
+
+	/**
+	 * Extrae CSS puro removiendo directivas de Tailwind (@import "tailwindcss", @layer, @utility, etc.)
+	 * Convierte @layer blocks a CSS puro y preserva variables CSS
+	 */
+	private extractPureCss(cssContent: string, moduleName: string): string {
+		let result = `/**\n * CSS base para ${moduleName}\n * Generado automáticamente - CSS puro sin directivas de Tailwind\n */\n\n`;
+
+		// Remover @import "tailwindcss" y similares
+		let cleaned = cssContent.replace(/@import\s+["']tailwindcss["'];?\s*/g, "");
+
+		// Extraer contenido de @layer base { ... }
+		const layerBaseMatch = cleaned.match(/@layer\s+base\s*\{([\s\S]*?)\n\}/);
+		if (layerBaseMatch) {
+			result += `/* Base styles */\n${layerBaseMatch[1].trim()}\n\n`;
+		}
+
+		// Extraer contenido de @layer components { ... }
+		const layerComponentsMatch = cleaned.match(/@layer\s+components\s*\{([\s\S]*?)\n\}/);
+		if (layerComponentsMatch) {
+			result += `/* Component styles */\n${layerComponentsMatch[1].trim()}\n\n`;
+		}
+
+		// Si no hay @layer, buscar CSS directo (variables :root, etc.)
+		if (!layerBaseMatch && !layerComponentsMatch) {
+			// Remover @utility blocks (son específicos de Tailwind)
+			cleaned = cleaned.replace(/@utility\s+[\w-]+\s*\{[^}]*\}/g, "");
+			// Remover @keyframes por ahora (las apps los definen)
+			cleaned = cleaned.replace(/@keyframes\s+[\w-]+\s*\{[\s\S]*?\}\s*\}/g, "");
+			// Usar el CSS restante
+			result = cleaned.trim() || result;
+		}
+
+		return result;
 	}
 }

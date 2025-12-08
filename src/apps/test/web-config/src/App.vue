@@ -41,12 +41,12 @@
         <adc-stat-card
           card-title="Opciones Configuradas"
           :value="configuredOptions"
-          color="#0066cc"
+          color="primary"
         />
         <adc-stat-card
           card-title="Cambios Pendientes"
           :value="pendingChanges"
-          color="#f59e0b"
+          color="warning"
         />
       </div>
     </div>
@@ -55,7 +55,6 @@
 
 <script setup>
 import { reactive, ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import '@ui-library/loader'
 
 const saveButton = ref(null)
 

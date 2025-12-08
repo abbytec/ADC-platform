@@ -1,5 +1,6 @@
 import "dotenv/config";
 import * as fs from "node:fs/promises";
+import type { Dirent } from "node:fs";
 import * as path from "node:path";
 import chokidar from "chokidar";
 import { IApp } from "./interfaces/modules/IApp.js";
@@ -604,6 +605,7 @@ export class Kernel {
 
 	/**
 	 * Búsqueda recursiva ilimitada de cada 'index.ts'/'index.js' en una capa.
+	 * Carga apps en PARALELO cuando no tienen dependencias entre sí.
 	 */
 	async #loadLayerRecursive(dir: string, loader: (entryPath: string) => Promise<void>, exclude: string[] = []): Promise<void> {
 		try {
@@ -620,17 +622,209 @@ export class Kernel {
 
 			// Luego, buscar recursivamente en subdirectorios
 			const entries = await fs.readdir(dir, { withFileTypes: true });
-			for (const entry of entries) {
-				if (exclude.includes(entry.name)) continue;
 
-				if (entry.isDirectory()) {
-					const subDirPath = path.join(dir, entry.name);
-					await this.#loadLayerRecursive(subDirPath, loader, exclude);
+			// Construir niveles de carga basados en dependencias (para carga paralela)
+			const loadLevels = await this.#buildAppLoadLevels(dir, entries, exclude);
+
+			// Cargar cada nivel en paralelo (apps del mismo nivel no tienen dependencias entre sí)
+			for (const level of loadLevels) {
+				if (level.length === 1) {
+					// Un solo elemento, cargar directamente
+					await this.#loadLayerRecursive(level[0], loader, exclude);
+				} else if (level.length > 1) {
+					// Múltiples elementos sin dependencias entre sí: cargar en paralelo
+					this.#logger.logDebug(`Cargando ${level.length} apps en paralelo...`);
+					await Promise.all(
+						level.map(subDirPath => this.#loadLayerRecursive(subDirPath, loader, exclude))
+					);
 				}
 			}
 		} catch {
 			// El directorio no existe o no se puede leer, ignorar
 		}
+	}
+
+	/**
+	 * Construye NIVELES de carga de apps basados en uiDependencies.
+	 * Apps del mismo nivel pueden cargarse en PARALELO (no tienen dependencias entre sí).
+	 * Retorna: Array de niveles, cada nivel es un array de paths de apps.
+	 *
+	 * Nivel 0: UI libraries (Stencil) - siempre primero
+	 * Nivel 1: Apps sin dependencias (o solo dependen de UI libs)
+	 * Nivel 2+: Apps que dependen de apps del nivel anterior
+	 * Último nivel: Hosts (isHost=true) - siempre al final para que detecten remotes
+	 */
+	async #buildAppLoadLevels(dir: string, entries: Dirent[], exclude: string[]): Promise<string[][]> {
+		const appConfigs: Array<{
+			path: string;
+			dirName: string;
+			name: string;
+			dependencies: string[];
+			isUILib: boolean;
+			isHost: boolean;
+			isRemote: boolean;
+		}> = [];
+
+		// 1. Recopilar información de todas las apps
+		for (const entry of entries) {
+			if (!entry.isDirectory() || exclude.includes(entry.name)) continue;
+
+			const subDirPath = path.join(dir, entry.name);
+			const configPath = path.join(subDirPath, "config.json");
+
+			try {
+				const configContent = await fs.readFile(configPath, "utf-8");
+				const config = JSON.parse(configContent);
+
+				if (config.uiModule) {
+					const uiModule = config.uiModule;
+					const appName = uiModule.name || entry.name;
+
+					// Detectar UI libraries (Stencil con exports)
+					const isUILib = uiModule.framework === "stencil" && uiModule.exports;
+
+					// Detectar hosts y remotes
+					const isHost = uiModule.isHost ?? false;
+					const isRemote = uiModule.isRemote ?? false;
+
+					// Obtener dependencias explícitas
+					const dependencies = uiModule.uiDependencies || [];
+
+					appConfigs.push({
+						path: subDirPath,
+						dirName: entry.name,
+						name: appName,
+						dependencies,
+						isUILib,
+						isHost,
+						isRemote
+					});
+				} else {
+					// Apps sin uiModule se cargan con prioridad normal
+					appConfigs.push({
+						path: subDirPath,
+						dirName: entry.name,
+						name: entry.name,
+						dependencies: [],
+						isUILib: false,
+						isHost: false,
+						isRemote: false
+					});
+				}
+			} catch {
+				// Si no hay config o error al leerlo, cargar sin dependencias
+				appConfigs.push({
+					path: subDirPath,
+					dirName: entry.name,
+					name: entry.name,
+					dependencies: [],
+					isUILib: false,
+					isHost: false,
+					isRemote: false
+				});
+			}
+		}
+
+		// 2. Construir niveles de carga
+		const levels: string[][] = [];
+		const loadedAppNames = new Set<string>();
+
+		// Nivel 0: UI libraries (siempre primero, en paralelo entre ellas)
+		const uiLibs = appConfigs.filter(app => app.isUILib);
+		if (uiLibs.length > 0) {
+			levels.push(uiLibs.map(app => app.path));
+			uiLibs.forEach(app => loadedAppNames.add(app.name));
+		}
+
+		// Separar hosts de otros
+		const hosts = appConfigs.filter(app => app.isHost && !app.isUILib);
+		const others = appConfigs.filter(app => !app.isUILib && !app.isHost);
+
+		// Procesar apps no-host por niveles de dependencia
+		let pendingQueue = [...others];
+		const maxIterations = 50;
+		let iteration = 0;
+
+		while (pendingQueue.length > 0 && iteration < maxIterations) {
+			const currentLevel: string[] = [];
+			const stillPending: typeof pendingQueue = [];
+
+			for (const app of pendingQueue) {
+				// Verificar si todas las dependencias ya están cargadas
+				const allDepsLoaded = app.dependencies.every(depName => loadedAppNames.has(depName));
+
+				if (allDepsLoaded) {
+					currentLevel.push(app.path);
+					loadedAppNames.add(app.name);
+				} else {
+					stillPending.push(app);
+				}
+			}
+
+			if (currentLevel.length > 0) {
+				levels.push(currentLevel);
+			} else if (stillPending.length > 0) {
+				// Deadlock: dependencias no satisfechas
+				const pendingNames = stillPending.map(app => app.name).join(', ');
+				const missingDeps = stillPending.map(app => {
+					const missing = app.dependencies.filter(dep => !loadedAppNames.has(dep));
+					return `${app.name} -> [${missing.join(', ')}]`;
+				}).join('; ');
+
+				this.#logger.logWarn(
+					`Dependencias circulares o faltantes: ${pendingNames}. ` +
+					`Faltantes: ${missingDeps}. Se cargarán en paralelo de todas formas.`
+				);
+
+				// Cargar todas las pendientes en un solo nivel
+				levels.push(stillPending.map(app => app.path));
+				stillPending.forEach(app => loadedAppNames.add(app.name));
+				break;
+			}
+
+			pendingQueue = stillPending;
+			iteration++;
+		}
+
+		// Último nivel: Hosts (para que detecten todos los remotes ya registrados)
+		if (hosts.length > 0) {
+			// Los hosts también pueden tener dependencias entre sí, ordenarlos
+			let pendingHosts = [...hosts];
+			let hostIterations = 0;
+
+			while (pendingHosts.length > 0 && hostIterations < 10) {
+				const currentHostLevel: string[] = [];
+				const stillPendingHosts: typeof pendingHosts = [];
+
+				for (const host of pendingHosts) {
+					const allDepsLoaded = host.dependencies.every(depName => loadedAppNames.has(depName));
+					if (allDepsLoaded) {
+						currentHostLevel.push(host.path);
+						loadedAppNames.add(host.name);
+					} else {
+						stillPendingHosts.push(host);
+					}
+				}
+
+				if (currentHostLevel.length > 0) {
+					levels.push(currentHostLevel);
+				} else {
+					// Cargar hosts restantes
+					levels.push(stillPendingHosts.map(h => h.path));
+					break;
+				}
+
+				pendingHosts = stillPendingHosts;
+				hostIterations++;
+			}
+		}
+
+		// Log de niveles para debug
+		if (levels.length > 1) {
+			this.#logger.logDebug(`Niveles de carga: ${levels.map((l, i) => `L${i}(${l.length})`).join(' -> ')}`);
+		}
+
+		return levels;
 	}
 
 	async #loadAndRegisterSpecificModule(moduleType: ModuleType, config: IModuleConfig): Promise<Module> {
