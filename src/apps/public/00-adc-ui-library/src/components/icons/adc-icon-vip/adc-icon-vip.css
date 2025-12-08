@@ -1,0 +1,10 @@
+:host {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: currentColor;
+}
+
+.adc-icon {
+	display: block;
+}

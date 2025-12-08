@@ -1,3 +1,4 @@
+import { ChildProcess } from "node:child_process";
 import { ImportMap, UIModuleConfig } from "../../../interfaces/modules/IUIModule.js";
 
 /**
@@ -18,6 +19,8 @@ export interface RegisteredUIModule {
 	buildStatus: "pending" | "building" | "built" | "error";
 	/** Path del build output */
 	outputPath?: string;
+	/** Proceso watcher del dev server (si aplica) */
+	watcher?: ChildProcess;
 }
 
 /**

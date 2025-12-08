@@ -4,7 +4,8 @@
 		"name": "users-management",
 		"framework": "react",
 		"outputDir": "dist-ui",
-		"standalone": true,
+		"isHost": true,
+		"isRemote": false,
 		"devPort": 3001,
 		"sharedLibs": ["react"],
 		"hosting": {

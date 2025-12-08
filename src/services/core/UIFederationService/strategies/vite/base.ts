@@ -30,7 +30,7 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 		const outputDir = path.join(uiOutputBaseDir, config.name);
 		const base = isDev ? "/" : `/${config.name}/`;
 		const devPort = config.devPort || 0;
-		const isStandalone = config.standalone || false;
+		const isHost = config.isHost ?? false;
 
 		const plugins = await this.getVitePlugins(context, isDev);
 
@@ -62,7 +62,7 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 			emptyOutDir: true,
 		};
 
-		if (isStandalone) {
+		if (isHost) {
 			buildConfig.rollupOptions = {
 				input: path.resolve(module.appDir, "index.html"),
 				external: externals,

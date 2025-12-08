@@ -1,5 +1,4 @@
 import React, { memo } from "react";
-import "@ui-library/loader";
 import { BottomNav } from "./BottomNav.tsx";
 
 interface ShellProps {

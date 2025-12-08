@@ -1,0 +1,22 @@
+{
+	"uiModule": {
+		"name": "adc-layout",
+		"uiNamespace": "adc-platform",
+		"framework": "react",
+		"outputDir": "dist-ui",
+		"isHost": true,
+		"isRemote": false,
+		"uiDependencies": ["adc-ui-library", "community-home"],
+		"devPort": 3011,
+		"sharedLibs": ["react", "tailwind"],
+		"i18n": true,
+		"hosting": {
+			"hosts": [
+				{
+					"domain": "adigitalcafe.com",
+					"subdomains": ["*"]
+				}
+			]
+		}
+	}
+}

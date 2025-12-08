@@ -293,7 +293,7 @@ El proyecto incluye una librería de componentes UI (`00-web-ui-library`) constr
 
 ```typescript
 // En cualquier app React/Vue/etc:
-import '@ui-library/loader';
+import "@ui-library";
 
 // Uso en JSX/TSX:
 <adc-button onAdcClick={handleClick}>

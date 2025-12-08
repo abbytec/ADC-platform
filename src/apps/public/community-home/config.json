@@ -1,0 +1,14 @@
+{
+	"uiModule": {
+		"name": "community-home",
+		"uiNamespace": "adc-platform",
+		"framework": "react",
+		"outputDir": "dist-ui",
+		"isHost": false,
+		"isRemote": true,
+		"uiDependencies": ["adc-ui-library"],
+		"devPort": 3010,
+		"sharedLibs": ["react", "tailwind"],
+		"i18n": true
+	}
+}

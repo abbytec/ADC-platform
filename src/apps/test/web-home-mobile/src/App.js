@@ -1,5 +1,3 @@
-import '@ui-library/loader';
-
 // Traducciones locales (fallback si i18n del servidor no está disponible)
 const localTranslations = {
 	es: {
