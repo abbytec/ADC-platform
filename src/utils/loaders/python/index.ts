@@ -10,116 +10,84 @@ import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
 import { ipcManager } from "../../ipc/IPCManager.js";
 
+type ModuleRole = "provider" | "utility" | "service";
+
+interface PythonModuleOptions {
+	name: string;
+	modulePath: string;
+	version: string;
+	role: ModuleRole;
+	config?: Record<string, any>;
+	process: ChildProcess;
+}
+
 /**
- * Wrapper para módulos Python que se comunican via IPC
- */
-class PythonModuleWrapper {
-	constructor(
-		public readonly name: string,
-		public readonly modulePath: string,
-		public readonly moduleVersion: string,
-		public readonly config?: Record<string, any>,
-		private readonly process?: ChildProcess
-	) {}
+ * Wrapper Unificado para módulos Python. */
+class PythonModuleWrapper implements IProvider<any>, IUtility<any>, IService<any> {
+	public readonly name: string;
+	public readonly modulePath: string;
+	public readonly version: string;
+	public readonly role: ModuleRole;
+	private readonly process: ChildProcess;
+	private readonly config?: Record<string, any>;
+
+	// Cache para Singleton (Utility)
+	private cachedInstance: any = null;
+
+	constructor(options: PythonModuleOptions) {
+		this.name = options.name;
+		this.modulePath = options.modulePath;
+		this.version = options.version;
+		this.role = options.role;
+		this.config = options.config;
+		this.process = options.process;
+	}
+
+	get type(): string {
+		return this.config?.type || "default";
+	}
+
+	async start(): Promise<void> {
+		Logger.info(`[PythonModuleWrapper] Solicitando inicio remoto (start) a: ${this.name}`);
+		await ipcManager.call(this.name, this.version, "python", "on_start", []);
+	}
+
+	async getInstance(): Promise<any> {
+		// Si es Utility, usamos patrón Singleton (cache)
+		if (this.role === "utility") {
+			if (!this.cachedInstance) {
+				this.cachedInstance = this.createIpcProxy();
+			}
+			return this.cachedInstance;
+		}
+
+		// Para Provider y Service devolvemos el proxy directo
+		return this.createIpcProxy();
+	}
 
 	async stop(): Promise<void> {
 		if (this.process && !this.process.killed) {
 			this.process.kill();
-			Logger.info(`[PythonModuleWrapper] Proceso Python detenido: ${this.name}`);
+			Logger.info(`[PythonModuleWrapper] Proceso detenido: ${this.name} (${this.role})`);
 		}
 	}
-}
 
-/**
- * Provider wrapper para Python
- */
-class PythonProviderWrapper extends PythonModuleWrapper implements IProvider<any> {
-	readonly type: string;
-
-	constructor(
-		name: string,
-		modulePath: string,
-		moduleVersion: string,
-		type: string | undefined,
-		config?: Record<string, any>,
-		process?: ChildProcess
-	) {
-		super(name, modulePath, moduleVersion, config, process);
-		this.type = type || "default";
-	}
-
-	async getInstance(): Promise<any> {
-		// El proxy se encargará de enrutar las llamadas via IPC
+	/**
+	 * Crea el Proxy para interceptar llamadas y enviarlas por IPC
+	 */
+	private createIpcProxy(): any {
 		return new Proxy(
 			{},
 			{
 				get: (_target, prop) => {
-					if (typeof prop === "string") {
-						return async (...args: any[]) => {
-							return await ipcManager.call(this.name, this.moduleVersion, "python", prop, args);
-						};
-					}
-					return undefined;
-				},
-			}
-		);
-	}
-}
-
-/**
- * Utility wrapper para Python
- */
-class PythonUtilityWrapper extends PythonModuleWrapper implements IUtility<any> {
-	private cachedInstance: any = null;
-
-	async getInstance(): Promise<any> {
-		if (this.cachedInstance) {
-			return this.cachedInstance;
-		}
-
-		this.cachedInstance = new Proxy(
-			{},
-			{
-				get: (_target, prop) => {
-					// Ignorar propiedades de Promise y símbolos especiales
-					if (typeof prop === "symbol" || prop === "then" || prop === "catch" || prop === "finally") {
+					// Ignorar promesas y serialización
+					if (typeof prop === "symbol" || ["then", "catch", "finally", "toJSON"].includes(prop as string)) {
 						return undefined;
 					}
 
-					if (typeof prop === "string") {
-						// Crear una función que hace la llamada IPC
-						return async (...args: any[]) => {
-							return await ipcManager.call(this.name, this.moduleVersion, "python", prop, args);
-						};
-					}
-					return undefined;
-				},
-			}
-		);
-
-		return this.cachedInstance;
-	}
-}
-
-/**
- * Service wrapper para Python
- */
-class PythonServiceWrapper extends PythonModuleWrapper implements IService<any> {
-	async start(): Promise<void> {
-		Logger.info(`[PythonServiceWrapper] Iniciando servicio Python: ${this.name}`);
-	}
-
-	async getInstance(): Promise<any> {
-		return new Proxy(
-			{},
-			{
-				get: (_target, prop) => {
-					if (typeof prop === "string") {
-						return async (...args: any[]) => {
-							return await ipcManager.call(this.name, this.moduleVersion, "python", prop, args);
-						};
-					}
-					return undefined;
+					return async (...args: any[]) => {
+						return await ipcManager.call(this.name, this.version, "python", prop as string, args);
+					};
 				},
 			}
 		);
@@ -127,43 +95,79 @@ class PythonServiceWrapper extends PythonModuleWrapper implements IService<any> 
 }
 
 /**
- * Loader para módulos Python.
- * Inicia procesos Python y se comunica con ellos mediante IPC (named pipes).
+ * Loader optimizado con gestión de ciclo de vida ordenado.
  */
 export class PythonLoader implements IModuleLoader {
-	private processes = new Map<string, ChildProcess>();
+	// Almacenamos los wrappers clasificados para poder detenerlos en orden
+	private modules = {
+		provider: [] as PythonModuleWrapper[],
+		utility: [] as PythonModuleWrapper[],
+		service: [] as PythonModuleWrapper[],
+	};
 
 	async canHandle(modulePath: string): Promise<boolean> {
 		try {
-			const indexFile = path.join(modulePath, "index.py");
-			await fs.stat(indexFile);
+			await fs.stat(path.join(modulePath, "index.py"));
 			return true;
 		} catch {
 			return false;
 		}
 	}
 
+	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider<any>> {
+		return this.loadModule(modulePath, "provider", config);
+	}
+
+	async loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility<any>> {
+		return this.loadModule(modulePath, "utility", config);
+	}
+
+	// Normalizamos la config si viene de IModuleConfig
+	async loadService(modulePath: string, _kernel: Kernel, config?: IModuleConfig): Promise<IService<any>> {
+		const actualConfig = config?.config || (config as Record<string, any>);
+		const wrapper = await this.loadModule(modulePath, "service", actualConfig, config);
+		return wrapper;
+	}
+
 	/**
-	 * Inicia un proceso Python para el módulo y configura el servidor IPC
+	 * Método centralizado para cargar cualquier tipo de módulo
 	 */
+	private async loadModule(
+		modulePath: string,
+		role: ModuleRole,
+		config?: Record<string, any>,
+		rawModuleConfig?: IModuleConfig
+	): Promise<PythonModuleWrapper> {
+		const name = rawModuleConfig?.name || config?.moduleName || path.basename(modulePath);
+		const version = rawModuleConfig?.version || config?.moduleVersion || "1.0.0";
+
+		Logger.debug(`[PythonLoader] Cargando ${role}: ${name}@${version}`);
+
+		const process = await this.startPythonProcess(modulePath, name, version, role, config);
+
+		const wrapper = new PythonModuleWrapper({
+			name,
+			modulePath,
+			version,
+			role,
+			config,
+			process,
+		});
+
+		// Guardamos la referencia en la lista correspondiente
+		this.modules[role].push(wrapper);
+
+		return wrapper;
+	}
+
 	private async startPythonProcess(
 		modulePath: string,
 		moduleName: string,
 		moduleVersion: string,
-		moduleType: "provider" | "utility" | "service",
+		moduleType: string,
 		config?: Record<string, any>
 	): Promise<ChildProcess> {
-		const processKey = `${moduleName}-${moduleVersion}`;
-
-		// Si ya existe un proceso para este módulo, reutilizarlo
-		if (this.processes.has(processKey)) {
-			return this.processes.get(processKey)!;
-		}
-
 		const indexFile = path.join(modulePath, "index.py");
-
-		// Preparar el entorno y argumentos para el proceso Python
-		// Determinar el path base según el entorno
 		const basePath = process.env.NODE_ENV === "development" ? "src" : "dist";
 		const pythonPath = path.resolve(process.cwd(), basePath, "interfaces", "interop", "py");
 
@@ -172,148 +176,93 @@ export class PythonLoader implements IModuleLoader {
 			ADC_MODULE_NAME: moduleName,
 			ADC_MODULE_VERSION: moduleVersion,
 			ADC_MODULE_TYPE: moduleType,
-			ADC_MODULE_CONFIG: config ? JSON.stringify(config) : "{}",
+			ADC_MODULE_CONFIG: JSON.stringify(config || {}),
 			PYTHONPATH: pythonPath,
 		};
-
-		Logger.debug(`[PythonLoader] Iniciando proceso Python: ${indexFile}`);
-		Logger.debug(`[PythonLoader] PYTHONPATH: ${pythonPath}`);
 
 		const pythonProcess = spawn("python3", [indexFile], {
 			env,
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 
-		// Helper para parsear y loguear mensajes con el nivel correcto
-		const logPythonMessage = (data: Buffer) => {
-			const message = data.toString().trim();
-			if (!message) return;
+		this.setupProcessLogging(pythonProcess, moduleName);
 
-			// Intentar parsear el nivel de log del formato: [NIVEL] [módulo] mensaje
-			const levelMatch = message.match(/^\[(DEBUG|INFO|OK|WARN|ERROR)\]\s+(.*)/i);
-
-			if (levelMatch) {
-				const level = levelMatch[1].toUpperCase();
-				const rest = levelMatch[2];
-
-				// Loguear con el nivel correcto
-				switch (level) {
-					case "DEBUG":
-						Logger.debug(`[Python:${moduleName}] ${rest}`);
-						break;
-					case "INFO":
-						Logger.info(`[Python:${moduleName}] ${rest}`);
-						break;
-					case "OK":
-						Logger.ok(`[Python:${moduleName}] ${rest}`);
-						break;
-					case "WARN":
-						Logger.warn(`[Python:${moduleName}] ${rest}`);
-						break;
-					case "ERROR":
-						Logger.error(`[Python:${moduleName}] ${rest}`);
-						break;
-					default:
-						Logger.info(`[Python:${moduleName}] ${message}`);
-				}
-			} else {
-				// Si no hay nivel explícito, loguear como info
-				Logger.info(`[Python:${moduleName}] ${message}`);
-			}
-		};
-
-		// Capturar salida estándar y de errores (ambos van a stderr desde Python)
-		pythonProcess.stdout?.on("data", (data) => {
-			logPythonMessage(data);
-		});
-
-		pythonProcess.stderr?.on("data", (data) => {
-			logPythonMessage(data);
-		});
-
-		// Manejar salida del proceso
+		// Manejo de salida inesperada
 		pythonProcess.on("exit", (code) => {
-			Logger.warn(`[PythonLoader] Proceso Python terminado: ${moduleName} (código: ${code})`);
-			this.processes.delete(processKey);
+			if (code !== 0 && code !== null) {
+				Logger.warn(`[PythonLoader] Proceso ${moduleName} terminó inesperadamente (código: ${code})`);
+			}
+			this.removeWrapperReference(moduleName);
 		});
 
-		// Guardar el proceso
-		this.processes.set(processKey, pythonProcess);
-
-		// Esperar un momento para que el proceso Python inicie el servidor IPC
+		// Esperar inicialización del IPC
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
 		return pythonProcess;
 	}
 
-	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider<any>> {
-		try {
-			// Extraer información del módulo del path o config
-			const moduleName = config?.moduleName || path.basename(modulePath);
-			const moduleVersion = config?.moduleVersion || "1.0.0";
-			const moduleType = config?.type;
+	private setupProcessLogging(process: ChildProcess, moduleName: string) {
+		const logHandler = (data: Buffer) => {
+			const msg = data.toString().trim();
+			if (!msg) return;
 
-			Logger.debug(`[PythonLoader] Cargando Provider Python: ${moduleName}@${moduleVersion}`);
+			const match = msg.match(/^\[(DEBUG|INFO|OK|WARN|ERROR)\]\s+(.*)/i);
+			if (match) {
+				const levelStr = match[1].toUpperCase();
+				const content = `[Py:${moduleName}] ${match[2]}`;
 
-			// Iniciar el proceso Python
-			const pythonProcess = await this.startPythonProcess(modulePath, moduleName, moduleVersion, "provider", config);
-
-			// Crear el wrapper del provider
-			return new PythonProviderWrapper(moduleName, modulePath, moduleVersion, moduleType, config, pythonProcess);
-		} catch (error) {
-			Logger.error(`[PythonLoader] Error cargando Provider: ${error}`);
-			throw error;
-		}
-	}
-
-	async loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility<any>> {
-		try {
-			const moduleName = config?.moduleName || path.basename(modulePath);
-			const moduleVersion = config?.moduleVersion || "1.0.0";
-
-			Logger.debug(`[PythonLoader] Cargando Utility Python: ${moduleName}@${moduleVersion}`);
-
-			// Iniciar el proceso Python
-			const pythonProcess = await this.startPythonProcess(modulePath, moduleName, moduleVersion, "utility", config);
-
-			// Crear el wrapper del utility
-			return new PythonUtilityWrapper(moduleName, modulePath, moduleVersion, config, pythonProcess);
-		} catch (error) {
-			Logger.error(`[PythonLoader] Error cargando Utility: ${error}`);
-			throw error;
-		}
-	}
-
-	async loadService(modulePath: string, _kernel: Kernel, config?: Record<string, any> | IModuleConfig): Promise<IService<any>> {
-		try {
-			const moduleConfig = config as IModuleConfig;
-			const moduleName = moduleConfig?.name || path.basename(modulePath);
-			const moduleVersion = moduleConfig?.version || "1.0.0";
-
-			Logger.debug(`[PythonLoader] Cargando Service Python: ${moduleName}@${moduleVersion}`);
-
-			// Iniciar el proceso Python
-			const pythonProcess = await this.startPythonProcess(modulePath, moduleName, moduleVersion, "service", moduleConfig?.config);
-
-			// Crear el wrapper del service
-			return new PythonServiceWrapper(moduleName, modulePath, moduleVersion, moduleConfig?.config, pythonProcess);
-		} catch (error) {
-			Logger.error(`[PythonLoader] Error cargando Service: ${error}`);
-			throw error;
-		}
-	}
-
-	/**
-	 * Detiene todos los procesos Python
-	 */
-	async stopAll(): Promise<void> {
-		for (const [key, process] of this.processes) {
-			if (!process.killed) {
-				process.kill();
-				Logger.info(`[PythonLoader] Proceso Python detenido: ${key}`);
+				// Mapeo seguro de strings a métodos de Logger
+				switch (levelStr) {
+					case "DEBUG":
+						Logger.debug(content);
+						break;
+					case "INFO":
+						Logger.info(content);
+						break;
+					case "OK":
+						Logger.ok(content);
+						break;
+					case "WARN":
+						Logger.warn(content);
+						break;
+					case "ERROR":
+						Logger.error(content);
+						break;
+					default:
+						Logger.info(content);
+				}
+			} else {
+				Logger.info(`[Py:${moduleName}] ${msg}`);
 			}
+		};
+
+		process.stdout?.on("data", logHandler);
+		process.stderr?.on("data", logHandler);
+	}
+
+	// Limpieza de referencias si el proceso muere solo
+	private removeWrapperReference(name: string) {
+		for (const role of ["provider", "utility", "service"] as ModuleRole[]) {
+			this.modules[role] = this.modules[role].filter((m) => m.name !== name);
 		}
-		this.processes.clear();
+	}
+
+	// Detiene los procesos en orden
+	async stopAll(): Promise<void> {
+		Logger.info("[PythonLoader] Iniciando secuencia de apagado ordenada...");
+
+		const stopGroup = async (wrappers: PythonModuleWrapper[], groupName: string) => {
+			if (wrappers.length === 0) return;
+			Logger.debug(`[PythonLoader] Deteniendo ${groupName} (${wrappers.length})...`);
+			await Promise.all(wrappers.map((w) => w.stop()));
+			wrappers.length = 0;
+		};
+
+		await stopGroup(this.modules.provider, "Providers");
+		await stopGroup(this.modules.utility, "Utilities");
+		await stopGroup(this.modules.service, "Services");
+
+		Logger.ok("[PythonLoader] Todos los procesos Python han sido detenidos.");
 	}
 }
 
