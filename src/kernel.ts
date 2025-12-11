@@ -51,6 +51,7 @@ export class Kernel {
 
 	// Mapa de apps con docker-compose: appName -> directorio
 	readonly #appDockerComposeMap = new Map<string, string>();
+	#statusInterval: NodeJS.Timeout | null = null;
 
 	#getRegistry(moduleType: ModuleType): Map<string, IModule> {
 		return this.#moduleStore[moduleType].registry;
@@ -487,7 +488,7 @@ export class Kernel {
 			this.#logger.logInfo("HMR está activo.");
 		}, 10000);
 
-		setInterval(() => {
+		this.#statusInterval = setInterval(() => {
 			// Contar instancias únicas (no entradas en el registry)
 			// Los providers se registran 2 veces (name y type), así que contamos instancias únicas
 			const pCount = new Set(this.#moduleStore.provider.registry.values()).size;
@@ -545,6 +546,7 @@ export class Kernel {
 	// --- Lógica de Cierre ---
 	public async stop(): Promise<void> {
 		this.#logger.logInfo("\nIniciando cierre ordenado...");
+		if (this.#statusInterval) clearInterval(this.#statusInterval);
 
 		// Helper para ejecutar con timeout
 		const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, name: string): Promise<T | undefined> => {
@@ -634,9 +636,7 @@ export class Kernel {
 				} else if (level.length > 1) {
 					// Múltiples elementos sin dependencias entre sí: cargar en paralelo
 					this.#logger.logDebug(`Cargando ${level.length} apps en paralelo...`);
-					await Promise.all(
-						level.map(subDirPath => this.#loadLayerRecursive(subDirPath, loader, exclude))
-					);
+					await Promise.all(level.map((subDirPath) => this.#loadLayerRecursive(subDirPath, loader, exclude)));
 				}
 			}
 		} catch {
@@ -697,7 +697,7 @@ export class Kernel {
 						dependencies,
 						isUILib,
 						isHost,
-						isRemote
+						isRemote,
 					});
 				} else {
 					// Apps sin uiModule se cargan con prioridad normal
@@ -708,7 +708,7 @@ export class Kernel {
 						dependencies: [],
 						isUILib: false,
 						isHost: false,
-						isRemote: false
+						isRemote: false,
 					});
 				}
 			} catch {
@@ -720,7 +720,7 @@ export class Kernel {
 					dependencies: [],
 					isUILib: false,
 					isHost: false,
-					isRemote: false
+					isRemote: false,
 				});
 			}
 		}
@@ -730,15 +730,15 @@ export class Kernel {
 		const loadedAppNames = new Set<string>();
 
 		// Nivel 0: UI libraries (siempre primero, en paralelo entre ellas)
-		const uiLibs = appConfigs.filter(app => app.isUILib);
+		const uiLibs = appConfigs.filter((app) => app.isUILib);
 		if (uiLibs.length > 0) {
-			levels.push(uiLibs.map(app => app.path));
-			uiLibs.forEach(app => loadedAppNames.add(app.name));
+			levels.push(uiLibs.map((app) => app.path));
+			uiLibs.forEach((app) => loadedAppNames.add(app.name));
 		}
 
 		// Separar hosts de otros
-		const hosts = appConfigs.filter(app => app.isHost && !app.isUILib);
-		const others = appConfigs.filter(app => !app.isUILib && !app.isHost);
+		const hosts = appConfigs.filter((app) => app.isHost && !app.isUILib);
+		const others = appConfigs.filter((app) => !app.isUILib && !app.isHost);
 
 		// Procesar apps no-host por niveles de dependencia
 		let pendingQueue = [...others];
@@ -751,7 +751,7 @@ export class Kernel {
 
 			for (const app of pendingQueue) {
 				// Verificar si todas las dependencias ya están cargadas
-				const allDepsLoaded = app.dependencies.every(depName => loadedAppNames.has(depName));
+				const allDepsLoaded = app.dependencies.every((depName) => loadedAppNames.has(depName));
 
 				if (allDepsLoaded) {
 					currentLevel.push(app.path);
@@ -765,20 +765,22 @@ export class Kernel {
 				levels.push(currentLevel);
 			} else if (stillPending.length > 0) {
 				// Deadlock: dependencias no satisfechas
-				const pendingNames = stillPending.map(app => app.name).join(', ');
-				const missingDeps = stillPending.map(app => {
-					const missing = app.dependencies.filter(dep => !loadedAppNames.has(dep));
-					return `${app.name} -> [${missing.join(', ')}]`;
-				}).join('; ');
+				const pendingNames = stillPending.map((app) => app.name).join(", ");
+				const missingDeps = stillPending
+					.map((app) => {
+						const missing = app.dependencies.filter((dep) => !loadedAppNames.has(dep));
+						return `${app.name} -> [${missing.join(", ")}]`;
+					})
+					.join("; ");
 
 				this.#logger.logWarn(
 					`Dependencias circulares o faltantes: ${pendingNames}. ` +
-					`Faltantes: ${missingDeps}. Se cargarán en paralelo de todas formas.`
+						`Faltantes: ${missingDeps}. Se cargarán en paralelo de todas formas.`
 				);
 
 				// Cargar todas las pendientes en un solo nivel
-				levels.push(stillPending.map(app => app.path));
-				stillPending.forEach(app => loadedAppNames.add(app.name));
+				levels.push(stillPending.map((app) => app.path));
+				stillPending.forEach((app) => loadedAppNames.add(app.name));
 				break;
 			}
 
@@ -797,7 +799,7 @@ export class Kernel {
 				const stillPendingHosts: typeof pendingHosts = [];
 
 				for (const host of pendingHosts) {
-					const allDepsLoaded = host.dependencies.every(depName => loadedAppNames.has(depName));
+					const allDepsLoaded = host.dependencies.every((depName) => loadedAppNames.has(depName));
 					if (allDepsLoaded) {
 						currentHostLevel.push(host.path);
 						loadedAppNames.add(host.name);
@@ -810,7 +812,7 @@ export class Kernel {
 					levels.push(currentHostLevel);
 				} else {
 					// Cargar hosts restantes
-					levels.push(stillPendingHosts.map(h => h.path));
+					levels.push(stillPendingHosts.map((h) => h.path));
 					break;
 				}
 
@@ -821,7 +823,7 @@ export class Kernel {
 
 		// Log de niveles para debug
 		if (levels.length > 1) {
-			this.#logger.logDebug(`Niveles de carga: ${levels.map((l, i) => `L${i}(${l.length})`).join(' -> ')}`);
+			this.#logger.logDebug(`Niveles de carga: ${levels.map((l, i) => `L${i}(${l.length})`).join(" -> ")}`);
 		}
 
 		return levels;
@@ -1060,33 +1062,33 @@ export class Kernel {
 			const appDir = path.dirname(filePath);
 			const appName = path.basename(appDir);
 
-		// Verificar si la app está deshabilitada en default.json o config.json
-		try {
-			const defaultConfigPath = path.join(appDir, "default.json");
-			const defaultConfigContent = await fs.readFile(defaultConfigPath, "utf-8");
-			const defaultConfig = JSON.parse(defaultConfigContent);
+			// Verificar si la app está deshabilitada en default.json o config.json
+			try {
+				const defaultConfigPath = path.join(appDir, "default.json");
+				const defaultConfigContent = await fs.readFile(defaultConfigPath, "utf-8");
+				const defaultConfig = JSON.parse(defaultConfigContent);
 
-			if (defaultConfig.disabled === true) {
-				this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
-				return; // No continuar con esta app
+				if (defaultConfig.disabled === true) {
+					this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
+					return; // No continuar con esta app
+				}
+			} catch (error) {
+				// No hay default.json o no se puede leer, intentar config.json
 			}
-		} catch (error) {
-			// No hay default.json o no se puede leer, intentar config.json
-		}
 
-		// También verificar en config.json
-		try {
-			const configPath = path.join(appDir, "config.json");
-			const configContent = await fs.readFile(configPath, "utf-8");
-			const config = JSON.parse(configContent);
+			// También verificar en config.json
+			try {
+				const configPath = path.join(appDir, "config.json");
+				const configContent = await fs.readFile(configPath, "utf-8");
+				const config = JSON.parse(configContent);
 
-			if (config.disabled === true) {
-				this.#logger.logDebug(`App ${appName} está deshabilitada (config.json)`);
-				return; // No continuar con esta app
+				if (config.disabled === true) {
+					this.#logger.logDebug(`App ${appName} está deshabilitada (config.json)`);
+					return; // No continuar con esta app
+				}
+			} catch (error) {
+				// No hay config.json o no se puede leer, continuar normalmente
 			}
-		} catch (error) {
-			// No hay config.json o no se puede leer, continuar normalmente
-		}
 
 			// Ejecutar docker-compose si existe
 			try {
