@@ -13,20 +13,20 @@ const IS_DISTRIBUTED = Symbol("isDistributed");
 
 /**
  * Decorador @Distributed para clases que soportan ejecución distribuida.
- * 
+ *
  * Este decorador permite que los métodos de una clase se ejecuten en workers
  * para procesamiento paralelo. El ExecutionManagerService asigna workers
  * dinámicamente según la carga del sistema.
- * 
+ *
  * **Funcionalidad:**
  * - Si la instancia tiene un worker asignado, los métodos se ejecutan en ese worker
  * - El worker puede cambiar en runtime (asignación dinámica)
  * - Si no hay worker, los métodos se ejecutan localmente
- * 
+ *
  * **Preparado para clusterización:**
  * - El sistema de mensajería es compatible con comunicación remota
  * - En el futuro, los "workers" pueden ser nodos remotos
- * 
+ *
  * @example
  * ```typescript
  * @Distributed
@@ -36,7 +36,7 @@ const IS_DISTRIBUTED = Symbol("isDistributed");
  *     return processData(data);
  *   }
  * }
- * 
+ *
  * // El ExecutionManagerService asigna workers automáticamente
  * const service = await kernel.getService("my-service");
  * await service.heavyComputation(data); // Se ejecuta donde el manager decida
@@ -67,36 +67,27 @@ export function Distributed<T extends new (...args: any[]) => any>(constructor: 
 		 * Crea un proxy que intercepta todas las llamadas a métodos
 		 */
 		#createProxy(): any {
-			const self = this;
-
 			return new Proxy(this, {
-				get(target: any, prop: string | symbol, receiver: any) {
+				get: (target: any, prop: string | symbol, receiver: any) => {
 					const originalValue = Reflect.get(target, prop, receiver);
 
-					// Si no es una función o es un símbolo, devolver el valor original
 					if (typeof originalValue !== "function" || typeof prop === "symbol") {
 						return originalValue;
 					}
 
-					// Métodos especiales que no deben ser interceptados
 					const skipMethods = ["constructor", "start", "stop", "getInstance"];
 					if (skipMethods.includes(prop)) {
 						return originalValue;
 					}
 
-					// Crear la función interceptada
-					return function (this: any, ...args: any[]) {
-						return self.#handleMethodCall(prop, args, originalValue, target);
-					};
+					return (...args: any[]) => this.#handleMethodCall(prop.toString(), args, originalValue, target);
 				},
 
-				set(target: any, prop: string | symbol, value: any, receiver: any) {
-					// Permitir la asignación de un worker en runtime
+				set: (target: any, prop: string | symbol, value: any, receiver: any) => {
 					if (prop === "worker") {
-						(target as any)[WORKER_INSTANCE] = value;
+						target[WORKER_INSTANCE] = value;
 						return true;
 					}
-
 					return Reflect.set(target, prop, value, receiver);
 				},
 			});
@@ -105,6 +96,7 @@ export function Distributed<T extends new (...args: any[]) => any>(constructor: 
 		/**
 		 * Maneja la llamada a un método decidiendo si ejecutarlo local o en worker
 		 */
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 		async #handleMethodCall(method: string, args: any[], originalMethod: Function, target: any): Promise<any> {
 			const worker: Worker | null = (this as any)[WORKER_INSTANCE];
 
@@ -164,7 +156,7 @@ export function Distributed<T extends new (...args: any[]) => any>(constructor: 
 /**
  * Asigna un worker a una instancia distribuida en runtime.
  * El ExecutionManagerService usa esta función para distribuir la carga.
- * 
+ *
  * @param instance - Instancia del módulo distribuido
  * @param worker - Worker a asignar (o null para ejecución local)
  */
@@ -174,11 +166,10 @@ export function assignWorker(instance: any, worker: Worker | null): void {
 
 /**
  * Obtiene el worker asignado a una instancia (si tiene)
- * 
+ *
  * @param instance - Instancia del módulo distribuido
  * @returns Worker asignado o null
  */
 export function getAssignedWorker(instance: any): Worker | null {
 	return instance[WORKER_INSTANCE] || null;
 }
-
