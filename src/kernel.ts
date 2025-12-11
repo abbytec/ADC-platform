@@ -469,8 +469,8 @@ export class Kernel {
 		await this.#loadKernelServices();
 
 		// Solo cargar Apps (que cargarán sus propios módulos desde config.json)
-		// En producción, excluir apps de test (cuando EXCLUDE_TESTS esté set)
-		const excludeTests = process.env.EXCLUDE_TESTS === "true" && !this.#isDevelopment;
+		// En producción, excluir apps de test (cuando ENABLE_TESTS !== true)
+		const excludeTests = process.env.ENABLE_TESTS !== "true" && !this.#isDevelopment;
 		const excludeList = excludeTests ? ["BaseApp.ts", "test"] : ["BaseApp.ts"];
 		await this.#loadLayerRecursive(this.#appsPath, this.#loadApp.bind(this), excludeList);
 

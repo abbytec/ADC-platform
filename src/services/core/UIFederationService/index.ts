@@ -45,9 +45,9 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		const basePath = this.isDevelopment ? path.resolve(process.cwd(), "src") : path.resolve(process.cwd(), "dist");
 		this.uiOutputBaseDir = path.resolve(basePath, "..", "temp", "ui-builds");
 
-		// Puerto: 80 para producción real (EXCLUDE_TESTS=true), 3000 para prodtests/dev
-		const isRealProduction = this.isProduction && process.env.EXCLUDE_TESTS === "true";
-		this.port = options?.port || (isRealProduction ? 80 : 3000);
+		// Puerto: 80 para producción real, 3000 para prodtests/dev
+		const prodPort = this.isProduction && (process.env.PROD_PORT ?? 80);
+		this.port = options?.port || prodPort || 3000;
 		this.defaultDomain = options?.defaultDomain || DEFAULT_DOMAIN;
 	}
 
@@ -234,7 +234,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 				await this.langManager.registerNamespace(name, appDir);
 			}
 
-				// Generar y registrar service worker si está habilitado (solo para layouts/hosts)
+			// Generar y registrar service worker si está habilitado (solo para layouts/hosts)
 			if (uiConfig.serviceWorker && name === "layout") {
 				await this.#registerServiceWorkerEndpoints(namespace);
 			}
@@ -316,7 +316,9 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		if (isDevelopment) {
 			// Módulos con devPort (rspack/vite): se sirven en su propio puerto
 			if (module.uiConfig.devPort && (bundler === "rspack" || bundler === "vite")) {
-				this.logger.logOk(`Módulo UI ${module.name} [${namespace}] disponible en Dev Server http://localhost:${module.uiConfig.devPort}`);
+				this.logger.logOk(
+					`Módulo UI ${module.name} [${namespace}] disponible en Dev Server http://localhost:${module.uiConfig.devPort}`
+				);
 			}
 			// Módulos sin devPort o CLI: servir estáticamente desde httpProvider
 			else if (this.httpProvider && module.outputPath) {
@@ -347,11 +349,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	/**
 	 * Registra hosts virtuales para un módulo en producción
 	 */
-	async #registerHostsForModule(
-		module: RegisteredUIModule,
-		namespace: string,
-		hostProvider: IHostBasedHttpProvider
-	): Promise<void> {
+	async #registerHostsForModule(module: RegisteredUIModule, namespace: string, hostProvider: IHostBasedHttpProvider): Promise<void> {
 		const hosting = module.uiConfig.hosting;
 		if (!hosting || !module.outputPath) return;
 
@@ -369,9 +367,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		// Procesar subdominios simples (usan dominio por defecto)
 		if (hosting.subdomains) {
 			for (const subdomain of hosting.subdomains) {
-				const pattern = subdomain === "*"
-					? `*.${this.defaultDomain}`
-					: `${subdomain}.${this.defaultDomain}`;
+				const pattern = subdomain === "*" ? `*.${this.defaultDomain}` : `${subdomain}.${this.defaultDomain}`;
 				hostProvider.registerHost(pattern, module.outputPath, { spaFallback: true });
 				this.hostRegistry.set(pattern, { namespace, moduleName: module.name, directory: module.outputPath });
 				registeredPatterns.push(pattern);
@@ -383,9 +379,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			for (const hostConfig of hosting.hosts) {
 				if (hostConfig.subdomains) {
 					for (const subdomain of hostConfig.subdomains) {
-						const pattern = subdomain === "*"
-							? `*.${hostConfig.domain}`
-							: `${subdomain}.${hostConfig.domain}`;
+						const pattern = subdomain === "*" ? `*.${hostConfig.domain}` : `${subdomain}.${hostConfig.domain}`;
 						hostProvider.registerHost(pattern, module.outputPath, { spaFallback: true });
 						this.hostRegistry.set(pattern, { namespace, moduleName: module.name, directory: module.outputPath });
 						registeredPatterns.push(pattern);
@@ -554,23 +548,28 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 			const maxWaitTime = 60000; // 60 segundos máximo
 			const checkInterval = 500;
-			let elapsed = 0;
 
-			while (elapsed < maxWaitTime) {
+			await Promise.race([
+				new Promise<void>((resolve) => {
+					const interval = setInterval(() => {
+						if (uiLibrary.buildStatus === "built") {
+							clearInterval(interval);
+							return resolve();
+						}
+						if (uiLibrary.buildStatus === "error") {
+							clearInterval(interval);
+							return resolve();
+						}
+					}, checkInterval);
+				}),
+				new Promise<void>((resolve) => setTimeout(resolve, maxWaitTime)),
+			]).then(() => {
 				if (uiLibrary.buildStatus === "built") {
 					this.logger.logDebug(`${uiLibrary.name} listo, ${waitingModuleName} puede continuar`);
-					return;
-				}
-
-				if (uiLibrary.buildStatus === "error") {
+				} else if (uiLibrary.buildStatus === "error") {
 					this.logger.logWarn(`${uiLibrary.name} falló, ${waitingModuleName} continuará sin UI library`);
-					return;
 				}
-
-				await new Promise((resolve) => setTimeout(resolve, checkInterval));
-				elapsed += checkInterval;
-			}
-
+			});
 			this.logger.logWarn(`Timeout esperando ${uiLibrary.name}, ${waitingModuleName} continuará de todas formas`);
 		}
 	}
@@ -629,7 +628,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		if (missingRemotes.length > 0) {
 			this.logger.logWarn(
 				`Timeout esperando remotes para ${hostModule.name}: ${missingRemotes.join(", ")}. ` +
-				`El host se construirá sin ellos (se agregarán cuando se registren).`
+					`El host se construirá sin ellos (se agregarán cuando se registren).`
 			);
 		}
 	}
@@ -787,7 +786,9 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			});
 		}
 
-		this.logger.logDebug("Endpoints registrados: /:namespace/importmap.json, /importmap.json, /api/ui/namespaces" + (this.isDevelopment ? ", /" : ""));
+		this.logger.logDebug(
+			"Endpoints registrados: /:namespace/importmap.json, /importmap.json, /api/ui/namespaces" + (this.isDevelopment ? ", /" : "")
+		);
 	}
 
 	#updateImportMap(namespace: string): void {

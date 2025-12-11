@@ -11,9 +11,9 @@
 		"src/services/*/*"
 	],
 	"scripts": {
-		"start": "cross-env NODE_ENV=production EXCLUDE_TESTS=true tsx src/index.ts",
-		"dev": "cross-env NODE_ENV=development tsx src/index.ts",
-		"start:prodtests": "cross-env NODE_ENV=production EXCLUDE_TESTS=false tsx src/index.ts",
+		"start": "cross-env NODE_ENV=production tsx src/index.ts",
+		"dev": "cross-env NODE_ENV=development ENABLE_TESTS=true tsx src/index.ts",
+		"start:prodtests": "cross-env NODE_ENV=production ENABLE_TESTS=true PROD_PORT=3000 tsx src/index.ts",
 		"lint": "eslint src --ext .ts --max-warnings 0",
 		"lint:fix": "eslint src --ext .ts --fix",
 		"typecheck": "bash scripts/recursive-typecheck.sh && ts-prune",

@@ -214,64 +214,52 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 	}
 
 	async getInstance(): Promise<IMongoProvider> {
-		const self = this;
-
-		// Inicializar conexión la primera vez que se obtiene la instancia
-		if (!self.initialized) {
-			self.initialized = true;
-			// Conectar sin bloquear (fire and forget)
-			self.connect().catch((err: any) => {
+		// Inicializar conexión la primera vez
+		if (!this.initialized) {
+			this.initialized = true;
+			this.connect().catch((err: any) => {
 				Logger.error(`[MongoProvider] Error durante conexión inicial: ${err.message}`);
 			});
 		}
 
 		return {
-			getConnection(): Connection {
-				if (!self.connection) {
-					throw new Error("MongoDB no está conectado");
-				}
-				return self.connection;
+			getConnection: (): Connection => {
+				if (!this.connection) throw new Error("MongoDB no está conectado");
+				return this.connection;
 			},
 
-			async connect(): Promise<void> {
-				await self.connect();
+			connect: async (): Promise<void> => {
+				await this.connect();
 			},
 
-			async disconnect(): Promise<void> {
-				await self.disconnect();
+			disconnect: async (): Promise<void> => {
+				await this.disconnect();
 			},
 
-			isConnected(): boolean {
-				return self.connection?.readyState === 1;
+			isConnected: (): boolean => {
+				return this.connection?.readyState === 1;
 			},
 
-			getModel<T>(name: string): Model<T> {
-				if (!self.connection) {
-					throw new Error("MongoDB no está conectado");
-				}
-				return self.connection.model<T>(name);
+			getModel: <T>(name: string): Model<T> => {
+				if (!this.connection) throw new Error("MongoDB no está conectado");
+				return this.connection.model<T>(name);
 			},
 
-			createModel<T>(name: string, schema: Schema): Model<T> {
-				if (!self.connection) {
-					throw new Error("MongoDB no está conectado");
-				}
-				// Evitar crear modelos duplicados
+			createModel: <T>(name: string, schema: Schema): Model<T> => {
+				if (!this.connection) throw new Error("MongoDB no está conectado");
 				try {
-					return self.connection.model<T>(name);
+					return this.connection.model<T>(name);
 				} catch {
-					return self.connection.model<T>(name, schema);
+					return this.connection.model<T>(name, schema);
 				}
 			},
 
-			getStats() {
-				return {
-					connected: self.connection?.readyState === 1,
-					connectionString: self.config.uri,
-					retries: self.retryCount,
-					lastError: self.lastError,
-				};
-			},
+			getStats: () => ({
+				connected: this.connection?.readyState === 1,
+				connectionString: this.config.uri,
+				retries: this.retryCount,
+				lastError: this.lastError,
+			}),
 		};
 	}
 

@@ -20,6 +20,11 @@ export const config: Config = {
             customElementsExportBehavior: 'auto-define-custom-elements',
             externalRuntime: true,
         },
+		{
+			type: "dist-types",
+			dir: "../../../../temp/ui-builds/mobile/web-ui-library-mobile/web-ui-library-mobile",
+			typesDir: "types",
+		},
     ],
     sourceMap: true,
     buildEs5: false,
