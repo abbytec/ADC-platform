@@ -13,18 +13,16 @@ export const config: Config = {
         {
             type: 'dist',
             dir: '../../../../temp/ui-builds/adc-platform/adc-ui-library',
+			typesDir: '../../../../temp/ui-builds/adc-platform/adc-ui-library/types',
+			isPrimaryPackageOutputTarget: true
         },
         {
             type: 'dist-custom-elements',
             dir: '../../../../temp/ui-builds/adc-platform/adc-ui-library/custom-elements',
             customElementsExportBehavior: 'auto-define-custom-elements',
             externalRuntime: true,
+			generateTypeDeclarations: true,
         },
-		{
-			type: "dist-types",
-			dir: "../../../../temp/ui-builds/adc-platform/adc-ui-library/web-ui-library-mobile",
-			typesDir: "types",
-		},
     ],
     sourceMap: true,
     buildEs5: false,
