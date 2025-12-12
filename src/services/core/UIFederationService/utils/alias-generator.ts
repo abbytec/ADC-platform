@@ -102,8 +102,8 @@ export default {
 			targetModule.uiConfig.sharedLibs.forEach((lib) => usedFrameworks.add(lib));
 		}
 
-		const isHost = targetModule.uiConfig.name.includes("layout");
-		if (isHost) {
+		const isLayout = targetModule.uiConfig.name.includes("layout");
+		if (isLayout) {
 			const namespace = targetModule.namespace || "default";
 			for (const [moduleName, mod] of registeredModules.entries()) {
 				const modNamespace = mod.namespace || "default";

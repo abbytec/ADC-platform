@@ -150,9 +150,79 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 
 		context.logger?.logInfo(`Ejecutando build de producción para ${context.module.uiConfig.name}...`);
 
+		const { module, namespace, isDevelopment } = context;
+
+		// En desarrollo, usar --watch para remotos (sin servidor HTTP)
+		const useWatch = isDevelopment && !module.uiConfig.isHost;
+		const buildMode = useWatch ? "build con watch" : "build de producción";
+		const buildArgs = useWatch ? ["build", "--watch", "--config", configPath] : ["build", "--config", configPath];
+
+		context.logger?.logInfo(`Ejecutando ${buildMode} para ${module.uiConfig.name} [${namespace}]...`);
+
+		// Si es watch mode, manejar como proceso continuo (similar a dev server)
+		if (useWatch) {
+			const logName = `${namespace}-${module.uiConfig.name}`;
+			const logsDir = getLogsDir();
+			await fs.mkdir(logsDir, { recursive: true });
+			const logFile = path.join(logsDir, `${logName}.log`);
+			await fs.appendFile(logFile, `\n--- Start of Watch Build: ${new Date().toISOString()} ---\n`);
+
+			const spawnOptions: any = {
+				cwd: module.appDir,
+				stdio: "pipe",
+				shell: false,
+			};
+
+			if (process.platform !== "win32") {
+				spawnOptions.detached = true;
+			}
+
+			const watcher = spawn(rspackBin, buildArgs, spawnOptions);
+
+			watcher.stdout?.on("data", async (data) => {
+				try {
+					await fs.appendFile(logFile, data);
+				} catch {
+					// Silent fail
+				}
+			});
+
+			watcher.stderr?.on("data", async (data) => {
+				try {
+					await fs.appendFile(logFile, data);
+				} catch {
+					// Silent fail
+				}
+			});
+
+			watcher.on("error", (error) => {
+				context.logger?.logError(`Error en watcher Rspack ${module.uiConfig.name}: ${error.message}`);
+				module.buildStatus = "error";
+				fs.appendFile(logFile, `[ERROR] Spawn error: ${error.message}\n`).catch(() => {});
+			});
+
+			watcher.on("exit", (code, signal) => {
+				const exitMsg = `Rspack watcher terminated (code: ${code}, signal: ${signal})\n`;
+				fs.appendFile(logFile, exitMsg).catch(() => {});
+
+				if (code !== 0 && signal !== "SIGTERM" && signal !== "SIGKILL" && signal !== "SIGINT") {
+					context.logger?.logWarn(`Rspack watcher ${module.uiConfig.name} terminado inesperadamente. Ver logs: ${logFile}`);
+					module.buildStatus = "error";
+				}
+			});
+
+			context.logger?.logOk(`${module.uiConfig.name} [${namespace}] Rspack Watch Build iniciado. Logs: temp/logs/${logName}.log`);
+
+			// Dar tiempo al build inicial para completar
+			await new Promise((resolve) => setTimeout(resolve, 5000));
+
+			return { watcher, outputPath };
+		}
+
+		// Build de producción (sin watch)
 		return new Promise((resolve, reject) => {
-			const proc = spawn(rspackBin, ["build", "--config", configPath], {
-				cwd: context.module.appDir,
+			const proc = spawn(rspackBin, buildArgs, {
+				cwd: module.appDir,
 				stdio: "pipe",
 				shell: false,
 			});
@@ -170,10 +240,10 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 
 			proc.on("close", (code) => {
 				if (code === 0) {
-					context.logger?.logOk(`Build completado para ${context.module.uiConfig.name}`);
+					context.logger?.logOk(`Build completado para ${module.uiConfig.name}`);
 					resolve({ outputPath });
 				} else {
-					context.logger?.logError(`Build falló para ${context.module.uiConfig.name}`);
+					context.logger?.logError(`Build falló para ${module.uiConfig.name}`);
 					context.logger?.logError(`Error: ${errorOutput.slice(0, 500)}`);
 					reject(new Error(`Rspack build falló con código ${code}`));
 				}
@@ -192,7 +262,11 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const { namespace, registeredModules, module: currentModule, logger } = context;
 		const remotes: Record<string, string> = {};
 
-		logger?.logDebug(`[detectRemotes] ${currentModule.uiConfig.name} - namespace: ${namespace}, registered: ${Array.from(registeredModules.keys()).join(", ")}`);
+		logger?.logDebug(
+			`[detectRemotes] ${currentModule.uiConfig.name} - namespace: ${namespace}, registered: ${Array.from(registeredModules.keys()).join(
+				", "
+			)}`
+		);
 
 		for (const [moduleName, mod] of registeredModules.entries()) {
 			const modNamespace = mod.namespace || "default";
@@ -234,7 +308,18 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		tailwindCssPath: string;
 		configDir: string;
 	}): string {
-		const { context, safeName, isHost, isProduction, remotes, externals, usedFrameworks, aliasesObject, postcssConfigPath, tailwindCssPath } = options;
+		const {
+			context,
+			safeName,
+			isHost,
+			isProduction,
+			remotes,
+			externals,
+			usedFrameworks,
+			aliasesObject,
+			postcssConfigPath,
+			tailwindCssPath,
+		} = options;
 
 		const { module, uiOutputBaseDir } = context;
 		const mode = isProduction ? "production" : "development";
@@ -276,6 +361,30 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
                 './App': './src/App${appExtension}',
             },`;
 
+		const devServerConfig = `
+    devServer: {
+        port: ${module.uiConfig.devPort},
+        hot: ${hotReload},
+        historyApiFallback: true,
+        allowedHosts: 'all',
+        static: {
+            directory: '${normalizeForConfig(path.join(module.appDir, "public"))}',
+            publicPath: '/',
+        },
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+            'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
+        },
+        proxy: [
+            {
+                context: ['/adc-sw.js', '/adc-i18n.js', '/api/i18n'],
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+            },
+        ],
+    },`;
+
 		return `
 ${imports}
 
@@ -312,29 +421,7 @@ export default {
             ${federationConfig}
             shared: ${shared},
         }),
-    ],
-    devServer: {
-        port: ${module.uiConfig.devPort},
-        hot: ${hotReload},
-        historyApiFallback: true,
-        allowedHosts: 'all',
-        static: {
-            directory: '${normalizeForConfig(path.join(module.appDir, "public"))}',
-            publicPath: '/',
-        },
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-            'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
-        },
-        proxy: [
-            {
-                context: ['/adc-sw.js', '/adc-i18n.js', '/api/i18n'],
-                target: 'http://localhost:3000',
-                changeOrigin: true,
-            },
-        ],
-    },
+    ],${devServerConfig}
     ignoreWarnings: [
         /Critical dependency.*expression/,
     ],
