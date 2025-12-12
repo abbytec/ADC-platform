@@ -5,7 +5,7 @@
 		"outputDir": "dist-ui",
 		"devPort": 3003,
 		"isHost": true,
-		"isRemote": false,
+		"isRemote": true,
 		"sharedLibs": ["vue"],
 		"hosting": {
 			"hosts": [
@@ -17,4 +17,3 @@
 		}
 	}
 }
-
