@@ -10,11 +10,12 @@ import type { ILangManagerService } from "../LangManagerService/types.js";
 // Utilidades
 import { generateCompleteImportMap, createImportMapObject } from "./utils/import-map.js";
 import { injectImportMapsInHTMLs, generateIndexHtml, generateMainEntryPoint } from "./utils/html-processor.js";
-import { generateServiceWorker, generateI18nClientCode } from "./utils/service-worker-generator.js";
+import { generateServiceWorker } from "./utils/service-worker-generator.js";
 
 // Strategy Pattern
 import { getStrategy, isFrameworkSupported, getSupportedFrameworks, parseFramework } from "./strategies/index.js";
 import type { IBuildContext } from "./strategies/types.js";
+import { generateI18nClientCode } from "./utils/i18n-generator.ts";
 
 const DEFAULT_NAMESPACE = "default";
 const DEFAULT_DOMAIN = "local.com";
@@ -212,17 +213,13 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		try {
 			// Generar archivos standalone SOLO para hosts (index.html, entry point)
-			if (isHost) {
-				await this.#generateStandaloneFiles(appDir, uiConfig);
-			}
+			if (isHost) await this.#generateStandaloneFiles(appDir, uiConfig);
 
 			// Build del módulo usando la estrategia (genera Module Federation para hosts y remotes)
 			await this.#buildUIModuleInternal(module, namespace);
 
 			// Post-build: inyectar import maps si tiene output
-			if (module.outputPath) {
-				await this.#injectImportMapsInModuleHTMLs(name, namespace);
-			}
+			if (module.outputPath) await this.#injectImportMapsInModuleHTMLs(name, namespace);
 
 			this.#updateImportMap(namespace);
 
@@ -230,19 +227,13 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			await this.#serveModule(module, namespace, isDevelopment);
 
 			// Registrar traducciones i18n si está habilitado
-			if (uiConfig.i18n && this.langManager) {
-				await this.langManager.registerNamespace(name, appDir);
-			}
+			if (uiConfig.i18n && this.langManager) await this.langManager.registerNamespace(name, appDir);
 
 			// Generar y registrar service worker si está habilitado (solo para layouts/hosts)
-			if (uiConfig.serviceWorker && name === "layout") {
-				await this.#registerServiceWorkerEndpoints(namespace);
-			}
+			if (uiConfig.serviceWorker && name === "layout") await this.#registerPlatformEndpoints(namespace);
 
 			// Si este es un módulo remote (no host), regenerar configs de hosts en el mismo namespace
-			if (!isHost && uiConfig.devPort) {
-				await this.#regenerateLayoutConfigsForNamespace(namespace);
-			}
+			if (!isHost && uiConfig.devPort) await this.#regenerateLayoutConfigsForNamespace(namespace);
 		} catch (error: any) {
 			module.buildStatus = "error";
 			this.logger.logError(`Error registrando módulo UI ${name}: ${error.message}`);
@@ -315,11 +306,10 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		// En desarrollo: comportamiento tradicional con dev servers
 		if (isDevelopment) {
 			// Módulos con devPort (rspack/vite): se sirven en su propio puerto
-			if (module.uiConfig.devPort && (bundler === "rspack" || bundler === "vite")) {
+			if (module.uiConfig.devPort && (bundler === "rspack" || bundler === "vite"))
 				this.logger.logOk(
 					`Módulo UI ${module.name} [${namespace}] disponible en Dev Server http://localhost:${module.uiConfig.devPort}`
 				);
-			}
 			// Módulos sin devPort o CLI: servir estáticamente desde httpProvider
 			else if (this.httpProvider && module.outputPath) {
 				const urlPath = `/${namespace}/${module.name}`;
@@ -393,9 +383,8 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			}
 		}
 
-		if (registeredPatterns.length > 0) {
+		if (registeredPatterns.length > 0)
 			this.logger.logOk(`Módulo UI ${module.name} [${namespace}] servido en hosts: ${registeredPatterns.join(", ")}`);
-		}
 	}
 
 	async unregisterUIModule(name: string, namespace?: string): Promise<void> {
@@ -439,9 +428,8 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		let module: RegisteredUIModule | null = null;
 		let ns = namespace || DEFAULT_NAMESPACE;
 
-		if (namespace) {
-			module = this.#getModule(namespace, name);
-		} else {
+		if (namespace) module = this.#getModule(namespace, name);
+		else {
 			const found = this.#findModuleByName(name);
 			if (found) {
 				module = found.module;
@@ -449,9 +437,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			}
 		}
 
-		if (!module) {
-			throw new Error(`Módulo UI ${name} no encontrado`);
-		}
+		if (!module) throw new Error(`Módulo UI ${name} no encontrado`);
 
 		await this.#buildUIModuleInternal(module, ns);
 	}
@@ -466,15 +452,11 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		const namespaceOutputDir = path.join(this.uiOutputBaseDir, namespace);
 
 		// Si NO es una UI library (stencil), esperar a que la UI library del namespace termine
-		if (framework !== "stencil") {
-			await this.#waitForUILibraryBuild(namespace, module.name);
-		}
+		if (framework !== "stencil") await this.#waitForUILibraryBuild(namespace, module.name);
 
 		// Si es un host, esperar a que sus remotes declarados estén registrados
 		const isHost = module.uiConfig.isHost ?? false;
-		if (isHost) {
-			await this.#waitForDeclaredRemotes(module, namespace);
-		}
+		if (isHost) await this.#waitForDeclaredRemotes(module, namespace);
 
 		module.buildStatus = "building";
 		this.logger.logInfo(`Build: ${module.name} [${namespace}] usando ${strategy.name}`);
@@ -501,9 +483,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			}
 
 			// Guardar output path
-			if (result.outputPath) {
-				module.outputPath = result.outputPath;
-			}
+			if (result.outputPath) module.outputPath = result.outputPath;
 
 			module.buildStatus = "built";
 
@@ -532,15 +512,9 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			}
 		}
 
-		if (!uiLibrary) {
-			// No hay UI library en este namespace, continuar
-			return;
-		}
+		if (!uiLibrary) return;
 
-		// Si ya está built, no hay que esperar
-		if (uiLibrary.buildStatus === "built") {
-			return;
-		}
+		if (uiLibrary.buildStatus === "built") return;
 
 		// Si está building o pending, esperar
 		if (uiLibrary.buildStatus === "building" || uiLibrary.buildStatus === "pending") {
@@ -808,7 +782,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		this.logger.logDebug(`Import maps inyectados en HTMLs de ${moduleName} [${namespace}]`);
 	}
 
-	async #registerServiceWorkerEndpoints(namespace: string): Promise<void> {
+	async #registerPlatformEndpoints(namespace: string): Promise<void> {
 		if (!this.httpProvider) return;
 
 		const namespaceModules = this.#getNamespaceModules(namespace);
@@ -816,28 +790,26 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		if (!layoutModule) return;
 
-		// Generar service worker para este namespace
-		const swContent = generateServiceWorker(layoutModule, namespaceModules, this.port);
-		const i18nClientContent = generateI18nClientCode(layoutModule, namespaceModules, this.port);
-
-		// Endpoint para el service worker (servido desde la raíz del namespace o del devPort)
-		const swPath = layoutModule.uiConfig.devPort ? "/adc-sw.js" : `/${namespace}/adc-sw.js`;
-		const i18nPath = layoutModule.uiConfig.devPort ? "/adc-i18n.js" : `/${namespace}/adc-i18n.js`;
-
 		// Registrar rutas solo si no están ya registradas
 		try {
+			// Generar y servir service worker para este namespace
+			const swContent = generateServiceWorker(layoutModule, namespaceModules, this.port);
+			const swPath = layoutModule.uiConfig.devPort ? "/adc-sw.js" : `/${namespace}/adc-sw.js`;
 			this.httpProvider.registerRoute("GET", swPath, (_req: any, res: any) => {
 				res.setHeader("Content-Type", "application/javascript");
 				res.setHeader("Service-Worker-Allowed", "/");
 				res.send(swContent);
 			});
+			this.logger.logDebug(`Service Worker [${namespace}] registrado en ${swPath}`);
 
+			// Generar y servir i18n para este namespace
+			const i18nClientContent = generateI18nClientCode(layoutModule, namespaceModules, this.port);
+			const i18nPath = layoutModule.uiConfig.devPort ? "/adc-i18n.js" : `/${namespace}/adc-i18n.js`;
 			this.httpProvider.registerRoute("GET", i18nPath, (_req: any, res: any) => {
 				res.setHeader("Content-Type", "application/javascript");
 				res.send(i18nClientContent);
 			});
 
-			this.logger.logDebug(`Service Worker [${namespace}] registrado en ${swPath}`);
 			this.logger.logDebug(`i18n Client [${namespace}] registrado en ${i18nPath}`);
 		} catch (error: any) {
 			// Las rutas ya podrían existir si se recargó el módulo
