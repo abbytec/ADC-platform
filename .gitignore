@@ -36,5 +36,6 @@ npm-debug.log*
 .env.development
 apps/private
 **.pyc
+__pycache__
 
 chroma_db_codebase
