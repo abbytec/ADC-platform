@@ -98,8 +98,8 @@ export async function generateTailwindConfig(
 	sourcePaths.push(`${module.appDir}/src`);
 
 	// Si es un host (layout), incluir paths de remotos y ui-library
-	const isHost = module.uiConfig.name.includes("layout");
-	if (isHost) {
+	const isLayout = module.uiConfig.name.includes("layout");
+	if (isLayout) {
 		for (const mod of registeredModules.values()) {
 			if (mod.namespace !== namespace) continue;
 			if (mod.uiConfig.name === module.uiConfig.name) continue;
@@ -126,9 +126,7 @@ export default ${JSON.stringify(themeConfig, null, 2)};
 	await fs.writeFile(themeConfigPath, themeContent, "utf-8");
 
 	// Generar CSS de entrada con @source directives (Tailwind v4)
-	const sourceDirectives = sourcePaths
-		.map((p) => `@source "${p.replace(/\\/g, "/")}";`)
-		.join("\n");
+	const sourceDirectives = sourcePaths.map((p) => `@source "${p.replace(/\\/g, "/")}";`).join("\n");
 
 	// Buscar el archivo tailwind.css original del usuario para importar sus extensiones
 	const userTailwindCss = path.join(module.appDir, "src", "styles", "tailwind.css");
