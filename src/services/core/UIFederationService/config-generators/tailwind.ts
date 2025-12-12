@@ -3,33 +3,18 @@ import * as path from "node:path";
 import type { RegisteredUIModule } from "../types.js";
 
 /**
- * Configuración de Tailwind para módulos UI
- * Este generador crea configuraciones de Tailwind optimizadas por módulo,
- * incluyendo solo las clases CSS utilizadas en cada microfrontend.
+ * Configuración de Tailwind CSS v4 para módulos UI
+ * Genera archivos CSS con @source directives para escanear los paths correctos
  */
-
-export interface TailwindConfig {
-	/** Paths de contenido para purge/scan */
-	content: string[];
-	/** Tema personalizado */
-	theme?: Record<string, any>;
-	/** Plugins de Tailwind */
-	plugins?: string[];
-	/** Prefijo para clases (evita colisiones) */
-	prefix?: string;
-}
 
 /**
- * Genera la configuración base de Tailwind compartida
- * Esta es la configuración común que todos los módulos heredan
+ * Genera la configuración de tema de Tailwind (solo theme, sin content)
  */
-function getBaseTailwindConfig(): TailwindConfig {
+function getThemeConfig(): Record<string, any> {
 	return {
-		content: [],
 		theme: {
 			extend: {
 				colors: {
-					// Colores corporativos ADC Platform
 					"adc-primary": {
 						50: "#eff6ff",
 						100: "#dbeafe",
@@ -93,13 +78,12 @@ function getBaseTailwindConfig(): TailwindConfig {
 				},
 			},
 		},
-		plugins: [],
 	};
 }
 
 /**
- * Genera la configuración de Tailwind para un módulo específico
- * Incluye solo los paths de contenido relevantes para optimizar el CSS final
+ * Genera el archivo CSS de entrada para Tailwind v4
+ * Incluye @source directives para escanear los paths correctos
  */
 export async function generateTailwindConfig(
 	module: RegisteredUIModule,
@@ -107,78 +91,96 @@ export async function generateTailwindConfig(
 	configDir: string,
 	logger?: any
 ): Promise<string> {
-	const baseConfig = getBaseTailwindConfig();
-	const contentPaths: string[] = [];
 	const namespace = module.namespace || "default";
-	const framework = module.uiConfig.framework || "react";
+	const sourcePaths: string[] = [];
 
-	// Agregar paths del módulo actual
-	const moduleExtensions = getExtensionsForFramework(framework);
-	contentPaths.push(`${module.appDir}/src/**/*.{${moduleExtensions}}`, `${module.appDir}/index.html`);
+	// Agregar path del módulo actual
+	sourcePaths.push(`${module.appDir}/src`);
 
-	// Si es un host (layout), incluir paths de componentes compartidos
+	// Si es un host (layout), incluir paths de remotos y ui-library
 	const isHost = module.uiConfig.name.includes("layout");
 	if (isHost) {
-		// Incluir la ui-library del namespace para que Tailwind detecte clases usadas
 		for (const mod of registeredModules.values()) {
-			if (mod.uiConfig.framework === "stencil" && mod.namespace === namespace) {
-				contentPaths.push(`${mod.appDir}/src/**/*.{tsx,ts,jsx,js}`);
+			if (mod.namespace !== namespace) continue;
+			if (mod.uiConfig.name === module.uiConfig.name) continue;
+
+			const modFramework = mod.uiConfig.framework || "react";
+			const isRemote = mod.uiConfig.devPort && !mod.uiConfig.name.includes("layout");
+			const isUILibrary = modFramework === "stencil";
+
+			if (isRemote || isUILibrary) {
+				sourcePaths.push(`${mod.appDir}/src`);
+				logger?.logDebug(`[Tailwind v4] Host ${module.uiConfig.name} incluye @source: ${mod.uiConfig.name}`);
 			}
 		}
 	}
 
-	// Buscar ui-library del namespace para incluir sus utilidades de Tailwind
-	let uiLibraryModule: RegisteredUIModule | null = null;
-	for (const mod of registeredModules.values()) {
-		if (mod.uiConfig.framework === "stencil" && mod.namespace === namespace) {
-			uiLibraryModule = mod;
-			break;
-		}
-	}
-
-	const tailwindConfig = {
-		...baseConfig,
-		content: contentPaths,
-	};
-
-	// Si la ui-library tiene exports de utilidades Tailwind, incluirlas en el tema
-	if (uiLibraryModule) {
-		const utilsPath = path.join(uiLibraryModule.appDir, "utils", "tailwind-preset.js");
-		try {
-			await fs.access(utilsPath);
-			// Si existe un preset personalizado, lo referenciamos
-			tailwindConfig.plugins = [`require('${utilsPath.replace(/\\/g, "/")}')`];
-		} catch {
-			// No hay preset personalizado, continuar sin él
-		}
-	}
-
-	// Crear el archivo tailwind.config.js
 	await fs.mkdir(configDir, { recursive: true });
 
-	const configContent = `/** @type {import('tailwindcss').Config} */
-export default ${JSON.stringify(tailwindConfig, null, 2).replace(/"require\('([^']+)'\)"/g, "require('$1')")};
+	// Generar tailwind.config.js solo con el tema
+	const themeConfig = getThemeConfig();
+	const themeConfigPath = path.join(configDir, "tailwind.config.js");
+	const themeContent = `/** @type {import('tailwindcss').Config} */
+export default ${JSON.stringify(themeConfig, null, 2)};
+`;
+	await fs.writeFile(themeConfigPath, themeContent, "utf-8");
+
+	// Generar CSS de entrada con @source directives (Tailwind v4)
+	const sourceDirectives = sourcePaths
+		.map((p) => `@source "${p.replace(/\\/g, "/")}";`)
+		.join("\n");
+
+	// Buscar el archivo tailwind.css original del usuario para importar sus extensiones
+	const userTailwindCss = path.join(module.appDir, "src", "styles", "tailwind.css");
+	let userCssImport = "";
+	try {
+		await fs.access(userTailwindCss);
+		// Leer el contenido del CSS del usuario para incluir sus extensiones (sin el @import tailwindcss)
+		const userCssContent = await fs.readFile(userTailwindCss, "utf-8");
+		// Extraer solo las extensiones (todo excepto @import "tailwindcss")
+		const extensions = userCssContent
+			.split("\n")
+			.filter((line) => !line.includes('@import "tailwindcss"') && !line.includes("@import 'tailwindcss'"))
+			.join("\n")
+			.trim();
+		if (extensions) {
+			userCssImport = `\n/* Extensiones del usuario */\n${extensions}`;
+		}
+	} catch {
+		// No hay archivo tailwind.css del usuario
+	}
+
+	const cssContent = `/**
+ * Tailwind CSS v4 - Generado automáticamente
+ * Módulo: ${module.uiConfig.name} [${namespace}]
+ */
+@import "tailwindcss" source(none);
+
+/* Paths a escanear para clases de Tailwind */
+${sourceDirectives}
+
+/* Configuración de tema */
+@config "${themeConfigPath.replace(/\\/g, "/")}";
+${userCssImport}
 `;
 
-	const configPath = path.join(configDir, "tailwind.config.js");
-	await fs.writeFile(configPath, configContent, "utf-8");
-	logger?.logDebug(`Tailwind config generado para ${module.uiConfig.name} [${namespace}] en ${configPath}`);
+	const cssPath = path.join(configDir, "tailwind-entry.css");
+	await fs.writeFile(cssPath, cssContent, "utf-8");
+	logger?.logDebug(`Tailwind v4 CSS generado para ${module.uiConfig.name} [${namespace}] en ${cssPath}`);
 
-	return configPath;
+	return cssPath;
 }
 
 /**
- * Genera el archivo postcss.config.js necesario para procesar Tailwind
- * Usa @tailwindcss/postcss (Tailwind CSS v4+)
+ * Genera el archivo postcss.config.js para Tailwind CSS v4
  */
-export async function generatePostCSSConfig(tailwindConfigPath: string, configDir: string, logger?: any): Promise<string> {
-	// Tailwind CSS v4+ requiere @tailwindcss/postcss
+export async function generatePostCSSConfig(_tailwindCssPath: string, configDir: string, logger?: any): Promise<string> {
 	const configContent = `import tailwindcss from '@tailwindcss/postcss';
 import autoprefixer from 'autoprefixer';
 
 export default {
 	plugins: [
-		tailwindcss({ config: '${tailwindConfigPath.replace(/\\/g, "/")}' }),
+		tailwindcss(),
 		autoprefixer(),
 	],
 };
@@ -189,24 +191,6 @@ export default {
 	logger?.logDebug(`PostCSS config generado en ${configPath}`);
 
 	return configPath;
-}
-
-/**
- * Obtiene las extensiones de archivo relevantes según el framework
- */
-function getExtensionsForFramework(framework: string): string {
-	switch (framework) {
-		case "react":
-			return "tsx,ts,jsx,js,html";
-		case "vue":
-			return "vue,tsx,ts,jsx,js,html";
-		case "vanilla":
-			return "js,html,css";
-		case "stencil":
-			return "tsx,ts,jsx,js,css";
-		default:
-			return "tsx,ts,jsx,js,html,vue";
-	}
 }
 
 /**
