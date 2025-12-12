@@ -38,10 +38,11 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 
 		// Configurar Tailwind si está habilitado
 		let postcssConfigPath = "";
+		let tailwindCssPath = "";
 		if (hasTailwindEnabled(module)) {
 			context.logger?.logInfo(`[${module.uiConfig.name}] Tailwind CSS habilitado, generando configuración...`);
-			const tailwindConfigPath = await generateTailwindConfig(module, registeredModules, configDir, context.logger);
-			postcssConfigPath = await generatePostCSSConfig(tailwindConfigPath, configDir, context.logger);
+			tailwindCssPath = await generateTailwindConfig(module, registeredModules, configDir, context.logger);
+			postcssConfigPath = await generatePostCSSConfig(tailwindCssPath, configDir, context.logger);
 		}
 
 		// Generar contenido del config
@@ -55,6 +56,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 			usedFrameworks,
 			aliasesObject,
 			postcssConfigPath,
+			tailwindCssPath,
 			configDir,
 		});
 
@@ -229,14 +231,32 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		usedFrameworks: Set<string>;
 		aliasesObject: string;
 		postcssConfigPath: string;
+		tailwindCssPath: string;
 		configDir: string;
 	}): string {
-		const { context, safeName, isHost, isProduction, remotes, externals, usedFrameworks, aliasesObject, postcssConfigPath } = options;
+		const { context, safeName, isHost, isProduction, remotes, externals, usedFrameworks, aliasesObject, postcssConfigPath, tailwindCssPath } = options;
 
 		const { module, uiOutputBaseDir } = context;
 		const mode = isProduction ? "production" : "development";
 		const devtool = isProduction ? "false" : "'cheap-module-source-map'";
 		const hotReload = !isProduction;
+
+		// Agregar alias para Tailwind CSS v4 si está habilitado
+		let finalAliasesObject = aliasesObject;
+		if (tailwindCssPath) {
+			const originalTailwindCss = normalizeForConfig(path.join(module.appDir, "src", "styles", "tailwind.css"));
+			const generatedTailwindCss = normalizeForConfig(tailwindCssPath);
+			// Insertar el alias de Tailwind en el objeto de aliases
+			if (finalAliasesObject === "{}") {
+				finalAliasesObject = `{\n            '${originalTailwindCss}': '${generatedTailwindCss}'\n        }`;
+			} else {
+				// Insertar antes del cierre del objeto
+				finalAliasesObject = finalAliasesObject.replace(
+					/\n {8}\}$/,
+					`,\n            '${originalTailwindCss}': '${generatedTailwindCss}'\n        }`
+				);
+			}
+		}
 
 		// Obtener configuración específica del framework
 		const mainEntry = this.getMainEntry();
@@ -273,7 +293,7 @@ export default {
     },
     resolve: {
         extensions: ${extensions},
-        alias: ${aliasesObject},
+        alias: ${finalAliasesObject},
     },${
 		externals.length > 0
 			? `
