@@ -7,7 +7,7 @@
 		"devPort": 3012,
 		"isHost": false,
 		"isRemote": true,
-		"sharedLibs": [],
+		"sharedLibs": ["tailwind"],
 		"i18n": true
 	}
 }

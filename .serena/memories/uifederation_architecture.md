@@ -64,6 +64,27 @@ import "@ui-library";        // Auto-registers Web Components
 import "@ui-library/styles"; // Loads CSS base
 ```
 
+## Tailwind CSS Architecture (2025-12)
+
+### Independent CSS Compilation
+Each module compiles its own Tailwind CSS independently:
+- **Hosts/Layouts**: Only scan their own `src/` directory + UI Library paths
+- **Remotes**: Compile their own CSS with Tailwind postprocessing
+- **UI Libraries**: Included in all modules' Tailwind scan (shared components)
+
+### How it works
+1. `generateTailwindConfig()` generates a CSS entry file with `@source` directives
+2. Each module only scans its own source files (no cross-module scanning for remotes)
+3. PostCSS processes the CSS with Tailwind v4 and autoprefixer
+4. Rspack bundles the processed CSS using `style-loader` (injects CSS in DOM)
+5. Module Federation loads remotes with their CSS automatically
+
+### Benefits
+- **Decoupling**: Modifying/adding a remote doesn't require host recompilation
+- **Smaller bundles**: Each module only includes CSS for classes it actually uses
+- **Scalability**: Supports hundreds of microfrontends without bloating the host CSS
+- **Duplication trade-off**: Accepts 3-4 CSS duplications over massive unused CSS
+
 ## Load Order
 1. **Level 0**: UI Libraries (Stencil) - parallel
 2. **Level 1+**: Apps by dependency level - parallel within level
