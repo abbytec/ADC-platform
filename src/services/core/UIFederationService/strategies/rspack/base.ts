@@ -4,7 +4,6 @@ import { spawn } from "node:child_process";
 import { BaseRspackStrategy } from "../base-strategy.js";
 import type { IBuildContext, IBuildResult } from "../types.js";
 import { getConfigDir, getBinPath, getLogsDir, normalizeForConfig } from "../../utils/path-resolver.js";
-import { getDisabledAppsDetector } from "../../utils/disabled-apps-detector.js";
 import aliasGenerator from "../../utils/alias-generator.js";
 import { generateTailwindConfig, generatePostCSSConfig, hasTailwindEnabled } from "../../config-generators/tailwind.js";
 
@@ -12,8 +11,6 @@ import { generateTailwindConfig, generatePostCSSConfig, hasTailwindEnabled } fro
  * Clase base para estrategias Rspack con lógica común de generación de config
  */
 export abstract class RspackBaseStrategy extends BaseRspackStrategy {
-	protected readonly disabledAppsDetector = getDisabledAppsDetector();
-
 	/**
 	 * Genera la configuración de Rspack
 	 */
@@ -30,7 +27,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		// Los layouts ahora usan lazyLoadRemoteComponent, por lo que no necesitan pre-declarar remotes
 		// Esto evita que todos los mf-manifest.json se carguen eagerly
 		const remotes = {};
-		const externals = isLayout ? await this.disabledAppsDetector.getExternalsForDisabledApps(context.logger) : [];
+		const externals: string[] = [];
 
 		// Detectar frameworks usados
 		const usedFrameworks = aliasGenerator.detectUsedFrameworks(registeredModules, module);
