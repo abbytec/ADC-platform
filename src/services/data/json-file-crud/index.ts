@@ -1,10 +1,11 @@
 import * as path from "node:path";
-import { IProvider } from "../../../interfaces/modules/IProvider.js";
-import { IUtility } from "../../../interfaces/modules/IUtility.js";
+import { BaseService } from "../../BaseService.js";
+import { BaseProvider } from "../../../providers/BaseProvider.ts";
+import { BaseUtility } from "../../../utilities/BaseUtility.ts";
+
 import { IStorage } from "../../../interfaces/modules/providers/IStorage.js";
 import { IFileAdapter } from "../../../interfaces/modules/utilities/adapters/IFIleAdapter.js";
 import { ILogger } from "../../../interfaces/utils/ILogger.js";
-import { BaseService } from "../../BaseService.js";
 
 /**
  * Interfaz que define las operaciones CRUD para archivos JSON
@@ -53,7 +54,7 @@ class JsonFileCrudImpl implements IJsonFileCrud {
 				this.logger.logDebug(`Archivo no disponible: ${key}`);
 				return null;
 			}
-			const data = await this.fileAdapter.fromBuffer(buffer) as T;
+			const data = (await this.fileAdapter.fromBuffer(buffer)) as T;
 			this.logger.logDebug(`Archivo leído: ${key}`);
 			return data;
 		} catch (err: any) {
@@ -115,7 +116,7 @@ export default class JsonFileCrudService extends BaseService<IJsonFileCrud> {
 			)?.config;
 
 			// 2. Obtener el provider del kernel
-			const storageProvider = this.getProvider<IProvider<IStorage>>("storage-provider", storageProviderConfig);
+			const storageProvider = this.getProvider<BaseProvider<IStorage>>("storage-provider", storageProviderConfig);
 
 			// 3. Obtener la instancia específica del storage (con el basePath correcto)
 			const storage = await storageProvider.getInstance(storageProviderConfig);
@@ -124,7 +125,7 @@ export default class JsonFileCrudService extends BaseService<IJsonFileCrud> {
 			const fileAdapterConfig = this.config?.utilities?.find(
 				(m) => m.name === "json-file-adapter" || m.type === "json-file-adapter"
 			)?.config;
-			const fileAdapterProvider = this.getUtility<IUtility<IFileAdapter<any>>>("json-file-adapter", fileAdapterConfig);
+			const fileAdapterProvider = this.getUtility<BaseUtility<IFileAdapter<any>>>("json-file-adapter", fileAdapterConfig);
 			const fileAdapter = await fileAdapterProvider.getInstance(fileAdapterConfig);
 
 			// 5. Crear la instancia del CRUD
