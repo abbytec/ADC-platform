@@ -7,7 +7,12 @@
 		"isHost": false,
 		"isRemote": true,
 		"sharedLibs": ["tailwind"],
-		"i18n": true
+		"i18n": true,
+		"hosting": [
+			{
+				"domains": ["local.com"],
+				"subdomains": ["s-home"]
+			}
+		]
 	}
 }
-

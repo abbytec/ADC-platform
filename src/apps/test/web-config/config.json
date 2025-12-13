@@ -7,13 +7,11 @@
 		"isHost": true,
 		"isRemote": true,
 		"sharedLibs": ["vue", "tailwind"],
-		"hosting": {
-			"hosts": [
-				{
-					"domain": "local.com",
-					"subdomains": ["s-config"]
-				}
-			]
-		}
+		"hosting": [
+			{
+				"domains": ["local.com"],
+				"subdomains": ["s-config"]
+			}
+		]
 	}
 }
