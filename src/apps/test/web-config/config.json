@@ -6,7 +6,7 @@
 		"devPort": 3003,
 		"isHost": true,
 		"isRemote": true,
-		"sharedLibs": ["vue"],
+		"sharedLibs": ["vue", "tailwind"],
 		"hosting": {
 			"hosts": [
 				{

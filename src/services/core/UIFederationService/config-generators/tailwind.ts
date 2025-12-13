@@ -97,22 +97,14 @@ export async function generateTailwindConfig(
 	// Agregar path del módulo actual
 	sourcePaths.push(`${module.appDir}/src`);
 
-	// Si es un host (layout), incluir paths de remotos y ui-library
-	const isLayout = module.uiConfig.name.includes("layout");
-	if (isLayout) {
-		for (const mod of registeredModules.values()) {
-			if (mod.namespace !== namespace) continue;
-			if (mod.uiConfig.name === module.uiConfig.name) continue;
+	// Incluir solo UI libraries (Stencil) ya que son shared components usados globalmente
+	// Los remotos ahora compilan su propio CSS independientemente
+	for (const mod of registeredModules.values()) {
+		if (mod.namespace !== namespace) continue;
+		if (mod.uiConfig.name === module.uiConfig.name) continue;
 
-			const modFramework = mod.uiConfig.framework || "react";
-			const isRemote = mod.uiConfig.devPort && !mod.uiConfig.name.includes("layout");
-			const isUILibrary = modFramework === "stencil";
-
-			if (isRemote || isUILibrary) {
-				sourcePaths.push(`${mod.appDir}/src`);
-				logger?.logDebug(`[Tailwind v4] Host ${module.uiConfig.name} incluye @source: ${mod.uiConfig.name}`);
-			}
-		}
+		sourcePaths.push(`${mod.appDir}/src`);
+		logger?.logDebug(`[Tailwind v4] ${module.uiConfig.name} incluye @source de UI Library: ${mod.uiConfig.name}`);
 	}
 
 	await fs.mkdir(configDir, { recursive: true });
@@ -152,7 +144,7 @@ export default ${JSON.stringify(themeConfig, null, 2)};
  * Tailwind CSS v4 - Generado automáticamente
  * Módulo: ${module.uiConfig.name} [${namespace}]
  */
-@import "tailwindcss" source(none);
+@import "tailwindcss";
 
 /* Paths a escanear para clases de Tailwind */
 ${sourceDirectives}

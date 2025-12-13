@@ -54,6 +54,8 @@
 </template>
 
 <script setup>
+import '@ui-library';
+import './styles/tailwind.css';
 import { reactive, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 
 const saveButton = ref(null)

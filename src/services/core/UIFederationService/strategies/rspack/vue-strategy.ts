@@ -81,10 +81,6 @@ import { VueLoaderPlugin } from 'vue-loader';
                     },
                 },
                 exclude: /node_modules/,
-            },
-            {
-                test: /\\.css$/,
-                use: ['style-loader', 'css-loader'],
             }
     `;
 	}
@@ -93,7 +89,10 @@ import { VueLoaderPlugin } from 'vue-loader';
 		const hasI18n = context.module.uiConfig.i18n;
 		const moduleName = context.module.uiConfig.name;
 
-		const i18nScript = isHost && hasI18n ? this.getI18nTemplate(moduleName) : `
+		const i18nScript =
+			isHost && hasI18n
+				? this.getI18nTemplate(moduleName)
+				: `
             template: './index.html',`;
 
 		// Solo hosts necesitan HtmlRspackPlugin (remotes solo exponen assets)

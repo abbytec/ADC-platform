@@ -39,3 +39,5 @@ apps/private
 __pycache__
 
 chroma_db_codebase
+
+temp-ui

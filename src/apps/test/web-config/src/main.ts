@@ -1,6 +1,6 @@
-import { createApp } from 'vue';
-import App from './App.vue';
+import { createApp } from "vue";
+import App from "./App.vue";
 
-import '@ui-library'; // Auto-registra Web Components
+import "@ui-library"; // Auto-registra Web Components
 
-createApp(App).mount('#root');
+createApp(App).mount("#root");
