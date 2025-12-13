@@ -22,13 +22,14 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const configDir = getConfigDir(namespace, module.uiConfig.name);
 		await fs.mkdir(configDir, { recursive: true });
 
+		const isLayout = this.isLayout(context);
 		const isHost = this.isHost(context);
 		const isProduction = process.env.NODE_ENV === "production";
 		const safeName = this.getSafeName(module.uiConfig.name);
 
-		// Detectar remotos y externals
-		const remotes = isHost ? await this.detectRemotes(context) : {};
-		const externals = isHost ? await this.disabledAppsDetector.getExternalsForDisabledApps(context.logger) : [];
+		// Detectar remotos y externals (solo para layouts que cargan otros módulos)
+		const remotes = isLayout ? await this.detectRemotes(context) : {};
+		const externals = isLayout ? await this.disabledAppsDetector.getExternalsForDisabledApps(context.logger) : [];
 
 		// Detectar frameworks usados
 		const usedFrameworks = aliasGenerator.detectUsedFrameworks(registeredModules, module);
@@ -49,6 +50,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const configContent = this.buildConfigContent({
 			context,
 			safeName,
+			isLayout,
 			isHost,
 			isProduction,
 			remotes,
@@ -298,6 +300,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 	protected buildConfigContent(options: {
 		context: IBuildContext;
 		safeName: string;
+		isLayout: boolean;
 		isHost: boolean;
 		isProduction: boolean;
 		remotes: Record<string, string>;
@@ -311,6 +314,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const {
 			context,
 			safeName,
+			isLayout,
 			isHost,
 			isProduction,
 			remotes,
@@ -352,8 +356,8 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const imports = this.getImports();
 		const shared = this.buildSharedConfig(usedFrameworks);
 
-		// Remotes o exposes según sea host o remote
-		const federationConfig = isHost
+		// Layouts cargan remotes, el resto se expone
+		const federationConfig = isLayout
 			? `remotes: ${JSON.stringify(remotes, null, 4)},`
 			: `
             filename: 'remoteEntry.js',

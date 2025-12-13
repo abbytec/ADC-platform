@@ -82,9 +82,14 @@ import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack';
         }),`;
 		}
 
-		return `${featureFlags}
+		// Solo hosts necesitan HtmlRspackPlugin (remotes solo exponen assets)
+		const htmlPlugin = isHost
+			? `
         new rspack.HtmlRspackPlugin({${i18nScript}
-        }),
+        }),`
+			: "";
+
+		return `${featureFlags}${htmlPlugin}
     `;
 	}
 }

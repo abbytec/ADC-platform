@@ -96,15 +96,20 @@ import { VueLoaderPlugin } from 'vue-loader';
 		const i18nScript = isHost && hasI18n ? this.getI18nTemplate(moduleName) : `
             template: './index.html',`;
 
+		// Solo hosts necesitan HtmlRspackPlugin (remotes solo exponen assets)
+		const htmlPlugin = isHost
+			? `
+        new rspack.HtmlRspackPlugin({${i18nScript}
+        }),`
+			: "";
+
 		// Vue feature flags siempre necesarios para Vue
 		return `
         new rspack.DefinePlugin({
             __VUE_OPTIONS_API__: true,
             __VUE_PROD_DEVTOOLS__: false,
             __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
-        }),
-        new rspack.HtmlRspackPlugin({${i18nScript}
-        }),
+        }),${htmlPlugin}
         new VueLoaderPlugin(),
     `;
 	}

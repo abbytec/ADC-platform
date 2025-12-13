@@ -71,10 +71,17 @@ export abstract class BaseFrameworkStrategy implements IFrameworkStrategy {
 	}
 
 	/**
-	 * Verifica si el módulo es un host (layout)
+	 * Verifica si el módulo es un layout (shell app que carga remotes)
+	 */
+	protected isLayout(context: IBuildContext): boolean {
+		return context.module.uiConfig.name.includes("layout");
+	}
+
+	/**
+	 * Verifica si el módulo es un host (tiene index.html standalone)
 	 */
 	protected isHost(context: IBuildContext): boolean {
-		return context.module.uiConfig.name.includes("layout");
+		return context.module.uiConfig.isHost ?? false;
 	}
 
 	/**
