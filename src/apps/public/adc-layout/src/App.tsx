@@ -1,17 +1,21 @@
 import { createElement, useState, useEffect, useRef } from "react";
 import { Shell } from "./components/Shell.tsx";
 import { router, type RouteDefinition } from "@ui-library/utils/router";
-import { loadRemoteComponent, type Framework } from "@adc/utils/react/loadRemoteComponent";
+import { lazyLoadRemoteComponent, type Framework } from "@adc/utils/react/loadRemoteComponent";
 
-interface ModuleDefinition {
+interface RemoteModuleConfig {
 	framework: Framework;
-	importFn: () => Promise<any>;
+	remoteEntryUrl: string;
+	remoteName: string;
+	scope: string;
 }
 
-const moduleDefinitions: Record<string, ModuleDefinition> = {
+const moduleDefinitions: Record<string, RemoteModuleConfig> = {
 	"community-home": {
 		framework: "react",
-		importFn: () => import("community-home/App" as any),
+		remoteEntryUrl: "http://localhost:3010/remoteEntry.js",
+		remoteName: "community_home",
+		scope: "./App",
 	},
 };
 
@@ -62,8 +66,10 @@ export default function App() {
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
 			const definition = moduleDefinitions[moduleName];
-			const data = await loadRemoteComponent({
-				importFn: definition.importFn,
+			const data = await lazyLoadRemoteComponent({
+				remoteEntryUrl: definition.remoteEntryUrl,
+				remoteName: definition.remoteName,
+				scope: definition.scope,
 				moduleName,
 				framework: definition.framework,
 			});
