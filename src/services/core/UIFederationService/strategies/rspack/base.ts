@@ -27,8 +27,9 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const isProduction = process.env.NODE_ENV === "production";
 		const safeName = this.getSafeName(module.uiConfig.name);
 
-		// Detectar remotos y externals (solo para layouts que cargan otros módulos)
-		const remotes = isLayout ? await this.detectRemotes(context) : {};
+		// Los layouts ahora usan lazyLoadRemoteComponent, por lo que no necesitan pre-declarar remotes
+		// Esto evita que todos los mf-manifest.json se carguen eagerly
+		const remotes = {};
 		const externals = isLayout ? await this.disabledAppsDetector.getExternalsForDisabledApps(context.logger) : [];
 
 		// Detectar frameworks usados

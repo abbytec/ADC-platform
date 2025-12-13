@@ -26,6 +26,21 @@ export interface LoadRemoteComponentOptions {
 	errorComponent?: (error: Error, moduleName: string) => React.ReactElement;
 }
 
+export interface LazyLoadRemoteComponentOptions {
+	/** URL del remoteEntry.js (ej: 'http://localhost:3001/remoteEntry.js') */
+	remoteEntryUrl: string;
+	/** Nombre del contenedor remoto (debe coincidir con ModuleFederationPlugin) */
+	remoteName: string;
+	/** Scope del módulo expuesto (ej: './App') */
+	scope: string;
+	/** Nombre del módulo para logs */
+	moduleName: string;
+	/** Framework del módulo */
+	framework: Framework;
+	/** Componente de error personalizado (opcional) */
+	errorComponent?: (error: Error, moduleName: string) => React.ReactElement;
+}
+
 /**
  * Crea un wrapper de React para un componente Vue
  */
@@ -162,12 +177,115 @@ function DefaultErrorComponent(error: Error, moduleName: string): React.ReactEle
 }
 
 /**
+ * Carga dinámicamente el script remoteEntry.js de un módulo remoto.
+ * Evita cargar el mismo script múltiples veces.
+ */
+async function loadRemoteEntry(url: string, name: string): Promise<void> {
+	// Check si ya está cargado
+	const existingScript = document.querySelector(`script[data-remote-entry="${name}"]`);
+	if (existingScript) {
+		return;
+	}
+
+	return new Promise((resolve, reject) => {
+		const script = document.createElement('script');
+		script.src = url;
+		script.type = 'text/javascript';
+		script.async = true;
+		script.setAttribute('data-remote-entry', name);
+
+		script.onload = () => {
+			console.log(`[Layout] 📦 Remote entry loaded: ${name} from ${url}`);
+			resolve();
+		};
+
+		script.onerror = () => {
+			reject(new Error(`Failed to load remote entry: ${url}`));
+		};
+
+		document.head.appendChild(script);
+	});
+}
+
+/**
+ * Carga un componente remoto de forma LAZY (sin pre-declaración en rspack config).
+ * Carga el remoteEntry.js dinámicamente y obtiene el módulo del contenedor.
+ *
+ * @example
+ * ```typescript
+ * const result = await lazyLoadRemoteComponent({
+ *   remoteEntryUrl: 'http://localhost:3001/remoteEntry.js',
+ *   remoteName: 'home',
+ *   scope: './App',
+ *   moduleName: 'home',
+ *   framework: 'vanilla',
+ * });
+ * ```
+ */
+export async function lazyLoadRemoteComponent(
+	options: LazyLoadRemoteComponentOptions
+): Promise<RemoteComponentResult> {
+	const { remoteEntryUrl, remoteName, scope, moduleName, framework, errorComponent } = options;
+	const timestamp = Date.now();
+
+	try {
+		// 1. Cargar el script del remoteEntry.js
+		await loadRemoteEntry(remoteEntryUrl, remoteName);
+
+		// 2. Obtener el contenedor del window
+		const container = (window as any)[remoteName];
+		if (!container) {
+			throw new Error(`Remote container "${remoteName}" not found after loading ${remoteEntryUrl}`);
+		}
+
+		// 3. Inicializar el contenedor con los shared scopes
+		// @ts-expect-error - webpack/rspack runtime global
+		await container.init(__webpack_share_scopes__.default);
+
+		// 4. Obtener el módulo del contenedor
+		const factory = await container.get(scope);
+		const module = factory();
+		const RemoteComponent = module.default ?? module;
+
+		console.log(`[Layout] ✅ Lazy loaded ${moduleName} from ${remoteEntryUrl}`);
+		console.log(`[Layout] Framework detectado para ${moduleName}: ${framework}`);
+
+		// 5. Crear el wrapper según el framework
+		let WrapperComponent: React.ComponentType<any>;
+
+		switch (framework) {
+			case 'vue':
+				WrapperComponent = createVueWrapper(RemoteComponent, moduleName, timestamp);
+				break;
+			case 'vanilla':
+				WrapperComponent = createVanillaWrapper(RemoteComponent, moduleName, timestamp);
+				break;
+			case 'react':
+			default:
+				WrapperComponent = createReactWrapper(RemoteComponent, moduleName, timestamp);
+				break;
+		}
+
+		return { Component: WrapperComponent, moduleName, timestamp };
+	} catch (error) {
+		console.error(`[Layout] ❌ Error lazy loading ${moduleName}:`, error);
+
+		const ErrorComponent = () =>
+			errorComponent
+				? errorComponent(error as Error, moduleName)
+				: DefaultErrorComponent(error as Error, moduleName);
+
+		return { Component: ErrorComponent, moduleName, timestamp: Date.now() };
+	}
+}
+
+/**
  * Carga un componente remoto y lo envuelve según su framework.
- * 
+ *
  * @example
  * ```typescript
  * import { loadRemoteComponent } from '@adc/utils/react/loadRemoteComponent';
- * 
+ *
  * const result = await loadRemoteComponent({
  *   importFn: () => import('home/App'),
  *   moduleName: 'home',
