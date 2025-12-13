@@ -1,10 +1,14 @@
 import * as path from "node:path";
-import { IModuleConfig } from "../interfaces/modules/IModule.js";
+import { IModule, IModuleConfig } from "../interfaces/modules/IModule.js";
 import * as fs from "node:fs/promises";
-import { IService } from "../interfaces/modules/IService.js";
 import { Logger } from "../utils/logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
+import { ILifecycle } from "../interfaces/behaviours/ILifecycle.js";
+
+export interface IService<T> extends IModule, ILifecycle {
+	getInstance: () => Promise<T>;
+}
 
 /**
  * Clase base abstracta para todos los Services.

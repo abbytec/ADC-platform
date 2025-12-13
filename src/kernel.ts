@@ -4,13 +4,13 @@ import type { Dirent } from "node:fs";
 import * as path from "node:path";
 import chokidar from "chokidar";
 import { IApp } from "./interfaces/modules/IApp.js";
-import { IUtility } from "./interfaces/modules/IUtility.js";
-import { IProvider } from "./interfaces/modules/IProvider.js";
-import { IService } from "./interfaces/modules/IService.js";
 import { Logger } from "./utils/logger/Logger.js";
 import { ModuleLoader } from "./utils/loaders/ModuleLoader.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModule, IModuleConfig } from "./interfaces/modules/IModule.js";
+import type { IProvider } from "./providers/BaseProvider.ts";
+import type { IUtility } from "./utilities/BaseUtility.ts";
+import type { IService } from "./services/BaseService.ts";
 
 type ModuleType = "provider" | "utility" | "service";
 type Module = IProvider<any> | IUtility<any> | IService<any>;

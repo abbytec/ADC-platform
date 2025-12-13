@@ -18,7 +18,6 @@ import type { IBuildContext } from "./strategies/types.js";
 import { generateI18nClientCode } from "./utils/i18n-generator.ts";
 
 const DEFAULT_NAMESPACE = "default";
-const DEFAULT_DOMAIN = "local.com";
 
 export default class UIFederationService extends BaseService<IUIFederationService> {
 	public readonly name = "UIFederationService";
@@ -34,7 +33,6 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	private port: number = 3000;
 	private readonly isDevelopment: boolean;
 	private readonly isProduction: boolean;
-	private readonly defaultDomain: string;
 	// Registro de hosts para producción: hostPattern -> { namespace, moduleName, directory }
 	private readonly hostRegistry = new Map<string, { namespace: string; moduleName: string; directory: string }>();
 
@@ -49,7 +47,6 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		// Puerto: 80 para producción real, 3000 para prodtests/dev
 		const prodPort = this.isProduction && (process.env.PROD_PORT ?? 80);
 		this.port = options?.port || prodPort || 3000;
-		this.defaultDomain = options?.defaultDomain || DEFAULT_DOMAIN;
 	}
 
 	async start(): Promise<void> {

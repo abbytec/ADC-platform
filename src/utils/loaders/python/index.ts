@@ -3,12 +3,13 @@ import * as fs from "node:fs/promises";
 import { spawn, ChildProcess } from "node:child_process";
 import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
 import { IModuleConfig } from "../../../interfaces/modules/IModule.js";
-import { IProvider } from "../../../interfaces/modules/IProvider.js";
-import { IService } from "../../../interfaces/modules/IService.js";
-import { IUtility } from "../../../interfaces/modules/IUtility.js";
+
 import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
 import { ipcManager } from "../../ipc/IPCManager.js";
+import type { IProvider } from "../../../providers/BaseProvider.ts";
+import type { IUtility } from "../../../utilities/BaseUtility.ts";
+import type { IService } from "../../../services/BaseService.ts";
 
 type ModuleRole = "provider" | "utility" | "service";
 

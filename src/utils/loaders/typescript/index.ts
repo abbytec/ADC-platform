@@ -2,9 +2,10 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
 import { IModuleConfig } from "../../../interfaces/modules/IModule.js";
-import { IProvider } from "../../../interfaces/modules/IProvider.js";
-import { IService } from "../../../interfaces/modules/IService.js";
-import { IUtility } from "../../../interfaces/modules/IUtility.js";
+import type { IProvider } from "../../../providers/BaseProvider.ts";
+import type { IUtility } from "../../../utilities/BaseUtility.ts";
+import type { IService } from "../../../services/BaseService.ts";
+
 import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
 

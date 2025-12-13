@@ -1,6 +1,11 @@
-import { IProvider } from "../interfaces/modules/IProvider.js";
+import { IModule } from "../interfaces/modules/IModule.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Logger } from "../utils/logger/Logger.js";
+
+export interface IProvider<T> extends IModule {
+	readonly type: string;
+	getInstance(options?: any): Promise<T>;
+}
 export abstract class BaseProvider<T> implements IProvider<T> {
 	abstract readonly name: string;
 	abstract readonly type: string;
