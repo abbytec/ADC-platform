@@ -2,7 +2,6 @@ import * as path from "node:path";
 import { build, type InlineConfig } from "vite";
 import { BaseViteStrategy } from "../base-strategy.js";
 import type { IBuildContext, IBuildResult } from "../types.js";
-import { getDisabledAppsDetector } from "../../utils/disabled-apps-detector.js";
 import aliasGenerator from "../../utils/alias-generator.js";
 import { generateCompleteImportMap } from "../../utils/import-map.js";
 import { copyPublicFiles } from "../../utils/file-operations.js";
@@ -11,8 +10,6 @@ import { copyPublicFiles } from "../../utils/file-operations.js";
  * Clase base para estrategias Vite
  */
 export abstract class ViteBaseStrategy extends BaseViteStrategy {
-	protected readonly disabledAppsDetector = getDisabledAppsDetector();
-
 	/**
 	 * Genera la configuración de Vite (no escribe archivo, retorna objeto)
 	 */
@@ -47,12 +44,6 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 			externalModules.push(moduleName);
 			externalModules.push(`${moduleName}/App`);
 			externalModules.push(`${moduleName}/App.js`);
-		}
-
-		// Agregar apps deshabilitadas a externals
-		const disabledExternals = await this.disabledAppsDetector.getExternalsForDisabledApps(context.logger);
-		for (const ext of disabledExternals) {
-			externalModules.push(ext);
 		}
 
 		const externals: (string | RegExp)[] = isDev ? [] : externalModules;
