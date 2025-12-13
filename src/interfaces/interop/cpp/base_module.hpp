@@ -35,6 +35,8 @@ namespace Adc::Core
         BaseModule()
         {
             loadFromEnv();
+            // Inicializar Logger después de cargar el nombre del módulo
+            _logger = std::make_unique<::Core::KernelLogger>(_name);
         }
 
         virtual ~BaseModule() = default;
@@ -78,7 +80,22 @@ namespace Adc::Core
         // Helpers para logging
         void logInfo(std::string_view msg) const
         {
-            std::cout << "[INFO] [" << _name << "] " << msg << std::endl;
+            _logger->info(msg);
+        }
+
+        void logOk(std::string_view msg) const
+        {
+            _logger->ok(msg);
+        }
+
+        void logWarn(std::string_view msg) const
+        {
+            _logger->warn(msg);
+        }
+
+        void logError(std::string_view msg) const
+        {
+            _logger->error(msg);
         }
 
     private:
@@ -88,6 +105,7 @@ namespace Adc::Core
         json _config;
 
         std::unique_ptr<IPCServer> _ipcServer;
+        std::unique_ptr<::Core::KernelLogger> _logger;
         std::map<std::string, MethodHandler> _methodRegistry;
 
         void loadFromEnv()
