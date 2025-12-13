@@ -1,25 +1,16 @@
 import { RegisteredUIModule } from "../types.js";
 
 /**
- * Genera el código de inicialización del cliente para i18n y SW
+ * Genera el código de inicialización del cliente para i18n y SW (genérico - sin hardcodear namespaces)
  */
-export function generateI18nClientCode(module: RegisteredUIModule, namespaceModules: Map<string, RegisteredUIModule>, _port: number): string {
+export function generateI18nClientCode(module: RegisteredUIModule, _namespaceModules: Map<string, RegisteredUIModule>, _port: number): string {
 	const namespace = module.namespace;
 	const hasServiceWorker = module.uiConfig.serviceWorker === true;
 
-	// Obtener los namespaces de i18n de los módulos del mismo namespace
-	const i18nNamespaces: string[] = [];
-	for (const [name, mod] of namespaceModules.entries()) {
-		if (mod.uiConfig.i18n) {
-			i18nNamespaces.push(name);
-		}
-	}
-
 	const isDev = process.env.NODE_ENV === "development";
 
-	return `// ADC i18n Client - Namespace: ${namespace}
+	return `// ADC i18n Client - Namespace: ${namespace} (Generic - cada app carga sus propias traducciones)
 (function() {
-	const I18N_NAMESPACES = ${JSON.stringify(i18nNamespaces)};
 	const STORAGE_KEY = 'language';
 	
 	// Estado global de traducciones
@@ -42,7 +33,8 @@ export function generateI18nClientCode(module: RegisteredUIModule, namespaceModu
 	// Función t() global para traducciones
 	window.t = function(key, params, namespace) {
 		const state = window.__ADC_I18N__;
-		const ns = namespace || I18N_NAMESPACES[0] || 'default';
+		// Si no se especifica namespace, usar el primero cargado
+		const ns = namespace || Object.keys(state.translations)[0] || 'default';
 		const translations = state.translations[ns] || {};
 		
 		const keys = key.split('.');
@@ -64,57 +56,75 @@ export function generateI18nClientCode(module: RegisteredUIModule, namespaceModu
 		return value;
 	};
 	
-	// Cargar traducciones
-	async function loadTranslations(locale) {
+	// Cargar traducciones (debe ser llamado por cada app con sus propios namespaces)
+	window.loadTranslations = async function(namespaces, locale) {
+		if (!namespaces || !Array.isArray(namespaces)) {
+			console.error('[i18n] loadTranslations requiere un array de namespaces. Ejemplo: loadTranslations(["module-name"])');
+			return;
+		}
+
 		const state = window.__ADC_I18N__;
-		if (state.loading) return;
-		
-		state.loading = true;
-		state.locale = locale;
-		
+		const targetLocale = locale || state.locale || detectLocale();
+
+		state.locale = targetLocale;
+
 		try {
-			for (const ns of I18N_NAMESPACES) {
-				const url = \`/api/i18n/\${ns}?locale=\${locale}\`;
+			for (const ns of namespaces) {
+				// Skip si ya está cargado
+				if (state.translations[ns]) continue;
+
+				const url = \`/api/i18n/\${ns}?locale=\${targetLocale}\`;
 				const response = await fetch(url);
 				if (response.ok) {
 					state.translations[ns] = await response.json();
+					console.log(\`[i18n] Traducciones cargadas: \${ns} (\${targetLocale})\`);
 				}
 			}
-			state.loaded = true;
-			console.log('[i18n] Traducciones cargadas:', Object.keys(state.translations));
-			
-			window.dispatchEvent(new CustomEvent('adc:i18n:loaded', { 
-				detail: { locale, namespaces: Object.keys(state.translations) }
+
+			window.dispatchEvent(new CustomEvent('adc:i18n:loaded', {
+				detail: { locale: targetLocale, namespaces }
 			}));
+
+			// Notificar al SW para pre-cachear estas traducciones
+			if (navigator.serviceWorker?.controller) {
+				navigator.serviceWorker.controller.postMessage({
+					type: 'PRELOAD_I18N',
+					locale: targetLocale,
+					namespaces
+				});
+			}
 		} catch (error) {
 			console.error('[i18n] Error cargando traducciones:', error);
-		} finally {
-			state.loading = false;
 		}
-	}
+	};
 	
-	// Cambiar locale
+	// Cambiar locale (recarga traducciones ya cargadas con el nuevo locale)
 	window.setLocale = function(locale) {
 		localStorage.setItem(STORAGE_KEY, locale);
-		loadTranslations(locale);
-		
+		const state = window.__ADC_I18N__;
+		const loadedNamespaces = Object.keys(state.translations);
+
+		// Limpiar traducciones anteriores y recargar
+		state.translations = {};
+		window.loadTranslations(loadedNamespaces, locale);
+
 		if (navigator.serviceWorker?.controller) {
 			navigator.serviceWorker.controller.postMessage({
 				type: 'PRELOAD_I18N',
 				locale: locale,
-				namespaces: I18N_NAMESPACES
+				namespaces: loadedNamespaces
 			});
 		}
 	};
-	
+
 	// Obtener locale actual
 	window.getLocale = function() {
 		return window.__ADC_I18N__.locale || detectLocale();
 	};
-	
-	// Inicializar
+
+	// Inicializar locale (sin cargar traducciones - cada app carga las suyas)
 	const initialLocale = detectLocale();
-	loadTranslations(initialLocale);
+	window.__ADC_I18N__.locale = initialLocale;
 	
 	${
 		hasServiceWorker
@@ -125,16 +135,7 @@ export function generateI18nClientCode(module: RegisteredUIModule, namespaceModu
 			navigator.serviceWorker.register('/adc-sw.js')
 				.then((registration) => {
 					console.log('[SW] Service Worker registrado:', registration.scope);
-					
-					navigator.serviceWorker.ready.then(() => {
-						if (navigator.serviceWorker.controller) {
-							navigator.serviceWorker.controller.postMessage({
-								type: 'PRELOAD_I18N',
-								locale: initialLocale,
-								namespaces: I18N_NAMESPACES
-							});
-						}
-					});
+					// El SW se notificará cuando cada app cargue sus traducciones via loadTranslations
 				})
 				.catch((error) => {
 					console.error('[SW] Error registrando Service Worker:', error);
