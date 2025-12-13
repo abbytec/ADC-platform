@@ -3,9 +3,9 @@ import * as fs from "node:fs/promises";
 import { spawn, ChildProcess, exec } from "node:child_process";
 import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
 import { IModuleConfig } from "../../../interfaces/modules/IModule.js";
-import { IProvider } from "../../../interfaces/modules/IProvider.js";
-import { IService } from "../../../interfaces/modules/IService.js";
-import { IUtility } from "../../../interfaces/modules/IUtility.js";
+import type { IProvider } from "../../../providers/BaseProvider.ts";
+import type { IService } from "../../../services/BaseService.ts";
+import type { IUtility } from "../../../utilities/BaseUtility.ts";
 import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
 import { ipcManager } from "../../ipc/IPCManager.js";
@@ -56,7 +56,7 @@ class CppProviderWrapper extends CppModuleWrapper implements IProvider<any> {
 				get: (_target, prop) => {
 					if (typeof prop === "string") {
 						return async (...args: any[]) => {
-							return await ipcManager.call(this.name, this.moduleVersion, "C++", prop, args);
+							return await ipcManager.call(this.name, this.moduleVersion, "cpp", prop, args);
 						};
 					}
 					return undefined;
@@ -89,7 +89,7 @@ class CppUtilityWrapper extends CppModuleWrapper implements IUtility<any> {
 					if (typeof prop === "string") {
 						// Crear una función que hace la llamada IPC
 						return async (...args: any[]) => {
-							return await ipcManager.call(this.name, this.moduleVersion, "C++", prop, args);
+							return await ipcManager.call(this.name, this.moduleVersion, "cpp", prop, args);
 						};
 					}
 					return undefined;
@@ -116,7 +116,7 @@ class CppServiceWrapper extends CppModuleWrapper implements IService<any> {
 				get: (_target, prop) => {
 					if (typeof prop === "string") {
 						return async (...args: any[]) => {
-							return await ipcManager.call(this.name, this.moduleVersion, "C++", prop, args);
+							return await ipcManager.call(this.name, this.moduleVersion, "cpp", prop, args);
 						};
 					}
 					return undefined;
@@ -179,12 +179,36 @@ export class CppLoader implements IModuleLoader {
 		Logger.debug(`[CppLoader] Iniciando proceso C++: ${indexFile}`);
 		Logger.debug(`[CppLoader] CPPPATH: ${cppPath}`);
 
-		exec(`cmake ${modulePath} -B ../../../../temp/builds/${moduleType}/${moduleName}`, (error, stdout, _stderr) => {
-			if (error) return Logger.error("Error:", error);
-			Logger.debug("Salida:", stdout);
+		// Crear rutas absolutas para el build
+		const buildDir = path.resolve(process.cwd(), "temp", "builds", moduleType, moduleName);
+		const executablePath = path.join(buildDir, "index");
+
+		// Compilar con cmake (configurar y construir)
+		await new Promise<void>((resolve, reject) => {
+			Logger.debug(`[CppLoader] Configurando cmake: ${modulePath} -> ${buildDir}`);
+			exec(`cmake ${modulePath} -B ${buildDir}`, (error, stdout, stderr) => {
+				if (error) {
+					Logger.error(`[CppLoader] Error configurando cmake: ${error.message}`);
+					Logger.error(`[CppLoader] stderr: ${stderr}`);
+					return reject(error);
+				}
+				Logger.debug(`[CppLoader] cmake configurado: ${stdout}`);
+
+				// Construir el proyecto
+				Logger.debug(`[CppLoader] Construyendo proyecto: ${buildDir}`);
+				exec(`cmake --build ${buildDir}`, (buildError, buildStdout, buildStderr) => {
+					if (buildError) {
+						Logger.error(`[CppLoader] Error construyendo: ${buildError.message}`);
+						Logger.error(`[CppLoader] stderr: ${buildStderr}`);
+						return reject(buildError);
+					}
+					Logger.debug(`[CppLoader] Proyecto construido: ${buildStdout}`);
+					resolve();
+				});
+			});
 		});
 
-		const cppProcess = spawn(`../../../../temp/builds/${moduleType}/${moduleName}/index`, [], {
+		const cppProcess = spawn(executablePath, [], {
 			env,
 			stdio: ["pipe", "pipe", "pipe"],
 		});
@@ -253,18 +277,30 @@ export class CppLoader implements IModuleLoader {
 
 	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider<any>> {
 		try {
-			// Extraer información del módulo del path o config
-			const moduleName = config?.moduleName || path.basename(modulePath);
-			const moduleVersion = config?.moduleVersion || "1.0.0";
-			const moduleType = config?.type;
+			// Leer config.json local del módulo si existe y fusionarlo
+			const localConfig = await this.readLocalConfig(modulePath);
+			// Fusionar configs, pero solo sobrescribir con valores definidos
+			const mergedConfig = { ...localConfig };
+			if (config) {
+				for (const [key, value] of Object.entries(config)) {
+					if (value !== undefined) {
+						mergedConfig[key] = value;
+					}
+				}
+			}
 
-			Logger.debug(`[CppLoader] Cargando Provider C++: ${moduleName}@${moduleVersion}`);
+			// Extraer información del módulo del path o config fusionado
+			const moduleName = mergedConfig?.moduleName || path.basename(modulePath);
+			const moduleVersion = mergedConfig?.moduleVersion || "1.0.0";
+			const moduleType = mergedConfig?.type;
+
+			Logger.debug(`[CppLoader] Cargando Provider C++: ${moduleName}@${moduleVersion} (type: ${moduleType})`);
 
 			// Iniciar el proceso C++
-			const cppProcess = await this.startCppProcess(modulePath, moduleName, moduleVersion, "provider", config);
+			const cppProcess = await this.startCppProcess(modulePath, moduleName, moduleVersion, "provider", mergedConfig);
 
 			// Crear el wrapper del provider
-			return new CppProviderWrapper(moduleName, modulePath, moduleVersion, moduleType, config, cppProcess);
+			return new CppProviderWrapper(moduleName, modulePath, moduleVersion, moduleType, mergedConfig, cppProcess);
 		} catch (error) {
 			Logger.error(`[CppLoader] Error cargando Provider: ${error}`);
 			throw error;
@@ -305,6 +341,20 @@ export class CppLoader implements IModuleLoader {
 		} catch (error) {
 			Logger.error(`[CppLoader] Error cargando Service: ${error}`);
 			throw error;
+		}
+	}
+
+	/**
+	 * Lee el config.json local del módulo si existe
+	 */
+	private async readLocalConfig(modulePath: string): Promise<Record<string, any>> {
+		try {
+			const configPath = path.join(modulePath, "config.json");
+			const configContent = await fs.readFile(configPath, "utf-8");
+			return JSON.parse(configContent);
+		} catch {
+			// Si no existe config.json, devolver objeto vacío
+			return {};
 		}
 	}
 
