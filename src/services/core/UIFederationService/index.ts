@@ -345,40 +345,20 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		const registeredPatterns: string[] = [];
 
-		// Procesar dominios completos
-		if (hosting.domains) {
-			for (const domain of hosting.domains) {
-				hostProvider.registerHost(domain, module.outputPath, { spaFallback: true });
-				this.hostRegistry.set(domain, { namespace, moduleName: module.name, directory: module.outputPath });
-				registeredPatterns.push(domain);
-			}
-		}
-
-		// Procesar subdominios simples (usan dominio por defecto)
-		if (hosting.subdomains) {
-			for (const subdomain of hosting.subdomains) {
-				const pattern = subdomain === "*" ? `*.${this.defaultDomain}` : `${subdomain}.${this.defaultDomain}`;
-				hostProvider.registerHost(pattern, module.outputPath, { spaFallback: true });
-				this.hostRegistry.set(pattern, { namespace, moduleName: module.name, directory: module.outputPath });
-				registeredPatterns.push(pattern);
-			}
-		}
-
 		// Procesar configuración de hosts específica
-		if (hosting.hosts) {
-			for (const hostConfig of hosting.hosts) {
+		for (const hostConfig of hosting) {
+			for (const domain of hostConfig.domains) {
 				if (hostConfig.subdomains) {
 					for (const subdomain of hostConfig.subdomains) {
-						const pattern = subdomain === "*" ? `*.${hostConfig.domain}` : `${subdomain}.${hostConfig.domain}`;
+						const pattern = `${subdomain}.${domain}`;
 						hostProvider.registerHost(pattern, module.outputPath, { spaFallback: true });
 						this.hostRegistry.set(pattern, { namespace, moduleName: module.name, directory: module.outputPath });
 						registeredPatterns.push(pattern);
 					}
 				} else {
-					// Solo dominio sin subdominios
-					hostProvider.registerHost(hostConfig.domain, module.outputPath, { spaFallback: true });
-					this.hostRegistry.set(hostConfig.domain, { namespace, moduleName: module.name, directory: module.outputPath });
-					registeredPatterns.push(hostConfig.domain);
+					hostProvider.registerHost(domain, module.outputPath, { spaFallback: true });
+					this.hostRegistry.set(domain, { namespace, moduleName: module.name, directory: module.outputPath });
+					registeredPatterns.push(domain);
 				}
 			}
 		}

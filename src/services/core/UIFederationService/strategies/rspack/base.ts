@@ -420,6 +420,9 @@ export default {
         ],
     },
     plugins: [
+        new rspack.DefinePlugin({
+            'process.env.NODE_ENV': JSON.stringify('${mode}'),
+        }),
         ${plugins}
         new ModuleFederationPlugin({
             name: '${safeName}',

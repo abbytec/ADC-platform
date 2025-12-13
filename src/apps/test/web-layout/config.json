@@ -10,14 +10,12 @@
 		"sharedLibs": ["react", "tailwind"],
 		"i18n": true,
 		"serviceWorker": true,
-		"hosting": {
-			"hosts": [
-				{
-					"domain": "local.com",
-					"subdomains": ["cloud", "users", "config", "*"]
-				}
-			]
-		}
+		"hosting": [
+			{
+				"domains": ["local.com"],
+				"subdomains": ["cloud", "users", "config", "*"]
+			}
+		]
 	},
 	"providers": [
 		{

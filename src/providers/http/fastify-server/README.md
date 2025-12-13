@@ -9,5 +9,5 @@ Servidor HTTP con host-based routing para producción.
 ## Hosting
 Configurar en `config.json` de cada app:
 ```json
-"hosting": { "hosts": [{ "domain": "example.com", "subdomains": ["*"] }] }
+"hosting": [{ "domains": ["example.com"], "subdomains": ["*"] }]
 ```

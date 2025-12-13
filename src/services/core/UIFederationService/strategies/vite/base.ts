@@ -94,6 +94,7 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 				alias: dynamicAliases,
 			},
 			server: {
+				host: true,
 				port: devPort,
 				strictPort: true,
 				cors: {
@@ -102,8 +103,7 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 				},
 				hmr: {
 					protocol: "ws",
-					host: "localhost",
-					port: devPort,
+					clientPort: devPort,
 				},
 			},
 			optimizeDeps: {

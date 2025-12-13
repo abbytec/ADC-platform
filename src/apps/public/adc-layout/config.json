@@ -10,13 +10,11 @@
 		"devPort": 3011,
 		"sharedLibs": ["react", "tailwind"],
 		"i18n": true,
-		"hosting": {
-			"hosts": [
-				{
-					"domain": "adigitalcafe.com",
-					"subdomains": ["*"]
-				}
-			]
-		}
+		"hosting": [
+			{
+				"domains": ["adigitalcafe.com"],
+				"subdomains": ["*"]
+			}
+		]
 	}
 }

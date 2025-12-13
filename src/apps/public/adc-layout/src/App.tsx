@@ -10,10 +10,14 @@ interface RemoteModuleConfig {
 	scope: string;
 }
 
+const IS_DEV = process.env.NODE_ENV === 'development';
+
 const moduleDefinitions: Record<string, RemoteModuleConfig> = {
 	"community-home": {
 		framework: "react",
-		remoteEntryUrl: "http://localhost:3010/remoteEntry.js",
+		remoteEntryUrl: IS_DEV
+			? "http://localhost:3010/remoteEntry.js"
+			: "http://s-community.adigitalcafe.com:3000/remoteEntry.js",
 		remoteName: "community_home",
 		scope: "./App",
 	},
