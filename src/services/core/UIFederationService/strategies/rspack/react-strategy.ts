@@ -88,9 +88,14 @@ import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack';
             __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
         }),` : "";
 
-		return `${vueFeatureFlags}
+		// Solo hosts necesitan HtmlRspackPlugin (remotes solo exponen assets)
+		const htmlPlugin = isHost
+			? `
         new rspack.HtmlRspackPlugin({${i18nScript}
-        }),
+        }),`
+			: "";
+
+		return `${vueFeatureFlags}${htmlPlugin}
     `;
 	}
 }
