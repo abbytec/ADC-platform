@@ -1,15 +1,26 @@
 @import "tailwindcss";
 @layer base {
-    :root {
-        --c-primary: 254 240 203;
-        --c-accent: 201 126 93;
-        --c-text: 26 26 26;
-        --c-button: 93 58 47;
-        --c-alt: 242 224 196;
+    :root,
+    :root[data-theme="light"] {
+        --c-primary: var(--custom-primary, rgb(254 240 203)); /* 114 en blue queda bonito también, cambia toda la pag */
+        --c-accent: var(--custom-accent, rgb(201 126 93));
+        --c-text: var(--custom-text, rgb(26 26 26));
+        --c-button: var(--custom-button, rgb(93 58 47));
+        --c-tbutton: var(--custom-tbutton, rgb(254 240 203));
+        --c-alt: var(--custom-alt, rgb(242 224 196));
 
         --r-xxl: 16px;
         --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     }
+    :root[data-theme="dark"] {
+        --c-primary: var(--custom-primary__dark, rgb(69 42 26));
+        --c-accent: var(--custom-accent__dark, rgb(201 126 93));
+        --c-text: var(--custom-text__dark, rgb(254 240 203));
+        --c-button: var(--custom-button__dark, rgba(201, 126, 93, 0.5));
+        --c-tbutton: var(--custom-tbutton__dark, rgb(254 240 203));
+        --c-alt: var(--custom-alt__dark, rgb(42 42 42));
+    }
+
     html,
     body {
         background-color: rgb(var(--c-primary));
@@ -52,7 +63,6 @@
     p,
     li,
     .p-text {
-        color: var(--c-text);
         font-size: 14px;
         font-family: Inter, system-ui, sans-serif;
         line-height: 1.6;

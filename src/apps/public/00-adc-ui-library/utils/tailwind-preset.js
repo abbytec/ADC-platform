@@ -14,11 +14,12 @@ export default {
 		extend: {
 			colors: {
 				// Colores dinámicos via CSS Variables (de temp-ui)
-				primary: "rgb(var(--c-primary) / <alpha-value>)",
-				accent: "rgb(var(--c-accent) / <alpha-value>)",
-				text: "rgb(var(--c-text) / <alpha-value>)",
-				button: "rgb(var(--c-button) / <alpha-value>)",
-				alt: "rgb(var(--c-alt) / <alpha-value>)",
+				primary: "var(--c-primary)",
+				accent: "var(--c-accent)",
+				text: "var(--c-text)",
+				button: "var(--c-button)",
+				tbutton: "var(--c-tbutton)",
+				alt: "var(--c-alt)",
 
 				// Colores corporativos ADC Platform (fijos)
 				"adc-primary": {
