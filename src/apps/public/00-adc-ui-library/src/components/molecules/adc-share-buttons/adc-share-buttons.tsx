@@ -27,7 +27,7 @@ export class AdcShareButtons {
 
 	render() {
 		return (
-			<div class="flex gap-2 text-[16px] text-primary">
+			<div class="flex gap-2 text-[16px] text-t_button">
 				<a
 					href={this.getLinkedInUrl()}
 					target="_blank"

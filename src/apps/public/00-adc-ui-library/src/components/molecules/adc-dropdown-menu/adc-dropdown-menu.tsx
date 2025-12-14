@@ -58,11 +58,7 @@ export class AdcDropdownMenu {
 		const alignClass = this.alignState === "right" ? "right-0" : "left-0";
 
 		return (
-			<div
-				class="relative inline-block"
-				onMouseEnter={this.handleMouseEnter}
-				onMouseLeave={this.handleMouseLeave}
-			>
+			<div class="relative inline-block" onMouseEnter={this.handleMouseEnter} onMouseLeave={this.handleMouseLeave}>
 				<button
 					type="button"
 					class="group inline-flex items-center !bg-transparent"
@@ -76,7 +72,7 @@ export class AdcDropdownMenu {
 
 				{this.isOpen && (
 					<div
-						class={`absolute top-full w-56 rounded shadow z-50 bg-button text-primary ${alignClass}`}
+						class={`absolute top-full w-56 rounded shadow z-50 bg-button text-tbutton ${alignClass}`}
 						role="menu"
 						aria-orientation="vertical"
 					>
