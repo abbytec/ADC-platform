@@ -6,6 +6,7 @@
 		"outputDir": "dist-ui",
 		"isHost": true,
 		"isRemote": true,
+		"uiDependencies": ["web-ui-library"],
 		"devPort": 3001,
 		"sharedLibs": ["react", "tailwind"],
 		"hosting": [

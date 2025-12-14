@@ -6,6 +6,7 @@
 		"devPort": 3002,
 		"isHost": false,
 		"isRemote": true,
+		"uiDependencies": ["web-ui-library"],
 		"sharedLibs": ["tailwind"],
 		"i18n": true,
 		"hosting": [

@@ -6,6 +6,7 @@
 		"devPort": 3003,
 		"isHost": true,
 		"isRemote": true,
+		"uiDependencies": ["web-ui-library"],
 		"sharedLibs": ["vue", "tailwind"],
 		"hosting": [
 			{

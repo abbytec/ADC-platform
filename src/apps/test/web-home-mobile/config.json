@@ -7,6 +7,7 @@
 		"devPort": 3012,
 		"isHost": false,
 		"isRemote": true,
+		"uiDependencies": ["web-ui-library-mobile"],
 		"sharedLibs": ["tailwind"],
 		"i18n": true,
 		"hosting": [
