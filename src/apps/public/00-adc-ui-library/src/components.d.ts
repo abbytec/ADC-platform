@@ -54,24 +54,6 @@ export namespace Components {
         "content": string;
         "language"?: string;
     }
-    interface AdcConsentBanner {
-        /**
-          * @default "/cookies"
-         */
-        "cookiesHref": string;
-        /**
-          * @default "/privacy"
-         */
-        "privacyHref": string;
-        /**
-          * @default false
-         */
-        "restrictedRegion": boolean;
-        /**
-          * @default false
-         */
-        "visible": boolean;
-    }
     interface AdcDivider {
     }
     interface AdcDropdownMenu {
@@ -359,6 +341,30 @@ export namespace Components {
          */
         "staticRender": boolean;
     }
+    /**
+     * Componente YouTube Facade para carga perezosa de videos
+     * Muestra una thumbnail clickeable en lugar de cargar el iframe inmediatamente
+     * Mejora performance al evitar cargar el player de YouTube hasta que sea necesario
+     */
+    interface AdcYoutubeFacade {
+        /**
+          * Alto del contenedor (opcional, por defecto responsive 16:9)
+         */
+        "height"?: string;
+        /**
+          * Título del video para accesibilidad
+          * @default "Video de YouTube"
+         */
+        "title": string;
+        /**
+          * ID del video de YouTube (extraído de la URL)
+         */
+        "videoId": string;
+        /**
+          * Ancho del contenedor (opcional, por defecto responsive)
+         */
+        "width"?: string;
+    }
 }
 export interface AdcButtonCustomEvent<T> extends CustomEvent<T> {
     detail: T;
@@ -367,10 +373,6 @@ export interface AdcButtonCustomEvent<T> extends CustomEvent<T> {
 export interface AdcButtonRoundedCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcButtonRoundedElement;
-}
-export interface AdcConsentBannerCustomEvent<T> extends CustomEvent<T> {
-    detail: T;
-    target: HTMLAdcConsentBannerElement;
 }
 export interface AdcDropdownMenuCustomEvent<T> extends CustomEvent<T> {
     detail: T;
@@ -452,27 +454,6 @@ declare global {
     var HTMLAdcCodeBlockElement: {
         prototype: HTMLAdcCodeBlockElement;
         new (): HTMLAdcCodeBlockElement;
-    };
-    interface HTMLAdcConsentBannerElementEventMap {
-        "adcAcceptAll": void;
-        "adcAcceptAnalytics": void;
-        "adcDeclineAll": void;
-        "adcDeclineAnalytics": void;
-        "adcAcknowledge": void;
-    }
-    interface HTMLAdcConsentBannerElement extends Components.AdcConsentBanner, HTMLStencilElement {
-        addEventListener<K extends keyof HTMLAdcConsentBannerElementEventMap>(type: K, listener: (this: HTMLAdcConsentBannerElement, ev: AdcConsentBannerCustomEvent<HTMLAdcConsentBannerElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
-        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
-        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
-        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-        removeEventListener<K extends keyof HTMLAdcConsentBannerElementEventMap>(type: K, listener: (this: HTMLAdcConsentBannerElement, ev: AdcConsentBannerCustomEvent<HTMLAdcConsentBannerElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
-        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
-        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
-        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-    }
-    var HTMLAdcConsentBannerElement: {
-        prototype: HTMLAdcConsentBannerElement;
-        new (): HTMLAdcConsentBannerElement;
     };
     interface HTMLAdcDividerElement extends Components.AdcDivider, HTMLStencilElement {
     }
@@ -701,13 +682,23 @@ declare global {
         prototype: HTMLAdcTextElement;
         new (): HTMLAdcTextElement;
     };
+    /**
+     * Componente YouTube Facade para carga perezosa de videos
+     * Muestra una thumbnail clickeable en lugar de cargar el iframe inmediatamente
+     * Mejora performance al evitar cargar el player de YouTube hasta que sea necesario
+     */
+    interface HTMLAdcYoutubeFacadeElement extends Components.AdcYoutubeFacade, HTMLStencilElement {
+    }
+    var HTMLAdcYoutubeFacadeElement: {
+        prototype: HTMLAdcYoutubeFacadeElement;
+        new (): HTMLAdcYoutubeFacadeElement;
+    };
     interface HTMLElementTagNameMap {
         "adc-blocks-renderer": HTMLAdcBlocksRendererElement;
         "adc-button": HTMLAdcButtonElement;
         "adc-button-rounded": HTMLAdcButtonRoundedElement;
         "adc-callout": HTMLAdcCalloutElement;
         "adc-code-block": HTMLAdcCodeBlockElement;
-        "adc-consent-banner": HTMLAdcConsentBannerElement;
         "adc-divider": HTMLAdcDividerElement;
         "adc-dropdown-menu": HTMLAdcDropdownMenuElement;
         "adc-feature-card": HTMLAdcFeatureCardElement;
@@ -733,6 +724,7 @@ declare global {
         "adc-table-block": HTMLAdcTableBlockElement;
         "adc-testimonial-card": HTMLAdcTestimonialCardElement;
         "adc-text": HTMLAdcTextElement;
+        "adc-youtube-facade": HTMLAdcYoutubeFacadeElement;
     }
 }
 declare namespace LocalJSX {
@@ -777,29 +769,6 @@ declare namespace LocalJSX {
          */
         "content"?: string;
         "language"?: string;
-    }
-    interface AdcConsentBanner {
-        /**
-          * @default "/cookies"
-         */
-        "cookiesHref"?: string;
-        "onAdcAcceptAll"?: (event: AdcConsentBannerCustomEvent<void>) => void;
-        "onAdcAcceptAnalytics"?: (event: AdcConsentBannerCustomEvent<void>) => void;
-        "onAdcAcknowledge"?: (event: AdcConsentBannerCustomEvent<void>) => void;
-        "onAdcDeclineAll"?: (event: AdcConsentBannerCustomEvent<void>) => void;
-        "onAdcDeclineAnalytics"?: (event: AdcConsentBannerCustomEvent<void>) => void;
-        /**
-          * @default "/privacy"
-         */
-        "privacyHref"?: string;
-        /**
-          * @default false
-         */
-        "restrictedRegion"?: boolean;
-        /**
-          * @default false
-         */
-        "visible"?: boolean;
     }
     interface AdcDivider {
     }
@@ -1095,13 +1064,36 @@ declare namespace LocalJSX {
          */
         "staticRender"?: boolean;
     }
+    /**
+     * Componente YouTube Facade para carga perezosa de videos
+     * Muestra una thumbnail clickeable en lugar de cargar el iframe inmediatamente
+     * Mejora performance al evitar cargar el player de YouTube hasta que sea necesario
+     */
+    interface AdcYoutubeFacade {
+        /**
+          * Alto del contenedor (opcional, por defecto responsive 16:9)
+         */
+        "height"?: string;
+        /**
+          * Título del video para accesibilidad
+          * @default "Video de YouTube"
+         */
+        "title"?: string;
+        /**
+          * ID del video de YouTube (extraído de la URL)
+         */
+        "videoId": string;
+        /**
+          * Ancho del contenedor (opcional, por defecto responsive)
+         */
+        "width"?: string;
+    }
     interface IntrinsicElements {
         "adc-blocks-renderer": AdcBlocksRenderer;
         "adc-button": AdcButton;
         "adc-button-rounded": AdcButtonRounded;
         "adc-callout": AdcCallout;
         "adc-code-block": AdcCodeBlock;
-        "adc-consent-banner": AdcConsentBanner;
         "adc-divider": AdcDivider;
         "adc-dropdown-menu": AdcDropdownMenu;
         "adc-feature-card": AdcFeatureCard;
@@ -1127,6 +1119,7 @@ declare namespace LocalJSX {
         "adc-table-block": AdcTableBlock;
         "adc-testimonial-card": AdcTestimonialCard;
         "adc-text": AdcText;
+        "adc-youtube-facade": AdcYoutubeFacade;
     }
 }
 export { LocalJSX as JSX };
@@ -1138,7 +1131,6 @@ declare module "@stencil/core" {
             "adc-button-rounded": LocalJSX.AdcButtonRounded & JSXBase.HTMLAttributes<HTMLAdcButtonRoundedElement>;
             "adc-callout": LocalJSX.AdcCallout & JSXBase.HTMLAttributes<HTMLAdcCalloutElement>;
             "adc-code-block": LocalJSX.AdcCodeBlock & JSXBase.HTMLAttributes<HTMLAdcCodeBlockElement>;
-            "adc-consent-banner": LocalJSX.AdcConsentBanner & JSXBase.HTMLAttributes<HTMLAdcConsentBannerElement>;
             "adc-divider": LocalJSX.AdcDivider & JSXBase.HTMLAttributes<HTMLAdcDividerElement>;
             "adc-dropdown-menu": LocalJSX.AdcDropdownMenu & JSXBase.HTMLAttributes<HTMLAdcDropdownMenuElement>;
             "adc-feature-card": LocalJSX.AdcFeatureCard & JSXBase.HTMLAttributes<HTMLAdcFeatureCardElement>;
@@ -1164,6 +1156,12 @@ declare module "@stencil/core" {
             "adc-table-block": LocalJSX.AdcTableBlock & JSXBase.HTMLAttributes<HTMLAdcTableBlockElement>;
             "adc-testimonial-card": LocalJSX.AdcTestimonialCard & JSXBase.HTMLAttributes<HTMLAdcTestimonialCardElement>;
             "adc-text": LocalJSX.AdcText & JSXBase.HTMLAttributes<HTMLAdcTextElement>;
+            /**
+             * Componente YouTube Facade para carga perezosa de videos
+             * Muestra una thumbnail clickeable en lugar de cargar el iframe inmediatamente
+             * Mejora performance al evitar cargar el player de YouTube hasta que sea necesario
+             */
+            "adc-youtube-facade": LocalJSX.AdcYoutubeFacade & JSXBase.HTMLAttributes<HTMLAdcYoutubeFacadeElement>;
         }
     }
 }
