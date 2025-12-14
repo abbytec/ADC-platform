@@ -16,17 +16,10 @@ export class AdcSiteHeader {
 
 	render() {
 		return (
-			<header class="flex items-center justify-between gap-6 px-8 py-6 shadow-cozy bg-opacity-95 bg-button text-primary font-bold rounded-b-xxl">
+			<header class="flex items-center justify-between gap-6 px-8 py-6 shadow-cozy bg-button/95 text-primary font-bold rounded-b-xxl">
 				<a href={this.homeHref} aria-label="Inicio" class="ml-2">
 					{this.logoSrc && (
-						<img
-							src={this.logoSrc}
-							alt={this.logoAlt}
-							height="36"
-							width="36"
-							style={{ minWidth: "36px" }}
-							class="rounded-full"
-						/>
+						<img src={this.logoSrc} alt={this.logoAlt} height="36" width="36" style={{ minWidth: "36px" }} class="rounded-full" />
 					)}
 				</a>
 
