@@ -1,24 +1,68 @@
 @import "tailwindcss";
+
 @layer base {
-    :root,
-    :root[data-theme="light"] {
-        --c-primary: var(--custom-primary, rgb(254 240 203)); /* 114 en blue queda bonito también, cambia toda la pag */
-        --c-accent: var(--custom-accent, rgb(201 126 93));
-        --c-text: var(--custom-text, rgb(26 26 26));
-        --c-button: var(--custom-button, rgb(93 58 47));
-        --c-tbutton: var(--custom-tbutton, rgb(254 240 203));
-        --c-alt: var(--custom-alt, rgb(242 224 196));
+    @property --custom-tone-1 {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: 89.26;
+    }
+
+    @property --custom-tone-1b {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: 82.35;
+    }
+
+    @property --custom-tone-2 {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: 50;
+    }
+    :root {
+        --palette-tone-1: var(--custom-tone-1);
+        --palette-tone-1b: var(--custom-tone-1b);
+        --palette-tone-2: var(--custom-tone-2);
+
+        --c-accent: oklch(64.21% 0.129 var(--palette-tone-2));
+        --c-tbutton: oklch(95.27% 0.046 var(--palette-tone-1));
+
+        --c-primary: oklch(95.27% 0.046 var(--palette-tone-1));
+        --c-text: oklch(17.65% 0 0);
+        --c-button: oklch(33.72% 0.063 var(--palette-tone-2) / 95%);
+        --c-alt: oklch(90.68% 0.046 var(--palette-tone-1b));
 
         --r-xxl: 16px;
         --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     }
-    :root[data-theme="dark"] {
-        --c-primary: var(--custom-primary__dark, rgb(69 42 26));
-        --c-accent: var(--custom-accent__dark, rgb(201 126 93));
-        --c-text: var(--custom-text__dark, rgb(254 240 203));
-        --c-button: var(--custom-button__dark, rgba(201, 126, 93, 0.5));
-        --c-tbutton: var(--custom-tbutton__dark, rgb(254 240 203));
-        --c-alt: var(--custom-alt__dark, rgb(42 42 42));
+
+    :root[dark-mode] {
+        background-color: black;
+        --c-primary: oklch(30% 0.063 var(--palette-tone-2));
+        --c-text: oklch(95.27% 0.046 var(--palette-tone-1));
+        --c-button: oklch(64.21% 0.129 var(--palette-tone-2) / 45%);
+        --c-alt: oklch(17.65% 0.046 var(--palette-tone-1) / 95%);
+    }
+
+    :root[rainbow-mode] {
+        animation: cycle-hue 10s infinite linear;
+    }
+
+    @keyframes cycle-hue {
+        0% {
+            --custom-tone-1: 360;
+            --custom-tone-1b: 352;
+            --custom-tone-2: 330;
+        }
+        50% {
+            --custom-tone-1: 39;
+            --custom-tone-1b: 32;
+            --custom-tone-2: 0;
+        }
+        100% {
+            --custom-tone-1: 360;
+            --custom-tone-1b: 352;
+            --custom-tone-2: 330;
+        }
     }
 
     html,
