@@ -40,7 +40,7 @@
         --c-primary: oklch(30% 0.063 var(--palette-tone-2));
         --c-text: oklch(95.27% 0.046 var(--palette-tone-1));
         --c-button: oklch(64.21% 0.129 var(--palette-tone-2) / 45%);
-        --c-alt: oklch(17.65% 0.046 var(--palette-tone-1) / 95%);
+        --c-alt: oklch(24% 0.046 var(--palette-tone-1) / 95%);
     }
 
     :root[rainbow-mode] {
