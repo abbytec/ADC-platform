@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState, useEffect } from "react";
+import React, { memo, useCallback, useEffect } from "react";
 
 interface ShellProps {
 	children: React.ReactNode;
@@ -6,37 +6,6 @@ interface ShellProps {
 }
 
 export const Shell = memo(function Shell({ children, currentPath }: ShellProps) {
-	const [showConsentBanner, setShowConsentBanner] = useState(false);
-
-	useEffect(() => {
-		checkConsent();
-	}, []);
-
-	const checkConsent = () => {
-		try {
-			const consent = localStorage.getItem("consent");
-			if (!consent) {
-				setShowConsentBanner(true);
-			}
-		} catch {
-			// Ignore localStorage errors
-		}
-	};
-
-	const handleOpenPrivacyPreferences = useCallback(() => {
-		setShowConsentBanner(true);
-	}, []);
-
-	const handleConsentAcceptAll = useCallback(() => {
-		localStorage.setItem("consent", JSON.stringify({ analytics: true, ads: true }));
-		setShowConsentBanner(false);
-	}, []);
-
-	const handleConsentDecline = useCallback(() => {
-		localStorage.setItem("consent", JSON.stringify({ analytics: false, ads: false }));
-		setShowConsentBanner(false);
-	}, []);
-
 	return (
 		<div className="flex flex-col px-8 min-h-screen bg-primary text-text" style={{ paddingBottom: "var(--consent-h, 0px)" }}>
 			<adc-site-header logo-src="/mini-logo.webp" logo-alt="ADC" home-href="/">
@@ -59,10 +28,9 @@ export const Shell = memo(function Shell({ children, currentPath }: ShellProps) 
 			<adc-site-footer
 				className="mt-12"
 				brand-name="Abby's Digital Cafe"
-				brand-slogan="Aprende, crea, comparte"
+				brand-slogan="Una taza de código con tintes de amistad"
 				creator-name="Abbytec"
 				creator-href="https://abbytec.dev.ar/"
-				onAdcOpenPrivacyPreferences={handleOpenPrivacyPreferences}
 			>
 				<a href="/privacy" className="underline hover:no-underline">
 					Política de Privacidad
@@ -80,16 +48,6 @@ export const Shell = memo(function Shell({ children, currentPath }: ShellProps) 
 					Política de Cookies
 				</a>
 			</adc-site-footer>
-
-			<adc-consent-banner
-				visible={showConsentBanner}
-				restricted-region={false}
-				privacy-href="/privacy"
-				cookies-href="/cookies"
-				onAdcAcceptAll={handleConsentAcceptAll}
-				onAdcDeclineAll={handleConsentDecline}
-				onAdcAcknowledge={() => setShowConsentBanner(false)}
-			></adc-consent-banner>
 		</div>
 	);
 });

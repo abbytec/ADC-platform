@@ -22,6 +22,14 @@
     * {
         box-sizing: border-box;
     }
+
+    /* Web components con shadow: false son transparentes para layouts (grid, flex) */
+    adc-text,
+    adc-testimonial-card,
+    adc-feature-card,
+    adc-quote {
+        display: contents;
+    }
 }
 
 @layer components {

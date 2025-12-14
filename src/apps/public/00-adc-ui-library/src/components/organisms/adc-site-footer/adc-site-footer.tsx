@@ -22,7 +22,7 @@ export class AdcSiteFooter {
 
 	render() {
 		return (
-			<footer class="py-4 text-center opacity-80 border-t flex-shrink-0 min-h-24 cv-auto">
+			<footer class="py-4 text-center opacity-80 border-t border-gray-200 flex-shrink-0 min-h-24 cv-auto ">
 				<adc-text>
 					&copy; {this.getYear()} {this.brandName} - {this.brandSlogan} · creada por{" "}
 					<a
@@ -38,12 +38,10 @@ export class AdcSiteFooter {
 
 				<div class="mt-2 text-sm">
 					<slot></slot>
-					<span aria-hidden="true" class="mx-1">·</span>
-					<button
-						type="button"
-						class="underline hover:no-underline !bg-transparent !text-text"
-						onClick={this.handlePrivacyClick}
-					>
+					<span aria-hidden="true" class="mx-1">
+						·
+					</span>
+					<button type="button" class="underline hover:no-underline !bg-transparent !text-text" onClick={this.handlePrivacyClick}>
 						Preferencias de privacidad
 					</button>
 				</div>

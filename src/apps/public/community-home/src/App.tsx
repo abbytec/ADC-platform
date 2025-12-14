@@ -34,24 +34,18 @@ export default function App({ locale = "es" }: Props) {
 				aria-label="Página principal de Abby's Digital Cafe"
 			>
 				<h1 className="text-3xl font-heading mb-4">{BRAND.name}</h1>
-				<p className="mb-4 max-w-3xl">{DESCRIPTION}</p>
+				<p className="mb-4 contain-content">{DESCRIPTION}</p>
 
 				<h2 className="text-2xl font-heading mt-8 mb-2">🧡 Únete a nuestro servidor de discord 🧡</h2>
 				<adc-text>Trae tu taza y comparte código con nosotr@s.</adc-text>
-				<adc-button
-					href={`https://discord.gg/${BRAND.discordVanity}`}
-					class="mt-4"
-				>
+				<adc-button href={`https://discord.gg/${BRAND.discordVanity}`} class="mt-4">
 					Entrar al Discord
 				</adc-button>
 
-				<adc-quote class="mt-8 pr-16">{BRAND.slogan}</adc-quote>
+				<adc-quote class="p-[64px]">{BRAND.slogan}</adc-quote>
 			</section>
 
-			<section
-				className="grid gap-4 sm:grid-cols-3 mt-12"
-				aria-label="Características principales"
-			>
+			<section className="grid gap-4 sm:grid-cols-3 mt-12" aria-label="Características principales">
 				<adc-feature-card title="Comunidad">
 					<span slot="icon">
 						<adc-icon-community size="2rem"></adc-icon-community>
@@ -75,34 +69,20 @@ export default function App({ locale = "es" }: Props) {
 			<section className="text-center space-y-4 mt-12" aria-label="Música para programar">
 				<h2 className="text-2xl font-heading">Durante tu sesión de código: Cozy Beats</h2>
 				<adc-text>Música lofi para acompañar tus sesiones de código.</adc-text>
-				<div className="flex justify-center">
-					<iframe
-						width="560"
-						height="315"
-						src="https://www.youtube.com/embed/SXySxLgCV-8"
-						title="Cozy Beats"
-						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-						allowFullScreen
-						className="rounded-xl max-w-full"
-						loading="lazy"
-					></iframe>
+				<div className="flex justify-center max-w-2xl mx-auto">
+					<adc-youtube-facade video-id="SXySxLgCV-8" title="Cozy Beats - Música lofi"></adc-youtube-facade>
 				</div>
 			</section>
 
-			<section
-				className="grid gap-4 sm:grid-cols-3 mt-12"
-				aria-label="Testimonios de la comunidad"
-			>
+			<section className="grid gap-4 sm:grid-cols-3 mt-12" aria-label="Testimonios de la comunidad">
 				<adc-testimonial-card author="@lokitomiko">
 					Buena comunidad activa para la gente que hay. Se disfruta, únanse. (desde Discord)
 				</adc-testimonial-card>
 				<adc-testimonial-card author="@soysalwa">
-					Eehh. No sé. :xd: Mentira, "Cuando no sepas que hacer o donde ir, recuerda que un café
-					caliente soluciona muchos dolores de cabeza, únete al café digital de Abby."
+					Eehh. No sé. :xd: Mentira, "Cuando no sepas que hacer o donde ir, recuerda que un café caliente soluciona muchos dolores de
+					cabeza, únete al café digital de Abby."
 				</adc-testimonial-card>
-				<adc-testimonial-card author="Dev C">
-					Gran comunidad para programar y relajarse.
-				</adc-testimonial-card>
+				<adc-testimonial-card author="Dev C">Gran comunidad para programar y relajarse.</adc-testimonial-card>
 			</section>
 
 			<section className="text-center space-y-4 mt-12" aria-label="Redes sociales">
