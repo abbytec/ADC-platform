@@ -97,24 +97,56 @@ export async function generateTailwindConfig(
 	// Agregar path del módulo actual
 	sourcePaths.push(`${module.appDir}/src`);
 
-	// Incluir solo UI libraries (Stencil) ya que son shared components usados globalmente
-	// Los remotos ahora compilan su propio CSS independientemente
-	for (const mod of registeredModules.values()) {
-		if (mod.namespace !== namespace) continue;
-		if (mod.uiConfig.name === module.uiConfig.name) continue;
+	// Incluir todas las dependencias declaradas en uiDependencies
+	let uiLibraryPresetPath: string | null = null;
+	const uiDependencies = module.uiConfig.uiDependencies || [];
+	for (const depName of uiDependencies) {
+		const depModule = registeredModules.get(depName);
+		if (depModule) {
+			// Agregar path de TODAS las dependencias (UI libraries y remotes)
+			sourcePaths.push(`${depModule.appDir}/src`);
+			logger?.logDebug(`[Tailwind v4] ${module.uiConfig.name} incluye @source de: ${depModule.uiConfig.name}`);
 
-		sourcePaths.push(`${mod.appDir}/src`);
-		logger?.logDebug(`[Tailwind v4] ${module.uiConfig.name} incluye @source de UI Library: ${mod.uiConfig.name}`);
+			// Buscar el preset solo de UI libraries Stencil
+			if (depModule.uiConfig.framework === "stencil" && !uiLibraryPresetPath) {
+				const presetPath = path.join(depModule.appDir, "utils", "tailwind-preset.js");
+				try {
+					await fs.access(presetPath);
+					uiLibraryPresetPath = presetPath;
+					logger?.logDebug(`[Tailwind v4] ${module.uiConfig.name} usa preset de ${depModule.uiConfig.name}`);
+				} catch {
+					// No hay preset
+				}
+			}
+		}
 	}
 
 	await fs.mkdir(configDir, { recursive: true });
 
-	// Generar tailwind.config.js solo con el tema
-	const themeConfig = getThemeConfig();
+	// Generar tailwind.config.js
 	const themeConfigPath = path.join(configDir, "tailwind.config.js");
-	const themeContent = `/** @type {import('tailwindcss').Config} */
+	let themeContent: string;
+
+	if (uiLibraryPresetPath) {
+		// Importar el preset de la UI library
+		themeContent = `/** @type {import('tailwindcss').Config} */
+import uiLibraryPreset from '${uiLibraryPresetPath.replace(/\\/g, "/")}';
+
+export default {
+	presets: [uiLibraryPreset],
+	theme: {
+		extend: {}
+	}
+};
+`;
+	} else {
+		// Usar theme por defecto si no hay preset
+		const themeConfig = getThemeConfig();
+		themeContent = `/** @type {import('tailwindcss').Config} */
 export default ${JSON.stringify(themeConfig, null, 2)};
 `;
+	}
+
 	await fs.writeFile(themeConfigPath, themeContent, "utf-8");
 
 	// Generar CSS de entrada con @source directives (Tailwind v4)

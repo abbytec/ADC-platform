@@ -11,13 +11,13 @@ export class AdcCallout {
 	private getToneClass(): string {
 		switch (this.tone) {
 			case "warning":
-				return "bg-yellow-100 bg-opacity-30 border-yellow-600 text-yellow-900";
+				return "bg-yellow-100/30 border-yellow-600 text-yellow-900";
 			case "success":
-				return "bg-green-100 bg-opacity-30 border-green-600 text-green-900";
+				return "bg-green-100/30 border-green-600 text-green-900";
 			case "error":
-				return "bg-red-100 bg-opacity-30 border-red-600 text-red-900";
+				return "bg-red-100/30 border-red-600 text-red-900";
 			default:
-				return "bg-cyan-100 bg-opacity-30 border-blue-600 text-blue-900";
+				return "bg-cyan-100/30 border-blue-600 text-blue-900";
 		}
 	}
 
