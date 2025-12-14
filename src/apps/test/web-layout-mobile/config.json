@@ -6,7 +6,7 @@
 		"outputDir": "dist-ui",
 		"isHost": true,
 		"isRemote": false,
-		"uiDependencies": ["home"],
+		"uiDependencies": ["web-ui-library-mobile", "home"],
 		"devPort": 3014,
 		"sharedLibs": ["react"],
 		"i18n": true,
