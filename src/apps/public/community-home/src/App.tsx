@@ -11,11 +11,7 @@ const BRAND = {
 const DESCRIPTION =
 	"Somos una comunidad digital donde compartimos conocimiento y código abierto con buen café. El objetivo es ofrecer trabajos gratis (hablar con abbytec en Discord) siempre que podamos compartir el proceso de creación en stream, GitHub y videos, o animar a tus estudiantes a proponer modificaciones (PRs). (Para proyectos pagos, también pueden consultar precios por privado.)";
 
-interface Props {
-	locale?: string;
-}
-
-export default function App({ locale = "es" }: Props) {
+export default function App() {
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
@@ -42,7 +38,7 @@ export default function App({ locale = "es" }: Props) {
 					Entrar al Discord
 				</adc-button>
 
-				<adc-quote class="p-[64px]">{BRAND.slogan}</adc-quote>
+				<adc-quote class="pr-[64px]">{BRAND.slogan}</adc-quote>
 			</section>
 
 			<section className="grid gap-4 sm:grid-cols-3 mt-12" aria-label="Características principales">
