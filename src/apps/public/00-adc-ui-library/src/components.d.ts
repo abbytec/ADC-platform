@@ -277,6 +277,10 @@ export namespace Components {
           * @default ""
          */
         "creatorName": string;
+        /**
+          * @default false
+         */
+        "lowerSign": boolean;
     }
     interface AdcSiteHeader {
         /**
@@ -983,6 +987,10 @@ declare namespace LocalJSX {
           * @default ""
          */
         "creatorName"?: string;
+        /**
+          * @default false
+         */
+        "lowerSign"?: boolean;
     }
     interface AdcSiteHeader {
         /**
