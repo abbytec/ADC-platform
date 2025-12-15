@@ -9,7 +9,7 @@ const BRAND = {
 };
 
 const DESCRIPTION =
-	"Somos una comunidad digital donde compartimos conocimiento y código abierto con buen café. El objetivo es ofrecer trabajos gratis (hablar con abbytec en Discord) siempre que podamos compartir el proceso de creación en stream, GitHub y videos, o animar a tus estudiantes a proponer modificaciones (PRs). (Para proyectos pagos, también pueden consultar precios por privado.)";
+	"Somos una comunidad digital donde compartimos conocimiento y código abierto con buen café. Ofrecemos ayuda gratuita para proyectos de código (hablar con abbytec en Discord) siempre que podamos compartir el proceso de creación en stream, GitHub y/o videos, o animar a tus compañeros a proponer modificaciones (PRs). (Para proyectos pagos, también pueden consultar precios por privado.)";
 
 export default function App() {
 	const [mounted, setMounted] = useState(false);

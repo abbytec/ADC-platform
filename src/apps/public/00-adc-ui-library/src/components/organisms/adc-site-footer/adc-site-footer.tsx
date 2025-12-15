@@ -1,4 +1,4 @@
-import { Component, Prop, h, Event, EventEmitter } from "@stencil/core";
+import { Component, Prop, h } from "@stencil/core";
 
 @Component({
 	tag: "adc-site-footer",
@@ -10,15 +10,9 @@ export class AdcSiteFooter {
 	@Prop() creatorName: string = "";
 	@Prop() creatorHref: string = "";
 
-	@Event() adcOpenPrivacyPreferences!: EventEmitter<void>;
-
 	private getYear(): number {
 		return new Date().getFullYear();
 	}
-
-	private handlePrivacyClick = () => {
-		this.adcOpenPrivacyPreferences.emit();
-	};
 
 	render() {
 		return (
@@ -35,16 +29,7 @@ export class AdcSiteFooter {
 						<span class="sr-only"> (se abre en una pestaña nueva)</span>
 					</a>
 				</adc-text>
-
-				<div class="mt-2 text-sm">
-					<slot></slot>
-					<span aria-hidden="true" class="mx-1">
-						·
-					</span>
-					<button type="button" class="underline hover:no-underline !bg-transparent !text-text" onClick={this.handlePrivacyClick}>
-						Preferencias de privacidad
-					</button>
-				</div>
+				<slot></slot>
 			</footer>
 		);
 	}
