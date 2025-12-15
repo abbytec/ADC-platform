@@ -16,7 +16,7 @@ export class AdcButtonRounded {
 	};
 
 	private baseClass =
-		"rounded-full px-4 py-4 bg-button text-tbutton shadow-cozy font-heading cursor-pointer hover:brightness-105 inline-block text-center font-semibold min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center";
+		"rounded-full px-4 py-4 bg-primary text-tprimary shadow-cozy font-heading cursor-pointer hover:brightness-105 inline-block text-center font-semibold min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center";
 
 	render() {
 		const TagName = this.href ? "a" : "button";

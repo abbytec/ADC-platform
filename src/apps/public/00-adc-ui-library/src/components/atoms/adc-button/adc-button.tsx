@@ -16,7 +16,7 @@ export class AdcButton {
 	};
 
 	private baseClass =
-		"rounded-3xl px-8 py-4 bg-button text-tbutton shadow-cozy font-heading cursor-pointer hover:brightness-105 inline-block text-center font-semibold min-h-[44px] min-w-[44px] touch-manipulation";
+		"rounded-3xl px-8 py-4 bg-primary text-tprimary shadow-cozy font-heading cursor-pointer hover:brightness-105 inline-block text-center font-semibold min-h-[44px] min-w-[44px] touch-manipulation";
 
 	render() {
 		if (this.href) {

@@ -10,7 +10,7 @@ export class AdcTestimonialCard {
 
 	render() {
 		return (
-			<blockquote class="bg-alt rounded-xxl p-4 shadow-cozy w-full max-w-[480px] mx-auto">
+			<blockquote class="bg-surface rounded-xxl p-4 shadow-cozy w-full max-w-[480px] mx-auto">
 				<adc-text class="italic">
 					<slot></slot>
 				</adc-text>

@@ -72,7 +72,7 @@ export class AdcDropdownMenu {
 
 				{this.isOpen && (
 					<div
-						class={`absolute top-full w-56 rounded shadow z-50 bg-button text-tbutton ${alignClass}`}
+						class={`absolute top-full w-56 rounded shadow z-50 bg-primary text-tprimary ${alignClass}`}
 						role="menu"
 						aria-orientation="vertical"
 					>

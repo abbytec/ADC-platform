@@ -7,7 +7,7 @@ interface ShellProps {
 
 export const Shell = memo(function Shell({ children, currentPath }: ShellProps) {
 	return (
-		<div className="flex flex-col px-8 min-h-screen bg-primary text-text" style={{ paddingBottom: "var(--consent-h, 0px)" }}>
+		<div className="flex flex-col px-8 min-h-screen text-text" style={{ paddingBottom: "var(--consent-h, 0px)" }}>
 			<adc-site-header logo-src="/mini-logo.webp" logo-alt="ADC" home-href="/">
 				<ul className="flex flex-wrap items-center gap-x-10">
 					<li>

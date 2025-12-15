@@ -48,9 +48,10 @@ export class AdcSearchInput {
 	}
 
 	render() {
-		const labelClass = "relative flex items-center w-full bg-white rounded-xxl border border-alt";
+		const labelClass = "relative flex items-center w-full bg-white rounded-xxl border border-surface";
 		const iconClass = "absolute left-[0.9rem] inline-flex items-center justify-center text-black/45 pointer-events-none";
-		const inputClass = "flex-1 bg-transparent border-none outline-none py-[0.6rem] pr-[0.8rem] pl-[2.5rem] rounded-xxl font-text text-[0.9rem] text-text";
+		const inputClass =
+			"flex-1 bg-transparent border-none outline-none py-[0.6rem] pr-[0.8rem] pl-[2.5rem] rounded-xxl font-text text-[0.9rem] text-text";
 
 		return (
 			<label htmlFor={this.inputId || undefined} class={labelClass}>

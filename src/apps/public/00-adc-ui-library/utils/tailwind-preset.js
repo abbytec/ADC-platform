@@ -14,15 +14,21 @@ export default {
 		extend: {
 			colors: {
 				// Colores dinámicos via CSS Variables (de temp-ui)
+				header: "var(--c-header)",
+				theader: "var(--c-theader)",
+				background: "var(--c-background)",
+				text: "var(--c-text)",
+				surface: "var(--c-surface)",
 				primary: "var(--c-primary)",
 				accent: "var(--c-accent)",
-				text: "var(--c-text)",
 				button: "var(--c-button)",
-				tbutton: "var(--c-tbutton)",
+				tprimary: "var(--c-tprimary)",
+
+				
 				alt: "var(--c-alt)",
 
 				// Colores corporativos ADC Platform (fijos)
-				"adc-primary": {
+				"adc-info": {
 					50: "#eff6ff",
 					100: "#dbeafe",
 					200: "#bfdbfe",

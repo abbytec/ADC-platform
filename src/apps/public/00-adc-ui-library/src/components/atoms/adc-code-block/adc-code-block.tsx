@@ -21,12 +21,10 @@ export class AdcCodeBlock {
 
 		return (
 			<figure
-				class="bg-alt rounded-xxl px-6 pb-2 pt-4 ml-8 overflow-x-auto text-md mb-2 font-mono break-normal xl:max-w-[80vw]"
+				class="bg-surface rounded-xxl px-6 pb-2 pt-4 ml-8 overflow-x-auto text-md mb-2 font-mono break-normal xl:max-w-[80vw]"
 				aria-label={this.ariaLabel}
 			>
-				{this.language && (
-					<figcaption class="text-blue-800">[{this.language}]</figcaption>
-				)}
+				{this.language && <figcaption class="text-blue-800">[{this.language}]</figcaption>}
 				<code class={codeClass} innerHTML={escapedContent}></code>
 			</figure>
 		);
