@@ -30,7 +30,7 @@ export class AdcInput {
 				type={this.type}
 				autocomplete={this.autocomplete}
 				aria-label={this.ariaLabel || this.placeholder || this.name}
-				class="w-full px-3 py-2 rounded-xxl border border-alt bg-white font-text text-[12px] text-text"
+				class="w-full px-3 py-2 rounded-xxl border border-surface bg-white font-text text-[12px] text-text"
 				onInput={this.handleInput}
 			/>
 		);

@@ -81,7 +81,7 @@ export class AdcYoutubeFacade {
 
 				{/* Botón de play centrado */}
 				<span class="absolute inset-0 flex items-center justify-center">
-					<span class="inline-flex items-center justify-center h-16 w-16 rounded-full bg-button/90 text-white shadow">
+					<span class="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary/90 text-white shadow">
 						{/* Ícono de play SVG */}
 						<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 							<path d="M8 5v14l11-7z" />

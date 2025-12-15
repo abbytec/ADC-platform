@@ -6,6 +6,6 @@ import { Component, h } from "@stencil/core";
 })
 export class AdcDivider {
 	render() {
-		return <hr class="my-4 border-alt my-2" aria-label="Separador" />;
+		return <hr class="my-4 border-surface my-2" aria-label="Separador" />;
 	}
 }

@@ -10,8 +10,8 @@ export class AdcFeatureCard {
 
 	render() {
 		return (
-			<article class="bg-alt rounded-xxl p-4 shadow-cozy text-center flex flex-col items-center w-full max-w-[480px] mx-auto">
-				<div class="mb-2" aria-hidden="true">
+			<article class="bg-surface rounded-xxl p-4 shadow-cozy text-center flex flex-col items-center w-full max-w-[480px] mx-auto">
+				<div class="mt-2" aria-hidden="true">
 					<slot name="icon"></slot>
 				</div>
 				<h3>{this.title}</h3>

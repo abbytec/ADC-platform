@@ -4,13 +4,7 @@
     @property --custom-tone-1 {
         syntax: "<number>";
         inherits: true;
-        initial-value: 89.26;
-    }
-
-    @property --custom-tone-1b {
-        syntax: "<number>";
-        inherits: true;
-        initial-value: 82.35;
+        initial-value: 70;
     }
 
     @property --custom-tone-2 {
@@ -20,16 +14,18 @@
     }
     :root {
         --palette-tone-1: var(--custom-tone-1);
-        --palette-tone-1b: var(--custom-tone-1b);
         --palette-tone-2: var(--custom-tone-2);
 
-        --c-accent: oklch(64.21% 0.129 var(--palette-tone-2));
-        --c-tbutton: oklch(95.27% 0.046 var(--palette-tone-1));
+        --c-text: #111111;
 
-        --c-primary: oklch(95.27% 0.046 var(--palette-tone-1));
-        --c-text: oklch(17.65% 0 0);
-        --c-button: oklch(33.72% 0.063 var(--palette-tone-2) / 95%);
-        --c-alt: oklch(90.68% 0.046 var(--palette-tone-1b));
+        --c-header: oklch(36% 0.063 var(--palette-tone-2));
+        --c-theader: oklch(97.5% 0.05 var(--palette-tone-2));
+        --c-background: oklch(97.5% 0.05 var(--palette-tone-1));
+        --c-surface: oklch(89% 0.045 var(--palette-tone-1));
+
+        --c-primary: oklch(33.72% 0.063 var(--palette-tone-2));
+        --c-tprimary: oklch(97.5% 0.05 var(--palette-tone-2));
+        --c-accent: oklch(64.21% 0.129 var(--palette-tone-2));
 
         --r-xxl: 16px;
         --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
@@ -37,10 +33,15 @@
 
     :root[dark-mode] {
         background-color: black;
-        --c-primary: oklch(30% 0.063 var(--palette-tone-2));
-        --c-text: oklch(95.27% 0.046 var(--palette-tone-1));
-        --c-button: oklch(64.21% 0.129 var(--palette-tone-2) / 45%);
-        --c-alt: oklch(24% 0.046 var(--palette-tone-1) / 95%);
+        --c-header: oklch(45% 0.1 var(--palette-tone-1));
+        --c-theader: oklch(96.9% 0.046 var(--palette-tone-2));
+        --c-background: oklch(20% 0.02 var(--palette-tone-1));
+        --c-surface: oklch(21.9% 0.045 var(--palette-tone-1));
+        --c-primary: oklch(75% 0.25 var(--palette-tone-2));
+        --c-tprimary: oklch(18% 0 var(--palette-tone-2));
+        --c-accent: oklch(78% 0.129 var(--palette-tone-2));
+
+        --c-text: oklch(96.9% 0.046 var(--palette-tone-2));
     }
 
     :root[rainbow-mode] {
@@ -50,28 +51,25 @@
     @keyframes cycle-hue {
         0% {
             --custom-tone-1: 360;
-            --custom-tone-1b: 352;
             --custom-tone-2: 330;
         }
         50% {
-            --custom-tone-1: 39;
-            --custom-tone-1b: 32;
-            --custom-tone-2: 0;
+            --custom-tone-1: 34;
+            --custom-tone-2: -5;
         }
         100% {
             --custom-tone-1: 360;
-            --custom-tone-1b: 352;
             --custom-tone-2: 330;
         }
     }
 
     html,
     body {
-        background-color: rgb(var(--c-primary));
+        background-color: var(--c-background);
         color: rgb(var(--c-text));
         margin: 0;
         font-family: Inter, system-ui, sans-serif;
-        font-size: 12px;
+        font-size: 13px;
     }
 
     * {
