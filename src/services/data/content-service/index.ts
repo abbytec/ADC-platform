@@ -8,8 +8,6 @@ import { ArticleEndpoints } from "./endpoints/articles.js";
 export default class ContentService extends BaseService {
 	public readonly name = "content-service";
 	private mongoProvider!: IMongoProvider;
-	private pathEndpoints!: PathEndpoints;
-	private articleEndpoints!: ArticleEndpoints;
 
 	async getInstance(): Promise<ContentService> {
 		return this;
@@ -26,8 +24,8 @@ export default class ContentService extends BaseService {
 		const PathModel = this.mongoProvider.createModel<ILearningPath>("LearningPath", LearningPathSchema);
 		const ArticleModel = this.mongoProvider.createModel<IArticle>("Article", ArticleSchema);
 
-		this.pathEndpoints = new PathEndpoints(PathModel);
-		this.articleEndpoints = new ArticleEndpoints(ArticleModel, PathModel);
+		PathEndpoints.init(PathModel);
+		ArticleEndpoints.init(ArticleModel, PathModel);
 
 		await this.registerRPCRoutes();
 
@@ -62,55 +60,55 @@ export default class ContentService extends BaseService {
 
 			// Paths endpoints
 			httpProvider.registerRoute("POST", `${basePath}/ListPaths`, async (req: any, res: any) => {
-				const paths = await this.pathEndpoints.list(req.body || {});
+				const paths = await PathEndpoints.list(req.body || {});
 				res.json(paths);
 			});
 
 			httpProvider.registerRoute("POST", `${basePath}/GetPath`, async (req: any, res: any) => {
-				const path = await this.pathEndpoints.getBySlug(req.body.slug);
+				const path = await PathEndpoints.getBySlug(req.body.slug);
 				res.json(path);
 			});
 
 			httpProvider.registerRoute("POST", `${basePath}/CreatePath`, async (req: any, res: any) => {
-				const path = await this.pathEndpoints.create(req.body);
+				const path = await PathEndpoints.create(req.body);
 				res.json(path);
 			});
 
 			httpProvider.registerRoute("POST", `${basePath}/UpdatePath`, async (req: any, res: any) => {
 				const { slug, ...data } = req.body;
-				const path = await this.pathEndpoints.update(slug, data);
+				const path = await PathEndpoints.update(slug, data);
 				res.json(path);
 			});
 
 			httpProvider.registerRoute("POST", `${basePath}/DeletePath`, async (req: any, res: any) => {
-				const result = await this.pathEndpoints.delete(req.body.slug);
+				const result = await PathEndpoints.delete(req.body.slug);
 				res.json(result);
 			});
 
 			// Articles endpoints
 			httpProvider.registerRoute("POST", `${basePath}/ListArticles`, async (req: any, res: any) => {
-				const articles = await this.articleEndpoints.list(req.body || {});
+				const articles = await ArticleEndpoints.list(req.body || {});
 				res.json(articles);
 			});
 
 			httpProvider.registerRoute("POST", `${basePath}/GetArticle`, async (req: any, res: any) => {
-				const article = await this.articleEndpoints.getBySlug(req.body.slug);
+				const article = await ArticleEndpoints.getBySlug(req.body.slug);
 				res.json(article);
 			});
 
 			httpProvider.registerRoute("POST", `${basePath}/CreateArticle`, async (req: any, res: any) => {
-				const article = await this.articleEndpoints.create(req.body);
+				const article = await ArticleEndpoints.create(req.body);
 				res.json(article);
 			});
 
 			httpProvider.registerRoute("POST", `${basePath}/UpdateArticle`, async (req: any, res: any) => {
 				const { slug, ...data } = req.body;
-				const article = await this.articleEndpoints.update(slug, data);
+				const article = await ArticleEndpoints.update(slug, data);
 				res.json(article);
 			});
 
 			httpProvider.registerRoute("POST", `${basePath}/DeleteArticle`, async (req: any, res: any) => {
-				const result = await this.articleEndpoints.delete(req.body.slug);
+				const result = await ArticleEndpoints.delete(req.body.slug);
 				res.json(result);
 			});
 
