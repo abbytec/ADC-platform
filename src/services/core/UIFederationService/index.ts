@@ -140,6 +140,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			buildUIModule: this.buildUIModule.bind(this),
 			refreshAllImportMaps: this.refreshAllImportMaps.bind(this),
 			getStats: this.getStats.bind(this),
+			httpProvider: this.httpProvider,
 		};
 	}
 

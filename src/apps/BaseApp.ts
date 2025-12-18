@@ -69,6 +69,26 @@ export abstract class BaseApp implements IApp {
 	 * Combina la configuración de `default.json` (base) con la configuración
 	 * de la instancia específica de la app.
 	 */
+	/**
+	 * Carga el archivo .env de la app si existe
+	 */
+	async #loadAppEnv(): Promise<void> {
+		try {
+			const { config } = await import("dotenv");
+			const envPath = path.join(this.appDir, ".env");
+			
+			try {
+				await fs.access(envPath);
+				config({ path: envPath });
+				this.logger.logDebug(`Variables de entorno cargadas desde ${envPath}`);
+			} catch {
+				// No hay archivo .env, lo cual es aceptable
+			}
+		} catch (error: any) {
+			this.logger.logWarn(`Error cargando .env: ${error.message}`);
+		}
+	}
+
 	async #mergeModuleConfigs(): Promise<void> {
 		const appDir = this.appDir;
 
@@ -124,6 +144,9 @@ export abstract class BaseApp implements IApp {
 	 */
 	public async loadModulesFromConfig(): Promise<void> {
 		try {
+			// Cargar variables de entorno de la app primero
+			await this.#loadAppEnv();
+			
 			await this.#mergeModuleConfigs();
 			if (this.config) {
 				await Kernel.moduleLoader.loadAllModulesFromDefinition(this.config, this.kernel);

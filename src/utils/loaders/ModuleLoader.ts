@@ -52,6 +52,32 @@ export class ModuleLoader {
 		process(modulesConfig.utilities, "utilities");
 	}
 
+	/**
+	 * Interpola variables de entorno en un objeto de configuración
+	 * Reemplaza ${VAR_NAME} con el valor de process.env.VAR_NAME
+	 */
+	#interpolateEnvVars(obj: any): any {
+		if (typeof obj === "string") {
+			return obj.replace(/\$\{([^}]+)\}/g, (_, varName) => {
+				return process.env[varName] || "";
+			});
+		}
+
+		if (Array.isArray(obj)) {
+			return obj.map((item) => this.#interpolateEnvVars(item));
+		}
+
+		if (obj && typeof obj === "object") {
+			const result: any = {};
+			for (const [key, value] of Object.entries(obj)) {
+				result[key] = this.#interpolateEnvVars(value);
+			}
+			return result;
+		}
+
+		return obj;
+	}
+
 	async loadAllModulesFromDefinition(modulesConfig: IModuleConfig, kernel: Kernel): Promise<void> {
 		this.#processGlobalConfigs(modulesConfig); // Procesar globales primero
 
@@ -166,7 +192,6 @@ export class ModuleLoader {
 						if (service.start) {
 							await service.start();
 						}
-						const instance = await service.getInstance();
 
 						// TERCERO: Registrar los providers del servicio como dependencias de la app
 						// Esto es necesario para el reference counting correcto
@@ -216,7 +241,7 @@ export class ModuleLoader {
 								__providers: finalProviders, // Incluir providers en config para uniqueKey
 							},
 						};
-						kernel.registerService(service.name, instance, registrationConfig);
+						kernel.registerService(service.name, service, registrationConfig);
 					} catch (error) {
 						const message = `Error cargando service ${serviceConfig.name}: ${error}`;
 						if (modulesConfig.failOnError) throw new Error(message);
@@ -252,13 +277,19 @@ export class ModuleLoader {
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
 
+		// Interpolar variables de entorno en todas las propiedades del config
+		const interpolatedConfig = this.#interpolateEnvVars(config);
+
 		// Enriquecer config con información del módulo para interoperabilidad
+		// Incluir tanto custom como options y cualquier otra propiedad
 		const enrichedConfig = {
-			...config.custom,
-			moduleName: config.name,
+			...interpolatedConfig.custom,
+			...interpolatedConfig.options,
+			...interpolatedConfig.config,
+			moduleName: interpolatedConfig.name,
 			moduleVersion: resolved.version,
 			language: language,
-			type: config.type,
+			type: interpolatedConfig.type,
 		};
 
 		// Cargar el módulo
@@ -285,12 +316,18 @@ export class ModuleLoader {
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
 
-		// Enriquecer config con información del módulo para interoperabilidad
+		// Interpolar variables de entorno
+		const interpolatedConfig = this.#interpolateEnvVars(config);
+
+		// Enriquecer config con información del módulo
 		const enrichedConfig = {
-			...config.custom,
-			moduleName: config.name,
+			...interpolatedConfig.custom,
+			...interpolatedConfig.options,
+			...interpolatedConfig.config,
+			moduleName: interpolatedConfig.name,
 			moduleVersion: resolved.version,
 			language: language,
+			type: interpolatedConfig.type,
 		};
 
 		// Cargar el módulo
@@ -318,20 +355,21 @@ export class ModuleLoader {
 		// Obtener el loader correcto
 		const loader = LoaderManager.getLoader(language);
 
-		// Enriquecer config con información del módulo para interoperabilidad
+		// Interpolar variables de entorno
+		const interpolatedConfig = this.#interpolateEnvVars(config);
+
+		// Enriquecer config con información del módulo
 		const enrichedConfig = {
-			...config,
-			config: {
-				...config.custom,
-				moduleName: config.name,
-				moduleVersion: resolved.version,
-				language: language,
-			},
-			__modulePath: resolved.path, // Agregar el path real del módulo
+			...interpolatedConfig.custom,
+			...interpolatedConfig.options,
+			...interpolatedConfig.config,
+			moduleName: interpolatedConfig.name,
+			moduleVersion: resolved.version,
+			language: language,
+			type: interpolatedConfig.type,
 		};
 
-		// Cargar el módulo pasando la configuración completa (incluyendo providers/utilities)
-		// El servicio necesita acceso a sus providers/utilities específicas
+		// Cargar el módulo (los services reciben kernel + config)
 		return await loader.loadService(resolved.path, kernel, enrichedConfig);
 	}
 }
