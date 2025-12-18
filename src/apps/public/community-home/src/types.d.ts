@@ -11,6 +11,7 @@ declare namespace JSX {
 		"adc-consent-banner": any;
 		"adc-blocks-renderer": any;
 		// Molecules
+		"adc-content-card": any;
 		"adc-dropdown-menu": any;
 		"adc-feature-card": any;
 		"adc-share-buttons": any;

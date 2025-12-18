@@ -17,7 +17,6 @@
 
 /* Mejorar el contraste de foco para navegación por teclado */
 *:focus {
-    outline: 2px solid #c97e5d;
     outline-offset: 2px;
 }
 
@@ -26,14 +25,12 @@
 }
 
 *:focus-visible {
-    outline: 2px solid #c97e5d;
     outline-offset: 2px;
 }
 
 /* Asegurar que el texto sea legible */
 body {
     line-height: 1.5;
-    color: #1a1a1a;
 }
 
 /* Mejorar el espaciado entre elementos interactivos */
@@ -61,18 +58,10 @@ a:focus {
     padding: 8px 16px;
 }
 
-/* Mejorar la visibilidad de elementos de formulario */
-input,
-select,
-textarea {
-    border: 1px solid #c97e5d;
-}
-
 input:focus,
 select:focus,
 textarea:focus {
-    border-color: #5d3a2f;
-    box-shadow: 0 0 0 2px rgba(197, 126, 93, 0.2);
+    box-shadow: var(--shadow);
 }
 
 /* Mejorar la legibilidad en dispositivos de alto contraste */

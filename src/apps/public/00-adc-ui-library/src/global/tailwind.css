@@ -21,7 +21,7 @@
         --c-header: oklch(36% 0.063 var(--palette-tone-2));
         --c-theader: oklch(97.5% 0.05 var(--palette-tone-2));
         --c-background: oklch(97.5% 0.05 var(--palette-tone-1));
-        --c-surface: oklch(89% 0.045 var(--palette-tone-1));
+        --c-surface: oklch(98% 0.09 var(--palette-tone-1) / 90%);
 
         --c-primary: oklch(33.72% 0.063 var(--palette-tone-2));
         --c-tprimary: oklch(97.5% 0.05 var(--palette-tone-2));
@@ -86,7 +86,7 @@
 }
 
 @layer components {
-    .bg-alt {
+    .bg-surface {
         box-shadow: 0 8px 8px rgba(0, 0, 0, 0.15);
         margin-bottom: 18px;
     }
@@ -115,6 +115,7 @@
     h1 {
         color: var(--c-text);
         font-family: Fredoka, sans-serif;
+        font-weight: 600;
         font-size: 36px;
         line-height: 1.15;
         margin-top: 0.5rem;
@@ -125,6 +126,7 @@
     h2 {
         color: var(--c-text);
         font-family: Fredoka, sans-serif;
+        font-weight: 400;
         font-size: 26px;
         line-height: 1.2;
         margin-top: 2rem;
@@ -135,8 +137,8 @@
     .h3 {
         color: var(--c-text);
         font-family: Fredoka, sans-serif;
+        font-weight: 400;
         font-size: 20px;
-        line-height: 1.3;
         margin-top: 1rem;
         margin-bottom: 0.5rem;
     }

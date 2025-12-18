@@ -3,8 +3,11 @@ import fastifyCors from "@fastify/cors";
 import fastifyFormbody from "@fastify/formbody";
 import * as path from "node:path";
 import * as fs from "node:fs";
+import { readFileSync } from "node:fs";
 import { BaseProvider } from "../../BaseProvider.js";
 import type { IHostBasedHttpProvider, HostOptions } from "../../../interfaces/modules/providers/IHttpServer.js";
+import { fastifyConnectPlugin } from "@connectrpc/connect-fastify";
+import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
 
 interface RegisteredHost {
 	pattern: string;
@@ -12,13 +15,13 @@ interface RegisteredHost {
 	directory: string;
 	options: HostOptions;
 	priority: number;
-	routes: Map<string, Map<string, (req: FastifyRequest, reply: FastifyReply, params?: Record<string, string>) => void>>;
+	routes: Map<string, Map<string, (req: FastifyRequest<any, any>, reply: FastifyReply<any>, params?: Record<string, string>) => void>>;
 }
 
 interface GlobalRoute {
 	method: string;
 	path: string;
-	handler: (req: FastifyRequest, reply: FastifyReply, params?: Record<string, string>) => void;
+	handler: (req: FastifyRequest<any, any>, reply: FastifyReply<any>, params?: Record<string, string>) => void;
 }
 
 interface PathMatchResult {
@@ -55,7 +58,7 @@ function calculatePriority(pattern: string, explicitPriority?: number): number {
  * Implementación del servidor HTTP con Fastify y soporte para host-based routing
  */
 class FastifyServer implements IHostBasedHttpProvider {
-	private app: FastifyInstance;
+	private app: FastifyInstance<any>;
 	private isListening = false;
 	private registeredHosts = new Map<string, RegisteredHost>();
 	private globalRoutes: GlobalRoute[] = [];
@@ -63,12 +66,47 @@ class FastifyServer implements IHostBasedHttpProvider {
 	private defaultHost: RegisteredHost | null = null;
 
 	constructor(private readonly logger: any) {
-		this.app = Fastify({
+		const http2Enabled = process.env.HTTP2_ENABLED === "true";
+		
+		// Configuración base de Fastify
+		const fastifyOptions: any = {
 			logger: false,
 			routerOptions: {
 				ignoreTrailingSlash: true,
 			},
-		});
+		};
+
+		// Configurar HTTP/2 si está habilitado
+		if (http2Enabled) {
+			fastifyOptions.http2 = true;
+			
+			// HTTP/2 requiere HTTPS. Buscar certificados o usar auto-firmados en desarrollo
+			const certPath = process.env.SSL_CERT_PATH;
+			const keyPath = process.env.SSL_KEY_PATH;
+			
+			if (certPath && keyPath) {
+				try {
+					fastifyOptions.https = {
+						cert: readFileSync(certPath),
+						key: readFileSync(keyPath),
+					};
+					this.logger.logInfo("HTTP/2 habilitado con certificados SSL personalizados");
+				} catch (error: any) {
+					this.logger.logWarn(`Error leyendo certificados SSL: ${error.message}. HTTP/2 deshabilitado.`);
+					delete fastifyOptions.http2;
+				}
+			} else if (process.env.NODE_ENV === "development") {
+				// En desarrollo, permitir HTTP/2 sin TLS (cleartext)
+				fastifyOptions.http2 = true;
+				fastifyOptions.http2SessionTimeout = 5000;
+				this.logger.logWarn("HTTP/2 habilitado en modo desarrollo sin TLS (no recomendado para producción)");
+			} else {
+				this.logger.logWarn("HTTP/2 requiere certificados SSL. Define SSL_CERT_PATH y SSL_KEY_PATH o desactiva HTTP2_ENABLED.");
+				delete fastifyOptions.http2;
+			}
+		}
+
+		this.app = Fastify(fastifyOptions);
 		this.setupMiddleware();
 	}
 
@@ -275,6 +313,35 @@ class FastifyServer implements IHostBasedHttpProvider {
 		return this.app;
 	}
 
+	/**
+	 * Registra rutas Connect RPC
+	 * @param routes Función que define las rutas Connect RPC
+	 * @param options Opciones para Connect RPC
+	 */
+	async registerConnectRPC(routes: (router: ConnectRouter) => void, options?: { prefix?: string }): Promise<void> {
+		try {
+			await this.app.register(fastifyConnectPlugin, {
+				routes,
+				...options,
+			});
+			this.logger.logDebug(`Connect RPC registrado${options?.prefix ? ` con prefijo: ${options.prefix}` : ""}`);
+		} catch (error: any) {
+			this.logger.logError(`Error registrando Connect RPC: ${error.message}`);
+			throw error;
+		}
+	}
+
+	/**
+	 * Registra un servicio Connect RPC individual
+	 * @param service Implementación del servicio
+	 * @param options Opciones de configuración
+	 */
+	async registerConnectService(service: Partial<ServiceImpl<any>>, options?: { prefix?: string }): Promise<void> {
+		await this.registerConnectRPC((router) => {
+			router.service(service as any, service);
+		}, options);
+	}
+
 	registerRoute(method: string, path: string, handler: any): void {
 		const adaptedHandler = this.adaptHandler(handler);
 
@@ -347,8 +414,8 @@ class FastifyServer implements IHostBasedHttpProvider {
 	/**
 	 * Adapta un handler de Express a Fastify con soporte para params extraídos
 	 */
-	private adaptHandler(handler: any): (req: FastifyRequest, reply: FastifyReply, params?: Record<string, string>) => void {
-		return async (req: FastifyRequest, reply: FastifyReply, extractedParams?: Record<string, string>) => {
+	private adaptHandler(handler: any): (req: FastifyRequest<any, any>, reply: FastifyReply<any>, params?: Record<string, string>) => void {
+		return async (req: FastifyRequest<any, any>, reply: FastifyReply<any>, extractedParams?: Record<string, string>) => {
 			// Crear objetos compatibles con Express
 			// Combinar params de Fastify con los extraídos manualmente
 			const combinedParams = { ...(req.params as object), ...extractedParams };

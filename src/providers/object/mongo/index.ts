@@ -126,7 +126,8 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 		try {
 			Logger.info(`[MongoProvider] Conectando a ${this.config.uri}...`);
 
-			await mongoose.connect(this.config.uri, {
+			// Usar createConnection en lugar de connect para permitir múltiples conexiones
+			this.connection = await mongoose.createConnection(this.config.uri, {
 				connectTimeoutMS: this.config.connectionTimeout,
 				serverSelectionTimeoutMS: this.config.serverSelectionTimeout,
 				socketTimeoutMS: this.config.socketTimeout,
@@ -134,9 +135,8 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 				retryReads: true,
 				maxPoolSize: 10,
 				minPoolSize: 5,
-			});
+			}).asPromise();
 
-			this.connection = mongoose.connection;
 			this.retryCount = 0;
 			this.lastError = undefined;
 
@@ -274,7 +274,7 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 
 		if (this.connection) {
 			try {
-				await mongoose.disconnect();
+				await this.connection.close();
 				this.connection = null;
 				Logger.ok(`[MongoProvider] Desconectado de MongoDB`);
 			} catch (error: any) {

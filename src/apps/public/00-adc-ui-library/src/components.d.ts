@@ -54,6 +54,20 @@ export namespace Components {
         "content": string;
         "language"?: string;
     }
+    interface AdcContentCard {
+        "bannerAlt"?: string;
+        "bannerUrl"?: string;
+        /**
+          * @default false
+         */
+        "compact": boolean;
+        "description"?: string;
+        "href"?: string;
+        /**
+          * @default ""
+         */
+        "title": string;
+    }
     interface AdcDivider {
     }
     interface AdcDropdownMenu {
@@ -378,6 +392,10 @@ export interface AdcButtonRoundedCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcButtonRoundedElement;
 }
+export interface AdcContentCardCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcContentCardElement;
+}
 export interface AdcDropdownMenuCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcDropdownMenuElement;
@@ -454,6 +472,23 @@ declare global {
     var HTMLAdcCodeBlockElement: {
         prototype: HTMLAdcCodeBlockElement;
         new (): HTMLAdcCodeBlockElement;
+    };
+    interface HTMLAdcContentCardElementEventMap {
+        "cardClick": MouseEvent;
+    }
+    interface HTMLAdcContentCardElement extends Components.AdcContentCard, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcContentCardElementEventMap>(type: K, listener: (this: HTMLAdcContentCardElement, ev: AdcContentCardCustomEvent<HTMLAdcContentCardElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcContentCardElementEventMap>(type: K, listener: (this: HTMLAdcContentCardElement, ev: AdcContentCardCustomEvent<HTMLAdcContentCardElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcContentCardElement: {
+        prototype: HTMLAdcContentCardElement;
+        new (): HTMLAdcContentCardElement;
     };
     interface HTMLAdcDividerElement extends Components.AdcDivider, HTMLStencilElement {
     }
@@ -688,6 +723,7 @@ declare global {
         "adc-button-rounded": HTMLAdcButtonRoundedElement;
         "adc-callout": HTMLAdcCalloutElement;
         "adc-code-block": HTMLAdcCodeBlockElement;
+        "adc-content-card": HTMLAdcContentCardElement;
         "adc-divider": HTMLAdcDividerElement;
         "adc-dropdown-menu": HTMLAdcDropdownMenuElement;
         "adc-feature-card": HTMLAdcFeatureCardElement;
@@ -758,6 +794,21 @@ declare namespace LocalJSX {
          */
         "content"?: string;
         "language"?: string;
+    }
+    interface AdcContentCard {
+        "bannerAlt"?: string;
+        "bannerUrl"?: string;
+        /**
+          * @default false
+         */
+        "compact"?: boolean;
+        "description"?: string;
+        "href"?: string;
+        "onCardClick"?: (event: AdcContentCardCustomEvent<MouseEvent>) => void;
+        /**
+          * @default ""
+         */
+        "title"?: string;
     }
     interface AdcDivider {
     }
@@ -1086,6 +1137,7 @@ declare namespace LocalJSX {
         "adc-button-rounded": AdcButtonRounded;
         "adc-callout": AdcCallout;
         "adc-code-block": AdcCodeBlock;
+        "adc-content-card": AdcContentCard;
         "adc-divider": AdcDivider;
         "adc-dropdown-menu": AdcDropdownMenu;
         "adc-feature-card": AdcFeatureCard;
@@ -1123,6 +1175,7 @@ declare module "@stencil/core" {
             "adc-button-rounded": LocalJSX.AdcButtonRounded & JSXBase.HTMLAttributes<HTMLAdcButtonRoundedElement>;
             "adc-callout": LocalJSX.AdcCallout & JSXBase.HTMLAttributes<HTMLAdcCalloutElement>;
             "adc-code-block": LocalJSX.AdcCodeBlock & JSXBase.HTMLAttributes<HTMLAdcCodeBlockElement>;
+            "adc-content-card": LocalJSX.AdcContentCard & JSXBase.HTMLAttributes<HTMLAdcContentCardElement>;
             "adc-divider": LocalJSX.AdcDivider & JSXBase.HTMLAttributes<HTMLAdcDividerElement>;
             "adc-dropdown-menu": LocalJSX.AdcDropdownMenu & JSXBase.HTMLAttributes<HTMLAdcDropdownMenuElement>;
             "adc-feature-card": LocalJSX.AdcFeatureCard & JSXBase.HTMLAttributes<HTMLAdcFeatureCardElement>;

@@ -60,4 +60,9 @@ export interface IUIFederationService {
 		importMapEntries: number;
 		modules: RegisteredUIModule[];
 	};
+
+	/**
+	 * Provider HTTP global para registrar rutas
+	 */
+	httpProvider?: any;
 }
