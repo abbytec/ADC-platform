@@ -3,17 +3,20 @@ import type { IArticle } from "../models/article.model.js";
 import type { ILearningPath } from "../models/path.model.js";
 
 export class ArticleEndpoints {
-	constructor(
-		private model: Model<IArticle>,
-		private pathModel: Model<ILearningPath>
-	) {}
+	private static model: Model<IArticle>;
+	private static pathModel: Model<ILearningPath>;
 
-	async list(req: { listed?: boolean; pathSlug?: string; q?: string; limit?: number; skip?: number }) {
+	static init(model: Model<IArticle>, pathModel: Model<ILearningPath>) {
+		ArticleEndpoints.model ??= model;
+		ArticleEndpoints.pathModel ??= pathModel;
+	}
+
+	static async list(req: { listed?: boolean; pathSlug?: string; q?: string; limit?: number; skip?: number }) {
 		const where: any = {};
 
 		// Filtro por path (incluye artículos de sub-paths)
 		if (req.pathSlug) {
-			const parentPath = await this.pathModel.findOne({ slug: req.pathSlug }).select("items").lean();
+			const parentPath = await ArticleEndpoints.pathModel.findOne({ slug: req.pathSlug }).select("items").lean();
 
 			if (parentPath?.items?.length) {
 				const targetArticleSlugs: string[] = [];
@@ -26,7 +29,10 @@ export class ArticleEndpoints {
 				const subPathSlugs = parentPath.items.filter((i) => i.type === "path").map((i) => i.slug);
 
 				if (subPathSlugs.length > 0) {
-					const subPaths = await this.pathModel.find({ slug: { $in: subPathSlugs } }).select("items").lean();
+					const subPaths = await ArticleEndpoints.pathModel
+						.find({ slug: { $in: subPathSlugs } })
+						.select("items")
+						.lean();
 
 					subPaths.forEach((sp) => {
 						if (sp.items) {
@@ -93,20 +99,20 @@ export class ArticleEndpoints {
 		if (req.limit) pipeline.push({ $limit: req.limit });
 		if (req.skip) pipeline.push({ $skip: req.skip });
 
-		return await this.model.aggregate(pipeline);
+		return await ArticleEndpoints.model.aggregate(pipeline);
 	}
 
-	async getBySlug(slug: string) {
-		return await this.model.findOne({ slug }).lean();
+	static async getBySlug(slug: string) {
+		return await ArticleEndpoints.model.findOne({ slug }).lean();
 	}
 
-	async create(data: any) {
-		const doc = await this.model.create(data);
+	static async create(data: any) {
+		const doc = await ArticleEndpoints.model.create(data);
 		return doc.toObject();
 	}
 
-	async update(slug: string, data: any) {
-		const doc = await this.model.findOneAndUpdate({ slug }, data, { new: true }).lean();
+	static async update(slug: string, data: any) {
+		const doc = await ArticleEndpoints.model.findOneAndUpdate({ slug }, data, { new: true }).lean();
 
 		if (!doc) {
 			throw new Error(`Article with slug "${slug}" not found`);
@@ -115,8 +121,8 @@ export class ArticleEndpoints {
 		return doc;
 	}
 
-	async delete(slug: string) {
-		const result = await this.model.deleteOne({ slug });
+	static async delete(slug: string) {
+		const result = await ArticleEndpoints.model.deleteOne({ slug });
 		return { success: result.deletedCount > 0 };
 	}
 }
