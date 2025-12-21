@@ -75,7 +75,7 @@ export function Distributed<T extends new (...args: any[]) => any>(constructor: 
 						return originalValue;
 					}
 
-					const skipMethods = ["constructor", "start", "stop", "getInstance"];
+					const skipMethods = ["constructor", "start", "stop"];
 					if (skipMethods.includes(prop)) {
 						return originalValue;
 					}

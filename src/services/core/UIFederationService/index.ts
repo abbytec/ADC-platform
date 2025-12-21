@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { BaseService } from "../../BaseService.js";
 import { Kernel } from "../../../kernel.js";
-import type { IUIFederationService, RegisteredUIModule } from "./types.js";
+import type { RegisteredUIModule } from "./types.js";
 import type { ImportMap, UIModuleConfig } from "../../../interfaces/modules/IUIModule.js";
 import type { IHttpServerProvider, IHostBasedHttpProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
 import type { ILangManagerService } from "../LangManagerService/types.js";
@@ -19,7 +19,7 @@ import { generateI18nClientCode } from "./utils/i18n-generator.ts";
 
 const DEFAULT_NAMESPACE = "default";
 
-export default class UIFederationService extends BaseService<IUIFederationService> {
+export default class UIFederationService extends BaseService {
 	public readonly name = "UIFederationService";
 
 	// Módulos organizados por namespace: Map<namespace, Map<moduleName, module>>
@@ -27,7 +27,6 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	private watchBuilds = new Map<string, any>();
 	// Import maps por namespace
 	private importMaps = new Map<string, ImportMap>();
-	private httpProvider: IHttpServerProvider | IHostBasedHttpProvider | null = null;
 	private langManager: ILangManagerService | null = null;
 	private readonly uiOutputBaseDir: string;
 	private port: number = 3000;
@@ -35,6 +34,9 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	private readonly isProduction: boolean;
 	// Registro de hosts para producción: hostPattern -> { namespace, moduleName, directory }
 	private readonly hostRegistry = new Map<string, { namespace: string; moduleName: string; directory: string }>();
+
+	// Expuesto para IUIFederationService
+	#httpProvider: IHttpServerProvider | IHostBasedHttpProvider | null = null;
 
 	constructor(kernel: any, options?: any) {
 		super(kernel, options);
@@ -49,7 +51,8 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		this.port = options?.port || prodPort || 3000;
 	}
 
-	async start(): Promise<void> {
+	async start(kernelKey: symbol): Promise<void> {
+		await super.start(kernelKey);
 		await fs.mkdir(this.uiOutputBaseDir, { recursive: true });
 
 		try {
@@ -67,10 +70,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			const provider = await Kernel.moduleLoader.loadProvider(providerConfig);
 			this.kernel.registerProvider(provider.name, provider, provider.type, providerConfig, null);
 
-			const providerModule = this.getProvider<any>(providerName);
-			this.logger.logOk(`${providerName} cargado`);
-
-			this.httpProvider = await providerModule.getInstance();
+			this.#httpProvider = this.getProvider<any>(providerName);
 		} catch (error: any) {
 			this.logger.logError(`Error cargando HttpServerProvider: ${error.message}`);
 			throw error;
@@ -78,27 +78,21 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		// Obtener LangManagerService si está disponible
 		try {
-			const langService = this.kernel.getService<any>("LangManagerService");
-			this.langManager = await langService.getInstance();
+			this.langManager = this.kernel.getService<any>("LangManagerService");
 			this.logger.logDebug("LangManagerService conectado");
 		} catch {
 			this.logger.logDebug("LangManagerService no disponible, i18n deshabilitado");
 		}
 
-		await super.start();
 		await this.#setupImportMapEndpoints();
-		await this.httpProvider!.listen(this.port);
+		await this.#httpProvider!.listen(this.port);
 
 		const mode = this.isDevelopment ? "desarrollo" : "producción";
 		this.logger.logOk(`UIFederationService iniciado en modo ${mode} (puerto ${this.port})`);
 	}
 
-	async stop(): Promise<void> {
-		this.logger.logInfo("Deteniendo UIFederationService...");
-
-		if (this.httpProvider) {
-			await this.httpProvider.stop();
-		}
+	async stop(kernelKey: symbol): Promise<void> {
+		await super.stop(kernelKey);
 
 		// Matar procesos de build watch
 		for (const [name, watcher] of this.watchBuilds.entries()) {
@@ -129,19 +123,6 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		this.watchBuilds.clear();
 
 		this.logger.logOk("UIFederationService detenido");
-		await super.stop();
-	}
-
-	async getInstance(): Promise<IUIFederationService> {
-		return {
-			registerUIModule: this.registerUIModule.bind(this),
-			unregisterUIModule: this.unregisterUIModule.bind(this),
-			getImportMap: this.getImportMap.bind(this),
-			buildUIModule: this.buildUIModule.bind(this),
-			refreshAllImportMaps: this.refreshAllImportMaps.bind(this),
-			getStats: this.getStats.bind(this),
-			httpProvider: this.httpProvider,
-		};
 	}
 
 	/**
@@ -309,18 +290,18 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 					`Módulo UI ${module.name} [${namespace}] disponible en Dev Server http://localhost:${module.uiConfig.devPort}`
 				);
 			// Módulos sin devPort o CLI: servir estáticamente desde httpProvider
-			else if (this.httpProvider && module.outputPath) {
+			else if (this.#httpProvider && module.outputPath) {
 				const urlPath = `/${namespace}/${module.name}`;
-				this.httpProvider.serveStatic(urlPath, module.outputPath);
+				this.#httpProvider.serveStatic(urlPath, module.outputPath);
 				this.logger.logOk(`Módulo UI ${module.name} [${namespace}] servido en http://localhost:${this.port}${urlPath}`);
 			}
 			return;
 		}
 
 		// En producción: usar host-based routing con Fastify
-		if (!this.httpProvider || !module.outputPath) return;
+		if (!this.#httpProvider || !module.outputPath) return;
 
-		const hostProvider = this.httpProvider as IHostBasedHttpProvider;
+		const hostProvider = this.#httpProvider as IHostBasedHttpProvider;
 		const hosting = module.uiConfig.hosting;
 
 		// Si el módulo tiene configuración de hosting, registrar hosts virtuales
@@ -329,7 +310,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		} else {
 			// Fallback: servir estáticamente por path (como en desarrollo pero sin dev server)
 			const urlPath = `/${namespace}/${module.name}`;
-			this.httpProvider.serveStatic(urlPath, module.outputPath);
+			this.#httpProvider.serveStatic(urlPath, module.outputPath);
 			this.logger.logOk(`Módulo UI ${module.name} [${namespace}] servido en http://localhost:${this.port}${urlPath}`);
 		}
 	}
@@ -641,10 +622,10 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	}
 
 	async #setupImportMapEndpoints(): Promise<void> {
-		if (!this.httpProvider) return;
+		if (!this.#httpProvider) return;
 
 		// Endpoint para import map por namespace
-		this.httpProvider.registerRoute("GET", "/:namespace/importmap.json", (req: any, res: any) => {
+		this.#httpProvider.registerRoute("GET", "/:namespace/importmap.json", (req: any, res: any) => {
 			const namespace = req.params?.namespace || DEFAULT_NAMESPACE;
 			const importMap = this.importMaps.get(namespace) || { imports: {} };
 			res.setHeader("Content-Type", "application/json");
@@ -652,14 +633,14 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		});
 
 		// Endpoint legacy para import map (namespace default)
-		this.httpProvider.registerRoute("GET", "/importmap.json", (_req: any, res: any) => {
+		this.#httpProvider.registerRoute("GET", "/importmap.json", (_req: any, res: any) => {
 			const importMap = this.importMaps.get(DEFAULT_NAMESPACE) || { imports: {} };
 			res.setHeader("Content-Type", "application/json");
 			res.json(importMap);
 		});
 
 		// Endpoint para listar namespaces disponibles
-		this.httpProvider.registerRoute("GET", "/api/ui/namespaces", (_req: any, res: any) => {
+		this.#httpProvider.registerRoute("GET", "/api/ui/namespaces", (_req: any, res: any) => {
 			res.json({
 				namespaces: Array.from(this.registeredModules.keys()),
 				default: DEFAULT_NAMESPACE,
@@ -667,7 +648,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 		});
 
 		// Endpoints i18n
-		this.httpProvider.registerRoute("GET", "/api/i18n/:namespace", (req: any, res: any) => {
+		this.#httpProvider.registerRoute("GET", "/api/i18n/:namespace", (req: any, res: any) => {
 			const namespace = req.params?.namespace;
 			const locale = req.query?.locale;
 
@@ -681,7 +662,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			res.json(translations);
 		});
 
-		this.httpProvider.registerRoute("GET", "/api/i18n", (req: any, res: any) => {
+		this.#httpProvider.registerRoute("GET", "/api/i18n", (req: any, res: any) => {
 			const namespaces = (req.query?.namespaces || "").split(",").filter(Boolean);
 			const locale = req.query?.locale;
 
@@ -702,7 +683,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 
 		// Ruta raíz: solo registrar en desarrollo (en producción, Fastify maneja "/" por host)
 		if (this.isDevelopment) {
-			this.httpProvider.registerRoute("GET", "/", (_req: any, res: any) => {
+			this.#httpProvider.registerRoute("GET", "/", (_req: any, res: any) => {
 				const defaultModules = this.registeredModules.get(DEFAULT_NAMESPACE);
 				const layoutModule = defaultModules?.get("layout");
 
@@ -761,7 +742,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	}
 
 	async #registerPlatformEndpoints(namespace: string): Promise<void> {
-		if (!this.httpProvider) return;
+		if (!this.#httpProvider) return;
 
 		const namespaceModules = this.#getNamespaceModules(namespace);
 		const layoutModule = namespaceModules.get("layout");
@@ -773,7 +754,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			// Generar y servir service worker para este namespace
 			const swContent = generateServiceWorker(layoutModule, namespaceModules, this.port);
 			const swPath = layoutModule.uiConfig.devPort ? "/adc-sw.js" : `/${namespace}/adc-sw.js`;
-			this.httpProvider.registerRoute("GET", swPath, (_req: any, res: any) => {
+			this.#httpProvider.registerRoute("GET", swPath, (_req: any, res: any) => {
 				res.setHeader("Content-Type", "application/javascript");
 				res.setHeader("Service-Worker-Allowed", "/");
 				res.send(swContent);
@@ -783,7 +764,7 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 			// Generar y servir i18n para este namespace
 			const i18nClientContent = generateI18nClientCode(layoutModule, namespaceModules, this.port);
 			const i18nPath = layoutModule.uiConfig.devPort ? "/adc-i18n.js" : `/${namespace}/adc-i18n.js`;
-			this.httpProvider.registerRoute("GET", i18nPath, (_req: any, res: any) => {
+			this.#httpProvider.registerRoute("GET", i18nPath, (_req: any, res: any) => {
 				res.setHeader("Content-Type", "application/javascript");
 				res.send(i18nClientContent);
 			});
@@ -796,4 +777,4 @@ export default class UIFederationService extends BaseService<IUIFederationServic
 	}
 }
 
-export type { IUIFederationService, RegisteredUIModule } from "./types.js";
+export type { RegisteredUIModule } from "./types.js";

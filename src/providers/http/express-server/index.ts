@@ -8,20 +8,27 @@ import { IHttpServerProvider } from "../../../interfaces/modules/providers/IHttp
 /**
  * Implementación del servidor HTTP con Express
  */
-class ExpressServer implements IHttpServerProvider {
+export default class ExpressServerProvider extends BaseProvider implements IHttpServerProvider {
+	public readonly name = "express-server";
+	public readonly type = "http-server-provider";
 	private app: Application;
 	private server: Server | null = null;
 	private isListening = false;
 
-	constructor(private readonly logger: any) {
+	constructor() {
+		super();
 		this.app = express();
-		this.setupMiddleware();
+		this.#setupMiddleware();
+	}
+
+	async start(kernelKey: symbol): Promise<void> {
+		await super.start(kernelKey);
 	}
 
 	/**
 	 * Configura el middleware común de Express
 	 */
-	private setupMiddleware(): void {
+	#setupMiddleware(): void {
 		// CORS para permitir peticiones cross-origin
 		this.app.use(cors());
 
@@ -36,10 +43,6 @@ class ExpressServer implements IHttpServerProvider {
 				next();
 			});
 		}
-	}
-
-	async getInstance(): Promise<Application> {
-		return this.app;
 	}
 
 	registerRoute(method: string, path: string, handler: RequestHandler): void {
@@ -85,7 +88,8 @@ class ExpressServer implements IHttpServerProvider {
 		});
 	}
 
-	async stop(): Promise<void> {
+	async stop(kernelKey: symbol): Promise<void> {
+		super.stop(kernelKey);
 		if (this.server && this.isListening) {
 			return new Promise((resolve, reject) => {
 				this.server!.close((err) => {
@@ -100,27 +104,5 @@ class ExpressServer implements IHttpServerProvider {
 				});
 			});
 		}
-	}
-}
-
-/**
- * Provider que expone el servidor Express
- */
-export default class HttpServerProvider extends BaseProvider<IHttpServerProvider> {
-	public readonly name = "express-server";
-	public readonly type = "http-server-provider";
-
-	private expressServer: ExpressServer | null = null;
-
-	async getInstance(_options?: any): Promise<IHttpServerProvider> {
-		this.expressServer ??= new ExpressServer(this.logger);
-		return this.expressServer;
-	}
-
-	async stop(): Promise<void> {
-		if (this.expressServer) {
-			await this.expressServer.stop();
-		}
-		await super.stop();
 	}
 }

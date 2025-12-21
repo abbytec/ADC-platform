@@ -1,20 +1,33 @@
 import { IModule } from "../interfaces/modules/IModule.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
+import { OnlyKernel } from "../utils/decorators/OnlyKernel.ts";
 import { Logger } from "../utils/logger/Logger.js";
 
-export interface IProvider<T> extends IModule {
+export interface IProvider extends IModule {
 	readonly type: string;
-	getInstance(options?: any): Promise<T>;
 }
-export abstract class BaseProvider<T> implements IProvider<T> {
+export abstract class BaseProvider implements IProvider {
+	private kernelKey?: symbol;
+	/** Nombre único del provider */
 	abstract readonly name: string;
 	abstract readonly type: string;
 	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
 
-	abstract getInstance(options?: any): Promise<T>;
+	public readonly setKernelKey = (key: symbol): void => {
+		if (this.kernelKey) {
+			throw new Error("Kernel key ya está establecida");
+		}
+		this.kernelKey = key;
+	};
 
-	public async stop(): Promise<void> {
-		this.logger.logInfo(`Shutting down...`);
+	@OnlyKernel()
+	public async start(_kernelKey: symbol): Promise<void> {
+		this.logger.logDebug(`Iniciando ${this.name}`);
+	}
+
+	@OnlyKernel()
+	public async stop(_kernelKey: symbol): Promise<void> {
+		this.logger.logDebug(`Deteniendo ${this.name}`);
 	}
 }
 

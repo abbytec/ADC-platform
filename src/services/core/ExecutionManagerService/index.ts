@@ -1,39 +1,39 @@
 import * as os from "node:os";
 import { Worker } from "node:worker_threads";
 import { BaseService } from "../../BaseService.js";
-import { assignWorker } from "../../../utils/decorators/index.js";
+import { assignWorker } from "../../../utils/decorators/Distributed.js";
 import type { WorkerInfo, SystemLoad, IExecutionManager } from "./types.js";
 
 /**
  * ExecutionManagerService - Gestiona la ejecución distribuida de módulos
- * 
+ *
  * **Modo Kernel:**
  * Este servicio se ejecuta en modo kernel (global: true en config.json),
  * lo que significa que está disponible para toda la plataforma.
- * 
+ *
  * **Funcionalidades:**
  * - Administra un pool de workers dinámico
  * - Mide la carga del sistema (CPU, memoria)
  * - Distribuye la ejecución de métodos entre workers según la carga
  * - Balancea la carga entre workers disponibles
- * 
+ *
  * **Preparado para clusterización futura:**
  * - La arquitectura está diseñada para soportar nodos remotos
  * - Los "workers" pueden ser reemplazados por conexiones a otros dispositivos
  * - El sistema de asignación es agnóstico al tipo de ejecutor (worker/remoto)
- * 
+ *
  * @example
  * ```typescript
  * const execManager = kernel.getService<IExecutionManager>("execution-manager");
- * 
+ *
  * // Asignar worker óptimo a un servicio distribuido
  * await execManager.assignOptimalWorker(myService);
- * 
+ *
  * // El servicio ahora ejecutará métodos en el worker asignado
  * await myService.heavyComputation(); // Se ejecuta en worker
  * ```
  */
-export default class ExecutionManagerService extends BaseService<IExecutionManager> {
+export default class ExecutionManagerService extends BaseService implements IExecutionManager {
 	public readonly name = "ExecutionManagerService";
 
 	private workerPool: WorkerInfo[] = [];
@@ -52,8 +52,8 @@ export default class ExecutionManagerService extends BaseService<IExecutionManag
 		this.logger.logInfo(`Configurado para ${this.minWorkers}-${this.maxWorkers} workers (CPUs: ${cpuCount})`);
 	}
 
-	async start(): Promise<void> {
-		await super.start();
+	async start(kernelKey: symbol): Promise<void> {
+		await super.start(kernelKey);
 
 		// Inicializar pool mínimo de workers
 		for (let i = 0; i < this.minWorkers; i++) {
@@ -66,7 +66,8 @@ export default class ExecutionManagerService extends BaseService<IExecutionManag
 		this.logger.logOk("ExecutionManagerService iniciado");
 	}
 
-	async stop(): Promise<void> {
+	async stop(kernelKey: symbol): Promise<void> {
+		await super.stop(kernelKey);
 		// Detener monitoreo
 		if (this.loadCheckInterval) {
 			clearInterval(this.loadCheckInterval);
@@ -82,18 +83,20 @@ export default class ExecutionManagerService extends BaseService<IExecutionManag
 		this.logger.logInfo("ExecutionManagerService detenido");
 	}
 
-	async getInstance(): Promise<IExecutionManager> {
+	async getStats(): Promise<{ workers: number; systemLoad: SystemLoad; activeTasks: number }> {
 		return {
-			getStats: async () => ({
-				workers: this.workerPool.length,
-				systemLoad: this.#getSystemLoad(),
-				activeTasks: this.workerPool.reduce((sum, w) => sum + w.taskCount, 0),
-			}),
-
-			assignOptimalWorker: async (instance: any) => this.#assignOptimalWorker(instance),
-
-			releaseWorker: (instance: any) => assignWorker(instance, null),
+			workers: this.workerPool.length,
+			systemLoad: this.#getSystemLoad(),
+			activeTasks: this.workerPool.reduce((sum, w) => sum + w.taskCount, 0),
 		};
+	}
+
+	async assignOptimalWorker(instance: any): Promise<void> {
+		return this.#assignOptimalWorker(instance);
+	}
+
+	releaseWorker(instance: any): void {
+		assignWorker(instance, null);
 	}
 
 	/**

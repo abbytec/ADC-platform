@@ -3,7 +3,8 @@ import { IFileAdapter } from "../../../interfaces/modules/utilities/adapters/IFI
 import { Logger } from "../../../utils/logger/Logger.js";
 import { BaseUtility } from "../../BaseUtility.js";
 
-class JsonAdapter implements IFileAdapter<any> {
+export default class JsonAdapterUtility extends BaseUtility implements IFileAdapter<any> {
+	public readonly name = "json-file-adapter";
 	toBuffer(data: any): Buffer {
 		try {
 			const jsonString = JSON.stringify(data, null, 2);
@@ -30,12 +31,3 @@ class JsonAdapter implements IFileAdapter<any> {
 		}
 	}
 }
-
-export default class JsonAdapterUtility extends BaseUtility<IFileAdapter<any>> {
-	public readonly name = "json-file-adapter";
-
-	async getInstance(): Promise<IFileAdapter<any>> {
-		return new JsonAdapter();
-	}
-}
-

@@ -57,7 +57,9 @@ function calculatePriority(pattern: string, explicitPriority?: number): number {
 /**
  * Implementación del servidor HTTP con Fastify y soporte para host-based routing
  */
-class FastifyServer implements IHostBasedHttpProvider {
+export class FastifyServerProvider extends BaseProvider implements IHostBasedHttpProvider {
+	public readonly name = "fastify-server";
+	public readonly type = "http-server-provider";
 	private app: FastifyInstance<any>;
 	private isListening = false;
 	private registeredHosts = new Map<string, RegisteredHost>();
@@ -65,9 +67,10 @@ class FastifyServer implements IHostBasedHttpProvider {
 	private globalStaticPaths = new Map<string, string>();
 	private defaultHost: RegisteredHost | null = null;
 
-	constructor(private readonly logger: any) {
+	constructor() {
+		super();
 		const http2Enabled = process.env.HTTP2_ENABLED === "true";
-		
+
 		// Configuración base de Fastify
 		const fastifyOptions: any = {
 			logger: false,
@@ -79,11 +82,11 @@ class FastifyServer implements IHostBasedHttpProvider {
 		// Configurar HTTP/2 si está habilitado
 		if (http2Enabled) {
 			fastifyOptions.http2 = true;
-			
+
 			// HTTP/2 requiere HTTPS. Buscar certificados o usar auto-firmados en desarrollo
 			const certPath = process.env.SSL_CERT_PATH;
 			const keyPath = process.env.SSL_KEY_PATH;
-			
+
 			if (certPath && keyPath) {
 				try {
 					fastifyOptions.https = {
@@ -304,12 +307,8 @@ class FastifyServer implements IHostBasedHttpProvider {
 		return types[ext] || "application/octet-stream";
 	}
 
-	async getInstance(): Promise<IHostBasedHttpProvider> {
-		return this;
-	}
-
 	/** Obtener la instancia raw de Fastify (para casos especiales) */
-	getApp(): FastifyInstance {
+	getApp(): FastifyInstance<any> {
 		return this.app;
 	}
 
@@ -512,7 +511,8 @@ class FastifyServer implements IHostBasedHttpProvider {
 		}
 	}
 
-	async stop(): Promise<void> {
+	async stop(kernelKey: symbol): Promise<void> {
+		await super.stop(kernelKey);
 		if (this.isListening) {
 			try {
 				await this.app.close();
@@ -523,27 +523,5 @@ class FastifyServer implements IHostBasedHttpProvider {
 				throw error;
 			}
 		}
-	}
-}
-
-/**
- * Provider que expone el servidor Fastify con soporte para host-based routing
- */
-export default class FastifyServerProvider extends BaseProvider<IHostBasedHttpProvider> {
-	public readonly name = "fastify-server";
-	public readonly type = "http-server-provider";
-
-	private fastifyServer: FastifyServer | null = null;
-
-	async getInstance(_options?: any): Promise<IHostBasedHttpProvider> {
-		this.fastifyServer ??= new FastifyServer(this.logger);
-		return this.fastifyServer;
-	}
-
-	async stop(): Promise<void> {
-		if (this.fastifyServer) {
-			await this.fastifyServer.stop();
-		}
-		await super.stop();
 	}
 }

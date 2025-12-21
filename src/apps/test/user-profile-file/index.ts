@@ -18,14 +18,8 @@ export default class UserProfileFileApp extends BaseApp {
 
 	async start() {
 		try {
-			const crudService = this.kernel.getService<any>("json-file-crud");
-			
-			if (typeof crudService?.getInstance === 'function') {
-				this.crud = await crudService.getInstance();
-			} else {
-				this.crud = crudService;
-			}
-			
+			this.crud = this.kernel.getService<any>("json-file-crud");
+
 			Logger.ok(`[${this.name}] JsonFileCrudService disponible`);
 		} catch (err) {
 			Logger.error(`[${this.name}] JsonFileCrudService no disponible: ${err}`);
@@ -38,7 +32,7 @@ export default class UserProfileFileApp extends BaseApp {
 
 		try {
 			const profileKey = this.config?.PROFILE_KEY || "user_profile";
-			
+
 			// 1. Intentar cargar el perfil existente
 			let data = await this.crud.read<UserProfile>(profileKey);
 
@@ -47,7 +41,7 @@ export default class UserProfileFileApp extends BaseApp {
 				data.age += 1;
 				data.lastUpdate = new Date().toISOString();
 				Logger.info(`[${this.name}] Perfil actualizado a edad ${data.age}.`);
-				
+
 				// Actualizar
 				await this.crud.update(profileKey, data);
 				Logger.ok(`[${this.name}] Perfil actualizado con éxito.`);
@@ -58,7 +52,7 @@ export default class UserProfileFileApp extends BaseApp {
 					age: 25,
 					lastUpdate: new Date().toISOString(),
 				};
-				
+
 				// Crear
 				await this.crud.create(profileKey, data);
 				Logger.ok(`[${this.name}] Perfil creado con éxito.`);

@@ -22,17 +22,7 @@ export default class UserProfileApp extends BaseApp {
 	async start() {
 		// Obtener el IdentityManager del kernel
 		try {
-			const identityService = this.kernel.getService<any>("IdentityManagerService");
-
-			// El kernel retorna la instancia del servicio (BaseService)
-			// Llamar a getInstance() si existe (es un método de BaseService)
-			if (typeof identityService?.getInstance === "function") {
-				this.identityManager = await identityService.getInstance();
-			} else {
-				// Si no es una instancia de BaseService, asumir que ya es la interfaz
-				this.identityManager = identityService;
-			}
-
+			this.identityManager = this.kernel.getService<any>("IdentityManagerService");
 			Logger.ok(`[${this.name}] IdentityManagerService disponible`);
 		} catch (err) {
 			Logger.warn(`[${this.name}] IdentityManagerService no disponible: ${err}`);
