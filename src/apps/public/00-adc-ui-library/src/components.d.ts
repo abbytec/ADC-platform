@@ -295,6 +295,10 @@ export namespace Components {
           * @default false
          */
         "lowerSign": boolean;
+        /**
+          * @default false
+         */
+        "registered": boolean;
     }
     interface AdcSiteHeader {
         /**
@@ -1042,6 +1046,10 @@ declare namespace LocalJSX {
           * @default false
          */
         "lowerSign"?: boolean;
+        /**
+          * @default false
+         */
+        "registered"?: boolean;
     }
     interface AdcSiteHeader {
         /**
