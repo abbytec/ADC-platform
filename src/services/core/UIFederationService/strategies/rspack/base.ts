@@ -404,6 +404,10 @@ export default {
     },
     resolve: {
         extensions: ${extensions},
+        extensionAlias: {
+            '.js': ['.ts', '.tsx', '.js'],
+            '.mjs': ['.mts', '.mjs'],
+        },
         alias: ${finalAliasesObject},
     },${
 		externals.length > 0

@@ -83,6 +83,7 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 			plugins,
 			resolve: {
 				alias: dynamicAliases,
+				extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"],
 			},
 			server: {
 				host: true,

@@ -57,7 +57,7 @@ function calculatePriority(pattern: string, explicitPriority?: number): number {
 /**
  * Implementación del servidor HTTP con Fastify y soporte para host-based routing
  */
-export class FastifyServerProvider extends BaseProvider implements IHostBasedHttpProvider {
+export default class FastifyServerProvider extends BaseProvider implements IHostBasedHttpProvider {
 	public readonly name = "fastify-server";
 	public readonly type = "http-server-provider";
 	private app: FastifyInstance<any>;
@@ -66,6 +66,7 @@ export class FastifyServerProvider extends BaseProvider implements IHostBasedHtt
 	private globalRoutes: GlobalRoute[] = [];
 	private globalStaticPaths = new Map<string, string>();
 	private defaultHost: RegisteredHost | null = null;
+	private middlewareReady: Promise<void>;
 
 	constructor() {
 		super();
@@ -110,7 +111,7 @@ export class FastifyServerProvider extends BaseProvider implements IHostBasedHtt
 		}
 
 		this.app = Fastify(fastifyOptions);
-		this.setupMiddleware();
+		this.middlewareReady = this.setupMiddleware();
 	}
 
 	private async setupMiddleware(): Promise<void> {
@@ -491,6 +492,8 @@ export class FastifyServerProvider extends BaseProvider implements IHostBasedHtt
 		}
 
 		try {
+			// Esperar a que el middleware esté listo antes de iniciar
+			await this.middlewareReady;
 			await this.app.listen({ port, host: "0.0.0.0" });
 			this.isListening = true;
 			this.logger.logOk(`Servidor Fastify escuchando en puerto ${port}`);

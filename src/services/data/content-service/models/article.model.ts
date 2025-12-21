@@ -1,30 +1,15 @@
-import { Schema, type Document } from "mongoose";
+import { Schema } from "mongoose";
+import { Article } from "../../../../common/ADC/gen/learning/learning_pb.ts";
+import { Block } from "../../../../common/ADC/gen/learning/block_pb.ts";
 
-export interface IArticle extends Document {
-	slug: string;
-	title: string;
-	pathSlug?: string;
-	blocks?: any[];
-	videoUrl?: string;
-	image?: {
-		url: string;
-		width?: number;
-		height?: number;
-		alt?: string;
-	};
-	authorId: string;
-	listed: boolean;
-	description?: string;
-	createdAt: Date;
-	updatedAt: Date;
-}
+const BlockSchema = new Schema<Block>({}, { strict: false, _id: false });
 
-export const ArticleSchema = new Schema<IArticle>(
+export const ArticleSchema = new Schema<Article>(
 	{
 		slug: { type: String, required: true, unique: true, index: true },
 		title: { type: String, required: true },
 		pathSlug: { type: String, ref: "LearningPath", index: true },
-		blocks: { type: [Schema.Types.Mixed], default: undefined },
+		blocks: { type: [BlockSchema], default: undefined },
 		videoUrl: String,
 		image: {
 			url: String,

@@ -13,8 +13,11 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"skipLibCheck": true,
-		"types": []
+		"types": [],
+		"paths": {
+			"@common/*": ["../../../common/*"]
+		}
 	},
-	"include": ["src"],
+	"include": ["src", "utils"],
 	"exclude": ["node_modules"]
 }

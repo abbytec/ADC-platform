@@ -1,15 +1,16 @@
 # UI Library Utils
 
 ## connect-rpc.ts
-Cliente genérico para consumir servicios Connect RPC.
+Cliente Connect RPC tipado usando Protocol Buffers.
 
 ```typescript
-import { rpcClient } from "@ui-library/utils/connect-rpc";
+import { learningClient, type LearningPath } from "@ui-library/utils/connect-rpc";
 
-const response = await rpcClient.call("ServiceName", "MethodName", { /* body */ });
-if (response.data) {
-  console.log(response.data);
-}
+// Listar paths
+const { paths } = await learningClient.listPaths({ listed: true });
+
+// Obtener artículo
+const { article } = await learningClient.getArticle({ slug: "mi-articulo" });
 ```
 
 ## router.ts

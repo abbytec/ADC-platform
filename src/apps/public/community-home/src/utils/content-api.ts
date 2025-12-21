@@ -1,71 +1,46 @@
-import { rpcClient, type RPCResponse } from "@ui-library/utils/connect-rpc";
+import { learningClient, type LearningPath, type Article } from "@ui-library/utils/connect-rpc";
 
-// ========= Types (matching backend) =========
-export interface ImageMeta {
-	url: string;
-	width?: number;
-	height?: number;
-	alt?: string;
+// Re-exportar tipos para compatibilidad
+export type { LearningPath, Article } from "@ui-library/utils/connect-rpc";
+
+// Tipos simplificados para los parámetros de la API
+interface ListPathsOptions {
+	public?: boolean;
+	listed?: boolean;
+	limit?: number;
+	skip?: number;
 }
 
-export interface LearningPathItem {
-	slug: string;
-	type: "article" | "path";
-	level: "critico" | "importante" | "opcional";
-}
-
-export interface LearningPath {
-	slug: string;
-	title: string;
-	description: string;
-	color: string;
-	banner?: ImageMeta;
-	public: boolean;
-	listed: boolean;
-	items: LearningPathItem[];
-	createdAt: string;
-	updatedAt: string;
-}
-
-export interface Article {
-	slug: string;
-	title: string;
+interface ListArticlesOptions {
 	pathSlug?: string;
-	pathColor?: string;
-	blocks?: any[];
-	videoUrl?: string;
-	image?: ImageMeta;
-	authorId: string;
-	listed: boolean;
-	description?: string;
-	createdAt: string;
-	updatedAt: string;
+	listed?: boolean;
+	q?: string;
+	limit?: number;
+	skip?: number;
 }
 
-// ========= Content API Client =========
+/**
+ * API de contenido usando Connect RPC tipado
+ */
 export class ContentAPI {
-	private readonly SERVICE = "ContentService";
-
-	// ===== Learning Paths =====
-	async listPaths(options?: { public?: boolean; listed?: boolean; limit?: number; skip?: number }): Promise<
-		RPCResponse<LearningPath[]>
-	> {
-		return rpcClient.call(this.SERVICE, "ListPaths", options || {});
+	async listPaths(options?: ListPathsOptions): Promise<LearningPath[]> {
+		const response = await learningClient.listPaths(options ?? {});
+		return response.paths;
 	}
 
-	async getPath(slug: string): Promise<RPCResponse<LearningPath | null>> {
-		return rpcClient.call(this.SERVICE, "GetPath", { slug });
+	async getPath(slug: string): Promise<LearningPath | undefined> {
+		const response = await learningClient.getPath({ slug });
+		return response.path;
 	}
 
-	// ===== Articles =====
-	async listArticles(options?: { listed?: boolean; pathSlug?: string; q?: string; limit?: number; skip?: number }): Promise<
-		RPCResponse<Article[]>
-	> {
-		return rpcClient.call(this.SERVICE, "ListArticles", options || {});
+	async listArticles(options?: ListArticlesOptions): Promise<Article[]> {
+		const response = await learningClient.listArticles(options ?? {});
+		return response.articles;
 	}
 
-	async getArticle(slug: string): Promise<RPCResponse<Article | null>> {
-		return rpcClient.call(this.SERVICE, "GetArticle", { slug });
+	async getArticle(slug: string): Promise<Article | undefined> {
+		const response = await learningClient.getArticle({ slug });
+		return response.article;
 	}
 }
 
