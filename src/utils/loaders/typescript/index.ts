@@ -34,7 +34,7 @@ export class TypeScriptLoader implements IModuleLoader {
 		const providerInstance = new ProviderClass(this.enrichConfig(modulePath, config));
 		try {
 			providerInstance.setKernelKey(this.#kernelKey);
-			providerInstance.start(this.#kernelKey);
+			await providerInstance.start(this.#kernelKey);
 		} catch {
 			// No-op
 		}
@@ -52,7 +52,7 @@ export class TypeScriptLoader implements IModuleLoader {
 		const serviceInstance = new ServiceClass(kernel, config);
 		try {
 			serviceInstance.setKernelKey(this.#kernelKey);
-			serviceInstance.start(this.#kernelKey);
+			await serviceInstance.start(this.#kernelKey);
 		} catch {
 			// No-op
 		}

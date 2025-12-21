@@ -895,6 +895,7 @@ export class Kernel {
 	}
 
 	async #initializeAndRunApp(app: IApp, filePath: string, instanceName: string, configPath?: string): Promise<void> {
+		this.#logger.logInfo(`Inicializando App: ${instanceName} desde ${path.basename(filePath)}`);
 		this.registerApp(instanceName, app);
 		this.#logger.logDebug(`Inicializando App ${app.name}`);
 

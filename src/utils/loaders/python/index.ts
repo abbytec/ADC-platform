@@ -2,7 +2,7 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { spawn, ChildProcess } from "node:child_process";
 import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
-import { IModuleConfig } from "../../../interfaces/modules/IModule.js";
+import { IModule, IModuleConfig } from "../../../interfaces/modules/IModule.js";
 
 import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
@@ -23,79 +23,73 @@ interface PythonModuleOptions {
 }
 
 /**
- * Wrapper Unificado para módulos Python. */
-class PythonModuleWrapper implements IProvider, IUtility, IService {
-	public readonly name: string;
-	public readonly modulePath: string;
-	public readonly version: string;
-	public readonly role: ModuleRole;
-	private readonly process: ChildProcess;
-	private readonly config?: Record<string, any>;
-	private kernelKey?: symbol;
+ * Crea un wrapper proxy para módulos Python que:
+ * - Expone propiedades del módulo (name, type, etc.)
+ * - Delega métodos de lifecycle (start, stop) con verificación de kernelKey
+ * - Delega cualquier otro método automáticamente via IPC
+ */
+function createPythonModuleProxy(options: PythonModuleOptions): IModule {
+	let kernelKey: symbol | undefined;
 
-	constructor(options: PythonModuleOptions) {
-		this.name = options.name;
-		this.modulePath = options.modulePath;
-		this.version = options.version;
-		this.role = options.role;
-		this.config = options.config;
-		this.process = options.process;
-	}
+	const wrapper = {
+		name: options.name,
+		modulePath: options.modulePath,
+		version: options.version,
+		role: options.role,
+		type: options.config?.type || "default",
 
-	get type(): string {
-		return this.config?.type || "default";
-	}
+		setKernelKey: (key: symbol): void => {
+			if (kernelKey) {
+				throw new Error("Kernel key ya está establecida");
+			}
+			kernelKey = key;
+		},
 
-	public readonly setKernelKey = (key: symbol): void => {
-		if (this.kernelKey) {
-			throw new Error("Kernel key ya está establecida");
-		}
-		this.kernelKey = key;
+		start: async (key: symbol): Promise<void> => {
+			verifyKernelKey(key, "start");
+			Logger.info(`[PythonModuleWrapper] Solicitando inicio remoto (start) a: ${options.name}`);
+			await ipcManager.call(options.name, options.version, "python", "on_start", []);
+		},
+
+		stop: async (key: symbol): Promise<void> => {
+			verifyKernelKey(key, "stop");
+			if (options.process && !options.process.killed) {
+				options.process.kill();
+				Logger.info(`[PythonModuleWrapper] Proceso detenido: ${options.name} (${options.role})`);
+			}
+		},
 	};
 
-	async start(kernelKey: symbol): Promise<void> {
-		this.verifyKernelKey(kernelKey, "start");
-		Logger.info(`[PythonModuleWrapper] Solicitando inicio remoto (start) a: ${this.name}`);
-		await ipcManager.call(this.name, this.version, "python", "on_start", []);
-	}
-
-	async stop(kernelKey: symbol): Promise<void> {
-		this.verifyKernelKey(kernelKey, "stop");
-		if (this.process && !this.process.killed) {
-			this.process.kill();
-			Logger.info(`[PythonModuleWrapper] Proceso detenido: ${this.name} (${this.role})`);
-		}
-	}
-
-	private verifyKernelKey(keyToVerify: symbol, methodName: string): void {
-		if (!this.kernelKey) {
+	function verifyKernelKey(keyToVerify: symbol, methodName: string): void {
+		if (!kernelKey) {
 			throw new Error("Kernel key no establecida");
 		}
-		if (this.kernelKey !== keyToVerify) {
+		if (kernelKey !== keyToVerify) {
 			throw new Error(`Acceso no autorizado a ${methodName}`);
 		}
 	}
 
-	/**
-	 * Crea el Proxy para interceptar llamadas y enviarlas por IPC
-	 */
-	createIpcProxy(): any {
-		return new Proxy(
-			{},
-			{
-				get: (_target, prop) => {
-					// Ignorar promesas y serialización
-					if (typeof prop === "symbol" || ["then", "catch", "finally", "toJSON"].includes(prop as string)) {
-						return undefined;
-					}
+	// Propiedades conocidas del wrapper que NO deben delegarse a IPC
+	const knownProps = new Set(["name", "modulePath", "version", "role", "type", "setKernelKey", "start", "stop"]);
 
-					return async (...args: any[]) => {
-						return await ipcManager.call(this.name, this.version, "python", prop as string, args);
-					};
-				},
+	return new Proxy(wrapper, {
+		get(target, prop) {
+			// Propiedades conocidas: devolver del wrapper
+			if (typeof prop === "string" && knownProps.has(prop)) {
+				return target[prop as keyof typeof target];
 			}
-		);
-	}
+
+			// Ignorar símbolos y propiedades de Promise
+			if (typeof prop === "symbol" || ["then", "catch", "finally", "toJSON"].includes(prop as string)) {
+				return undefined;
+			}
+
+			// Cualquier otro método: delegar a IPC
+			return async (...args: any[]) => {
+				return await ipcManager.call(options.name, options.version, "python", prop as string, args);
+			};
+		},
+	}) as IProvider & IUtility & IService;
 }
 
 /**
@@ -104,9 +98,9 @@ class PythonModuleWrapper implements IProvider, IUtility, IService {
 export class PythonLoader implements IModuleLoader {
 	// Almacenamos los wrappers clasificados para poder detenerlos en orden
 	private modules = {
-		provider: [] as PythonModuleWrapper[],
-		utility: [] as PythonModuleWrapper[],
-		service: [] as PythonModuleWrapper[],
+		provider: [] as IModule[],
+		utility: [] as IModule[],
+		service: [] as IModule[],
 	};
 
 	async canHandle(modulePath: string): Promise<boolean> {
@@ -118,7 +112,7 @@ export class PythonLoader implements IModuleLoader {
 		}
 	}
 
-	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider> {
+	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IModule> {
 		return this.loadModule(modulePath, "provider", config);
 	}
 
@@ -141,27 +135,27 @@ export class PythonLoader implements IModuleLoader {
 		role: ModuleRole,
 		config?: Record<string, any>,
 		rawModuleConfig?: IModuleConfig
-	): Promise<PythonModuleWrapper> {
+	): Promise<IModule> {
 		const name = rawModuleConfig?.name || config?.moduleName || path.basename(modulePath);
 		const version = rawModuleConfig?.version || config?.moduleVersion || "1.0.0";
 
 		Logger.debug(`[PythonLoader] Cargando ${role}: ${name}@${version}`);
 
-		const process = await this.startPythonProcess(modulePath, name, version, role, config);
+		const pythonProcess = await this.startPythonProcess(modulePath, name, version, role, config);
 
-		const wrapper = new PythonModuleWrapper({
+		const proxy = createPythonModuleProxy({
 			name,
 			modulePath,
 			version,
 			role,
 			config,
-			process,
+			process: pythonProcess,
 		});
 
 		// Guardamos la referencia en la lista correspondiente
-		this.modules[role].push(wrapper);
+		this.modules[role].push(proxy);
 
-		return wrapper;
+		return proxy;
 	}
 
 	private async startPythonProcess(
@@ -255,10 +249,10 @@ export class PythonLoader implements IModuleLoader {
 	async stopAll(): Promise<void> {
 		Logger.info("[PythonLoader] Iniciando secuencia de apagado ordenada...");
 
-		const stopGroup = async (wrappers: PythonModuleWrapper[], groupName: string) => {
+		const stopGroup = async (wrappers: IModule[], groupName: string) => {
 			if (wrappers.length === 0) return;
 			Logger.debug(`[PythonLoader] Deteniendo ${groupName} (${wrappers.length})...`);
-			await Promise.all(wrappers.map((w) => w.stop()));
+			await Promise.all(wrappers.map((w) => (w as any).stop()));
 			wrappers.length = 0;
 		};
 

@@ -247,15 +247,6 @@ export class ModuleLoader {
 
 						// TERCERO: Cargar el servicio (que ahora puede acceder a sus providers del kernel)
 						const service = await this.loadService(mutableServiceConfig, kernel);
-						if (service.start) {
-							try {
-								service.setKernelKey(this.#kernelKey);
-							} catch {
-								//no-op
-							}
-
-							await service.start(this.#kernelKey);
-						}
 
 						// CUARTO: Registrar los providers del servicio como dependencias de la app
 						// Esto es necesario para el reference counting correcto

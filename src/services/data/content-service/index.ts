@@ -11,7 +11,7 @@ export default class ContentService extends BaseService {
 
 	async start(kernelKey: symbol): Promise<void> {
 		super.start(kernelKey);
-		this.logger.logInfo("[ContentService] Iniciando servicio de contenido...");
+		this.logger.logInfo("Iniciando servicio de contenido...");
 
 		this.mongoProvider = this.kernel.getProvider<IMongoProvider>("object-provider");
 
