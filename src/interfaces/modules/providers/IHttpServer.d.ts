@@ -1,4 +1,5 @@
 import { Application, RequestHandler, Request, Response, NextFunction } from "express";
+import type { ConnectRouter } from "@connectrpc/connect";
 
 /**
  * Configuración de host para routing basado en dominio/subdominio
@@ -68,6 +69,13 @@ export interface IHostBasedHttpProvider extends IHttpServerProvider {
 	 * Verifica si el servidor soporta host-based routing
 	 */
 	supportsHostRouting(): boolean;
+
+	/**
+	 * Registra rutas Connect RPC
+	 * @param routes Función que define las rutas Connect RPC
+	 * @param options Opciones para Connect RPC
+	 */
+	registerConnectRPC(routes: (router: ConnectRouter) => void, options?: { prefix?: string }): Promise<void>;
 }
 
 export interface HostOptions {

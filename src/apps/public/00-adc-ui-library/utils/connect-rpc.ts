@@ -1,84 +1,59 @@
 /**
- * Utilidad para realizar requests Connect RPC
- * Proporciona una interfaz simple para consumir servicios Connect RPC
+ * Cliente Connect RPC real usando @connectrpc/connect-web
+ * Proporciona acceso tipado a los servicios definidos en Protocol Buffers
+ *
+ * - Desarrollo: JSON (protocolo Connect) para debugging fácil
+ * - Producción: gRPC-web (binario) para eficiencia
  */
 
-export interface RPCRequestOptions {
-	service: string;
-	method: string;
-	body?: any;
-	baseUrl?: string;
-}
+import { createClient, type Client } from "@connectrpc/connect";
+import { createConnectTransport, createGrpcWebTransport } from "@connectrpc/connect-web";
+import { LearningService } from "@common/ADC/gen/learning/learning_pb.js";
 
-export interface RPCResponse<T = any> {
-	data: T | null;
-	error: string | null;
-}
+// Configuración del transporte
+// Detectamos desarrollo por hostname (localhost = dev server con backend en :3000)
+const isDevelopment = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const baseUrl = isDevelopment ? "http://localhost:3000" : "";
+
+// JSON en desarrollo para debugging, gRPC-web binario en producción
+const transport = isDevelopment
+	? createConnectTransport({ baseUrl })
+	: createGrpcWebTransport({ baseUrl });
 
 /**
- * Cliente Connect RPC simplificado
+ * Cliente tipado para LearningService
+ * Uso:
+ *   const paths = await learningClient.listPaths({});
+ *   const article = await learningClient.getArticle({ slug: "my-article" });
  */
-export class ConnectRPCClient {
-	private baseUrl: string;
+export const learningClient: Client<typeof LearningService> = createClient(LearningService, transport);
 
-	constructor(baseUrl: string = "/api/rpc") {
-		this.baseUrl = baseUrl;
-	}
+// Re-exportar tipos útiles para los consumidores
+export type {
+	LearningPath,
+	Article,
+	PathItem,
+	Image,
+	ListPathsRequest,
+	ListPathsResponse,
+	GetPathRequest,
+	GetPathResponse,
+	CreatePathRequest,
+	CreatePathResponse,
+	UpdatePathRequest,
+	UpdatePathResponse,
+	DeletePathRequest,
+	DeletePathResponse,
+	ListArticlesRequest,
+	ListArticlesResponse,
+	GetArticleRequest,
+	GetArticleResponse,
+	CreateArticleRequest,
+	CreateArticleResponse,
+	UpdateArticleRequest,
+	UpdateArticleResponse,
+	DeleteArticleRequest,
+	DeleteArticleResponse,
+} from "@common/ADC/gen/learning/learning_pb.js";
 
-	/**
-	 * Realiza un request Connect RPC
-	 */
-	async call<TResponse = any>(service: string, method: string, body?: any): Promise<RPCResponse<TResponse>> {
-		try {
-			const url = `${this.baseUrl}/${service}/${method}`;
-
-			const response = await fetch(url, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: body ? JSON.stringify(body) : undefined,
-			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				return {
-					data: null,
-					error: `HTTP ${response.status}: ${errorText}`,
-				};
-			}
-
-			const data = await response.json();
-
-			return {
-				data,
-				error: null,
-			};
-		} catch (error: any) {
-			return {
-				data: null,
-				error: error.message || "Request failed",
-			};
-		}
-	}
-}
-
-/**
- * Cliente singleton para Connect RPC
- * En desarrollo, las APIs están en el puerto 3000 (servidor principal)
- * En producción, están en el mismo origen
- */
-const isDevelopment = process.env.NODE_ENV === "development" || !process.env.NODE_ENV;
-const apiBaseUrl = isDevelopment ? "http://localhost:3000/api/rpc" : "/api/rpc";
-export const rpcClient = new ConnectRPCClient(apiBaseUrl);
-
-/**
- * Hook-style helper para usar en componentes
- */
-export async function useRPC<TResponse = any>(
-	service: string,
-	method: string,
-	body?: any
-): Promise<RPCResponse<TResponse>> {
-	return rpcClient.call<TResponse>(service, method, body);
-}
+export { PathItemType, PathItemLevel } from "@common/ADC/gen/learning/learning_pb.js";

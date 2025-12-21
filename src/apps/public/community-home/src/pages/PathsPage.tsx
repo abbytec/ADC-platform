@@ -14,19 +14,14 @@ export function PathsPage() {
 		setLoading(true);
 		setError(null);
 
-		const response = await contentAPI.listPaths({ public: true, listed: true });
-
-		if (response.error) {
-			setError(response.error);
+		try {
+			const pathsData = await contentAPI.listPaths({ public: true, listed: true });
+			setPaths(pathsData);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Error desconocido");
+		} finally {
 			setLoading(false);
-			return;
 		}
-
-		if (response.data) {
-			setPaths(response.data);
-		}
-
-		setLoading(false);
 	}
 
 	if (loading) {

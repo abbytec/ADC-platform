@@ -2,21 +2,22 @@
 
 Servicio de gestión de artículos y rutas de aprendizaje con MongoDB.
 
-## Configuración
+## Connect RPC
 
-MongoDB se configura desde la app que usa el servicio (ej: community-home).
-El servicio solo declara sus dependencias de providers.
+Usa Protocol Buffers para definir el API tipado. Proto en `src/common/ADC/proto/learning/`.
 
-## Endpoints REST (estilo RPC)
+```bash
+npm run proto:gen  # Regenerar tipos TypeScript
+```
 
-Prefijo: `POST /api/rpc/ContentService/`
+## Servicio: LearningService
 
-### Learning Paths
-- `ListPaths` - Lista paths (body: { published?, limit?, skip? })
-- `GetPath` - Obtiene path (body: { slug })
-- `CreatePath`, `UpdatePath`, `DeletePath` - CRUD operations
+### Paths
+- `ListPaths` - Lista paths (filtros: public, listed, limit, skip)
+- `GetPath` - Obtiene path por slug
+- `CreatePath`, `UpdatePath`, `DeletePath` - CRUD
 
 ### Articles
-- `ListArticles` - Lista artículos (body: { published?, tags?, limit?, skip? })
-- `GetArticle` - Obtiene artículo (body: { slug })
-- `CreateArticle`, `UpdateArticle`, `DeleteArticle` - CRUD operations
+- `ListArticles` - Lista artículos (filtros: listed, pathSlug, q, limit, skip)
+- `GetArticle` - Obtiene artículo por slug
+- `CreateArticle`, `UpdateArticle`, `DeleteArticle` - CRUD

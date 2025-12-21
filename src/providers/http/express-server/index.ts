@@ -4,6 +4,8 @@ import bodyParser from "body-parser";
 import { Server } from "node:http";
 import { BaseProvider } from "../../BaseProvider.js";
 import { IHttpServerProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
+import { expressConnectMiddleware } from "@connectrpc/connect-express";
+import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
 
 /**
  * Implementación del servidor HTTP con Express
@@ -58,6 +60,34 @@ export default class ExpressServerProvider extends BaseProvider implements IHttp
 	serveStatic(path: string, directory: string): void {
 		this.app.use(path, express.static(directory));
 		this.logger.logDebug(`Archivos estáticos servidos: ${path} -> ${directory}`);
+	}
+
+	/**
+	 * Registra rutas Connect RPC
+	 * @param routes Función que define las rutas Connect RPC
+	 * @param options Opciones para Connect RPC
+	 */
+	registerConnectRPC(routes: (router: ConnectRouter) => void, options?: { prefix?: string }): void {
+		try {
+			const middleware = expressConnectMiddleware({ routes });
+			const prefix = options?.prefix || "/";
+			this.app.use(prefix, middleware);
+			this.logger.logDebug(`Connect RPC registrado${options?.prefix ? ` con prefijo: ${options.prefix}` : ""}`);
+		} catch (error: any) {
+			this.logger.logError(`Error registrando Connect RPC: ${error.message}`);
+			throw error;
+		}
+	}
+
+	/**
+	 * Registra un servicio Connect RPC individual
+	 * @param service Implementación del servicio
+	 * @param options Opciones de configuración
+	 */
+	registerConnectService(service: Partial<ServiceImpl<any>>, options?: { prefix?: string }): void {
+		this.registerConnectRPC((router) => {
+			router.service(service as any, service);
+		}, options);
 	}
 
 	async listen(port: number): Promise<void> {

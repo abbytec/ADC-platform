@@ -1,18 +1,53 @@
 import type { Model, PipelineStage } from "mongoose";
-import type { IArticle } from "../models/article.model.js";
-import type { ILearningPath } from "../models/path.model.js";
+import { create } from "@bufbuild/protobuf";
+import {
+	type Article,
+	type ListArticlesRequest,
+	type CreateArticleRequest,
+	type UpdateArticleRequest,
+	ArticleSchema,
+	ListArticlesResponseSchema,
+	GetArticleResponseSchema,
+	CreateArticleResponseSchema,
+	UpdateArticleResponseSchema,
+	DeleteArticleResponseSchema,
+	LearningPath,
+	PathItem,
+	PathItemType,
+} from "../../../../common/ADC/gen/learning/learning_pb.js";
+
+// Tipo extendido para resultados de aggregation (incluye pathColor)
+type ArticleWithPathColor = Article & { pathColor?: string };
+
+function docToProto(doc: ArticleWithPathColor): Article {
+	return create(ArticleSchema, {
+		slug: doc.slug,
+		title: doc.title,
+		pathSlug: doc.pathSlug,
+		// Blocks se almacenan como Mixed en MongoDB y son compatibles en runtime
+		blocks: (doc.blocks || []) as unknown as Article["blocks"],
+		videoUrl: doc.videoUrl,
+		image: doc.image,
+		authorId: doc.authorId,
+		listed: doc.listed,
+		description: doc.description,
+		pathColor: doc.pathColor,
+		createdAt: doc.createdAt,
+		updatedAt: doc.updatedAt,
+	});
+}
 
 export class ArticleEndpoints {
-	private static model: Model<IArticle>;
-	private static pathModel: Model<ILearningPath>;
+	private static model: Model<Article>;
+	private static pathModel: Model<LearningPath>;
 
-	static init(model: Model<IArticle>, pathModel: Model<ILearningPath>) {
+	static init(model: Model<any>, pathModel: Model<any>) {
 		ArticleEndpoints.model ??= model;
 		ArticleEndpoints.pathModel ??= pathModel;
 	}
 
-	static async list(req: { listed?: boolean; pathSlug?: string; q?: string; limit?: number; skip?: number }) {
-		const where: any = {};
+	static async list(req: ListArticlesRequest) {
+		const where: Record<string, any> = {};
 
 		// Filtro por path (incluye artículos de sub-paths)
 		if (req.pathSlug) {
@@ -21,12 +56,10 @@ export class ArticleEndpoints {
 			if (parentPath?.items?.length) {
 				const targetArticleSlugs: string[] = [];
 
-				// Artículos directos del path
-				const directArticles = parentPath.items.filter((i) => i.type === "article").map((i) => i.slug);
+				const directArticles = parentPath.items.filter((i: PathItem) => i.type === PathItemType.ARTICLE).map((i: PathItem) => i.slug);
 				targetArticleSlugs.push(...directArticles);
 
-				// Artículos de sub-paths
-				const subPathSlugs = parentPath.items.filter((i) => i.type === "path").map((i) => i.slug);
+				const subPathSlugs = parentPath.items.filter((i: PathItem) => i.type === PathItemType.PATH).map((i: PathItem) => i.slug);
 
 				if (subPathSlugs.length > 0) {
 					const subPaths = await ArticleEndpoints.pathModel
@@ -36,7 +69,7 @@ export class ArticleEndpoints {
 
 					subPaths.forEach((sp) => {
 						if (sp.items) {
-							const subArticles = sp.items.filter((i) => i.type === "article").map((i) => i.slug);
+							const subArticles = sp.items.filter((i: PathItem) => i.type === PathItemType.ARTICLE).map((i: PathItem) => i.slug);
 							targetArticleSlugs.push(...subArticles);
 						}
 					});
@@ -44,22 +77,17 @@ export class ArticleEndpoints {
 
 				where.slug = { $in: [...new Set(targetArticleSlugs)] };
 			} else {
-				return [];
+				return create(ListArticlesResponseSchema, { articles: [] });
 			}
 		}
 
-		// Filtro listed
-		if (req.listed !== undefined) {
-			where.listed = req.listed;
-		}
+		if (req.listed !== undefined) where.listed = req.listed;
 
-		// Búsqueda por texto
 		if (req.q) {
 			const safe = req.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 			where.title = { $regex: safe, $options: "i" };
 		}
 
-		// Aggregate para popular pathColor desde LearningPath
 		const pipeline: PipelineStage[] = [
 			{ $match: where },
 			{
@@ -71,11 +99,7 @@ export class ArticleEndpoints {
 				},
 			},
 			{ $unwind: { path: "$lp", preserveNullAndEmptyArrays: true } },
-			{
-				$addFields: {
-					pathColor: "$lp.color",
-				},
-			},
+			{ $addFields: { pathColor: "$lp.color" } },
 			{
 				$project: {
 					_id: 0,
@@ -99,30 +123,67 @@ export class ArticleEndpoints {
 		if (req.limit) pipeline.push({ $limit: req.limit });
 		if (req.skip) pipeline.push({ $skip: req.skip });
 
-		return await ArticleEndpoints.model.aggregate(pipeline);
+		const docs = await ArticleEndpoints.model.aggregate(pipeline);
+
+		return create(ListArticlesResponseSchema, {
+			articles: docs.map(docToProto),
+		});
 	}
 
 	static async getBySlug(slug: string) {
-		return await ArticleEndpoints.model.findOne({ slug }).lean();
+		const doc = await ArticleEndpoints.model.findOne({ slug }).lean();
+
+		return create(GetArticleResponseSchema, {
+			article: doc ? docToProto(doc as ArticleWithPathColor) : undefined,
+		});
 	}
 
-	static async create(data: any) {
+	static async create(req: CreateArticleRequest) {
+		const data = {
+			slug: req.slug,
+			title: req.title,
+			pathSlug: req.pathSlug,
+			blocks: req.blocks,
+			videoUrl: req.videoUrl,
+			image: req.image,
+			authorId: req.authorId,
+			listed: req.listed ?? true,
+			description: req.description,
+		};
+
 		const doc = await ArticleEndpoints.model.create(data);
-		return doc.toObject();
+
+		return create(CreateArticleResponseSchema, {
+			article: docToProto(doc.toObject()),
+		});
 	}
 
-	static async update(slug: string, data: any) {
-		const doc = await ArticleEndpoints.model.findOneAndUpdate({ slug }, data, { new: true }).lean();
+	static async update(req: UpdateArticleRequest) {
+		const data: Record<string, any> = {};
+		if (req.title !== undefined) data.title = req.title;
+		if (req.pathSlug !== undefined) data.pathSlug = req.pathSlug;
+		if (req.blocks.length > 0) data.blocks = req.blocks;
+		if (req.videoUrl !== undefined) data.videoUrl = req.videoUrl;
+		if (req.image !== undefined) data.image = req.image;
+		if (req.listed !== undefined) data.listed = req.listed;
+		if (req.description !== undefined) data.description = req.description;
+
+		const doc = await ArticleEndpoints.model.findOneAndUpdate({ slug: req.slug }, data, { new: true }).lean();
 
 		if (!doc) {
-			throw new Error(`Article with slug "${slug}" not found`);
+			throw new Error(`Article with slug "${req.slug}" not found`);
 		}
 
-		return doc;
+		return create(UpdateArticleResponseSchema, {
+			article: docToProto(doc as ArticleWithPathColor),
+		});
 	}
 
 	static async delete(slug: string) {
 		const result = await ArticleEndpoints.model.deleteOne({ slug });
-		return { success: result.deletedCount > 0 };
+
+		return create(DeleteArticleResponseSchema, {
+			success: result.deletedCount > 0,
+		});
 	}
 }

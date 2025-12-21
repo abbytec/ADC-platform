@@ -19,28 +19,21 @@ export function ArticlesPage() {
 	}, [searchQuery, selectedPathSlug]);
 
 	async function loadInitialData() {
-		const pathsResponse = await contentAPI.listPaths({ public: true, listed: true });
-
-		if (pathsResponse.data) {
-			setPaths(pathsResponse.data);
-		}
-
+		const pathsData = await contentAPI.listPaths({ public: true, listed: true });
+		setPaths(pathsData);
 		await loadArticles();
 	}
 
 	async function loadArticles() {
 		setLoading(true);
 
-		const response = await contentAPI.listArticles({
+		const articlesData = await contentAPI.listArticles({
 			listed: true,
 			pathSlug: selectedPathSlug || undefined,
 			q: searchQuery || undefined,
 		});
 
-		if (response.data) {
-			setArticles(response.data);
-		}
-
+		setArticles(articlesData);
 		setLoading(false);
 	}
 

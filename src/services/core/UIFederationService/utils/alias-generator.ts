@@ -70,6 +70,9 @@ export default {
 			aliases["@adc/utils"] = path.resolve(process.cwd(), "src/utils");
 		}
 
+		// Alias para código común compartido (proto types, interfaces, etc.)
+		aliases["@common"] = path.resolve(process.cwd(), "src/common");
+
 		return aliases;
 	},
 

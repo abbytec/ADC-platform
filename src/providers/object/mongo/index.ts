@@ -178,7 +178,7 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		});
 
 		this.connection.on("disconnected", () => {
-			Logger.warn(`[MongoProvider] Desconectado de MongoDB`);
+			if (!this.isDisconnecting) Logger.warn(`[MongoProvider] Desconectado de MongoDB`);
 
 			if (this.config.autoReconnect && !this.isDisconnecting) {
 				this.#scheduleReconnect();
@@ -205,9 +205,10 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		Logger.info(`[MongoProvider] Programando reconexión en ${this.config.reconnectInterval}ms...`);
 		this.reconnectTimer = setTimeout(() => {
 			this.reconnectTimer = null;
-			this.connect().catch((err) => {
-				Logger.error(`[MongoProvider] Error en reconexión: ${err.message}`);
-			});
+			if (!this.isDisconnecting)
+				this.connect().catch((err) => {
+					Logger.error(`[MongoProvider] Error en reconexión: ${err.message}`);
+				});
 		}, this.config.reconnectInterval);
 	}
 

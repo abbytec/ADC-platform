@@ -1,30 +1,7 @@
-import { Schema, type Document } from "mongoose";
+import { Schema } from "mongoose";
+import { LearningPath } from "../../../../common/ADC/gen/learning/learning_pb.ts";
 
-export interface ILearningPathItem {
-	slug: string;
-	type: "article" | "path";
-	level: "critico" | "importante" | "opcional";
-}
-
-export interface ILearningPath extends Document {
-	slug: string;
-	title: string;
-	description: string;
-	color: string;
-	banner?: {
-		url: string;
-		width?: number;
-		height?: number;
-		alt?: string;
-	};
-	public: boolean;
-	listed: boolean;
-	items: ILearningPathItem[];
-	createdAt: Date;
-	updatedAt: Date;
-}
-
-export const LearningPathSchema = new Schema<ILearningPath>(
+export const LearningPathSchema = new Schema<LearningPath>(
 	{
 		slug: { type: String, required: true, unique: true, index: true },
 		title: { type: String, required: true },
