@@ -1,3 +1,4 @@
+import { ChildProcess } from "node:child_process";
 import { ImportMap, UIModuleConfig } from "../../../interfaces/modules/IUIModule.js";
 
 /**
@@ -18,43 +19,6 @@ export interface RegisteredUIModule {
 	buildStatus: "pending" | "building" | "built" | "error";
 	/** Path del build output */
 	outputPath?: string;
-}
-
-/**
- * Interface del servicio UIFederation
- */
-export interface IUIFederationService {
-	/**
-	 * Registra un módulo UI (llamado desde BaseApp)
-	 */
-	registerUIModule(name: string, appDir: string, config: UIModuleConfig): Promise<void>;
-
-	/**
-	 * Desregistra un módulo UI
-	 */
-	unregisterUIModule(name: string, namespace?: string): Promise<void>;
-
-	/**
-	 * Obtiene el import map actual
-	 */
-	getImportMap(): ImportMap;
-
-	/**
-	 * Ejecuta el build de un módulo UI
-	 */
-	buildUIModule(name: string, namespace?: string): Promise<void>;
-
-	/**
-	 * Reinyecta import maps en todos los módulos registrados
-	 */
-	refreshAllImportMaps(): Promise<void>;
-
-	/**
-	 * Obtiene estadísticas del servicio
-	 */
-	getStats(): {
-		registeredModules: number;
-		importMapEntries: number;
-		modules: RegisteredUIModule[];
-	};
+	/** Proceso watcher del dev server (si aplica) */
+	watcher?: ChildProcess;
 }

@@ -1,21 +1,28 @@
 import { createElement, useState, useEffect, useRef } from "react";
 import { Shell } from "./components/Shell.tsx";
 import { router, type RouteDefinition } from "@ui-library/utils/router";
-import { loadRemoteComponent, type Framework } from "@adc/utils/react/loadRemoteComponent";
-import "@ui-library/loader";
+import { lazyLoadRemoteComponent, type Framework } from "@adc/utils/react/loadRemoteComponent";
 
 // Las funciones t(), setLocale(), getLocale() están disponibles globalmente
 // desde adc-i18n.js (cargado en index.html)
 
-interface ModuleDefinition {
+interface RemoteModuleConfig {
 	framework: Framework;
-	importFn: () => Promise<any>;
+	remoteEntryUrl: string;
+	remoteName: string;
+	scope: string;
 }
 
-const moduleDefinitions: Record<string, ModuleDefinition> = {
+const IS_DEV = process.env.NODE_ENV === 'development';
+
+const moduleDefinitions: Record<string, RemoteModuleConfig> = {
 	home: {
 		framework: "vanilla",
-		importFn: () => import("home/App" as any),
+		remoteEntryUrl: IS_DEV
+			? "http://localhost:3012/remoteEntry.js"
+			: "http://m-home.local.com:3000/remoteEntry.js",
+		remoteName: "home",
+		scope: "./App",
 	},
 };
 
@@ -55,8 +62,10 @@ export default function App() {
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
 			const definition = moduleDefinitions[moduleName];
-			const data = await loadRemoteComponent({
-				importFn: definition.importFn,
+			const data = await lazyLoadRemoteComponent({
+				remoteEntryUrl: definition.remoteEntryUrl,
+				remoteName: definition.remoteName,
+				scope: definition.scope,
 				moduleName,
 				framework: definition.framework,
 			});

@@ -1,0 +1,101 @@
+export interface RouteDefinition {
+	module: string;
+	path?: string;
+	subdomain?: string;
+}
+
+export class Router {
+	private onRouteChange: ((path: string) => void) | null = null;
+	private popstateListener: (() => void) | null = null;
+	private baseDomain: string | null = null;
+
+	navigate(path: string) {
+		if (window.location.pathname === path) {
+			return;
+		}
+
+		window.history.pushState({}, "", path);
+		if (this.onRouteChange) {
+			this.onRouteChange(path);
+		}
+	}
+
+	setOnRouteChange(callback: (path: string) => void) {
+		this.onRouteChange = callback;
+
+		if (!this.popstateListener) {
+			this.popstateListener = () => {
+				if (this.onRouteChange) {
+					this.onRouteChange(window.location.pathname);
+				}
+			};
+			window.addEventListener("popstate", this.popstateListener);
+		}
+
+		return () => {
+			if (this.popstateListener) {
+				window.removeEventListener("popstate", this.popstateListener);
+				this.popstateListener = null;
+			}
+		};
+	}
+
+	getCurrentPath(): string {
+		return window.location.pathname;
+	}
+
+	setBaseDomain(domain: string) {
+		this.baseDomain = domain;
+	}
+
+	getSubdomain(): string | null {
+		const hostname = window.location.hostname;
+
+		if (hostname === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+			return null;
+		}
+
+		const base = this.baseDomain || this.#inferBaseDomain(hostname);
+		if (!base || hostname === base) {
+			return null;
+		}
+
+		const suffix = "." + base;
+		if (hostname.endsWith(suffix)) {
+			return hostname.slice(0, -suffix.length);
+		}
+
+		return null;
+	}
+
+	#inferBaseDomain(hostname: string): string {
+		const parts = hostname.split(".");
+		if (parts.length <= 2) {
+			return hostname;
+		}
+		return parts.slice(-2).join(".");
+	}
+
+	resolveModule(routes: RouteDefinition[]): string | null {
+		const subdomain = this.getSubdomain();
+		const path = this.getCurrentPath();
+
+		if (subdomain) {
+			const subdomainRoute = routes.find((r) => r.subdomain === subdomain);
+			if (subdomainRoute) {
+				return subdomainRoute.module;
+			}
+		}
+
+		const pathRoute = routes.find((r) => r.path === path);
+		if (pathRoute) {
+			return pathRoute.module;
+		}
+
+		const defaultRoute = routes.find((r) => r.path === "/");
+		return defaultRoute?.module || null;
+	}
+}
+
+export const router = new Router();
+

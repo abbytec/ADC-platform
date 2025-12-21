@@ -77,20 +77,30 @@ import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack';
 		const hasI18n = context.module.uiConfig.i18n;
 		const moduleName = context.module.uiConfig.name;
 
-		const i18nScript = isHost && hasI18n ? this.getI18nTemplate(moduleName) : `
+		const i18nScript =
+			isHost && hasI18n
+				? this.getI18nTemplate(moduleName)
+				: `
             template: './index.html',`;
 
 		// Vue feature flags solo si algún remote usa Vue
-		const vueFeatureFlags = usedFrameworks.has("vue") ? `
+		const vueFeatureFlags = usedFrameworks.has("vue")
+			? `
         new rspack.DefinePlugin({
             __VUE_OPTIONS_API__: true,
             __VUE_PROD_DEVTOOLS__: false,
             __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
-        }),` : "";
+        }),`
+			: "";
 
-		return `${vueFeatureFlags}
+		// Solo hosts necesitan HtmlRspackPlugin (remotes solo exponen assets)
+		const htmlPlugin = isHost
+			? `
         new rspack.HtmlRspackPlugin({${i18nScript}
-        }),
+        }),`
+			: "";
+
+		return `${vueFeatureFlags}${htmlPlugin}
     `;
 	}
 }

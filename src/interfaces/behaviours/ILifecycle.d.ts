@@ -1,4 +1,4 @@
 export interface ILifecycle {
-	start?(): Promise<void>;
-	stop?(): Promise<void>;
+	start?(kernelKey?: symbol): Promise<void>;
+	stop?(kernelKey?: symbol): Promise<void>;
 }

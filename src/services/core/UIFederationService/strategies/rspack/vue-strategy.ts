@@ -81,10 +81,6 @@ import { VueLoaderPlugin } from 'vue-loader';
                     },
                 },
                 exclude: /node_modules/,
-            },
-            {
-                test: /\\.css$/,
-                use: ['style-loader', 'css-loader'],
             }
     `;
 	}
@@ -93,8 +89,18 @@ import { VueLoaderPlugin } from 'vue-loader';
 		const hasI18n = context.module.uiConfig.i18n;
 		const moduleName = context.module.uiConfig.name;
 
-		const i18nScript = isHost && hasI18n ? this.getI18nTemplate(moduleName) : `
+		const i18nScript =
+			isHost && hasI18n
+				? this.getI18nTemplate(moduleName)
+				: `
             template: './index.html',`;
+
+		// Solo hosts necesitan HtmlRspackPlugin (remotes solo exponen assets)
+		const htmlPlugin = isHost
+			? `
+        new rspack.HtmlRspackPlugin({${i18nScript}
+        }),`
+			: "";
 
 		// Vue feature flags siempre necesarios para Vue
 		return `
@@ -102,9 +108,7 @@ import { VueLoaderPlugin } from 'vue-loader';
             __VUE_OPTIONS_API__: true,
             __VUE_PROD_DEVTOOLS__: false,
             __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
-        }),
-        new rspack.HtmlRspackPlugin({${i18nScript}
-        }),
+        }),${htmlPlugin}
         new VueLoaderPlugin(),
     `;
 	}

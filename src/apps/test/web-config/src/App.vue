@@ -8,7 +8,7 @@
 
     <div style="display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
       <adc-container>
-        <h3>General</h3>
+        <h3 class="text-xl">General</h3>
         <div class="form-group">
           <label>Nombre del Sitio</label>
           <input type="text" v-model="config.siteName" />
@@ -41,12 +41,12 @@
         <adc-stat-card
           card-title="Opciones Configuradas"
           :value="configuredOptions"
-          color="#0066cc"
+          color="primary"
         />
         <adc-stat-card
           card-title="Cambios Pendientes"
           :value="pendingChanges"
-          color="#f59e0b"
+          color="warning"
         />
       </div>
     </div>
@@ -54,8 +54,9 @@
 </template>
 
 <script setup>
+import '@ui-library';
+import './styles/tailwind.css';
 import { reactive, ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import '@ui-library/loader'
 
 const saveButton = ref(null)
 

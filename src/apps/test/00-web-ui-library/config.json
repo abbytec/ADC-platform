@@ -3,7 +3,6 @@
 		"name": "web-ui-library",
 		"framework": "stencil",
 		"outputDir": "dist-ui",
-		"standalone": false,
 		"exports": {
 			"loader": "./loader",
 			"utils": "./utils",

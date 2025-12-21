@@ -4,7 +4,6 @@ import { spawn } from "node:child_process";
 import { BaseRspackStrategy } from "../base-strategy.js";
 import type { IBuildContext, IBuildResult } from "../types.js";
 import { getConfigDir, getBinPath, getLogsDir, normalizeForConfig } from "../../utils/path-resolver.js";
-import { getDisabledAppsDetector } from "../../utils/disabled-apps-detector.js";
 import aliasGenerator from "../../utils/alias-generator.js";
 import { generateTailwindConfig, generatePostCSSConfig, hasTailwindEnabled } from "../../config-generators/tailwind.js";
 
@@ -12,8 +11,6 @@ import { generateTailwindConfig, generatePostCSSConfig, hasTailwindEnabled } fro
  * Clase base para estrategias Rspack con lógica común de generación de config
  */
 export abstract class RspackBaseStrategy extends BaseRspackStrategy {
-	protected readonly disabledAppsDetector = getDisabledAppsDetector();
-
 	/**
 	 * Genera la configuración de Rspack
 	 */
@@ -22,13 +19,15 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const configDir = getConfigDir(namespace, module.uiConfig.name);
 		await fs.mkdir(configDir, { recursive: true });
 
+		const isLayout = this.isLayout(context);
 		const isHost = this.isHost(context);
 		const isProduction = process.env.NODE_ENV === "production";
 		const safeName = this.getSafeName(module.uiConfig.name);
 
-		// Detectar remotos y externals
-		const remotes = isHost ? await this.detectRemotes(context) : {};
-		const externals = isHost ? await this.disabledAppsDetector.getExternalsForDisabledApps(context.logger) : [];
+		// Los layouts ahora usan lazyLoadRemoteComponent, por lo que no necesitan pre-declarar remotes
+		// Esto evita que todos los mf-manifest.json se carguen eagerly
+		const remotes = {};
+		const externals: string[] = [];
 
 		// Detectar frameworks usados
 		const usedFrameworks = aliasGenerator.detectUsedFrameworks(registeredModules, module);
@@ -38,16 +37,18 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 
 		// Configurar Tailwind si está habilitado
 		let postcssConfigPath = "";
+		let tailwindCssPath = "";
 		if (hasTailwindEnabled(module)) {
 			context.logger?.logInfo(`[${module.uiConfig.name}] Tailwind CSS habilitado, generando configuración...`);
-			const tailwindConfigPath = await generateTailwindConfig(module, registeredModules, configDir, context.logger);
-			postcssConfigPath = await generatePostCSSConfig(tailwindConfigPath, configDir, context.logger);
+			tailwindCssPath = await generateTailwindConfig(module, registeredModules, configDir, context.logger);
+			postcssConfigPath = await generatePostCSSConfig(tailwindCssPath, configDir, context.logger);
 		}
 
 		// Generar contenido del config
 		const configContent = this.buildConfigContent({
 			context,
 			safeName,
+			isLayout,
 			isHost,
 			isProduction,
 			remotes,
@@ -55,6 +56,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 			usedFrameworks,
 			aliasesObject,
 			postcssConfigPath,
+			tailwindCssPath,
 			configDir,
 		});
 
@@ -148,9 +150,79 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 
 		context.logger?.logInfo(`Ejecutando build de producción para ${context.module.uiConfig.name}...`);
 
+		const { module, namespace, isDevelopment } = context;
+
+		// En desarrollo, usar --watch para remotos (sin servidor HTTP)
+		const useWatch = isDevelopment && !module.uiConfig.isHost;
+		const buildMode = useWatch ? "build con watch" : "build de producción";
+		const buildArgs = useWatch ? ["build", "--watch", "--config", configPath] : ["build", "--config", configPath];
+
+		context.logger?.logInfo(`Ejecutando ${buildMode} para ${module.uiConfig.name} [${namespace}]...`);
+
+		// Si es watch mode, manejar como proceso continuo (similar a dev server)
+		if (useWatch) {
+			const logName = `${namespace}-${module.uiConfig.name}`;
+			const logsDir = getLogsDir();
+			await fs.mkdir(logsDir, { recursive: true });
+			const logFile = path.join(logsDir, `${logName}.log`);
+			await fs.appendFile(logFile, `\n--- Start of Watch Build: ${new Date().toISOString()} ---\n`);
+
+			const spawnOptions: any = {
+				cwd: module.appDir,
+				stdio: "pipe",
+				shell: false,
+			};
+
+			if (process.platform !== "win32") {
+				spawnOptions.detached = true;
+			}
+
+			const watcher = spawn(rspackBin, buildArgs, spawnOptions);
+
+			watcher.stdout?.on("data", async (data) => {
+				try {
+					await fs.appendFile(logFile, data);
+				} catch {
+					// Silent fail
+				}
+			});
+
+			watcher.stderr?.on("data", async (data) => {
+				try {
+					await fs.appendFile(logFile, data);
+				} catch {
+					// Silent fail
+				}
+			});
+
+			watcher.on("error", (error) => {
+				context.logger?.logError(`Error en watcher Rspack ${module.uiConfig.name}: ${error.message}`);
+				module.buildStatus = "error";
+				fs.appendFile(logFile, `[ERROR] Spawn error: ${error.message}\n`).catch(() => {});
+			});
+
+			watcher.on("exit", (code, signal) => {
+				const exitMsg = `Rspack watcher terminated (code: ${code}, signal: ${signal})\n`;
+				fs.appendFile(logFile, exitMsg).catch(() => {});
+
+				if (code !== 0 && signal !== "SIGTERM" && signal !== "SIGKILL" && signal !== "SIGINT") {
+					context.logger?.logWarn(`Rspack watcher ${module.uiConfig.name} terminado inesperadamente. Ver logs: ${logFile}`);
+					module.buildStatus = "error";
+				}
+			});
+
+			context.logger?.logOk(`${module.uiConfig.name} [${namespace}] Rspack Watch Build iniciado. Logs: temp/logs/${logName}.log`);
+
+			// Dar tiempo al build inicial para completar
+			await new Promise((resolve) => setTimeout(resolve, 5000));
+
+			return { watcher, outputPath };
+		}
+
+		// Build de producción (sin watch)
 		return new Promise((resolve, reject) => {
-			const proc = spawn(rspackBin, ["build", "--config", configPath], {
-				cwd: context.module.appDir,
+			const proc = spawn(rspackBin, buildArgs, {
+				cwd: module.appDir,
 				stdio: "pipe",
 				shell: false,
 			});
@@ -168,10 +240,10 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 
 			proc.on("close", (code) => {
 				if (code === 0) {
-					context.logger?.logOk(`Build completado para ${context.module.uiConfig.name}`);
+					context.logger?.logOk(`Build completado para ${module.uiConfig.name}`);
 					resolve({ outputPath });
 				} else {
-					context.logger?.logError(`Build falló para ${context.module.uiConfig.name}`);
+					context.logger?.logError(`Build falló para ${module.uiConfig.name}`);
 					context.logger?.logError(`Error: ${errorOutput.slice(0, 500)}`);
 					reject(new Error(`Rspack build falló con código ${code}`));
 				}
@@ -187,21 +259,36 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 	 * Detecta remotes para Module Federation (solo para hosts)
 	 */
 	protected async detectRemotes(context: IBuildContext): Promise<Record<string, string>> {
-		const { namespace, registeredModules } = context;
+		const { namespace, registeredModules, module: currentModule, logger } = context;
 		const remotes: Record<string, string> = {};
+
+		logger?.logDebug(
+			`[detectRemotes] ${currentModule.uiConfig.name} - namespace: ${namespace}, registered: ${Array.from(registeredModules.keys()).join(
+				", "
+			)}`
+		);
 
 		for (const [moduleName, mod] of registeredModules.entries()) {
 			const modNamespace = mod.namespace || "default";
-			if (moduleName !== "layout" && mod.uiConfig.devPort && modNamespace === namespace) {
+			// Excluir: módulos layout (hosts), el módulo actual, y módulos sin devPort o de otro namespace
+			const isLayoutModule = moduleName.includes("layout");
+			const isCurrentModule = moduleName === currentModule.uiConfig.name;
+
+			// Solo incluir módulos que tengan devPort y estén en el mismo namespace
+			if (!isLayoutModule && !isCurrentModule && mod.uiConfig.devPort && modNamespace === namespace) {
 				const framework = mod.uiConfig.framework || "react";
 				// Solo incluir frameworks soportados por rspack
 				if (["react", "vue", "vanilla"].includes(framework)) {
 					const safeRemoteName = this.getSafeName(moduleName);
 					remotes[moduleName] = `${safeRemoteName}@http://localhost:${mod.uiConfig.devPort}/mf-manifest.json`;
+					logger?.logDebug(`[detectRemotes] Added remote: ${moduleName}`);
 				}
 			}
 		}
 
+		if (Object.keys(remotes).length > 0) {
+			logger?.logDebug(`[detectRemotes] Total: ${Object.keys(remotes).length} remotes for ${currentModule.uiConfig.name}`);
+		}
 		return remotes;
 	}
 
@@ -211,6 +298,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 	protected buildConfigContent(options: {
 		context: IBuildContext;
 		safeName: string;
+		isLayout: boolean;
 		isHost: boolean;
 		isProduction: boolean;
 		remotes: Record<string, string>;
@@ -218,14 +306,44 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		usedFrameworks: Set<string>;
 		aliasesObject: string;
 		postcssConfigPath: string;
+		tailwindCssPath: string;
 		configDir: string;
 	}): string {
-		const { context, safeName, isHost, isProduction, remotes, externals, usedFrameworks, aliasesObject, postcssConfigPath } = options;
+		const {
+			context,
+			safeName,
+			isLayout,
+			isHost,
+			isProduction,
+			remotes,
+			externals,
+			usedFrameworks,
+			aliasesObject,
+			postcssConfigPath,
+			tailwindCssPath,
+		} = options;
 
 		const { module, uiOutputBaseDir } = context;
 		const mode = isProduction ? "production" : "development";
 		const devtool = isProduction ? "false" : "'cheap-module-source-map'";
 		const hotReload = !isProduction;
+
+		// Agregar alias para Tailwind CSS v4 si está habilitado
+		let finalAliasesObject = aliasesObject;
+		if (tailwindCssPath) {
+			const originalTailwindCss = normalizeForConfig(path.join(module.appDir, "src", "styles", "tailwind.css"));
+			const generatedTailwindCss = normalizeForConfig(tailwindCssPath);
+			// Insertar el alias de Tailwind en el objeto de aliases
+			if (finalAliasesObject === "{}") {
+				finalAliasesObject = `{\n            '${originalTailwindCss}': '${generatedTailwindCss}'\n        }`;
+			} else {
+				// Insertar antes del cierre del objeto
+				finalAliasesObject = finalAliasesObject.replace(
+					/\n {8}\}$/,
+					`,\n            '${originalTailwindCss}': '${generatedTailwindCss}'\n        }`
+				);
+			}
+		}
 
 		// Obtener configuración específica del framework
 		const mainEntry = this.getMainEntry();
@@ -236,8 +354,8 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const imports = this.getImports();
 		const shared = this.buildSharedConfig(usedFrameworks);
 
-		// Remotes o exposes según sea host o remote
-		const federationConfig = isHost
+		// Layouts cargan remotes, el resto se expone
+		const federationConfig = isLayout
 			? `remotes: ${JSON.stringify(remotes, null, 4)},`
 			: `
             filename: 'remoteEntry.js',
@@ -245,43 +363,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
                 './App': './src/App${appExtension}',
             },`;
 
-		return `
-${imports}
-
-export default {
-    mode: '${mode}',
-    devtool: ${devtool},
-    context: '${normalizeForConfig(module.appDir)}',
-    entry: {
-        main: '${mainEntry}',
-    },
-    output: {
-        path: '${normalizeForConfig(path.join(uiOutputBaseDir, module.uiConfig.name))}',
-        publicPath: 'auto',
-        uniqueName: '${safeName}',
-    },
-    resolve: {
-        extensions: ${extensions},
-        alias: ${aliasesObject},
-    },${
-		externals.length > 0
-			? `
-    externals: ${JSON.stringify(externals)},`
-			: ""
-	}
-    module: {
-        rules: [
-            ${moduleRules}
-        ],
-    },
-    plugins: [
-        ${plugins}
-        new ModuleFederationPlugin({
-            name: '${safeName}',
-            ${federationConfig}
-            shared: ${shared},
-        }),
-    ],
+		const devServerConfig = `
     devServer: {
         port: ${module.uiConfig.devPort},
         hot: ${hotReload},
@@ -303,7 +385,48 @@ export default {
                 changeOrigin: true,
             },
         ],
+    },`;
+
+		return `
+${imports}
+
+export default {
+    mode: '${mode}',
+    devtool: ${devtool},
+    context: '${normalizeForConfig(module.appDir)}',
+    entry: {
+        main: '${mainEntry}',
     },
+    output: {
+        path: '${normalizeForConfig(path.join(uiOutputBaseDir, module.uiConfig.name))}',
+        publicPath: 'auto',
+        uniqueName: '${safeName}',
+    },
+    resolve: {
+        extensions: ${extensions},
+        alias: ${finalAliasesObject},
+    },${
+		externals.length > 0
+			? `
+    externals: ${JSON.stringify(externals)},`
+			: ""
+	}
+    module: {
+        rules: [
+            ${moduleRules}
+        ],
+    },
+    plugins: [
+        new rspack.DefinePlugin({
+            'process.env.NODE_ENV': JSON.stringify('${mode}'),
+        }),
+        ${plugins}
+        new ModuleFederationPlugin({
+            name: '${safeName}',
+            ${federationConfig}
+            shared: ${shared},
+        }),
+    ],${devServerConfig}
     ignoreWarnings: [
         /Critical dependency.*expression/,
     ],

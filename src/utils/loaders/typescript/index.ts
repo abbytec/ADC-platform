@@ -2,95 +2,94 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
 import { IModuleConfig } from "../../../interfaces/modules/IModule.js";
-import { IProvider } from "../../../interfaces/modules/IProvider.js";
-import { IService } from "../../../interfaces/modules/IService.js";
-import { IUtility } from "../../../interfaces/modules/IUtility.js";
+import type { BaseProvider, IProvider } from "../../../providers/BaseProvider.ts";
+import type { IUtility } from "../../../utilities/BaseUtility.ts";
+import type { BaseService, IService } from "../../../services/BaseService.ts";
+
 import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
+
+type Constructor<T> = new (...args: any[]) => T;
 
 export class TypeScriptLoader implements IModuleLoader {
 	readonly #extension = process.env.NODE_ENV === "development" ? ".ts" : ".js";
 
+	readonly #kernelKey: symbol;
+
+	constructor(kernelKey: symbol) {
+		this.#kernelKey = kernelKey;
+	}
+
 	async canHandle(modulePath: string): Promise<boolean> {
 		try {
-			const indexFile = path.join(modulePath, `index${this.#extension}`);
-			await fs.stat(indexFile);
+			await fs.stat(path.join(modulePath, `index${this.#extension}`));
 			return true;
 		} catch {
 			return false;
 		}
 	}
 
-	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider<any>> {
+	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider> {
+		const ProviderClass = await this.importClass<BaseProvider>(modulePath, "Provider");
+		const providerInstance = new ProviderClass(this.enrichConfig(modulePath, config));
+		try {
+			providerInstance.setKernelKey(this.#kernelKey);
+			await providerInstance.start(this.#kernelKey);
+		} catch {
+			// No-op
+		}
+		return providerInstance;
+	}
+
+	async loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility> {
+		const UtilityClass = await this.importClass<IUtility>(modulePath, "Utility");
+		return new UtilityClass(this.enrichConfig(modulePath, config));
+	}
+
+	async loadService(modulePath: string, kernel: Kernel, config?: Record<string, any> | IModuleConfig): Promise<IService> {
+		const ServiceClass = await this.importClass<BaseService>(modulePath, "Service");
+		// Service recibe argumentos distintos (kernel + config), por lo que lo instanciamos diferente
+		const serviceInstance = new ServiceClass(kernel, config);
+		try {
+			serviceInstance.setKernelKey(this.#kernelKey);
+			await serviceInstance.start(this.#kernelKey);
+		} catch {
+			// No-op
+		}
+		return serviceInstance;
+	}
+
+	/**
+	 * Helper centralizado para importar módulos dinámicamente y validar su estructura.
+	 */
+	private async importClass<T>(modulePath: string, role: string): Promise<Constructor<T>> {
 		try {
 			const indexFile = path.join(modulePath, `index${this.#extension}`);
+			// Cache busting para recarga en caliente
 			const module = await import(`${indexFile}?v=${Date.now()}`);
-			const ProviderClass = module.default;
+			const ModuleClass = module.default;
 
-			if (!ProviderClass) {
-				throw new Error(`No hay export default en ${indexFile}`);
+			if (!ModuleClass) {
+				throw new Error(`El módulo ${indexFile} no tiene un export default.`);
 			}
 
-			// Enriquecer config con información del módulo para el decorador @Proxied
-			const enrichedConfig = {
-				...config,
-				moduleName: config?.moduleName || path.basename(modulePath),
-				moduleVersion: config?.moduleVersion || "latest",
-				language: config?.language || "typescript",
-			};
-
-			const provider: IProvider<any> = new ProviderClass(enrichedConfig);
-			return provider;
+			return ModuleClass as Constructor<T>;
 		} catch (error) {
-			Logger.error(`[TypeScriptLoader] Error cargando Provider: ${error}`);
+			Logger.error(`[TypeScriptLoader] Error cargando ${role}: ${error}`);
 			throw error;
 		}
 	}
 
-	async loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility<any>> {
-		try {
-			const indexFile = path.join(modulePath, `index${this.#extension}`);
-			const module = await import(`${indexFile}?v=${Date.now()}`);
-			const UtilityClass = module.default;
-
-			if (!UtilityClass) {
-				throw new Error(`No hay export default en ${indexFile}`);
-			}
-
-			// Enriquecer config con información del módulo para el decorador @Proxied
-			const enrichedConfig = {
-				...config,
-				moduleName: config?.moduleName || path.basename(modulePath),
-				moduleVersion: config?.moduleVersion || "latest",
-				language: config?.language || "typescript",
-			};
-
-			const utility: IUtility<any> = new UtilityClass(enrichedConfig);
-			return utility;
-		} catch (error) {
-			Logger.error(`[TypeScriptLoader] Error cargando Utility: ${error}`);
-			throw error;
-		}
-	}
-
-	async loadService(modulePath: string, kernel: Kernel, config?: Record<string, any> | IModuleConfig): Promise<IService<any>> {
-		try {
-			const indexFile = path.join(modulePath, `index${this.#extension}`);
-			const module = await import(`${indexFile}?v=${Date.now()}`);
-			const ServiceClass = module.default;
-
-			if (!ServiceClass) {
-				throw new Error(`No hay export default en ${indexFile}`);
-			}
-
-			// Pasar la configuración completa al servicio
-			// El servicio espera recibir providers, utilities, config, etc.
-			const service: IService<any> = new ServiceClass(kernel, config);
-			return service;
-		} catch (error) {
-			Logger.error(`[TypeScriptLoader] Error cargando Service: ${error}`);
-			throw error;
-		}
+	/**
+	 * Normaliza la configuración inyectando metadatos del módulo.
+	 */
+	private enrichConfig(modulePath: string, config?: Record<string, any>): Record<string, any> {
+		return {
+			...config,
+			moduleName: config?.moduleName || path.basename(modulePath),
+			moduleVersion: config?.moduleVersion || "latest",
+			language: config?.language || "typescript",
+		};
 	}
 }
 

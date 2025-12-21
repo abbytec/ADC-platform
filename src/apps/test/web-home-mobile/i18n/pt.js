@@ -4,8 +4,8 @@ export default {
 	loading: "Carregando...",
 	stats: {
 		totalUsers: "Usuários Totais",
-		activeUsers: "Usuários Ativos",
-		roles: "Funções"
+		totalGroups: "Grupos Ativos",
+		totalRoles: "Funções"
 	}
 };
 

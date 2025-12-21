@@ -27,11 +27,6 @@ export interface UIHostingConfig {
  */
 export interface IHttpServerProvider {
 	/**
-	 * Obtiene la instancia de la aplicación (Express o Fastify)
-	 */
-	getInstance(): Promise<Application | any>;
-
-	/**
 	 * Registra una ruta con un método HTTP específico
 	 */
 	registerRoute(method: string, path: string, handler: RequestHandler | any): void;
@@ -45,11 +40,6 @@ export interface IHttpServerProvider {
 	 * Inicia el servidor en un puerto específico
 	 */
 	listen(port: number): Promise<void>;
-
-	/**
-	 * Detiene el servidor
-	 */
-	stop(): Promise<void>;
 }
 
 /**
@@ -93,4 +83,3 @@ export interface HostOptions {
  * Tipos de Express re-exportados para facilitar el uso
  */
 export type { Application, RequestHandler, Request, Response, NextFunction };
-

@@ -21,7 +21,7 @@ El sistema está diseñado para soportar nodos remotos en el futuro:
 ## Uso con el Decorador @Distributed
 
 ```typescript
-import { Distributed } from "../../utils/decorators/index.js";
+import { Distributed } from "../../utils/decorators/Distributed.js";
 import { BaseService } from "../BaseService.js";
 
 @Distributed

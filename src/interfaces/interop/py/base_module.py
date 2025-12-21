@@ -24,7 +24,7 @@ class BaseModule(ABC):
 
         # Leer configuración desde variables de entorno
         self._load_from_env()
-        
+
         # Crear el logger del kernel
         self.logger = get_kernel_logger(self._name)
 
@@ -75,6 +75,10 @@ class BaseModule(ABC):
         self.logger.info(f"Iniciando servidor IPC...")
         ipc_server.start()
 
+    def start(self) -> None:
+        """Inicia el módulo (hook para lógica de inicio)"""
+        self.logger.info(f"Iniciando módulo...")
+
     def stop(self) -> None:
         """Detiene el módulo"""
         self.logger.info(f"Deteniendo módulo...")
@@ -83,21 +87,13 @@ class BaseModule(ABC):
 class BaseUtility(BaseModule):
     """Clase base para Utilities Python"""
 
-    @abstractmethod
-    def get_instance(self) -> Any:
-        """
-        Retorna la instancia que implementa la interfaz del utility.
-        """
-        pass
-
     def get_handler_methods(self) -> Dict[str, callable]:
-        """Obtiene los métodos públicos de la instancia"""
-        instance = self.get_instance()
+        """Obtiene los métodos públicos de esta instancia"""
         methods = {}
 
-        for attr_name in dir(instance):
-            if not attr_name.startswith("_"):
-                attr = getattr(instance, attr_name)
+        for attr_name in dir(self):
+            if not attr_name.startswith("_") and attr_name not in ["get_handler_methods", "start_ipc_server", "start", "stop", "name", "config", "logger"]:
+                attr = getattr(self, attr_name)
                 if callable(attr):
                     methods[attr_name] = attr
 
@@ -111,21 +107,18 @@ class BaseProvider(BaseModule):
         super().__init__(config)
         self.provider_type: Optional[str] = config.get("type") if config else None
 
-    @abstractmethod
-    def get_instance(self) -> Any:
-        """
-        Retorna la instancia que implementa la interfaz del provider.
-        """
-        pass
+    @property
+    def type(self) -> str:
+        """Tipo del provider"""
+        return self.provider_type or "default"
 
     def get_handler_methods(self) -> Dict[str, callable]:
-        """Obtiene los métodos públicos de la instancia"""
-        instance = self.get_instance()
+        """Obtiene los métodos públicos de esta instancia"""
         methods = {}
 
-        for attr_name in dir(instance):
-            if not attr_name.startswith("_"):
-                attr = getattr(instance, attr_name)
+        for attr_name in dir(self):
+            if not attr_name.startswith("_") and attr_name not in ["get_handler_methods", "start_ipc_server", "start", "stop", "name", "config", "logger", "type", "provider_type"]:
+                attr = getattr(self, attr_name)
                 if callable(attr):
                     methods[attr_name] = attr
 
@@ -135,28 +128,14 @@ class BaseProvider(BaseModule):
 class BaseService(BaseModule):
     """Clase base para Services Python"""
 
-    @abstractmethod
-    def get_instance(self) -> Any:
-        """
-        Retorna la instancia que implementa la interfaz del service.
-        """
-        pass
-
-    @abstractmethod
-    async def start(self) -> None:
-        """Inicia el servicio"""
-        pass
-
     def get_handler_methods(self) -> Dict[str, callable]:
-        """Obtiene los métodos públicos de la instancia"""
-        instance = self.get_instance()
+        """Obtiene los métodos públicos de esta instancia"""
         methods = {}
 
-        for attr_name in dir(instance):
-            if not attr_name.startswith("_"):
-                attr = getattr(instance, attr_name)
+        for attr_name in dir(self):
+            if not attr_name.startswith("_") and attr_name not in ["get_handler_methods", "start_ipc_server", "start", "stop", "name", "config", "logger"]:
+                attr = getattr(self, attr_name)
                 if callable(attr):
                     methods[attr_name] = attr
 
         return methods
-

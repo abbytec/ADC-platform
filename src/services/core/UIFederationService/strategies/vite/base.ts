@@ -2,7 +2,6 @@ import * as path from "node:path";
 import { build, type InlineConfig } from "vite";
 import { BaseViteStrategy } from "../base-strategy.js";
 import type { IBuildContext, IBuildResult } from "../types.js";
-import { getDisabledAppsDetector } from "../../utils/disabled-apps-detector.js";
 import aliasGenerator from "../../utils/alias-generator.js";
 import { generateCompleteImportMap } from "../../utils/import-map.js";
 import { copyPublicFiles } from "../../utils/file-operations.js";
@@ -11,8 +10,6 @@ import { copyPublicFiles } from "../../utils/file-operations.js";
  * Clase base para estrategias Vite
  */
 export abstract class ViteBaseStrategy extends BaseViteStrategy {
-	protected readonly disabledAppsDetector = getDisabledAppsDetector();
-
 	/**
 	 * Genera la configuración de Vite (no escribe archivo, retorna objeto)
 	 */
@@ -30,7 +27,7 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 		const outputDir = path.join(uiOutputBaseDir, config.name);
 		const base = isDev ? "/" : `/${config.name}/`;
 		const devPort = config.devPort || 0;
-		const isStandalone = config.standalone || false;
+		const isHost = config.isHost ?? false;
 
 		const plugins = await this.getVitePlugins(context, isDev);
 
@@ -49,12 +46,6 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 			externalModules.push(`${moduleName}/App.js`);
 		}
 
-		// Agregar apps deshabilitadas a externals
-		const disabledExternals = await this.disabledAppsDetector.getExternalsForDisabledApps(context.logger);
-		for (const ext of disabledExternals) {
-			externalModules.push(ext);
-		}
-
 		const externals: (string | RegExp)[] = isDev ? [] : externalModules;
 
 		const buildConfig: any = {
@@ -62,7 +53,7 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 			emptyOutDir: true,
 		};
 
-		if (isStandalone) {
+		if (isHost) {
 			buildConfig.rollupOptions = {
 				input: path.resolve(module.appDir, "index.html"),
 				external: externals,
@@ -94,6 +85,7 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 				alias: dynamicAliases,
 			},
 			server: {
+				host: true,
 				port: devPort,
 				strictPort: true,
 				cors: {
@@ -102,8 +94,7 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 				},
 				hmr: {
 					protocol: "ws",
-					host: "localhost",
-					port: devPort,
+					clientPort: devPort,
 				},
 			},
 			optimizeDeps: {

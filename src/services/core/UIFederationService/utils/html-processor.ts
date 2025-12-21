@@ -27,7 +27,7 @@ ${JSON.stringify({ imports: importMap }, null, 2)}
 }
 
 /**
- * Genera el contenido HTML para standalone apps
+ * Genera el contenido HTML para host apps
  */
 export function generateIndexHtml(name: string, framework: string): string {
 	const title = name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, " ");
@@ -52,7 +52,7 @@ export function generateIndexHtml(name: string, framework: string): string {
 }
 
 /**
- * Genera el entry point para standalone apps
+ * Genera el entry point para host apps
  */
 export function generateMainEntryPoint(framework: string): string {
 	if (framework === "react") {

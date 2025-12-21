@@ -4,16 +4,15 @@
 		"framework": "vue",
 		"outputDir": "dist-ui",
 		"devPort": 3003,
-		"standalone": true,
-		"sharedLibs": ["vue"],
-		"hosting": {
-			"hosts": [
-				{
-					"domain": "local.com",
-					"subdomains": ["s-config"]
-				}
-			]
-		}
+		"isHost": true,
+		"isRemote": true,
+		"uiDependencies": ["web-ui-library"],
+		"sharedLibs": ["vue", "tailwind"],
+		"hosting": [
+			{
+				"domains": ["local.com"],
+				"subdomains": ["s-config"]
+			}
+		]
 	}
 }
-

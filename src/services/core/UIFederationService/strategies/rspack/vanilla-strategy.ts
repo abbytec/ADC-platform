@@ -67,7 +67,10 @@ import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack';
 		const hasI18n = context.module.uiConfig.i18n;
 		const moduleName = context.module.uiConfig.name;
 
-		const i18nScript = isHost && hasI18n ? this.getI18nTemplate(moduleName) : `
+		const i18nScript =
+			isHost && hasI18n
+				? this.getI18nTemplate(moduleName)
+				: `
             template: './index.html',`;
 
 		// Vue/React feature flags si los remotes los usan
@@ -82,9 +85,14 @@ import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack';
         }),`;
 		}
 
-		return `${featureFlags}
+		// Solo hosts necesitan HtmlRspackPlugin (remotes solo exponen assets)
+		const htmlPlugin = isHost
+			? `
         new rspack.HtmlRspackPlugin({${i18nScript}
-        }),
+        }),`
+			: "";
+
+		return `${featureFlags}${htmlPlugin}
     `;
 	}
 }

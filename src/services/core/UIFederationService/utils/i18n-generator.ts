@@ -1,0 +1,168 @@
+import { RegisteredUIModule } from "../types.js";
+
+/**
+ * Genera el código de inicialización del cliente para i18n y SW (genérico - sin hardcodear namespaces)
+ */
+export function generateI18nClientCode(module: RegisteredUIModule, _namespaceModules: Map<string, RegisteredUIModule>, _port: number): string {
+	const namespace = module.namespace;
+	const hasServiceWorker = module.uiConfig.serviceWorker === true;
+
+	const isDev = process.env.NODE_ENV === "development";
+
+	return `// ADC i18n Client - Namespace: ${namespace} (Generic - cada app carga sus propias traducciones)
+(function() {
+	const STORAGE_KEY = 'language';
+	
+	// Estado global de traducciones
+	window.__ADC_I18N__ = window.__ADC_I18N__ || {
+		translations: {},
+		locale: null,
+		loading: false,
+		loaded: false,
+	};
+	
+	// Detectar locale: localStorage > navegador > 'en'
+	function detectLocale() {
+		const stored = localStorage.getItem(STORAGE_KEY);
+		if (stored) return stored;
+		
+		const browserLang = navigator.language || navigator.languages?.[0] || 'en';
+		return browserLang.split('-')[0];
+	}
+	
+	// Función t() global para traducciones
+	window.t = function(key, params, namespace) {
+		const state = window.__ADC_I18N__;
+		// Si no se especifica namespace, usar el primero cargado
+		const ns = namespace || Object.keys(state.translations)[0] || 'default';
+		const translations = state.translations[ns] || {};
+		
+		const keys = key.split('.');
+		let value = translations;
+		for (const k of keys) {
+			if (value && typeof value === 'object' && k in value) {
+				value = value[k];
+			} else {
+				return key;
+			}
+		}
+		
+		if (typeof value !== 'string') return key;
+		
+		if (params) {
+			return value.replace(/\\{\\{(\\w+)\\}\\}/g, (_, p) => params[p] ?? \`{{\${p}}}\`);
+		}
+		
+		return value;
+	};
+	
+	// Cargar traducciones (debe ser llamado por cada app con sus propios namespaces)
+	window.loadTranslations = async function(namespaces, locale) {
+		if (!namespaces || !Array.isArray(namespaces)) {
+			console.error('[i18n] loadTranslations requiere un array de namespaces. Ejemplo: loadTranslations(["module-name"])');
+			return;
+		}
+
+		const state = window.__ADC_I18N__;
+		const targetLocale = locale || state.locale || detectLocale();
+
+		state.locale = targetLocale;
+
+		try {
+			for (const ns of namespaces) {
+				// Skip si ya está cargado
+				if (state.translations[ns]) continue;
+
+				const url = \`/api/i18n/\${ns}?locale=\${targetLocale}\`;
+				const response = await fetch(url);
+				if (response.ok) {
+					state.translations[ns] = await response.json();
+					console.log(\`[i18n] Traducciones cargadas: \${ns} (\${targetLocale})\`);
+				}
+			}
+
+			window.dispatchEvent(new CustomEvent('adc:i18n:loaded', {
+				detail: { locale: targetLocale, namespaces }
+			}));
+
+			// Notificar al SW para pre-cachear estas traducciones
+			if (navigator.serviceWorker?.controller) {
+				navigator.serviceWorker.controller.postMessage({
+					type: 'PRELOAD_I18N',
+					locale: targetLocale,
+					namespaces
+				});
+			}
+		} catch (error) {
+			console.error('[i18n] Error cargando traducciones:', error);
+		}
+	};
+	
+	// Cambiar locale (recarga traducciones ya cargadas con el nuevo locale)
+	window.setLocale = function(locale) {
+		localStorage.setItem(STORAGE_KEY, locale);
+		const state = window.__ADC_I18N__;
+		const loadedNamespaces = Object.keys(state.translations);
+
+		// Limpiar traducciones anteriores y recargar
+		state.translations = {};
+		window.loadTranslations(loadedNamespaces, locale);
+
+		if (navigator.serviceWorker?.controller) {
+			navigator.serviceWorker.controller.postMessage({
+				type: 'PRELOAD_I18N',
+				locale: locale,
+				namespaces: loadedNamespaces
+			});
+		}
+	};
+
+	// Obtener locale actual
+	window.getLocale = function() {
+		return window.__ADC_I18N__.locale || detectLocale();
+	};
+
+	// Inicializar locale (sin cargar traducciones - cada app carga las suyas)
+	const initialLocale = detectLocale();
+	window.__ADC_I18N__.locale = initialLocale;
+	
+	${
+		hasServiceWorker
+			? `
+	// Registrar Service Worker
+	if ('serviceWorker' in navigator) {
+		window.addEventListener('load', () => {
+			navigator.serviceWorker.register('/adc-sw.js')
+				.then((registration) => {
+					console.log('[SW] Service Worker registrado:', registration.scope);
+					// El SW se notificará cuando cada app cargue sus traducciones via loadTranslations
+				})
+				.catch((error) => {
+					console.error('[SW] Error registrando Service Worker:', error);
+				});
+		});
+		
+		// Limpiar SWs viejos en desarrollo
+		${
+			isDev
+				? `
+		navigator.serviceWorker.getRegistrations().then(registrations => {
+			for (const registration of registrations) {
+				if (registration.active && !registration.active.scriptURL.includes('adc-sw.js')) {
+					registration.unregister();
+					console.log('[SW] SW antiguo desregistrado');
+				}
+			}
+		});
+		`
+				: ""
+		}
+	} else {
+		console.warn('[SW] Service Workers solo estan disponible en localhost o https');
+	}
+	`
+			: "// Service Worker deshabilitado para este módulo"
+	}
+})();
+`;
+}

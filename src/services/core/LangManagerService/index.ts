@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { BaseService } from "../../BaseService.js";
 import type { ILangManagerService, TranslationDict, RegisteredNamespace } from "./types.js";
 
-export default class LangManagerService extends BaseService<ILangManagerService> {
+export default class LangManagerService extends BaseService implements ILangManagerService {
 	public readonly name = "LangManagerService";
 
 	private readonly namespaces = new Map<string, RegisteredNamespace>();
@@ -16,34 +16,20 @@ export default class LangManagerService extends BaseService<ILangManagerService>
 		this.fallbackLocale = options?.fallbackLocale || "en";
 	}
 
-	async start(): Promise<void> {
-		await super.start();
+	async start(kernelKey: symbol): Promise<void> {
+		await super.start(kernelKey);
 		this.logger.logOk("LangManagerService iniciado");
 	}
 
-	async stop(): Promise<void> {
+	async stop(kernelKey: symbol): Promise<void> {
+		await super.stop(kernelKey);
 		this.namespaces.clear();
 		this.logger.logOk("LangManagerService detenido");
-		await super.stop();
-	}
-
-	async getInstance(): Promise<ILangManagerService> {
-		return {
-			registerNamespace: this.registerNamespace.bind(this),
-			unregisterNamespace: this.unregisterNamespace.bind(this),
-			t: this.t.bind(this),
-			getTranslations: this.getTranslations.bind(this),
-			getBundledTranslations: this.getBundledTranslations.bind(this),
-			getAvailableLocales: this.getAvailableLocales.bind(this),
-			getCurrentLocale: this.getCurrentLocale.bind(this),
-			setCurrentLocale: this.setCurrentLocale.bind(this),
-			getStats: this.getStats.bind(this),
-		};
 	}
 
 	async registerNamespace(namespace: string, appDir: string): Promise<void> {
 		const i18nDir = path.join(appDir, "i18n");
-		
+
 		try {
 			await fs.access(i18nDir);
 		} catch {
@@ -56,16 +42,16 @@ export default class LangManagerService extends BaseService<ILangManagerService>
 
 		try {
 			const files = await fs.readdir(i18nDir);
-			
+
 			for (const file of files) {
 				if (!file.endsWith(".js") && !file.endsWith(".json")) continue;
-				
+
 				const locale = file.replace(/\.(js|json)$/, "");
 				const filePath = path.join(i18nDir, file);
-				
+
 				try {
 					let content: TranslationDict;
-					
+
 					if (file.endsWith(".json")) {
 						const rawContent = await fs.readFile(filePath, "utf-8");
 						content = JSON.parse(rawContent);
@@ -75,7 +61,7 @@ export default class LangManagerService extends BaseService<ILangManagerService>
 						const module = await import(fileUrl);
 						content = module.default || module;
 					}
-					
+
 					translations[locale] = content;
 					locales.push(locale);
 					this.logger.logDebug(`[${namespace}] Cargado locale: ${locale}`);
@@ -113,21 +99,21 @@ export default class LangManagerService extends BaseService<ILangManagerService>
 	t(namespace: string, key: string, locale?: string, params?: Record<string, string>): string {
 		const targetLocale = locale || this.currentLocale;
 		const ns = this.namespaces.get(namespace);
-		
+
 		if (!ns) {
 			return key;
 		}
 
 		// Intentar con el locale exacto, luego con el fallback
 		let translation = this.#getNestedValue(ns.translations[targetLocale], key);
-		
+
 		if (!translation && targetLocale !== this.fallbackLocale) {
 			// Intentar con locale base (ej: "es" si targetLocale es "es-AR")
 			const baseLocale = targetLocale.split("-")[0];
 			if (baseLocale !== targetLocale) {
 				translation = this.#getNestedValue(ns.translations[baseLocale], key);
 			}
-			
+
 			// Fallback final
 			if (!translation) {
 				translation = this.#getNestedValue(ns.translations[this.fallbackLocale], key);
@@ -149,7 +135,7 @@ export default class LangManagerService extends BaseService<ILangManagerService>
 	getTranslations(namespace: string, locale?: string): TranslationDict {
 		const targetLocale = locale || this.currentLocale;
 		const ns = this.namespaces.get(namespace);
-		
+
 		if (!ns) {
 			return {};
 		}
@@ -171,11 +157,11 @@ export default class LangManagerService extends BaseService<ILangManagerService>
 
 	getBundledTranslations(namespaces: string[], locale?: string): Record<string, TranslationDict> {
 		const result: Record<string, TranslationDict> = {};
-		
+
 		for (const namespace of namespaces) {
 			result[namespace] = this.getTranslations(namespace, locale);
 		}
-		
+
 		return result;
 	}
 
@@ -195,7 +181,7 @@ export default class LangManagerService extends BaseService<ILangManagerService>
 
 	getStats(): { namespaces: number; totalTranslations: number; currentLocale: string; registeredNamespaces: string[] } {
 		let totalTranslations = 0;
-		
+
 		for (const ns of this.namespaces.values()) {
 			for (const translations of Object.values(ns.translations)) {
 				totalTranslations += this.#countKeys(translations);
@@ -212,10 +198,10 @@ export default class LangManagerService extends BaseService<ILangManagerService>
 
 	#getNestedValue(obj: TranslationDict | undefined, key: string): string | undefined {
 		if (!obj) return undefined;
-		
+
 		const keys = key.split(".");
 		let value: any = obj;
-		
+
 		for (const k of keys) {
 			if (value && typeof value === "object" && k in value) {
 				value = value[k];
@@ -223,7 +209,7 @@ export default class LangManagerService extends BaseService<ILangManagerService>
 				return undefined;
 			}
 		}
-		
+
 		return typeof value === "string" ? value : undefined;
 	}
 
@@ -245,4 +231,3 @@ export default class LangManagerService extends BaseService<ILangManagerService>
 }
 
 export type { ILangManagerService, TranslationDict, RegisteredNamespace } from "./types.js";
-

@@ -71,7 +71,7 @@ export interface IMongoProvider {
  * - Pool de conexiones
  * - Estadísticas de conexión
  */
-export default class MongoProvider extends BaseProvider<IMongoProvider> {
+export default class MongoProvider extends BaseProvider implements IMongoProvider {
 	public readonly name = "mongo-provider";
 	public readonly type = ProviderType.OBJECT_PROVIDER;
 
@@ -110,10 +110,6 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 		mongoose.set("strictQuery", false);
 	}
 
-	async start(): Promise<void> {
-		await this.connect();
-	}
-
 	/**
 	 * Conecta a MongoDB con reintentos automáticos
 	 */
@@ -126,17 +122,19 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 		try {
 			Logger.info(`[MongoProvider] Conectando a ${this.config.uri}...`);
 
-			await mongoose.connect(this.config.uri, {
-				connectTimeoutMS: this.config.connectionTimeout,
-				serverSelectionTimeoutMS: this.config.serverSelectionTimeout,
-				socketTimeoutMS: this.config.socketTimeout,
-				retryWrites: true,
-				retryReads: true,
-				maxPoolSize: 10,
-				minPoolSize: 5,
-			});
+			// Usar createConnection en lugar de connect para permitir múltiples conexiones
+			this.connection = await mongoose
+				.createConnection(this.config.uri, {
+					connectTimeoutMS: this.config.connectionTimeout,
+					serverSelectionTimeoutMS: this.config.serverSelectionTimeout,
+					socketTimeoutMS: this.config.socketTimeout,
+					retryWrites: true,
+					retryReads: true,
+					maxPoolSize: 10,
+					minPoolSize: 5,
+				})
+				.asPromise();
 
-			this.connection = mongoose.connection;
 			this.retryCount = 0;
 			this.lastError = undefined;
 
@@ -213,65 +211,46 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 		}, this.config.reconnectInterval);
 	}
 
-	async getInstance(): Promise<IMongoProvider> {
-		const self = this;
-
-		// Inicializar conexión la primera vez que se obtiene la instancia
-		if (!self.initialized) {
-			self.initialized = true;
-			// Conectar sin bloquear (fire and forget)
-			self.connect().catch((err: any) => {
+	async start(kernelKey: symbol): Promise<void> {
+		// Inicializar conexión al arrancar
+		super.start(kernelKey);
+		if (!this.initialized) {
+			this.initialized = true;
+			this.connect().catch((err: any) => {
 				Logger.error(`[MongoProvider] Error durante conexión inicial: ${err.message}`);
 			});
 		}
+	}
 
+	getConnection(): Connection {
+		if (!this.connection) throw new Error("MongoDB no está conectado");
+		return this.connection;
+	}
+
+	isConnected(): boolean {
+		return this.connection?.readyState === 1;
+	}
+
+	getModel<T>(name: string): Model<T> {
+		if (!this.connection) throw new Error("MongoDB no está conectado");
+		return this.connection.model<T>(name);
+	}
+
+	createModel<T>(name: string, schema: Schema): Model<T> {
+		if (!this.connection) throw new Error("MongoDB no está conectado");
+		try {
+			return this.connection.model<T>(name);
+		} catch {
+			return this.connection.model<T>(name, schema);
+		}
+	}
+
+	getStats(): { connected: boolean; connectionString: string; retries: number; lastError?: string } {
 		return {
-			getConnection(): Connection {
-				if (!self.connection) {
-					throw new Error("MongoDB no está conectado");
-				}
-				return self.connection;
-			},
-
-			async connect(): Promise<void> {
-				await self.connect();
-			},
-
-			async disconnect(): Promise<void> {
-				await self.disconnect();
-			},
-
-			isConnected(): boolean {
-				return self.connection?.readyState === 1;
-			},
-
-			getModel<T>(name: string): Model<T> {
-				if (!self.connection) {
-					throw new Error("MongoDB no está conectado");
-				}
-				return self.connection.model<T>(name);
-			},
-
-			createModel<T>(name: string, schema: Schema): Model<T> {
-				if (!self.connection) {
-					throw new Error("MongoDB no está conectado");
-				}
-				// Evitar crear modelos duplicados
-				try {
-					return self.connection.model<T>(name);
-				} catch {
-					return self.connection.model<T>(name, schema);
-				}
-			},
-
-			getStats() {
-				return {
-					connected: self.connection?.readyState === 1,
-					connectionString: self.config.uri,
-					retries: self.retryCount,
-					lastError: self.lastError,
-				};
-			},
+			connected: this.connection?.readyState === 1,
+			connectionString: this.config.uri,
+			retries: this.retryCount,
+			lastError: this.lastError,
 		};
 	}
 
@@ -286,7 +265,7 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 
 		if (this.connection) {
 			try {
-				await mongoose.disconnect();
+				await this.connection.close();
 				this.connection = null;
 				Logger.ok(`[MongoProvider] Desconectado de MongoDB`);
 			} catch (error: any) {
@@ -295,7 +274,8 @@ export default class MongoProvider extends BaseProvider<IMongoProvider> {
 		}
 	}
 
-	async stop(): Promise<void> {
+	async stop(kernelKey: symbol): Promise<void> {
+		await super.stop(kernelKey);
 		this.isDisconnecting = true;
 		await this.disconnect();
 	}

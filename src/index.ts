@@ -1,5 +1,6 @@
 // src/index.ts
 import { Kernel } from "./kernel.js";
+import UIFederationService from "./services/core/UIFederationService/index.ts";
 import { Logger } from "./utils/logger/Logger.js";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
@@ -59,11 +60,10 @@ async function main() {
 
 	// Reinyectar import maps ahora que todos los módulos UI están cargados
 	try {
-		const uiFederation = kernel.getService<any>("UIFederationService");
+		const uiFederation = kernel.getService<UIFederationService>("UIFederationService");
 		if (uiFederation) {
-			const uiFederationInstance = await uiFederation.getInstance();
-			if (uiFederationInstance && typeof uiFederationInstance.refreshAllImportMaps === "function") {
-				await uiFederationInstance.refreshAllImportMaps();
+			if (uiFederation && typeof uiFederation.refreshAllImportMaps === "function") {
+				await uiFederation.refreshAllImportMaps();
 			} else {
 				Logger.warn("refreshAllImportMaps no está disponible en UIFederationService");
 			}

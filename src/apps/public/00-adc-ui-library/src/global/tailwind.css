@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+@layer base {
+    @property --custom-tone-1 {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: 70;
+    }
+
+    @property --custom-tone-2 {
+        syntax: "<number>";
+        inherits: true;
+        initial-value: 50;
+    }
+    :root {
+        --palette-tone-1: var(--custom-tone-1);
+        --palette-tone-2: var(--custom-tone-2);
+
+        --c-text: #111111;
+
+        --c-header: oklch(36% 0.063 var(--palette-tone-2));
+        --c-theader: oklch(97.5% 0.05 var(--palette-tone-2));
+        --c-background: oklch(97.5% 0.05 var(--palette-tone-1));
+        --c-surface: oklch(98% 0.09 var(--palette-tone-1) / 90%);
+
+        --c-primary: oklch(33.72% 0.063 var(--palette-tone-2));
+        --c-tprimary: oklch(97.5% 0.05 var(--palette-tone-2));
+        --c-accent: oklch(64.21% 0.129 var(--palette-tone-2));
+
+        --r-xxl: 16px;
+        --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    :root[dark-mode] {
+        background-color: black;
+        --c-header: oklch(45% 0.1 var(--palette-tone-1));
+        --c-theader: oklch(96.9% 0.046 var(--palette-tone-2));
+        --c-background: oklch(20% 0.02 var(--palette-tone-1));
+        --c-surface: oklch(21.9% 0.045 var(--palette-tone-1));
+        --c-primary: oklch(75% 0.25 var(--palette-tone-2));
+        --c-tprimary: oklch(18% 0 var(--palette-tone-2));
+        --c-accent: oklch(78% 0.129 var(--palette-tone-2));
+
+        --c-text: oklch(96.9% 0.046 var(--palette-tone-2));
+    }
+
+    :root[rainbow-mode] {
+        animation: cycle-hue 10s infinite linear;
+    }
+
+    @keyframes cycle-hue {
+        0% {
+            --custom-tone-1: 360;
+            --custom-tone-2: 330;
+        }
+        50% {
+            --custom-tone-1: 34;
+            --custom-tone-2: -5;
+        }
+        100% {
+            --custom-tone-1: 360;
+            --custom-tone-2: 330;
+        }
+    }
+
+    html,
+    body {
+        background-color: var(--c-background);
+        color: rgb(var(--c-text));
+        margin: 0;
+        font-family: Inter, system-ui, sans-serif;
+        font-size: 13px;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    /* Web components con shadow: false son transparentes para layouts (grid, flex) */
+    adc-text,
+    adc-testimonial-card,
+    adc-feature-card,
+    adc-quote {
+        display: contents;
+    }
+}
+
+@layer components {
+    .bg-surface {
+        box-shadow: 0 8px 8px rgba(0, 0, 0, 0.15);
+        margin-bottom: 18px;
+    }
+
+    /* Hint: avoid rendering below-the-fold until needed */
+    .cv-auto {
+        content-visibility: auto;
+        contain-intrinsic-size: 1px 800px; /* rough placeholder to avoid layout shift */
+    }
+
+    .nav-menu li {
+        min-width: fit-content;
+        white-space: nowrap;
+    }
+
+    p,
+    li,
+    .p-text {
+        font-size: 14px;
+        font-family: Inter, system-ui, sans-serif;
+        line-height: 1.6;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    h1 {
+        color: var(--c-text);
+        font-family: Fredoka, sans-serif;
+        font-weight: 600;
+        font-size: 36px;
+        line-height: 1.15;
+        margin-top: 0.5rem;
+        margin-bottom: 1rem;
+        letter-spacing: 0.2px;
+    }
+
+    h2 {
+        color: var(--c-text);
+        font-family: Fredoka, sans-serif;
+        font-weight: 400;
+        font-size: 26px;
+        line-height: 1.2;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    h3,
+    .h3 {
+        color: var(--c-text);
+        font-family: Fredoka, sans-serif;
+        font-weight: 400;
+        font-size: 20px;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .breadcumb > * {
+        color: var(--c-text);
+        font-family: Fredoka, sans-serif;
+        font-size: 20px;
+        margin-bottom: 0;
+        margin-top: 0;
+    }
+
+    .breadcumb > * + li::before {
+        margin-left: 8px;
+        content: "/ ";
+    }
+}

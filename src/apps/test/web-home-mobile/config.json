@@ -5,9 +5,16 @@
 		"framework": "vanilla",
 		"outputDir": "dist-ui",
 		"devPort": 3012,
-		"standalone": false,
-		"sharedLibs": [],
-		"i18n": true
+		"isHost": false,
+		"isRemote": true,
+		"uiDependencies": ["web-ui-library-mobile"],
+		"sharedLibs": ["tailwind"],
+		"i18n": true,
+		"hosting": [
+			{
+				"domains": ["local.com"],
+				"subdomains": ["m-home"]
+			}
+		]
 	}
 }
-

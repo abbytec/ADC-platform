@@ -4,23 +4,19 @@
 		"uiNamespace": "mobile",
 		"framework": "react",
 		"outputDir": "dist-ui",
-		"standalone": true,
+		"isHost": true,
+		"isRemote": false,
+		"uiDependencies": ["web-ui-library-mobile", "home"],
 		"devPort": 3014,
 		"sharedLibs": ["react"],
 		"i18n": true,
 		"serviceWorker": true,
-		"hosting": {
-			"hosts": [
-				{
-					"domain": "local.com",
-					"subdomains": ["m-cloud", "m-users", "m-config", "m-*"]
-				},
-				{
-					"domain": "m.local.com",
-					"subdomains": ["cloud", "users", "config", "*"]
-				}
-			]
-		}
+		"hosting": [
+			{
+				"domains": ["local.com"],
+				"subdomains": ["m-cloud"]
+			}
+		]
 	},
 	"providers": [
 		{
@@ -42,4 +38,3 @@
 		}
 	]
 }
-

@@ -27,6 +27,10 @@
 	color: #2563eb;
 }
 
+.stat-value--secondary {
+	color: #805ad5;
+}
+
 .stat-value--success {
 	color: #10b981;
 }

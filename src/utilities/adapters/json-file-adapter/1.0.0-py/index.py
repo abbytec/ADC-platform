@@ -10,14 +10,17 @@ from typing import Any, Dict, Optional
 
 # Importar las interfaces base de ADC Platform
 from base_module import BaseUtility
-from adapters.file_adapter import IFileAdapter
 from kernel_logger import get_kernel_logger
 
 
-class JsonAdapter(IFileAdapter[Any]):
+class JsonAdapterUtility(BaseUtility):
     """
-    Implementación del adaptador JSON que convierte datos a/desde bytes.
+    Utility que proporciona métodos para convertir datos JSON a/desde bytes.
+    Compatible con el sistema de módulos de ADC Platform.
     """
+
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        super().__init__(config)
 
     def toBuffer(self, data: Any) -> bytes:
         """Alias camelCase para TypeScript"""
@@ -37,8 +40,7 @@ class JsonAdapter(IFileAdapter[Any]):
             json_string = json.dumps(data, indent=2, ensure_ascii=False)
             return json_string.encode("utf-8")
         except Exception as e:
-            logger = get_kernel_logger("json-file-adapter")
-            logger.error(f"Error al serializar a Buffer: {e}")
+            self.logger.error(f"Error al serializar a Buffer: {e}")
             return b""
 
     def fromBuffer(self, buffer: bytes) -> Any:
@@ -58,11 +60,9 @@ class JsonAdapter(IFileAdapter[Any]):
         Raises:
             ValueError: Si el buffer está vacío o no es JSON válido
         """
-        logger = get_kernel_logger("json-file-adapter")
-        
         if len(buffer) == 0:
             error_msg = "Error: No se puede parsear un buffer vacío."
-            logger.error(error_msg)
+            self.logger.error(error_msg)
             raise ValueError(error_msg)
 
         try:
@@ -70,34 +70,12 @@ class JsonAdapter(IFileAdapter[Any]):
             return json.loads(json_string)
         except json.JSONDecodeError as e:
             error_msg = f"Error al parsear JSON: {e}"
-            logger.error(error_msg)
+            self.logger.error(error_msg)
             raise ValueError(error_msg)
         except Exception as e:
             error_msg = f"Error al parsear desde Buffer: {e}"
-            logger.error(error_msg)
+            self.logger.error(error_msg)
             raise ValueError(error_msg)
-
-
-class JsonAdapterUtility(BaseUtility):
-    """
-    Utility que proporciona una instancia de JsonAdapter.
-    Compatible con el sistema de módulos de ADC Platform.
-    """
-
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
-        self._instance = None
-
-    def get_instance(self) -> IFileAdapter[Any]:
-        """
-        Retorna la instancia singleton del JsonAdapter.
-
-        Returns:
-            IFileAdapter: Una instancia del adaptador JSON
-        """
-        if self._instance is None:
-            self._instance = JsonAdapter()
-        return self._instance
 
 
 def main():
@@ -105,13 +83,8 @@ def main():
     Punto de entrada principal para el módulo Python.
     Inicia el servidor IPC y espera llamadas desde Node.js.
     """
-    # Crear la instancia del utility
     utility = JsonAdapterUtility()
-    
-    # El logger se inicializa automáticamente en BaseModule
     utility.logger.ok("Iniciando utility Python...")
-
-    # Iniciar el servidor IPC (bloqueante)
     utility.start_ipc_server()
 
 
@@ -126,4 +99,3 @@ if __name__ == "__main__":
         logger = get_kernel_logger("json-file-adapter")
         logger.error(f"Error fatal: {e}")
         sys.exit(1)
-

@@ -97,11 +97,19 @@ export async function runCommand(
 
 /**
  * Procesa recursivamente archivos HTML en un directorio
+ * Si el directorio no existe, retorna silenciosamente (útil para dev servers que sirven desde memoria)
  */
 export async function processHTMLFiles(
 	dir: string,
 	callback: (filePath: string, content: string) => Promise<void>
 ): Promise<void> {
+	try {
+		await fs.access(dir);
+	} catch {
+		// Directorio no existe (ej: dev server sirviendo desde memoria)
+		return;
+	}
+
 	const entries = await fs.readdir(dir, { withFileTypes: true });
 
 	for (const entry of entries) {

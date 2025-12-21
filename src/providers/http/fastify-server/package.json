@@ -5,6 +5,8 @@
 	"dependencies": {
 		"fastify": "^5.3.3",
 		"@fastify/cors": "^11.1.0",
-		"@fastify/formbody": "^8.0.2"
+		"@fastify/formbody": "^8.0.2",
+		"@connectrpc/connect": "^2.1.1",
+		"@connectrpc/connect-fastify": "^2.1.1"
 	}
 }

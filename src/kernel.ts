@@ -1,20 +1,22 @@
 import "dotenv/config";
 import * as fs from "node:fs/promises";
+import type { Dirent } from "node:fs";
 import * as path from "node:path";
 import chokidar from "chokidar";
 import { IApp } from "./interfaces/modules/IApp.js";
-import { IUtility } from "./interfaces/modules/IUtility.js";
-import { IProvider } from "./interfaces/modules/IProvider.js";
-import { IService } from "./interfaces/modules/IService.js";
 import { Logger } from "./utils/logger/Logger.js";
 import { ModuleLoader } from "./utils/loaders/ModuleLoader.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModule, IModuleConfig } from "./interfaces/modules/IModule.js";
+import type { BaseProvider, IProvider } from "./providers/BaseProvider.ts";
+import type { IUtility } from "./utilities/BaseUtility.ts";
+import type { BaseService, IService } from "./services/BaseService.ts";
 
 type ModuleType = "provider" | "utility" | "service";
-type Module = IProvider<any> | IUtility<any> | IService<any>;
+type Module = IProvider | IUtility | IService;
 
 export class Kernel {
+	static #kernelKey: symbol = Symbol(crypto.randomUUID());
 	#isStartingUp = true;
 	readonly #logger: ILogger = Logger.getLogger("Kernel");
 
@@ -50,6 +52,7 @@ export class Kernel {
 
 	// Mapa de apps con docker-compose: appName -> directorio
 	readonly #appDockerComposeMap = new Map<string, string>();
+	#statusInterval: NodeJS.Timeout | null = null;
 
 	#getRegistry(moduleType: ModuleType): Map<string, IModule> {
 		return this.#moduleStore[moduleType].registry;
@@ -71,7 +74,7 @@ export class Kernel {
 	}
 
 	// --- Gestor de carga ---
-	public static readonly moduleLoader = new ModuleLoader();
+	public static readonly moduleLoader = new ModuleLoader(Kernel.#kernelKey);
 
 	// --- Determinación de entorno ---
 	readonly #isDevelopment = process.env.NODE_ENV === "development";
@@ -163,7 +166,7 @@ export class Kernel {
 
 				if (module) {
 					this.#logger.logDebug(`Limpiando ${type}: ${uniqueKey}`);
-					await module.stop?.();
+					await module.stop?.(Kernel.#kernelKey);
 					registry.delete(uniqueKey);
 					refCountMap.delete(uniqueKey);
 
@@ -187,13 +190,7 @@ export class Kernel {
 	}
 
 	// --- API Pública del Kernel ---
-	public registerProvider(
-		name: string,
-		instance: IProvider<any>,
-		type: string | undefined,
-		config: IModuleConfig,
-		appName?: string | null
-	): void {
+	public registerProvider(name: string, instance: IProvider, type: string | undefined, config: IModuleConfig, appName?: string | null): void {
 		const nameUniqueKey = this.#getUniqueKey(name, config.config);
 		this.#addModuleToRegistry("provider", name, nameUniqueKey, instance, appName);
 
@@ -284,6 +281,16 @@ export class Kernel {
 		return this.#getModule("service", name, config);
 	}
 
+	/**
+	 * Verifica si un módulo existe en el registry sin lanzar error.
+	 * Útil para evitar cargar módulos duplicados.
+	 */
+	public hasModule(moduleType: ModuleType, name: string, config?: Record<string, any>): boolean {
+		const registry = this.#getRegistry(moduleType);
+		const uniqueKey = this.#getUniqueKey(name, config);
+		return registry.has(uniqueKey);
+	}
+
 	public getApp(name: string): IApp {
 		const instance = this.#appsRegistry.get(name);
 		if (!instance) {
@@ -347,7 +354,7 @@ export class Kernel {
 
 			// Para providers, también agregar el alias (type) si existe
 			if (moduleType === "provider" && instance) {
-				const provider = instance as IProvider<any>;
+				const provider = instance as IProvider;
 				if (provider.type && provider.type !== name) {
 					const typeKey = this.#getUniqueKey(provider.type, config);
 					if (registry.has(typeKey)) {
@@ -438,8 +445,9 @@ export class Kernel {
 					}
 
 					// Crear instancia del servicio
-					const serviceInstance = new ServiceClass(this, {});
-					await serviceInstance.start();
+					const serviceInstance: BaseService = new ServiceClass(this, {});
+					serviceInstance.setKernelKey(Kernel.#kernelKey);
+					await serviceInstance.start(Kernel.#kernelKey);
 
 					// Registrar el servicio
 					this.registerService(serviceName, serviceInstance, {
@@ -467,8 +475,8 @@ export class Kernel {
 		await this.#loadKernelServices();
 
 		// Solo cargar Apps (que cargarán sus propios módulos desde config.json)
-		// En producción, excluir apps de test (cuando EXCLUDE_TESTS esté set)
-		const excludeTests = process.env.EXCLUDE_TESTS === "true" && !this.#isDevelopment;
+		// En producción, excluir apps de test (cuando ENABLE_TESTS !== true)
+		const excludeTests = process.env.ENABLE_TESTS !== "true" && !this.#isDevelopment;
 		const excludeList = excludeTests ? ["BaseApp.ts", "test"] : ["BaseApp.ts"];
 		await this.#loadLayerRecursive(this.#appsPath, this.#loadApp.bind(this), excludeList);
 
@@ -486,7 +494,7 @@ export class Kernel {
 			this.#logger.logInfo("HMR está activo.");
 		}, 10000);
 
-		setInterval(() => {
+		this.#statusInterval = setInterval(() => {
 			// Contar instancias únicas (no entradas en el registry)
 			// Los providers se registran 2 veces (name y type), así que contamos instancias únicas
 			const pCount = new Set(this.#moduleStore.provider.registry.values()).size;
@@ -544,6 +552,7 @@ export class Kernel {
 	// --- Lógica de Cierre ---
 	public async stop(): Promise<void> {
 		this.#logger.logInfo("\nIniciando cierre ordenado...");
+		if (this.#statusInterval) clearInterval(this.#statusInterval);
 
 		// Helper para ejecutar con timeout
 		const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, name: string): Promise<T | undefined> => {
@@ -592,7 +601,7 @@ export class Kernel {
 				try {
 					this.#logger.logDebug(`Deteniendo ${capitalizedModuleType} ${key}`);
 					if (instance.stop) {
-						await withTimeout(instance.stop(), 2000, `${capitalizedModuleType} ${key}`);
+						await withTimeout(instance.stop(Kernel.#kernelKey), 2000, `${capitalizedModuleType} ${key}`);
 					}
 				} catch (e) {
 					this.#logger.logError(`Error deteniendo ${capitalizedModuleType} ${key}: ${e}`);
@@ -604,6 +613,7 @@ export class Kernel {
 
 	/**
 	 * Búsqueda recursiva ilimitada de cada 'index.ts'/'index.js' en una capa.
+	 * Carga apps en PARALELO cuando no tienen dependencias entre sí.
 	 */
 	async #loadLayerRecursive(dir: string, loader: (entryPath: string) => Promise<void>, exclude: string[] = []): Promise<void> {
 		try {
@@ -620,12 +630,19 @@ export class Kernel {
 
 			// Luego, buscar recursivamente en subdirectorios
 			const entries = await fs.readdir(dir, { withFileTypes: true });
-			for (const entry of entries) {
-				if (exclude.includes(entry.name)) continue;
 
-				if (entry.isDirectory()) {
-					const subDirPath = path.join(dir, entry.name);
-					await this.#loadLayerRecursive(subDirPath, loader, exclude);
+			// Construir niveles de carga basados en dependencias (para carga paralela)
+			const loadLevels = await this.#buildAppLoadLevels(dir, entries, exclude);
+
+			// Cargar cada nivel en paralelo (apps del mismo nivel no tienen dependencias entre sí)
+			for (const level of loadLevels) {
+				if (level.length === 1) {
+					// Un solo elemento, cargar directamente
+					await this.#loadLayerRecursive(level[0], loader, exclude);
+				} else if (level.length > 1) {
+					// Múltiples elementos sin dependencias entre sí: cargar en paralelo
+					this.#logger.logDebug(`Cargando ${level.length} apps en paralelo...`);
+					await Promise.all(level.map((subDirPath) => this.#loadLayerRecursive(subDirPath, loader, exclude)));
 				}
 			}
 		} catch {
@@ -633,25 +650,213 @@ export class Kernel {
 		}
 	}
 
+	/**
+	 * Construye NIVELES de carga de apps basados en uiDependencies.
+	 * Apps del mismo nivel pueden cargarse en PARALELO (no tienen dependencias entre sí).
+	 * Retorna: Array de niveles, cada nivel es un array de paths de apps.
+	 *
+	 * Nivel 0: UI libraries (Stencil) - siempre primero
+	 * Nivel 1: Apps sin dependencias (o solo dependen de UI libs)
+	 * Nivel 2+: Apps que dependen de apps del nivel anterior
+	 * Último nivel: Hosts (isHost=true) - siempre al final para que detecten remotes
+	 */
+	async #buildAppLoadLevels(dir: string, entries: Dirent[], exclude: string[]): Promise<string[][]> {
+		const appConfigs: Array<{
+			path: string;
+			dirName: string;
+			name: string;
+			dependencies: string[];
+			isUILib: boolean;
+			isHost: boolean;
+			isRemote: boolean;
+		}> = [];
+
+		// 1. Recopilar información de todas las apps
+		for (const entry of entries) {
+			if (!entry.isDirectory() || exclude.includes(entry.name)) continue;
+
+			const subDirPath = path.join(dir, entry.name);
+			const configPath = path.join(subDirPath, "config.json");
+
+			try {
+				const configContent = await fs.readFile(configPath, "utf-8");
+				const config = JSON.parse(configContent);
+
+				if (config.uiModule) {
+					const uiModule = config.uiModule;
+					const appName = uiModule.name || entry.name;
+
+					// Detectar UI libraries (Stencil con exports)
+					const isUILib = uiModule.framework === "stencil" && uiModule.exports;
+
+					// Detectar hosts y remotes
+					const isHost = uiModule.isHost ?? false;
+					const isRemote = uiModule.isRemote ?? false;
+
+					// Obtener dependencias explícitas
+					const dependencies = uiModule.uiDependencies || [];
+
+					appConfigs.push({
+						path: subDirPath,
+						dirName: entry.name,
+						name: appName,
+						dependencies,
+						isUILib,
+						isHost,
+						isRemote,
+					});
+				} else {
+					// Apps sin uiModule se cargan con prioridad normal
+					appConfigs.push({
+						path: subDirPath,
+						dirName: entry.name,
+						name: entry.name,
+						dependencies: [],
+						isUILib: false,
+						isHost: false,
+						isRemote: false,
+					});
+				}
+			} catch {
+				// Si no hay config o error al leerlo, cargar sin dependencias
+				appConfigs.push({
+					path: subDirPath,
+					dirName: entry.name,
+					name: entry.name,
+					dependencies: [],
+					isUILib: false,
+					isHost: false,
+					isRemote: false,
+				});
+			}
+		}
+
+		// 2. Construir niveles de carga
+		const levels: string[][] = [];
+		const loadedAppNames = new Set<string>();
+
+		// Nivel 0: UI libraries (siempre primero, en paralelo entre ellas)
+		const uiLibs = appConfigs.filter((app) => app.isUILib);
+		if (uiLibs.length > 0) {
+			levels.push(uiLibs.map((app) => app.path));
+			uiLibs.forEach((app) => loadedAppNames.add(app.name));
+		}
+
+		// Separar hosts de otros
+		const hosts = appConfigs.filter((app) => app.isHost && !app.isUILib);
+		const others = appConfigs.filter((app) => !app.isUILib && !app.isHost);
+
+		// Procesar apps no-host por niveles de dependencia
+		let pendingQueue = [...others];
+		const maxIterations = 50;
+		let iteration = 0;
+
+		while (pendingQueue.length > 0 && iteration < maxIterations) {
+			const currentLevel: string[] = [];
+			const stillPending: typeof pendingQueue = [];
+
+			for (const app of pendingQueue) {
+				// Verificar si todas las dependencias ya están cargadas
+				const allDepsLoaded = app.dependencies.every((depName) => loadedAppNames.has(depName));
+
+				if (allDepsLoaded) {
+					currentLevel.push(app.path);
+					loadedAppNames.add(app.name);
+				} else {
+					stillPending.push(app);
+				}
+			}
+
+			if (currentLevel.length > 0) {
+				levels.push(currentLevel);
+			} else if (stillPending.length > 0) {
+				// Deadlock: dependencias no satisfechas
+				const pendingNames = stillPending.map((app) => app.name).join(", ");
+				const missingDeps = stillPending
+					.map((app) => {
+						const missing = app.dependencies.filter((dep) => !loadedAppNames.has(dep));
+						return `${app.name} -> [${missing.join(", ")}]`;
+					})
+					.join("; ");
+
+				this.#logger.logWarn(
+					`Dependencias circulares o faltantes: ${pendingNames}. ` +
+						`Faltantes: ${missingDeps}. Se cargarán en paralelo de todas formas.`
+				);
+
+				// Cargar todas las pendientes en un solo nivel
+				levels.push(stillPending.map((app) => app.path));
+				stillPending.forEach((app) => loadedAppNames.add(app.name));
+				break;
+			}
+
+			pendingQueue = stillPending;
+			iteration++;
+		}
+
+		// Último nivel: Hosts (para que detecten todos los remotes ya registrados)
+		if (hosts.length > 0) {
+			// Los hosts también pueden tener dependencias entre sí, ordenarlos
+			let pendingHosts = [...hosts];
+			let hostIterations = 0;
+
+			while (pendingHosts.length > 0 && hostIterations < 10) {
+				const currentHostLevel: string[] = [];
+				const stillPendingHosts: typeof pendingHosts = [];
+
+				for (const host of pendingHosts) {
+					const allDepsLoaded = host.dependencies.every((depName) => loadedAppNames.has(depName));
+					if (allDepsLoaded) {
+						currentHostLevel.push(host.path);
+						loadedAppNames.add(host.name);
+					} else {
+						stillPendingHosts.push(host);
+					}
+				}
+
+				if (currentHostLevel.length > 0) {
+					levels.push(currentHostLevel);
+				} else {
+					// Cargar hosts restantes
+					levels.push(stillPendingHosts.map((h) => h.path));
+					break;
+				}
+
+				pendingHosts = stillPendingHosts;
+				hostIterations++;
+			}
+		}
+
+		// Log de niveles para debug
+		if (levels.length > 1) {
+			this.#logger.logDebug(`Niveles de carga: ${levels.map((l, i) => `L${i}(${l.length})`).join(" -> ")}`);
+		}
+
+		return levels;
+	}
+
 	async #loadAndRegisterSpecificModule(moduleType: ModuleType, config: IModuleConfig): Promise<Module> {
 		let module: Module;
 
 		switch (moduleType) {
 			case "provider": {
-				const providerModule = await Kernel.moduleLoader.loadProvider(config);
+				const providerModule: BaseProvider = await Kernel.moduleLoader.loadProvider(config);
+				providerModule.setKernelKey(Kernel.#kernelKey);
+				await providerModule.start?.(Kernel.#kernelKey);
 				this.registerProvider(providerModule.name, providerModule, providerModule.type, config);
 				module = providerModule;
 				break;
 			}
 			case "utility": {
-				const utilityModule = await Kernel.moduleLoader.loadUtility(config);
+				const utilityModule: IUtility = await Kernel.moduleLoader.loadUtility(config);
 				this.registerUtility(utilityModule.name, utilityModule, config);
 				module = utilityModule;
 				break;
 			}
 			case "service": {
-				const serviceModule = await Kernel.moduleLoader.loadService(config, this);
-				await serviceModule.start?.();
+				const serviceModule: BaseService = await Kernel.moduleLoader.loadService(config, this);
+				serviceModule.setKernelKey(Kernel.#kernelKey);
+				await serviceModule.start?.(Kernel.#kernelKey);
 				this.registerService(serviceModule.name, serviceModule, config);
 				module = serviceModule;
 				break;
@@ -690,6 +895,7 @@ export class Kernel {
 	}
 
 	async #initializeAndRunApp(app: IApp, filePath: string, instanceName: string, configPath?: string): Promise<void> {
+		this.#logger.logInfo(`Inicializando App: ${instanceName} desde ${path.basename(filePath)}`);
 		this.registerApp(instanceName, app);
 		this.#logger.logDebug(`Inicializando App ${app.name}`);
 
@@ -866,33 +1072,33 @@ export class Kernel {
 			const appDir = path.dirname(filePath);
 			const appName = path.basename(appDir);
 
-		// Verificar si la app está deshabilitada en default.json o config.json
-		try {
-			const defaultConfigPath = path.join(appDir, "default.json");
-			const defaultConfigContent = await fs.readFile(defaultConfigPath, "utf-8");
-			const defaultConfig = JSON.parse(defaultConfigContent);
+			// Verificar si la app está deshabilitada en default.json o config.json
+			try {
+				const defaultConfigPath = path.join(appDir, "default.json");
+				const defaultConfigContent = await fs.readFile(defaultConfigPath, "utf-8");
+				const defaultConfig = JSON.parse(defaultConfigContent);
 
-			if (defaultConfig.disabled === true) {
-				this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
-				return; // No continuar con esta app
+				if (defaultConfig.disabled === true) {
+					this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
+					return; // No continuar con esta app
+				}
+			} catch (error) {
+				// No hay default.json o no se puede leer, intentar config.json
 			}
-		} catch (error) {
-			// No hay default.json o no se puede leer, intentar config.json
-		}
 
-		// También verificar en config.json
-		try {
-			const configPath = path.join(appDir, "config.json");
-			const configContent = await fs.readFile(configPath, "utf-8");
-			const config = JSON.parse(configContent);
+			// También verificar en config.json
+			try {
+				const configPath = path.join(appDir, "config.json");
+				const configContent = await fs.readFile(configPath, "utf-8");
+				const config = JSON.parse(configContent);
 
-			if (config.disabled === true) {
-				this.#logger.logDebug(`App ${appName} está deshabilitada (config.json)`);
-				return; // No continuar con esta app
+				if (config.disabled === true) {
+					this.#logger.logDebug(`App ${appName} está deshabilitada (config.json)`);
+					return; // No continuar con esta app
+				}
+			} catch (error) {
+				// No hay config.json o no se puede leer, continuar normalmente
 			}
-		} catch (error) {
-			// No hay config.json o no se puede leer, continuar normalmente
-		}
 
 			// Ejecutar docker-compose si existe
 			try {
@@ -1055,11 +1261,11 @@ export class Kernel {
 			if (module) {
 				const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
 				this.#logger.logDebug(`Removiendo ${capitalizedModuleType}: ${module.name}`);
-				await module.stop?.();
+				await module.stop?.(Kernel.#kernelKey);
 				registry.delete(uniqueKey);
 
 				if (moduleType === "provider") {
-					const provider = module as IProvider<any>;
+					const provider = module as IProvider;
 					if (provider.type && provider.type !== provider.name) {
 						const typeKey = this.#getUniqueKey(provider.type, Kernel.moduleLoader.getConfigByPath(path.dirname(filePath))?.config);
 						const providerRegistry = this.#getRegistry("provider");

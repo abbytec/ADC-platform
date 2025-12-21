@@ -1,0 +1,13 @@
+{
+	"uiModule": {
+		"name": "adc-ui-library",
+		"uiNamespace": "adc-platform",
+		"framework": "stencil",
+		"outputDir": "dist-ui",
+		"exports": {
+			"loader": "./loader",
+			"utils": "./utils",
+			"tailwind-preset": "./utils/tailwind-preset.js"
+		}
+	}
+}

@@ -1,4 +1,7 @@
 import HomeApp from './App.js';
+import "@ui-library"; // Auto-registra Web Components
+import "@ui-library/styles"; // CSS base de la UI Library
+import "./styles/tailwind.css"; // Extensiones locales
 
 // Crear instancia de la app
 const app = new HomeApp();
@@ -13,10 +16,10 @@ if (container) {
 
 // HMR para desarrollo
 if (import.meta.webpackHot) {
-	import.meta.webpackHot.accept('./App.js', () => {
+	import.meta.webpackHot.accept('./App.js', async () => {
 		console.log('[Home] 🔥 HMR Update');
 		app.unmount();
-		const NewApp = require('./App.js').default;
+		const NewApp = (await import('./App.js')).default;
 		const newApp = new NewApp();
 		newApp.mount(container);
 	});

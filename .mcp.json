@@ -7,6 +7,12 @@
 			"command": "/home/abby/.local/bin/serena-mcp-server",
 			"args": ["--context", "claude-code", "--project", "/home/abby/Escritorio/proyectos/personales/ADC-platform"],
 			"env": {}
+		},
+		"search_code_vector": {
+			"type": "stdio",
+			"command": "/home/abby/Escritorio/scripting/ai/rag/venv/bin/python",
+			"args": ["/home/abby/Escritorio/scripting/ai/rag/rag_server.py"],
+			"env": {}
 		}
 	},
 	"enabledMcpjsonServers": [],

@@ -1,7 +1,7 @@
-import { IProvider } from "./IProvider.js";
-import { IUtility } from "./IUtility.js";
-import { IService } from "./IService.js";
 import { IKernel } from "../IKernel.ts";
+import type { IProvider } from "../../providers/BaseProvider.ts";
+import type { IUtility } from "../../utilities/BaseUtility.ts";
+import type { IService } from "../../services/BaseService.ts";
 
 /**
  * Interfaz base para loaders de módulos por lenguaje

@@ -1,5 +1,6 @@
 import { BaseApp } from "../../BaseApp.js";
 import type { IHttpServerProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
+import IdentityManagerService from "../../../services/core/IdentityManagerService/index.ts";
 
 /**
  * App Home - Página principal del dashboard
@@ -14,21 +15,19 @@ export default class WebHomeApp extends BaseApp {
 	async #registerAPIEndpoints() {
 		try {
 			// Usar el tipo del provider (http-server-provider) para obtener el correcto según el entorno
-			const httpProvider = this.kernel.getProvider<any>("http-server-provider");
-			const httpInstance = (await httpProvider.getInstance()) as IHttpServerProvider;
+			const httpProvider = this.kernel.getProvider<IHttpServerProvider>("http-server-provider");
 
-			httpInstance.registerRoute("GET", "/api/dashboard/stats", async (_req: any, res: any) => {
+			httpProvider.registerRoute("GET", "/api/dashboard/stats", async (_req: any, res: any) => {
 				try {
-					const identityService = this.kernel.getService<any>("IdentityManagerService");
-					const identityInstance = await identityService.getInstance();
-					const stats = await identityInstance.getStats();
+					const identityService = this.kernel.getService<IdentityManagerService>("IdentityManagerService");
+					const stats = await identityService.getStats();
 
 					res.json({
 						success: true,
 						data: {
-							totalUsers: stats.users,
-							activeUsers: stats.activeUsers || Math.floor(stats.users * 0.7),
-							totalRoles: stats.roles,
+							totalUsers: stats.totalUsers,
+							totalGroups: stats.totalGroups,
+							totalRoles: stats.totalRoles,
 						},
 					});
 				} catch (error: any) {
@@ -45,4 +44,3 @@ export default class WebHomeApp extends BaseApp {
 		}
 	}
 }
-

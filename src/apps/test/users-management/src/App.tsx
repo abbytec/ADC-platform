@@ -1,5 +1,3 @@
-import "@ui-library/loader";
-
 export default function App() {
 	const handleCreateUser = () => {
 		console.log("Crear usuario");

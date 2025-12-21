@@ -4,7 +4,7 @@ import { BaseService } from "../../BaseService.js";
 import { Kernel } from "../../../kernel.js";
 import { ILogManagerService } from "./types.js";
 
-export default class LogManagerService extends BaseService<ILogManagerService> {
+export default class LogManagerService extends BaseService implements ILogManagerService {
 	public readonly name = "LogManagerService";
 	private cleanupInterval: NodeJS.Timeout | null = null;
 
@@ -12,16 +12,8 @@ export default class LogManagerService extends BaseService<ILogManagerService> {
 		super(kernel, options);
 	}
 
-	async getInstance(): Promise<ILogManagerService> {
-		return {
-			queryLogs: this.queryLogs.bind(this),
-			cleanupLogs: this.cleanupLogs.bind(this),
-			getLogsDir: () => this.getLogsDir(),
-		};
-	}
-
-	async start(): Promise<void> {
-		await super.start();
+	async start(kernelKey: symbol): Promise<void> {
+		await super.start(kernelKey);
 
 		// Ensure logs directory exists
 		const logsDir = this.getLogsDir();
@@ -42,14 +34,14 @@ export default class LogManagerService extends BaseService<ILogManagerService> {
 		this.logger.logOk("LogManagerService started");
 	}
 
-	async stop(): Promise<void> {
+	async stop(kernelKey: symbol): Promise<void> {
+		await super.stop(kernelKey);
 		if (this.cleanupInterval) {
 			clearInterval(this.cleanupInterval);
 		}
-		await super.stop();
 	}
 
-	private getLogsDir(): string {
+	getLogsDir(): string {
 		const configDir = this.config.custom?.logsDir || "temp/logs";
 		return path.resolve(process.cwd(), configDir);
 	}
@@ -67,13 +59,13 @@ export default class LogManagerService extends BaseService<ILogManagerService> {
 		this.logger.logInfo(`Cleaning up logs (older than ${retentionDays} days or > ${retentionCount} files) in ${logsDir}`);
 
 		try {
-			await this.processDirectoryForCleanup(logsDir, now, maxAge, retentionCount);
+			await this.#processDirectoryForCleanup(logsDir, now, maxAge, retentionCount);
 		} catch (error: any) {
 			this.logger.logError(`Error during log cleanup: ${error.message}`);
 		}
 	}
 
-	private async processDirectoryForCleanup(dir: string, now: number, maxAge: number, retentionCount: number) {
+	async #processDirectoryForCleanup(dir: string, now: number, maxAge: number, retentionCount: number) {
 		try {
 			const entries = await fs.readdir(dir, { withFileTypes: true });
 
@@ -85,7 +77,7 @@ export default class LogManagerService extends BaseService<ILogManagerService> {
 
 				if (entry.isDirectory()) {
 					// Recursive call for subdirectories
-					await this.processDirectoryForCleanup(fullPath, now, maxAge, retentionCount);
+					await this.#processDirectoryForCleanup(fullPath, now, maxAge, retentionCount);
 
 					// Try to remove empty directories
 					try {

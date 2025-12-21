@@ -1,0 +1,15 @@
+{
+	"failOnError": false,
+	"providers": [
+		{
+			"name": "object/mongo",
+			"version": "latest",
+			"language": "typescript"
+		},
+		{
+			"name": "http/fastify-server",
+			"version": "latest",
+			"language": "typescript"
+		}
+	]
+}

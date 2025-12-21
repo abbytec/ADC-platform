@@ -1,0 +1,58 @@
+import { Component, Prop, h, Event, EventEmitter } from "@stencil/core";
+
+@Component({
+	tag: "adc-content-card",
+	shadow: false,
+})
+export class AdcContentCard {
+	@Prop() title: string = "";
+	@Prop() description?: string;
+	@Prop() bannerUrl?: string;
+	@Prop() bannerAlt?: string;
+	@Prop() href?: string;
+	@Prop() compact: boolean = false;
+
+	@Event() cardClick!: EventEmitter<MouseEvent>;
+
+	private handleClick = (event: MouseEvent) => {
+		this.cardClick.emit(event);
+	};
+
+	render() {
+		const rootClass = "relative block h-full rounded-xxl cursor-pointer no-underline group max-w-lg";
+		const surfaceClass =
+			"absolute inset-0 min-h-full bg-surface rounded-xxl shadow-cozy " +
+			"motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out " +
+			"group-hover:scale-y-[1.05]";
+
+		const innerClass = "relative p-4 pb-5 text-text space-y-2 min-h-full flex flex-col justify-start";
+
+		const imageClass = `w-full object-cover rounded-xxl ${this.compact ? "h-24" : "h-40"}`;
+
+		const content = (
+			<div class={innerClass}>
+				{this.bannerUrl && <img src={this.bannerUrl} alt={this.bannerAlt || this.title} class={imageClass} loading="lazy" />}
+				{this.description && <h2 class="text-lg font-semibold">{this.title}</h2>}
+				{!this.description && <h3 class="text-lg font-semibold">{this.title}</h3>}
+				{this.description && <p>{this.description}</p>}
+				<slot></slot>
+			</div>
+		);
+
+		if (this.href) {
+			return (
+				<a href={this.href} class={rootClass} onClick={this.handleClick}>
+					<div class={surfaceClass}></div>
+					{content}
+				</a>
+			);
+		}
+
+		return (
+			<div class={rootClass} onClick={this.handleClick}>
+				<div class={surfaceClass}></div>
+				{content}
+			</div>
+		);
+	}
+}

@@ -8,30 +8,42 @@ import type { RegisteredUIModule } from "../types.js";
  */
 
 // Funciones internas
-function findUILibrary(modules: Map<string, RegisteredUIModule>, namespace: string): RegisteredUIModule | null {
-	for (const mod of modules.values()) {
-		const modNamespace = mod.namespace || "default";
-		if (mod.uiConfig.framework === "stencil" && modNamespace === namespace) {
-			return mod;
+function findUILibrary(modules: Map<string, RegisteredUIModule>, targetModule: RegisteredUIModule): RegisteredUIModule | null {
+	const uiDependencies = targetModule.uiConfig.uiDependencies || [];
+
+	for (const depName of uiDependencies) {
+		const depModule = modules.get(depName);
+		if (depModule && depModule.uiConfig.framework === "stencil") {
+			return depModule;
 		}
 	}
+
 	return null;
 }
 
 function addUILibraryAliases(aliases: Record<string, string>, uiLibrary: RegisteredUIModule, uiOutputBaseDir: string): void {
 	const exports = uiLibrary.uiConfig.exports || {};
+	const uiModuleName = uiLibrary.uiConfig.name;
+	const outputDir = path.resolve(uiOutputBaseDir, uiModuleName);
 
+	// Exports declarados en config.json
 	for (const [exportName, exportPath] of Object.entries(exports)) {
 		const aliasKey = `@ui-library/${exportName}`;
 
 		if (exportName === "loader") {
-			aliases[aliasKey] = path.resolve(uiOutputBaseDir, uiLibrary.name, exportPath);
+			// Loader está en el output dir
+			aliases[aliasKey] = path.resolve(outputDir, exportPath);
 		} else {
+			// Otros exports (utils, etc.) están en el source
 			aliases[aliasKey] = path.resolve(uiLibrary.appDir, exportPath);
 		}
 	}
 
-	aliases["@ui-library"] = path.resolve(uiOutputBaseDir, uiLibrary.name);
+	// @ui-library -> init.js (auto-ejecuta loader + registra componentes)
+	aliases["@ui-library"] = path.resolve(outputDir, "init.js");
+
+	// @ui-library/styles -> CSS base de la UI library (para Tailwind)
+	aliases["@ui-library/styles"] = path.resolve(outputDir, "styles.css");
 }
 
 function usesReact(module: RegisteredUIModule): boolean {
@@ -48,9 +60,8 @@ export default {
 		targetModule: RegisteredUIModule
 	): Record<string, string> {
 		const aliases: Record<string, string> = {};
-		const namespace = targetModule.namespace || "default";
 
-		const uiLibrary = findUILibrary(registeredModules, namespace);
+		const uiLibrary = findUILibrary(registeredModules, targetModule);
 		if (uiLibrary) {
 			addUILibraryAliases(aliases, uiLibrary, uiOutputBaseDir);
 		}
@@ -93,15 +104,34 @@ export default {
 			targetModule.uiConfig.sharedLibs.forEach((lib) => usedFrameworks.add(lib));
 		}
 
-		const isHost = targetModule.uiConfig.name.includes("layout");
+		// Detectar frameworks de dependencias declaradas
+		const uiDependencies = targetModule.uiConfig.uiDependencies || [];
+		for (const depName of uiDependencies) {
+			const depModule = registeredModules.get(depName);
+			if (depModule) {
+				const depFramework = depModule.uiConfig.framework || "vanilla";
+				const baseDepFramework = depFramework.startsWith("vite-") ? depFramework.replace("vite-", "") : depFramework;
+				if (baseDepFramework !== "vanilla" && baseDepFramework !== "stencil") {
+					usedFrameworks.add(baseDepFramework);
+				}
+			}
+		}
+
+		// Para hosts/layouts: detectar frameworks de todos los remotes en el namespace
+		// (necesario porque los remotes se cargan dinámicamente con lazyLoadRemoteComponent)
+		const isHost = targetModule.uiConfig.isHost ?? false;
 		if (isHost) {
 			const namespace = targetModule.namespace || "default";
 			for (const [moduleName, mod] of registeredModules.entries()) {
 				const modNamespace = mod.namespace || "default";
-				if (moduleName !== "layout" && mod.uiConfig.devPort && modNamespace === namespace) {
-					const remoteFramework = mod.uiConfig.framework || "react";
+				const isLayoutModule = moduleName.includes("layout");
+				const isCurrentModule = moduleName === targetModule.uiConfig.name;
+
+				// Solo incluir módulos que tengan devPort, estén en el mismo namespace, y no sean layouts ni el módulo actual
+				if (!isLayoutModule && !isCurrentModule && mod.uiConfig.devPort && modNamespace === namespace) {
+					const remoteFramework = mod.uiConfig.framework || "vanilla";
 					const baseRemoteFramework = remoteFramework.startsWith("vite-") ? remoteFramework.replace("vite-", "") : remoteFramework;
-					if (baseRemoteFramework !== "vanilla") {
+					if (baseRemoteFramework !== "vanilla" && baseRemoteFramework !== "stencil") {
 						usedFrameworks.add(baseRemoteFramework);
 					}
 				}

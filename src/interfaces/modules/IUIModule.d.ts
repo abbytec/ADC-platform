@@ -1,7 +1,7 @@
 /**
  * Configuración de una ruta UI para una app
  */
-export interface UIRouteConfig {
+interface UIRouteConfig {
 	/** Ruta HTTP (ej: "/", "/users", "/products/:id") */
 	path: string;
 	/** Página de Astro a servir (ej: "index", "users") */
@@ -9,25 +9,13 @@ export interface UIRouteConfig {
 }
 
 /**
- * Configuración de host para servir un módulo UI
- */
-export interface UIHostConfig {
-	/** Dominio base (ej: "local.com", "example.com") */
-	domain: string;
-	/** Lista de subdominios o "*" para comodín (ej: ["cloud", "users", "*"]) */
-	subdomains?: string[];
-}
-
-/**
  * Configuración de hosting para un módulo UI en producción
  */
-export interface UIHostingConfig {
-	/** Configuración de hosts específicos */
-	hosts?: UIHostConfig[];
-	/** Lista simple de subdominios (usa dominio por defecto del sistema) */
-	subdomains?: string[];
+interface UIHostingConfig {
 	/** Lista de dominios completos donde servir (ej: ["cloud.local.com"]) */
-	domains?: string[];
+	domains: string[];
+	/** Lista de subdominios o "*" para comodín (ej: ["cloud", "users", "*"]) (usa dominio por defecto del sistema) */
+	subdomains?: string[];
 }
 
 /**
@@ -42,8 +30,14 @@ export interface UIModuleConfig {
 	framework?: string;
 	/** Directorio de salida para el build */
 	outputDir: string;
-	/** Si true, genera index.html y entry point para ejecución standalone */
+	/** @deprecated Usar isHost en su lugar. Si true, genera index.html y entry point para ejecución standalone */
 	standalone?: boolean;
+	/** Si true, este módulo es un host de Module Federation que consume remotes */
+	isHost?: boolean;
+	/** Si true, este módulo se expone como remote para ser consumido por hosts */
+	isRemote?: boolean;
+	/** Lista de nombres de apps UI de las que depende este módulo (deben cargarse primero) */
+	uiDependencies?: string[];
 	/** Puerto para dev server (solo para apps React/Vue en desarrollo) */
 	devPort?: number;
 	/** Rutas UI que la app expone */
@@ -59,13 +53,13 @@ export interface UIModuleConfig {
 	/** Exports que este módulo expone globalmente (ej: { "loader": "./loader", "utils": "./utils" }) */
 	exports?: Record<string, string>;
 	/** Configuración de hosting para producción (dominios/subdominios) */
-	hosting?: UIHostingConfig;
+	hosting?: UIHostingConfig[];
 }
 
 /**
  * Entrada en el import map
  */
-export interface ImportMapEntry {
+interface ImportMapEntry {
 	/** Clave en el import map (ej: "ui-library", "react") */
 	key: string;
 	/** URL o path del módulo (ej: "/ui/ui-library/index.js") */
@@ -79,4 +73,3 @@ export interface ImportMap {
 	imports: Record<string, string>;
 	scopes?: Record<string, Record<string, string>>;
 }
-

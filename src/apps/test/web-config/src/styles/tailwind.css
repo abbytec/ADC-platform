@@ -1,0 +1,7 @@
+/**
+ * Tailwind CSS - Estilos para Config App
+ *
+ * Solo se incluyen las clases de Tailwind que se usan en esta app.
+ * Tailwind v4 usa @import en lugar de @tailwind directives.
+ */
+@import "tailwindcss";

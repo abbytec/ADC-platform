@@ -2,9 +2,9 @@ import * as path from "node:path";
 import { promises as fs } from "node:fs";
 import { LoaderManager } from "./LoaderManager.js";
 import { IModuleConfig } from "../../interfaces/modules/IModule.js";
-import { IProvider } from "../../interfaces/modules/IProvider.js";
-import { IService } from "../../interfaces/modules/IService.js";
-import { IUtility } from "../../interfaces/modules/IUtility.js";
+import type { BaseProvider } from "../../providers/BaseProvider.ts";
+import type { IUtility } from "../../utilities/BaseUtility.ts";
+import type { BaseService } from "../../services/BaseService.ts";
 import { Kernel } from "../../kernel.js";
 import { Logger } from "../logger/Logger.js";
 import { VersionResolver } from "../VersionResolver.js";
@@ -17,6 +17,15 @@ export class ModuleLoader {
 	readonly #servicesPath = path.resolve(this.#basePath, "services");
 
 	readonly #configCache = new Map<string, IModuleConfig>();
+
+	readonly #kernelKey: symbol;
+
+	readonly #loaderManager: LoaderManager;
+
+	constructor(kernelKey: symbol) {
+		this.#kernelKey = kernelKey;
+		this.#loaderManager = new LoaderManager(this.#kernelKey);
+	}
 
 	public getConfigByPath(modulePath: string): IModuleConfig | undefined {
 		return this.#configCache.get(modulePath);
@@ -52,6 +61,32 @@ export class ModuleLoader {
 		process(modulesConfig.utilities, "utilities");
 	}
 
+	/**
+	 * Interpola variables de entorno en un objeto de configuración
+	 * Reemplaza ${VAR_NAME} con el valor de process.env.VAR_NAME
+	 */
+	#interpolateEnvVars(obj: any): any {
+		if (typeof obj === "string") {
+			return obj.replace(/\$\{([^}]+)\}/g, (_, varName) => {
+				return process.env[varName] || "";
+			});
+		}
+
+		if (Array.isArray(obj)) {
+			return obj.map((item) => this.#interpolateEnvVars(item));
+		}
+
+		if (obj && typeof obj === "object") {
+			const result: any = {};
+			for (const [key, value] of Object.entries(obj)) {
+				result[key] = this.#interpolateEnvVars(value);
+			}
+			return result;
+		}
+
+		return obj;
+	}
+
 	async loadAllModulesFromDefinition(modulesConfig: IModuleConfig, kernel: Kernel): Promise<void> {
 		this.#processGlobalConfigs(modulesConfig); // Procesar globales primero
 
@@ -60,6 +95,11 @@ export class ModuleLoader {
 			// Solo se registran como dependencias cuando un servicio los usa
 			if (modulesConfig.providers && Array.isArray(modulesConfig.providers)) {
 				for (const providerConfig of modulesConfig.providers) {
+					// Verificar si el provider ya existe antes de cargarlo
+					if (kernel.hasModule("provider", providerConfig.name, providerConfig.config)) {
+						Logger.debug(`[ModuleLoader] Provider global ${providerConfig.name} ya existe, saltando`);
+						continue;
+					}
 					try {
 						const provider = await this.loadProvider(providerConfig);
 						// Pasar null como appName para que NO se registre como dependencia de la app actual
@@ -109,12 +149,56 @@ export class ModuleLoader {
 						// Clonar la configuración para poder mutarla, ya que el original está congelado
 						const mutableServiceConfig = structuredClone(serviceConfig);
 
-						// PRIMERO: Cargar los providers específicos del servicio (si los tiene)
+						// PRIMERO: Calcular el uniqueKey para verificar si el servicio ya existe
+						// Necesitamos resolver los providers para construir el config correcto
+						let finalProviders = mutableServiceConfig.providers;
+						if (!finalProviders || finalProviders.length === 0) {
+							try {
+								const resolved = await VersionResolver.resolveModuleVersion(
+									this.#servicesPath,
+									serviceConfig.name,
+									serviceConfig.version,
+									serviceConfig.language
+								);
+								if (resolved) {
+									const configJsonPath = path.join(path.dirname(resolved.path), "config.json");
+									const configContent = await fs.readFile(configJsonPath, "utf-8");
+									const configJson = JSON.parse(configContent);
+									if (configJson.providers && Array.isArray(configJson.providers)) {
+										finalProviders = configJson.providers;
+									}
+								}
+							} catch {
+								// Si no se puede leer, usar el array vacío
+							}
+						}
+
+						// Construir el config que se usará para el uniqueKey
+						const serviceUniqueConfig = {
+							...serviceConfig.config,
+							__providers: finalProviders,
+						};
+
+						// VERIFICAR si el servicio ya existe antes de cargarlo
+						if (kernel.hasModule("service", serviceConfig.name, serviceUniqueConfig)) {
+							Logger.debug(`[ModuleLoader] Servicio ${serviceConfig.name} ya existe, reutilizando instancia`);
+							// Solo agregar la dependencia a la app actual (el kernel lo maneja internamente)
+							kernel.addModuleDependency("service", serviceConfig.name, serviceUniqueConfig);
+							continue; // Saltar al siguiente servicio
+						}
+
+						// SEGUNDO: Cargar los providers específicos del servicio (si los tiene)
 						// Esto evita duplicación porque los providers se cargan una sola vez en el kernel
 						if (mutableServiceConfig.providers && Array.isArray(mutableServiceConfig.providers)) {
 							for (const providerConfig of mutableServiceConfig.providers) {
 								// Solo cargar si no es global (los globales ya fueron cargados)
 								if (!providerConfig.global) {
+									// Verificar si el provider ya existe
+									if (kernel.hasModule("provider", providerConfig.name, providerConfig.config)) {
+										Logger.debug(`[ModuleLoader] Provider ${providerConfig.name} ya existe, reutilizando`);
+										kernel.addModuleDependency("provider", providerConfig.name, providerConfig.config);
+										continue;
+									}
 									try {
 										const provider = await this.loadProvider(providerConfig);
 										kernel.registerProvider(provider.name, provider, provider.type, providerConfig);
@@ -161,14 +245,10 @@ export class ModuleLoader {
 							}
 						}
 
-						// SEGUNDO: Cargar el servicio (que ahora puede acceder a sus providers del kernel)
+						// TERCERO: Cargar el servicio (que ahora puede acceder a sus providers del kernel)
 						const service = await this.loadService(mutableServiceConfig, kernel);
-						if (service.start) {
-							await service.start();
-						}
-						const instance = await service.getInstance();
 
-						// TERCERO: Registrar los providers del servicio como dependencias de la app
+						// CUARTO: Registrar los providers del servicio como dependencias de la app
 						// Esto es necesario para el reference counting correcto
 						if (mutableServiceConfig.providers && Array.isArray(mutableServiceConfig.providers)) {
 							for (const providerConfig of mutableServiceConfig.providers) {
@@ -179,44 +259,14 @@ export class ModuleLoader {
 							}
 						}
 
-						// CUARTO: Registrar el servicio
-						// Si el servicio no tiene providers en su config, puede que los haya cargado del config.json
-						// Necesitamos incluir esos providers en el uniqueKey
-						let finalProviders = mutableServiceConfig.providers;
-						if (!finalProviders || finalProviders.length === 0) {
-							// Leer el config.json del servicio para ver qué providers declaró
-							try {
-								const resolved = await VersionResolver.resolveModuleVersion(
-									this.#servicesPath,
-									serviceConfig.name,
-									serviceConfig.version,
-									serviceConfig.language
-								);
-								if (resolved) {
-									const configJsonPath = path.join(path.dirname(resolved.path), "config.json");
-									const configContent = await fs.readFile(configJsonPath, "utf-8");
-									const configJson = JSON.parse(configContent);
-									if (configJson.providers && Array.isArray(configJson.providers)) {
-										finalProviders = configJson.providers;
-									}
-								}
-							} catch {
-								// Si no se puede leer, usar el array vacío
-							}
-						}
-
-						// Registrar con una configuración que incluya config y providers para reference counting correcto
-						// El config debe incluir los providers para que el uniqueKey refleje las dependencias
+						// QUINTO: Registrar el servicio con el config que incluye providers
 						const registrationConfig: IModuleConfig = {
 							name: serviceConfig.name,
 							version: serviceConfig.version,
 							language: serviceConfig.language,
-							config: {
-								...serviceConfig.config,
-								__providers: finalProviders, // Incluir providers en config para uniqueKey
-							},
+							config: serviceUniqueConfig,
 						};
-						kernel.registerService(service.name, instance, registrationConfig);
+						kernel.registerService(service.name, service, registrationConfig);
 					} catch (error) {
 						const message = `Error cargando service ${serviceConfig.name}: ${error}`;
 						if (modulesConfig.failOnError) throw new Error(message);
@@ -234,7 +284,7 @@ export class ModuleLoader {
 	/**
 	 * Carga un Provider desde su configuración.
 	 */
-	async loadProvider(config: IModuleConfig): Promise<IProvider<any>> {
+	async loadProvider(config: IModuleConfig): Promise<BaseProvider> {
 		const language = config.language || "typescript";
 		const version = config.version || "latest";
 
@@ -250,15 +300,21 @@ export class ModuleLoader {
 		this.#configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
-		const loader = LoaderManager.getLoader(language);
+		const loader = this.#loaderManager.getLoader(language);
+
+		// Interpolar variables de entorno en todas las propiedades del config
+		const interpolatedConfig = this.#interpolateEnvVars(config);
 
 		// Enriquecer config con información del módulo para interoperabilidad
+		// Incluir tanto custom como options y cualquier otra propiedad
 		const enrichedConfig = {
-			...config.custom,
-			moduleName: config.name,
+			...interpolatedConfig.custom,
+			...interpolatedConfig.options,
+			...interpolatedConfig.config,
+			moduleName: interpolatedConfig.name,
 			moduleVersion: resolved.version,
 			language: language,
-			type: config.type,
+			type: interpolatedConfig.type,
 		};
 
 		// Cargar el módulo
@@ -268,7 +324,7 @@ export class ModuleLoader {
 	/**
 	 * Carga un Utility desde su configuración.
 	 */
-	async loadUtility(config: IModuleConfig): Promise<IUtility<any>> {
+	async loadUtility(config: IModuleConfig): Promise<IUtility> {
 		const language = config.language || "typescript";
 		const version = config.version || "latest";
 
@@ -283,14 +339,20 @@ export class ModuleLoader {
 		this.#configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
-		const loader = LoaderManager.getLoader(language);
+		const loader = this.#loaderManager.getLoader(language);
 
-		// Enriquecer config con información del módulo para interoperabilidad
+		// Interpolar variables de entorno
+		const interpolatedConfig = this.#interpolateEnvVars(config);
+
+		// Enriquecer config con información del módulo
 		const enrichedConfig = {
-			...config.custom,
-			moduleName: config.name,
+			...interpolatedConfig.custom,
+			...interpolatedConfig.options,
+			...interpolatedConfig.config,
+			moduleName: interpolatedConfig.name,
 			moduleVersion: resolved.version,
 			language: language,
+			type: interpolatedConfig.type,
 		};
 
 		// Cargar el módulo
@@ -300,7 +362,7 @@ export class ModuleLoader {
 	/**
 	 * Carga un Service desde su configuración.
 	 */
-	async loadService(config: IModuleConfig, kernel: Kernel): Promise<IService<any>> {
+	async loadService(config: IModuleConfig, kernel: Kernel): Promise<BaseService> {
 		const language = config.language || "typescript";
 		const version = config.version || "latest";
 
@@ -316,22 +378,23 @@ export class ModuleLoader {
 		this.#configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
-		const loader = LoaderManager.getLoader(language);
+		const loader = this.#loaderManager.getLoader(language);
 
-		// Enriquecer config con información del módulo para interoperabilidad
+		// Interpolar variables de entorno
+		const interpolatedConfig = this.#interpolateEnvVars(config);
+
+		// Enriquecer config con información del módulo
 		const enrichedConfig = {
-			...config,
-			config: {
-				...config.custom,
-				moduleName: config.name,
-				moduleVersion: resolved.version,
-				language: language,
-			},
-			__modulePath: resolved.path, // Agregar el path real del módulo
+			...interpolatedConfig.custom,
+			...interpolatedConfig.options,
+			...interpolatedConfig.config,
+			moduleName: interpolatedConfig.name,
+			moduleVersion: resolved.version,
+			language: language,
+			type: interpolatedConfig.type,
 		};
 
-		// Cargar el módulo pasando la configuración completa (incluyendo providers/utilities)
-		// El servicio necesita acceso a sus providers/utilities específicas
+		// Cargar el módulo (los services reciben kernel + config)
 		return await loader.loadService(resolved.path, kernel, enrichedConfig);
 	}
 }
