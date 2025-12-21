@@ -14,6 +14,8 @@ import { ipcManager } from "../../ipc/IPCManager.js";
  * Wrapper para módulos C++ que se comunican via IPC
  */
 class CppModuleWrapper {
+	private kernelKey?: symbol;
+
 	constructor(
 		public readonly name: string,
 		public readonly modulePath: string,
@@ -22,11 +24,57 @@ class CppModuleWrapper {
 		private readonly process?: ChildProcess
 	) {}
 
-	async stop(): Promise<void> {
+	public readonly setKernelKey = (key: symbol): void => {
+		if (this.kernelKey) {
+			throw new Error("Kernel key ya está establecida");
+		}
+		this.kernelKey = key;
+	};
+
+	async start(kernelKey: symbol): Promise<void> {
+		this.verifyKernelKey(kernelKey, "start");
+		Logger.info(`[CppModuleWrapper] Iniciando módulo C++: ${this.name}`);
+	}
+
+	async stop(kernelKey: symbol): Promise<void> {
+		this.verifyKernelKey(kernelKey, "stop");
 		if (this.process && !this.process.killed) {
 			this.process.kill();
 			Logger.info(`[CppModuleWrapper] Proceso C++ detenido: ${this.name}`);
 		}
+	}
+
+	private verifyKernelKey(keyToVerify: symbol, methodName: string): void {
+		if (!this.kernelKey) {
+			throw new Error("Kernel key no establecida");
+		}
+		if (this.kernelKey !== keyToVerify) {
+			throw new Error(`Acceso no autorizado a ${methodName}`);
+		}
+	}
+
+	/**
+	 * Crea el Proxy para interceptar llamadas y enviarlas por IPC
+	 */
+	createIpcProxy(): any {
+		return new Proxy(
+			{},
+			{
+				get: (_target, prop) => {
+					// Ignorar propiedades de Promise y símbolos especiales
+					if (typeof prop === "symbol" || prop === "then" || prop === "catch" || prop === "finally") {
+						return undefined;
+					}
+
+					if (typeof prop === "string") {
+						return async (...args: any[]) => {
+							return await ipcManager.call(this.name, this.moduleVersion, "C++", prop, args);
+						};
+					}
+					return undefined;
+				},
+			}
+		);
 	}
 }
 
@@ -47,84 +95,17 @@ class CppProviderWrapper extends CppModuleWrapper implements IProvider {
 		super(name, modulePath, moduleVersion, config, process);
 		this.type = type || "default";
 	}
-
-	async getInstance(): Promise<any> {
-		// El proxy se encargará de enrutar las llamadas via IPC
-		return new Proxy(
-			{},
-			{
-				get: (_target, prop) => {
-					if (typeof prop === "string") {
-						return async (...args: any[]) => {
-							return await ipcManager.call(this.name, this.moduleVersion, "C++", prop, args);
-						};
-					}
-					return undefined;
-				},
-			}
-		);
-	}
 }
 
 /**
  * Utility wrapper para C++
  */
-class CppUtilityWrapper extends CppModuleWrapper implements IUtility {
-	private cachedInstance: any = null;
-
-	async getInstance(): Promise<any> {
-		if (this.cachedInstance) {
-			return this.cachedInstance;
-		}
-
-		this.cachedInstance = new Proxy(
-			{},
-			{
-				get: (_target, prop) => {
-					// Ignorar propiedades de Promise y símbolos especiales
-					if (typeof prop === "symbol" || prop === "then" || prop === "catch" || prop === "finally") {
-						return undefined;
-					}
-
-					if (typeof prop === "string") {
-						// Crear una función que hace la llamada IPC
-						return async (...args: any[]) => {
-							return await ipcManager.call(this.name, this.moduleVersion, "C++", prop, args);
-						};
-					}
-					return undefined;
-				},
-			}
-		);
-
-		return this.cachedInstance;
-	}
-}
+class CppUtilityWrapper extends CppModuleWrapper implements IUtility {}
 
 /**
  * Service wrapper para C++
  */
-class CppServiceWrapper extends CppModuleWrapper implements IService {
-	async start(): Promise<void> {
-		Logger.info(`[CppServiceWrapper] Iniciando servicio C++: ${this.name}`);
-	}
-
-	async getInstance(): Promise<any> {
-		return new Proxy(
-			{},
-			{
-				get: (_target, prop) => {
-					if (typeof prop === "string") {
-						return async (...args: any[]) => {
-							return await ipcManager.call(this.name, this.moduleVersion, "C++", prop, args);
-						};
-					}
-					return undefined;
-				},
-			}
-		);
-	}
-}
+class CppServiceWrapper extends CppModuleWrapper implements IService {}
 
 /**
  * Loader para módulos C++.
