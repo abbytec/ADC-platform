@@ -1,12 +1,11 @@
 {
-	"disabled": true,
 	"failOnError": false,
 	"providers": [
 		{
 			"name": "file-storage",
 			"global": true,
-			"version": "latest",
-			"language": "typescript",
+			"version": "1.0.0",
+			"language": "cpp",
 			"custom": {
 				"basePath": "./temp/storage-file"
 			}
