@@ -3,9 +3,9 @@ import * as fs from "node:fs/promises";
 import { spawn, ChildProcess, exec } from "node:child_process";
 import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
 import { IModuleConfig } from "../../../interfaces/modules/IModule.js";
-import { IProvider } from "../../../interfaces/modules/IProvider.js";
-import { IService } from "../../../interfaces/modules/IService.js";
-import { IUtility } from "../../../interfaces/modules/IUtility.js";
+import { IProvider } from "../../../providers/BaseProvider.js";
+import { IService } from "../../../services/BaseService.js";
+import { IUtility } from "../../../utilities/BaseUtility.js";
 import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
 import { ipcManager } from "../../ipc/IPCManager.js";
@@ -33,7 +33,7 @@ class CppModuleWrapper {
 /**
  * Provider wrapper para C++
  */
-class CppProviderWrapper extends CppModuleWrapper implements IProvider<any> {
+class CppProviderWrapper extends CppModuleWrapper implements IProvider {
 	readonly type: string;
 
 	constructor(
@@ -69,7 +69,7 @@ class CppProviderWrapper extends CppModuleWrapper implements IProvider<any> {
 /**
  * Utility wrapper para C++
  */
-class CppUtilityWrapper extends CppModuleWrapper implements IUtility<any> {
+class CppUtilityWrapper extends CppModuleWrapper implements IUtility {
 	private cachedInstance: any = null;
 
 	async getInstance(): Promise<any> {
@@ -104,7 +104,7 @@ class CppUtilityWrapper extends CppModuleWrapper implements IUtility<any> {
 /**
  * Service wrapper para C++
  */
-class CppServiceWrapper extends CppModuleWrapper implements IService<any> {
+class CppServiceWrapper extends CppModuleWrapper implements IService {
 	async start(): Promise<void> {
 		Logger.info(`[CppServiceWrapper] Iniciando servicio C++: ${this.name}`);
 	}
@@ -251,7 +251,7 @@ export class CppLoader implements IModuleLoader {
 		return cppProcess;
 	}
 
-	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider<any>> {
+	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider> {
 		try {
 			// Extraer información del módulo del path o config
 			const moduleName = config?.moduleName || path.basename(modulePath);
@@ -271,7 +271,7 @@ export class CppLoader implements IModuleLoader {
 		}
 	}
 
-	async loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility<any>> {
+	async loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility> {
 		try {
 			const moduleName = config?.moduleName || path.basename(modulePath);
 			const moduleVersion = config?.moduleVersion || "1.0.0";
@@ -289,7 +289,7 @@ export class CppLoader implements IModuleLoader {
 		}
 	}
 
-	async loadService(modulePath: string, _kernel: Kernel, config?: Record<string, any> | IModuleConfig): Promise<IService<any>> {
+	async loadService(modulePath: string, _kernel: Kernel, config?: Record<string, any> | IModuleConfig): Promise<IService> {
 		try {
 			const moduleConfig = config as IModuleConfig;
 			const moduleName = moduleConfig?.name || path.basename(modulePath);

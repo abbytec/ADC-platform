@@ -8,14 +8,15 @@ import { Logger } from "./utils/logger/Logger.js";
 import { ModuleLoader } from "./utils/loaders/ModuleLoader.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModule, IModuleConfig } from "./interfaces/modules/IModule.js";
-import type { IProvider } from "./providers/BaseProvider.ts";
+import type { BaseProvider, IProvider } from "./providers/BaseProvider.ts";
 import type { IUtility } from "./utilities/BaseUtility.ts";
-import type { IService } from "./services/BaseService.ts";
+import type { BaseService, IService } from "./services/BaseService.ts";
 
 type ModuleType = "provider" | "utility" | "service";
-type Module = IProvider<any> | IUtility<any> | IService<any>;
+type Module = IProvider | IUtility | IService;
 
 export class Kernel {
+	static #kernelKey: symbol = Symbol(crypto.randomUUID());
 	#isStartingUp = true;
 	readonly #logger: ILogger = Logger.getLogger("Kernel");
 
@@ -73,7 +74,7 @@ export class Kernel {
 	}
 
 	// --- Gestor de carga ---
-	public static readonly moduleLoader = new ModuleLoader();
+	public static readonly moduleLoader = new ModuleLoader(Kernel.#kernelKey);
 
 	// --- Determinación de entorno ---
 	readonly #isDevelopment = process.env.NODE_ENV === "development";
@@ -165,7 +166,7 @@ export class Kernel {
 
 				if (module) {
 					this.#logger.logDebug(`Limpiando ${type}: ${uniqueKey}`);
-					await module.stop?.();
+					await module.stop?.(Kernel.#kernelKey);
 					registry.delete(uniqueKey);
 					refCountMap.delete(uniqueKey);
 
@@ -189,13 +190,7 @@ export class Kernel {
 	}
 
 	// --- API Pública del Kernel ---
-	public registerProvider(
-		name: string,
-		instance: IProvider<any>,
-		type: string | undefined,
-		config: IModuleConfig,
-		appName?: string | null
-	): void {
+	public registerProvider(name: string, instance: IProvider, type: string | undefined, config: IModuleConfig, appName?: string | null): void {
 		const nameUniqueKey = this.#getUniqueKey(name, config.config);
 		this.#addModuleToRegistry("provider", name, nameUniqueKey, instance, appName);
 
@@ -349,7 +344,7 @@ export class Kernel {
 
 			// Para providers, también agregar el alias (type) si existe
 			if (moduleType === "provider" && instance) {
-				const provider = instance as IProvider<any>;
+				const provider = instance as IProvider;
 				if (provider.type && provider.type !== name) {
 					const typeKey = this.#getUniqueKey(provider.type, config);
 					if (registry.has(typeKey)) {
@@ -440,8 +435,9 @@ export class Kernel {
 					}
 
 					// Crear instancia del servicio
-					const serviceInstance = new ServiceClass(this, {});
-					await serviceInstance.start();
+					const serviceInstance: BaseService = new ServiceClass(this, {});
+					serviceInstance.setKernelKey(Kernel.#kernelKey);
+					await serviceInstance.start(Kernel.#kernelKey);
 
 					// Registrar el servicio
 					this.registerService(serviceName, serviceInstance, {
@@ -595,7 +591,7 @@ export class Kernel {
 				try {
 					this.#logger.logDebug(`Deteniendo ${capitalizedModuleType} ${key}`);
 					if (instance.stop) {
-						await withTimeout(instance.stop(), 2000, `${capitalizedModuleType} ${key}`);
+						await withTimeout(instance.stop(Kernel.#kernelKey), 2000, `${capitalizedModuleType} ${key}`);
 					}
 				} catch (e) {
 					this.#logger.logError(`Error deteniendo ${capitalizedModuleType} ${key}: ${e}`);
@@ -834,20 +830,23 @@ export class Kernel {
 
 		switch (moduleType) {
 			case "provider": {
-				const providerModule = await Kernel.moduleLoader.loadProvider(config);
+				const providerModule: BaseProvider = await Kernel.moduleLoader.loadProvider(config);
+				providerModule.setKernelKey(Kernel.#kernelKey);
+				await providerModule.start?.(Kernel.#kernelKey);
 				this.registerProvider(providerModule.name, providerModule, providerModule.type, config);
 				module = providerModule;
 				break;
 			}
 			case "utility": {
-				const utilityModule = await Kernel.moduleLoader.loadUtility(config);
+				const utilityModule: IUtility = await Kernel.moduleLoader.loadUtility(config);
 				this.registerUtility(utilityModule.name, utilityModule, config);
 				module = utilityModule;
 				break;
 			}
 			case "service": {
-				const serviceModule = await Kernel.moduleLoader.loadService(config, this);
-				await serviceModule.start?.();
+				const serviceModule: BaseService = await Kernel.moduleLoader.loadService(config, this);
+				serviceModule.setKernelKey(Kernel.#kernelKey);
+				await serviceModule.start?.(Kernel.#kernelKey);
 				this.registerService(serviceModule.name, serviceModule, config);
 				module = serviceModule;
 				break;
@@ -1251,11 +1250,11 @@ export class Kernel {
 			if (module) {
 				const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
 				this.#logger.logDebug(`Removiendo ${capitalizedModuleType}: ${module.name}`);
-				await module.stop?.();
+				await module.stop?.(Kernel.#kernelKey);
 				registry.delete(uniqueKey);
 
 				if (moduleType === "provider") {
-					const provider = module as IProvider<any>;
+					const provider = module as IProvider;
 					if (provider.type && provider.type !== provider.name) {
 						const typeKey = this.#getUniqueKey(provider.type, Kernel.moduleLoader.getConfigByPath(path.dirname(filePath))?.config);
 						const providerRegistry = this.#getRegistry("provider");

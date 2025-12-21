@@ -6,8 +6,8 @@ const localTranslations = {
 		loading: "Cargando...",
 		stats: {
 			totalUsers: "Usuarios Totales",
-			activeUsers: "Usuarios Activos",
-			roles: "Roles"
+			totalGroups: "Usuarios Activos",
+			totalRoles: "Roles"
 		}
 	},
 	en: {
@@ -16,8 +16,8 @@ const localTranslations = {
 		loading: "Loading...",
 		stats: {
 			totalUsers: "Total Users",
-			activeUsers: "Active Users",
-			roles: "Roles"
+			totalGroups: "Active Users",
+			totalRoles: "Roles"
 		}
 	}
 };
@@ -102,7 +102,7 @@ export default class HomeApp {
 			console.log('[Home Mobile] API no disponible, usando datos mock');
 			this.stats = {
 				totalUsers: 150,
-				activeUsers: 89,
+				totalGroups: 89,
 				totalRoles: 8
 			};
 		} finally {
@@ -182,12 +182,12 @@ export default class HomeApp {
 							color="#805ad5"
 						></adc-stat-card>
 						<adc-stat-card
-							card-title="${this.t('stats.activeUsers')}"
-							value="${this.stats.activeUsers}"
+							card-title="${this.t('stats.totalGroups')}"
+							value="${this.stats.totalGroups}"
 							color="#48bb78"
 						></adc-stat-card>
 						<adc-stat-card
-							card-title="${this.t('stats.roles')}"
+							card-title="${this.t('stats.totalRoles')}"
 							value="${this.stats.totalRoles}"
 							color="#ed8936"
 						></adc-stat-card>

@@ -9,15 +9,11 @@ export default class ContentService extends BaseService {
 	public readonly name = "content-service";
 	private mongoProvider!: IMongoProvider;
 
-	async getInstance(): Promise<ContentService> {
-		return this;
-	}
-
-	async start(): Promise<void> {
+	async start(kernelKey: symbol): Promise<void> {
+		super.start(kernelKey);
 		this.logger.logInfo("[ContentService] Iniciando servicio de contenido...");
 
-		const mongoProviderClass = this.kernel.getProvider<any>("object-provider");
-		this.mongoProvider = await mongoProviderClass.getInstance();
+		this.mongoProvider = this.kernel.getProvider<IMongoProvider>("object-provider");
 
 		await this.waitForMongo();
 
@@ -47,9 +43,7 @@ export default class ContentService extends BaseService {
 
 	private async registerRPCRoutes(): Promise<void> {
 		try {
-			const uiFederationService = this.kernel.getService<any>("UIFederationService");
-			const uiFederationInstance = await uiFederationService.getInstance();
-			const httpProvider = uiFederationInstance.httpProvider;
+			const httpProvider = this.kernel.getProvider<any>("http-server-provider");
 
 			if (!httpProvider) {
 				this.logger.logWarn("[ContentService] No se pudo obtener httpProvider");
@@ -119,8 +113,7 @@ export default class ContentService extends BaseService {
 		}
 	}
 
-	async stop(): Promise<void> {
-		this.logger.logInfo("[ContentService] Deteniendo servicio de contenido...");
-		await super.stop();
+	async stop(kernelKey: symbol): Promise<void> {
+		await super.stop(kernelKey);
 	}
 }

@@ -5,16 +5,16 @@ import { Logger } from "../utils/logger/Logger.js";
 import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
 import { ILifecycle } from "../interfaces/behaviours/ILifecycle.js";
+import { OnlyKernel } from "../utils/decorators/OnlyKernel.ts";
 
-export interface IService<T> extends IModule, ILifecycle {
-	getInstance: () => Promise<T>;
-}
+export interface IService extends IModule, ILifecycle {}
 
 /**
  * Clase base abstracta para todos los Services.
  * Maneja la inyección del Kernel y la carga de módulos desde config.json.
  */
-export abstract class BaseService<T = any> implements IService<T> {
+export abstract class BaseService implements IService {
+	private kernelKey?: symbol;
 	/** Nombre único del service */
 	abstract readonly name: string;
 
@@ -29,15 +29,18 @@ export abstract class BaseService<T = any> implements IService<T> {
 		} as IModuleConfig;
 	}
 
-	/**
-	 * Obtener la instancia del service
-	 */
-	abstract getInstance(): Promise<T>;
+	public readonly setKernelKey = (key: symbol): void => {
+		if (this.kernelKey) {
+			throw new Error("Kernel key ya está establecida");
+		}
+		this.kernelKey = key;
+	};
 
 	/**
 	 * Lógica de inicialización del service
 	 */
-	public async start(): Promise<void> {
+	@OnlyKernel()
+	public async start(_kernelKey: symbol): Promise<void> {
 		// Si ModuleLoader pasó el path real, usarlo; si no, calcular manualmente
 		const serviceDir = this.options?.__modulePath || this.getServiceDir();
 		const modulesConfigPath = path.join(serviceDir, "config.json");
@@ -128,8 +131,9 @@ export abstract class BaseService<T = any> implements IService<T> {
 	/**
 	 * Lógica de cierre del service
 	 */
-	public async stop(): Promise<void> {
-		this.logger.logOk(`Detenido.`);
+	@OnlyKernel()
+	public async stop(_kernelKey: symbol): Promise<void> {
+		this.logger.logDebug(`Deteniendo ${this.name}`);
 	}
 
 	/**

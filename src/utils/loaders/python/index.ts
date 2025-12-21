@@ -24,7 +24,7 @@ interface PythonModuleOptions {
 
 /**
  * Wrapper Unificado para módulos Python. */
-class PythonModuleWrapper implements IProvider<any>, IUtility<any>, IService<any> {
+class PythonModuleWrapper implements IProvider, IUtility, IService {
 	public readonly name: string;
 	public readonly modulePath: string;
 	public readonly version: string;
@@ -115,16 +115,16 @@ export class PythonLoader implements IModuleLoader {
 		}
 	}
 
-	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider<any>> {
+	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider> {
 		return this.loadModule(modulePath, "provider", config);
 	}
 
-	async loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility<any>> {
+	async loadUtility(modulePath: string, config?: Record<string, any>): Promise<IUtility> {
 		return this.loadModule(modulePath, "utility", config);
 	}
 
 	// Normalizamos la config si viene de IModuleConfig
-	async loadService(modulePath: string, _kernel: Kernel, config?: IModuleConfig): Promise<IService<any>> {
+	async loadService(modulePath: string, _kernel: Kernel, config?: IModuleConfig): Promise<IService> {
 		const actualConfig = config?.config || (config as Record<string, any>);
 		const wrapper = await this.loadModule(modulePath, "service", actualConfig, config);
 		return wrapper;

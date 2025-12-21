@@ -1,24 +1,48 @@
 import { IStorage } from "../../../interfaces/modules/providers/IStorage.js";
 import { BaseProvider, ProviderType } from "../../BaseProvider.js";
-import { ILogger } from "../../../interfaces/utils/ILogger.js";
 
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Buffer } from "node:buffer";
 
-// 1. La implementación concreta
-class FileStorage implements IStorage {
-	constructor(private readonly basePath: string, private readonly logger: ILogger) {}
+export default class FileStorageProvider extends BaseProvider implements IStorage {
+	public readonly name = "file-storage-provider";
+	public readonly type = ProviderType.STORAGE_PROVIDER;
 
-	public async init() {
-		// Asegurarse de que el directorio de almacenamiento exista
-		fs.mkdir(this.basePath, { recursive: true }).catch((err) => this.logger.logError(`Error creating directory: ${err}`));
+	#basePath: string = "./temp/file-storage"; // Valor por defecto
+	#initialized: boolean = false;
+
+	constructor(basePath?: string) {
+		super();
+
+		if (basePath) {
+			this.#basePath = basePath;
+		}
 	}
 
 	#getKeyPath(key: string): string {
 		// Usamos una extensión genérica. ¡Importante! Evitar 'path traversal'.
 		const safeKey = path.basename(key);
-		return path.join(this.basePath, `${safeKey}.bin`);
+		return path.join(this.#basePath, `${safeKey}.bin`);
+	}
+
+	async start(kernelKey: symbol): Promise<void> {
+		await super.start(kernelKey);
+
+		// Asegurarse de que el directorio de almacenamiento exista
+		await this.#init();
+	}
+
+	async #init(): Promise<void> {
+		if (this.#initialized) return;
+
+		try {
+			await fs.mkdir(this.#basePath, { recursive: true });
+			this.#initialized = true;
+		} catch (err: any) {
+			this.logger.logError(`Error creating directory: ${err}`);
+			throw err;
+		}
 	}
 
 	async save(key: string, data: Buffer): Promise<void> {
@@ -61,7 +85,7 @@ class FileStorage implements IStorage {
 	}
 
 	async list(subPath?: string): Promise<string[]> {
-		const dirPath = subPath ? path.join(this.basePath, subPath) : this.basePath;
+		const dirPath = subPath ? path.join(this.#basePath, subPath) : this.#basePath;
 		try {
 			const files = await fs.readdir(dirPath);
 			// Devolver solo los nombres de archivo sin la extensión .bin
@@ -73,29 +97,5 @@ class FileStorage implements IStorage {
 			this.logger.logError(`Error listing files in ${dirPath}: ${err}`);
 			throw err;
 		}
-	}
-}
-
-// 2. El Proveedor que la expone
-export default class FileStorageProvider extends BaseProvider<IStorage> {
-	public readonly name = "file-storage-provider";
-	public readonly type = ProviderType.STORAGE_PROVIDER;
-
-	readonly #fileStoragesMap = new Map<string, FileStorage>();
-
-	async getInstance(options?: any): Promise<IStorage> {
-		const basePath = options?.basePath || "./temp/file-storage";
-		if (this.#fileStoragesMap.has(basePath)) {
-			return this.#fileStoragesMap.get(basePath)!;
-		} else {
-			const newFileStorage = new FileStorage(basePath, this.logger);
-			newFileStorage.init().catch((err) => this.logger.logError(`Error initializing FileStorage: ${err}`));
-			this.#fileStoragesMap.set(basePath, newFileStorage);
-			return newFileStorage;
-		}
-	}
-
-	async shutdown(): Promise<void> {
-		this.logger.logOk("Stopped.");
 	}
 }

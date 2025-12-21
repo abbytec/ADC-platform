@@ -2,9 +2,9 @@ import * as path from "node:path";
 import { promises as fs } from "node:fs";
 import { LoaderManager } from "./LoaderManager.js";
 import { IModuleConfig } from "../../interfaces/modules/IModule.js";
-import type { IProvider } from "../../providers/BaseProvider.ts";
+import type { BaseProvider } from "../../providers/BaseProvider.ts";
 import type { IUtility } from "../../utilities/BaseUtility.ts";
-import type { IService } from "../../services/BaseService.ts";
+import type { BaseService } from "../../services/BaseService.ts";
 import { Kernel } from "../../kernel.js";
 import { Logger } from "../logger/Logger.js";
 import { VersionResolver } from "../VersionResolver.js";
@@ -17,6 +17,15 @@ export class ModuleLoader {
 	readonly #servicesPath = path.resolve(this.#basePath, "services");
 
 	readonly #configCache = new Map<string, IModuleConfig>();
+
+	readonly #kernelKey: symbol;
+
+	readonly #loaderManager: LoaderManager;
+
+	constructor(kernelKey: symbol) {
+		this.#kernelKey = kernelKey;
+		this.#loaderManager = new LoaderManager(this.#kernelKey);
+	}
 
 	public getConfigByPath(modulePath: string): IModuleConfig | undefined {
 		return this.#configCache.get(modulePath);
@@ -190,7 +199,13 @@ export class ModuleLoader {
 						// SEGUNDO: Cargar el servicio (que ahora puede acceder a sus providers del kernel)
 						const service = await this.loadService(mutableServiceConfig, kernel);
 						if (service.start) {
-							await service.start();
+							try {
+								service.setKernelKey(this.#kernelKey);
+							} catch {
+								//no-op
+							}
+
+							await service.start(this.#kernelKey);
 						}
 
 						// TERCERO: Registrar los providers del servicio como dependencias de la app
@@ -259,7 +274,7 @@ export class ModuleLoader {
 	/**
 	 * Carga un Provider desde su configuración.
 	 */
-	async loadProvider(config: IModuleConfig): Promise<IProvider<any>> {
+	async loadProvider(config: IModuleConfig): Promise<BaseProvider> {
 		const language = config.language || "typescript";
 		const version = config.version || "latest";
 
@@ -275,7 +290,7 @@ export class ModuleLoader {
 		this.#configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
-		const loader = LoaderManager.getLoader(language);
+		const loader = this.#loaderManager.getLoader(language);
 
 		// Interpolar variables de entorno en todas las propiedades del config
 		const interpolatedConfig = this.#interpolateEnvVars(config);
@@ -299,7 +314,7 @@ export class ModuleLoader {
 	/**
 	 * Carga un Utility desde su configuración.
 	 */
-	async loadUtility(config: IModuleConfig): Promise<IUtility<any>> {
+	async loadUtility(config: IModuleConfig): Promise<IUtility> {
 		const language = config.language || "typescript";
 		const version = config.version || "latest";
 
@@ -314,7 +329,7 @@ export class ModuleLoader {
 		this.#configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
-		const loader = LoaderManager.getLoader(language);
+		const loader = this.#loaderManager.getLoader(language);
 
 		// Interpolar variables de entorno
 		const interpolatedConfig = this.#interpolateEnvVars(config);
@@ -337,7 +352,7 @@ export class ModuleLoader {
 	/**
 	 * Carga un Service desde su configuración.
 	 */
-	async loadService(config: IModuleConfig, kernel: Kernel): Promise<IService<any>> {
+	async loadService(config: IModuleConfig, kernel: Kernel): Promise<BaseService> {
 		const language = config.language || "typescript";
 		const version = config.version || "latest";
 
@@ -353,7 +368,7 @@ export class ModuleLoader {
 		this.#configCache.set(resolved.path, config);
 
 		// Obtener el loader correcto
-		const loader = LoaderManager.getLoader(language);
+		const loader = this.#loaderManager.getLoader(language);
 
 		// Interpolar variables de entorno
 		const interpolatedConfig = this.#interpolateEnvVars(config);
