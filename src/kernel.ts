@@ -281,6 +281,16 @@ export class Kernel {
 		return this.#getModule("service", name, config);
 	}
 
+	/**
+	 * Verifica si un módulo existe en el registry sin lanzar error.
+	 * Útil para evitar cargar módulos duplicados.
+	 */
+	public hasModule(moduleType: ModuleType, name: string, config?: Record<string, any>): boolean {
+		const registry = this.#getRegistry(moduleType);
+		const uniqueKey = this.#getUniqueKey(name, config);
+		return registry.has(uniqueKey);
+	}
+
 	public getApp(name: string): IApp {
 		const instance = this.#appsRegistry.get(name);
 		if (!instance) {
