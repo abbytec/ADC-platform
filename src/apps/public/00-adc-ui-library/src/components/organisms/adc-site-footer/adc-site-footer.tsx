@@ -10,6 +10,7 @@ export class AdcSiteFooter {
 	@Prop() creatorName: string = "";
 	@Prop() creatorHref: string = "";
 	@Prop() lowerSign: boolean = false;
+	@Prop() registered: boolean = false;
 
 	private getYear(): number {
 		return new Date().getFullYear();
@@ -18,7 +19,8 @@ export class AdcSiteFooter {
 	signComponent() {
 		return (
 			<adc-text>
-				&copy; {this.getYear()} {this.brandName} - {this.brandSlogan} · creada por{" "}
+				&copy; 2025-{this.getYear()} {this.brandName}
+				{this.registered ? "®" : "℠"} - {this.brandSlogan} · creada por{" "}
 				<a
 					href={this.creatorHref}
 					target="_blank"
