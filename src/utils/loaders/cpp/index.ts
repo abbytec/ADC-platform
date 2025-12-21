@@ -10,102 +10,86 @@ import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
 import { ipcManager } from "../../ipc/IPCManager.js";
 
+type ModuleRole = "provider" | "utility" | "service";
+
+interface CppModuleOptions {
+	name: string;
+	modulePath: string;
+	version: string;
+	role: ModuleRole;
+	type?: string;
+	config?: Record<string, any>;
+	process: ChildProcess;
+}
+
 /**
- * Wrapper para módulos C++ que se comunican via IPC
+ * Crea un wrapper proxy para módulos C++ que:
+ * - Expone propiedades del módulo (name, type, etc.)
+ * - Delega métodos de lifecycle (start, stop) con verificación de kernelKey
+ * - Delega cualquier otro método automáticamente via IPC
  */
-class CppModuleWrapper {
-	private kernelKey?: symbol;
+function createCppModuleProxy(options: CppModuleOptions): IProvider & IUtility & IService {
+	let kernelKey: symbol | undefined;
 
-	constructor(
-		public readonly name: string,
-		public readonly modulePath: string,
-		public readonly moduleVersion: string,
-		public readonly config?: Record<string, any>,
-		private readonly process?: ChildProcess
-	) {}
+	const wrapper = {
+		name: options.name,
+		modulePath: options.modulePath,
+		version: options.version,
+		role: options.role,
+		type: options.type || options.config?.type || "default",
 
-	public readonly setKernelKey = (key: symbol): void => {
-		if (this.kernelKey) {
-			throw new Error("Kernel key ya está establecida");
-		}
-		this.kernelKey = key;
+		setKernelKey: (key: symbol): void => {
+			if (kernelKey) {
+				throw new Error("Kernel key ya está establecida");
+			}
+			kernelKey = key;
+		},
+
+		start: async (key: symbol): Promise<void> => {
+			verifyKernelKey(key, "start");
+			Logger.info(`[CppModuleWrapper] Iniciando módulo C++: ${options.name}`);
+		},
+
+		stop: async (key: symbol): Promise<void> => {
+			verifyKernelKey(key, "stop");
+			if (options.process && !options.process.killed) {
+				options.process.kill();
+				Logger.info(`[CppModuleWrapper] Proceso C++ detenido: ${options.name}`);
+			}
+		},
 	};
 
-	async start(kernelKey: symbol): Promise<void> {
-		this.verifyKernelKey(kernelKey, "start");
-		Logger.info(`[CppModuleWrapper] Iniciando módulo C++: ${this.name}`);
-	}
-
-	async stop(kernelKey: symbol): Promise<void> {
-		this.verifyKernelKey(kernelKey, "stop");
-		if (this.process && !this.process.killed) {
-			this.process.kill();
-			Logger.info(`[CppModuleWrapper] Proceso C++ detenido: ${this.name}`);
-		}
-	}
-
-	private verifyKernelKey(keyToVerify: symbol, methodName: string): void {
-		if (!this.kernelKey) {
+	function verifyKernelKey(keyToVerify: symbol, methodName: string): void {
+		if (!kernelKey) {
 			throw new Error("Kernel key no establecida");
 		}
-		if (this.kernelKey !== keyToVerify) {
+		if (kernelKey !== keyToVerify) {
 			throw new Error(`Acceso no autorizado a ${methodName}`);
 		}
 	}
 
-	/**
-	 * Crea el Proxy para interceptar llamadas y enviarlas por IPC
-	 */
-	createIpcProxy(): any {
-		return new Proxy(
-			{},
-			{
-				get: (_target, prop) => {
-					// Ignorar propiedades de Promise y símbolos especiales
-					if (typeof prop === "symbol" || prop === "then" || prop === "catch" || prop === "finally") {
-						return undefined;
-					}
+	// Propiedades conocidas del wrapper que NO deben delegarse a IPC
+	const knownProps = new Set(["name", "modulePath", "version", "role", "type", "setKernelKey", "start", "stop"]);
 
-					if (typeof prop === "string") {
-						return async (...args: any[]) => {
-							return await ipcManager.call(this.name, this.moduleVersion, "C++", prop, args);
-						};
-					}
-					return undefined;
-				},
+	return new Proxy(wrapper, {
+		get(target, prop) {
+			// Propiedades conocidas: devolver del wrapper
+			if (typeof prop === "string" && knownProps.has(prop)) {
+				return target[prop as keyof typeof target];
 			}
-		);
-	}
+
+			// Ignorar símbolos y propiedades de Promise
+			if (typeof prop === "symbol" || ["then", "catch", "finally", "toJSON"].includes(prop as string)) {
+				return undefined;
+			}
+
+			// Cualquier otro método: delegar a IPC
+			return async (...args: any[]) => {
+				return await ipcManager.call(options.name, options.version, "C++", prop as string, args);
+			};
+		},
+	}) as IProvider & IUtility & IService;
 }
-
-/**
- * Provider wrapper para C++
- */
-class CppProviderWrapper extends CppModuleWrapper implements IProvider {
-	readonly type: string;
-
-	constructor(
-		name: string,
-		modulePath: string,
-		moduleVersion: string,
-		type: string | undefined,
-		config?: Record<string, any>,
-		process?: ChildProcess
-	) {
-		super(name, modulePath, moduleVersion, config, process);
-		this.type = type || "default";
-	}
-}
-
-/**
- * Utility wrapper para C++
- */
-class CppUtilityWrapper extends CppModuleWrapper implements IUtility {}
-
-/**
- * Service wrapper para C++
- */
-class CppServiceWrapper extends CppModuleWrapper implements IService {}
 
 /**
  * Loader para módulos C++.
@@ -113,6 +97,11 @@ class CppServiceWrapper extends CppModuleWrapper implements IService {}
  */
 export class CppLoader implements IModuleLoader {
 	private processes = new Map<string, ChildProcess>();
+	private modules = {
+		provider: [] as (IProvider & IUtility & IService)[],
+		utility: [] as (IProvider & IUtility & IService)[],
+		service: [] as (IProvider & IUtility & IService)[],
+	};
 
 	async canHandle(modulePath: string): Promise<boolean> {
 		try {
@@ -131,7 +120,7 @@ export class CppLoader implements IModuleLoader {
 		modulePath: string,
 		moduleName: string,
 		moduleVersion: string,
-		moduleType: "provider" | "utility" | "service",
+		moduleType: ModuleRole,
 		config?: Record<string, any>
 	): Promise<ChildProcess> {
 		const processKey = `${moduleName}-${moduleVersion}`;
@@ -221,6 +210,7 @@ export class CppLoader implements IModuleLoader {
 		cppProcess.on("exit", (code) => {
 			Logger.warn(`[CppLoader] Proceso C++ terminado: ${moduleName} (código: ${code})`);
 			this.processes.delete(processKey);
+			this.removeModuleReference(moduleName);
 		});
 
 		// Guardar el proceso
@@ -232,20 +222,34 @@ export class CppLoader implements IModuleLoader {
 		return cppProcess;
 	}
 
+	private removeModuleReference(name: string) {
+		for (const role of ["provider", "utility", "service"] as ModuleRole[]) {
+			this.modules[role] = this.modules[role].filter((m) => m.name !== name);
+		}
+	}
+
 	async loadProvider(modulePath: string, config?: Record<string, any>): Promise<IProvider> {
 		try {
-			// Extraer información del módulo del path o config
 			const moduleName = config?.moduleName || path.basename(modulePath);
 			const moduleVersion = config?.moduleVersion || "1.0.0";
 			const moduleType = config?.type;
 
 			Logger.debug(`[CppLoader] Cargando Provider C++: ${moduleName}@${moduleVersion}`);
 
-			// Iniciar el proceso C++
 			const cppProcess = await this.startCppProcess(modulePath, moduleName, moduleVersion, "provider", config);
 
-			// Crear el wrapper del provider
-			return new CppProviderWrapper(moduleName, modulePath, moduleVersion, moduleType, config, cppProcess);
+			const proxy = createCppModuleProxy({
+				name: moduleName,
+				modulePath,
+				version: moduleVersion,
+				role: "provider",
+				type: moduleType,
+				config,
+				process: cppProcess,
+			});
+
+			this.modules.provider.push(proxy);
+			return proxy;
 		} catch (error) {
 			Logger.error(`[CppLoader] Error cargando Provider: ${error}`);
 			throw error;
@@ -259,11 +263,19 @@ export class CppLoader implements IModuleLoader {
 
 			Logger.debug(`[CppLoader] Cargando Utility C++: ${moduleName}@${moduleVersion}`);
 
-			// Iniciar el proceso C++
 			const cppProcess = await this.startCppProcess(modulePath, moduleName, moduleVersion, "utility", config);
 
-			// Crear el wrapper del utility
-			return new CppUtilityWrapper(moduleName, modulePath, moduleVersion, config, cppProcess);
+			const proxy = createCppModuleProxy({
+				name: moduleName,
+				modulePath,
+				version: moduleVersion,
+				role: "utility",
+				config,
+				process: cppProcess,
+			});
+
+			this.modules.utility.push(proxy);
+			return proxy;
 		} catch (error) {
 			Logger.error(`[CppLoader] Error cargando Utility: ${error}`);
 			throw error;
@@ -278,11 +290,19 @@ export class CppLoader implements IModuleLoader {
 
 			Logger.debug(`[CppLoader] Cargando Service C++: ${moduleName}@${moduleVersion}`);
 
-			// Iniciar el proceso C++
 			const cppProcess = await this.startCppProcess(modulePath, moduleName, moduleVersion, "service", moduleConfig?.config);
 
-			// Crear el wrapper del service
-			return new CppServiceWrapper(moduleName, modulePath, moduleVersion, moduleConfig?.config, cppProcess);
+			const proxy = createCppModuleProxy({
+				name: moduleName,
+				modulePath,
+				version: moduleVersion,
+				role: "service",
+				config: moduleConfig?.config,
+				process: cppProcess,
+			});
+
+			this.modules.service.push(proxy);
+			return proxy;
 		} catch (error) {
 			Logger.error(`[CppLoader] Error cargando Service: ${error}`);
 			throw error;

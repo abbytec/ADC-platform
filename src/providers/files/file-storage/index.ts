@@ -12,11 +12,11 @@ export default class FileStorageProvider extends BaseProvider implements IStorag
 	#basePath: string = "./temp/file-storage"; // Valor por defecto
 	#initialized: boolean = false;
 
-	constructor(basePath?: string) {
+	constructor(config?: Record<string, any>) {
 		super();
 
-		if (basePath) {
-			this.#basePath = basePath;
+		if (config?.basePath) {
+			this.#basePath = config.basePath;
 		}
 	}
 
