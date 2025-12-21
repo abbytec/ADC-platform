@@ -31,9 +31,7 @@ class PythonModuleWrapper implements IProvider, IUtility, IService {
 	public readonly role: ModuleRole;
 	private readonly process: ChildProcess;
 	private readonly config?: Record<string, any>;
-
-	// Cache para Singleton (Utility)
-	private cachedInstance: any = null;
+	private kernelKey?: symbol;
 
 	constructor(options: PythonModuleOptions) {
 		this.name = options.name;
@@ -48,35 +46,40 @@ class PythonModuleWrapper implements IProvider, IUtility, IService {
 		return this.config?.type || "default";
 	}
 
-	async start(): Promise<void> {
+	public readonly setKernelKey = (key: symbol): void => {
+		if (this.kernelKey) {
+			throw new Error("Kernel key ya está establecida");
+		}
+		this.kernelKey = key;
+	};
+
+	async start(kernelKey: symbol): Promise<void> {
+		this.verifyKernelKey(kernelKey, "start");
 		Logger.info(`[PythonModuleWrapper] Solicitando inicio remoto (start) a: ${this.name}`);
 		await ipcManager.call(this.name, this.version, "python", "on_start", []);
 	}
 
-	async getInstance(): Promise<any> {
-		// Si es Utility, usamos patrón Singleton (cache)
-		if (this.role === "utility") {
-			if (!this.cachedInstance) {
-				this.cachedInstance = this.createIpcProxy();
-			}
-			return this.cachedInstance;
-		}
-
-		// Para Provider y Service devolvemos el proxy directo
-		return this.createIpcProxy();
-	}
-
-	async stop(): Promise<void> {
+	async stop(kernelKey: symbol): Promise<void> {
+		this.verifyKernelKey(kernelKey, "stop");
 		if (this.process && !this.process.killed) {
 			this.process.kill();
 			Logger.info(`[PythonModuleWrapper] Proceso detenido: ${this.name} (${this.role})`);
 		}
 	}
 
+	private verifyKernelKey(keyToVerify: symbol, methodName: string): void {
+		if (!this.kernelKey) {
+			throw new Error("Kernel key no establecida");
+		}
+		if (this.kernelKey !== keyToVerify) {
+			throw new Error(`Acceso no autorizado a ${methodName}`);
+		}
+	}
+
 	/**
 	 * Crea el Proxy para interceptar llamadas y enviarlas por IPC
 	 */
-	private createIpcProxy(): any {
+	createIpcProxy(): any {
 		return new Proxy(
 			{},
 			{

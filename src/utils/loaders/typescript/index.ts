@@ -8,7 +8,6 @@ import type { BaseService, IService } from "../../../services/BaseService.ts";
 
 import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
-import { start } from "node:repl";
 
 type Constructor<T> = new (...args: any[]) => T;
 
