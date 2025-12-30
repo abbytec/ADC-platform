@@ -56,9 +56,8 @@ export default class UIFederationService extends BaseService {
 		await fs.mkdir(this.uiOutputBaseDir, { recursive: true });
 
 		try {
-			// En producción usamos Fastify con host-based routing
-			// En desarrollo usamos Express (para compatibilidad con dev servers)
-			const providerName = this.isDevelopment ? "express-server" : "fastify-server";
+			// Usamos Fastify con host-based routing en todos los entornos
+			const providerName = "fastify-server";
 			this.logger.logInfo(`Cargando ${providerName}...`);
 
 			const providerConfig = {

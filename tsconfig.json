@@ -4,5 +4,5 @@
 		"jsx": "react-jsx",
 		"jsxImportSource": "react"
 	},
-	"exclude": ["node_modules", "**/node_modules", "**/*.spec.ts", "**/*ui-library*", "**/web-layout*/**"]
+	"exclude": ["node_modules", "**/node_modules", "**/*.spec.ts", "src/apps/**"]
 }

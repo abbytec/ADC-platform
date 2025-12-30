@@ -1,5 +1,19 @@
-import { Application, RequestHandler, Request, Response, NextFunction } from "express";
+import type { FastifyRequest, FastifyReply } from "fastify";
+import type { Request, Response, RequestHandler } from "express";
 import type { ConnectRouter } from "@connectrpc/connect";
+
+/**
+ * Union types para soportar Fastify y Express nativamente
+ */
+export type HttpRequest = FastifyRequest | Request;
+export type HttpReply = FastifyReply | Response;
+
+/**
+ * Handler genérico que funciona con Fastify o Express
+ */
+export type HttpHandler =
+	| ((req: FastifyRequest<any>, reply: FastifyReply<any>) => void | Promise<void>)
+	| RequestHandler;
 
 /**
  * Configuración de host para routing basado en dominio/subdominio
@@ -30,7 +44,7 @@ export interface IHttpServerProvider {
 	/**
 	 * Registra una ruta con un método HTTP específico
 	 */
-	registerRoute(method: string, path: string, handler: RequestHandler | any): void;
+	registerRoute(method: string, path: string, handler: HttpHandler): void;
 
 	/**
 	 * Sirve archivos estáticos desde un directorio
@@ -58,7 +72,7 @@ export interface IHostBasedHttpProvider extends IHttpServerProvider {
 	/**
 	 * Registra una ruta específica para un host
 	 */
-	registerHostRoute(hostPattern: string, method: string, path: string, handler: any): void;
+	registerHostRoute(hostPattern: string, method: string, path: string, handler: HttpHandler): void;
 
 	/**
 	 * Obtiene la lista de hosts registrados
@@ -88,6 +102,11 @@ export interface HostOptions {
 }
 
 /**
- * Tipos de Express re-exportados para facilitar el uso
+ * Re-exportar tipos de Express para compatibilidad
  */
-export type { Application, RequestHandler, Request, Response, NextFunction };
+export type { Request, Response, RequestHandler };
+
+/**
+ * Re-exportar tipos de Fastify
+ */
+export type { FastifyRequest, FastifyReply };

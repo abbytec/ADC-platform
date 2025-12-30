@@ -1,11 +1,10 @@
-import React, { memo, useCallback, useEffect } from "react";
+import React, { memo } from "react";
 
 interface ShellProps {
 	children: React.ReactNode;
-	currentPath: string;
 }
 
-export const Shell = memo(function Shell({ children, currentPath }: ShellProps) {
+export const Shell = memo(function Shell({ children }: ShellProps) {
 	return (
 		<div className="flex flex-col px-8 min-h-screen text-text" style={{ paddingBottom: "var(--consent-h, 0px)" }}>
 			<adc-site-header logo-src="/mini-logo.webp" logo-alt="ADC" home-href="/">

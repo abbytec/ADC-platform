@@ -1,3 +1,4 @@
+import "@ui-library/utils/react-jsx";
 import { createElement, useState, useEffect, useRef } from "react";
 import { Shell } from "./components/Shell.tsx";
 import { router, type RouteDefinition } from "@ui-library/utils/router";
@@ -27,22 +28,10 @@ const routes: RouteDefinition[] = [{ module: "community-home", path: "/" }];
 
 export default function App() {
 	const [renderKey, setRenderKey] = useState(0);
-	const [currentPath, setCurrentPath] = useState(window.location.pathname);
 	const [moduleData, setModuleData] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
 	const loadingPathRef = useRef<string | null>(null);
 	const isInitialized = useRef(false);
-
-	const getNavPath = (): string => {
-		const subdomain = router.getSubdomain();
-		if (subdomain) {
-			const subdomainRoute = routes.find((r) => r.subdomain === subdomain);
-			if (subdomainRoute?.path) {
-				return subdomainRoute.path;
-			}
-		}
-		return window.location.pathname;
-	};
 
 	useEffect(() => {
 		if (isInitialized.current) return;
@@ -80,7 +69,6 @@ export default function App() {
 
 			console.log(`[ADC Layout] ✅ ${data.moduleName} @ ${path}`);
 
-			setCurrentPath(getNavPath());
 			setModuleData(data);
 			setRenderKey((prev) => prev + 1);
 			setLoading(false);
@@ -96,7 +84,7 @@ export default function App() {
 
 	if (!moduleData || loading) {
 		return (
-			<Shell currentPath={currentPath}>
+			<Shell>
 				<div style={{ padding: "20px", textAlign: "center" }}>
 					<p>Cargando...</p>
 				</div>
@@ -105,7 +93,7 @@ export default function App() {
 	}
 
 	return (
-		<Shell key={renderKey} currentPath={currentPath}>
+		<Shell key={renderKey}>
 			{createElement(moduleData.Component)}
 		</Shell>
 	);

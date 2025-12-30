@@ -1,40 +1,35 @@
 import type { Model, PipelineStage } from "mongoose";
-import { create } from "@bufbuild/protobuf";
-import {
-	type Article,
-	type ListArticlesRequest,
-	type CreateArticleRequest,
-	type UpdateArticleRequest,
-	ArticleSchema,
-	ListArticlesResponseSchema,
-	GetArticleResponseSchema,
-	CreateArticleResponseSchema,
-	UpdateArticleResponseSchema,
-	DeleteArticleResponseSchema,
-	LearningPath,
-	PathItem,
-	PathItemType,
-} from "../../../../common/ADC/gen/learning/learning_pb.js";
+import type { Article, LearningPath, PathItem, Block } from "../../../../common/ADC/types/learning.js";
 
-// Tipo extendido para resultados de aggregation (incluye pathColor)
-type ArticleWithPathColor = Article & { pathColor?: string };
+interface ListArticlesOptions {
+	pathSlug?: string;
+	listed?: boolean;
+	q?: string;
+	limit?: number;
+	skip?: number;
+}
 
-function docToProto(doc: ArticleWithPathColor): Article {
-	return create(ArticleSchema, {
-		slug: doc.slug,
-		title: doc.title,
-		pathSlug: doc.pathSlug,
-		// Blocks se almacenan como Mixed en MongoDB y son compatibles en runtime
-		blocks: (doc.blocks || []) as unknown as Article["blocks"],
-		videoUrl: doc.videoUrl,
-		image: doc.image,
-		authorId: doc.authorId,
-		listed: doc.listed,
-		description: doc.description,
-		pathColor: doc.pathColor,
-		createdAt: doc.createdAt,
-		updatedAt: doc.updatedAt,
-	});
+interface CreateArticleData {
+	slug: string;
+	title: string;
+	pathSlug?: string;
+	blocks?: Block[];
+	videoUrl?: string;
+	image?: { url: string; width?: number; height?: number; alt?: string };
+	authorId: string;
+	listed?: boolean;
+	description?: string;
+}
+
+interface UpdateArticleData {
+	slug: string;
+	title?: string;
+	pathSlug?: string;
+	blocks?: Block[];
+	videoUrl?: string;
+	image?: { url: string; width?: number; height?: number; alt?: string };
+	listed?: boolean;
+	description?: string;
 }
 
 export class ArticleEndpoints {
@@ -46,30 +41,27 @@ export class ArticleEndpoints {
 		ArticleEndpoints.pathModel ??= pathModel;
 	}
 
-	static async list(req: ListArticlesRequest) {
+	static async list(options: ListArticlesOptions) {
 		const where: Record<string, any> = {};
 
 		// Filtro por path (incluye artículos de sub-paths)
-		if (req.pathSlug) {
-			const parentPath = await ArticleEndpoints.pathModel.findOne({ slug: req.pathSlug }).select("items").lean();
+		if (options.pathSlug) {
+			const parentPath = await ArticleEndpoints.pathModel.findOne({ slug: options.pathSlug }).select("items").lean();
 
 			if (parentPath?.items?.length) {
 				const targetArticleSlugs: string[] = [];
 
-				const directArticles = parentPath.items.filter((i: PathItem) => i.type === PathItemType.ARTICLE).map((i: PathItem) => i.slug);
+				const directArticles = parentPath.items.filter((i: PathItem) => i.type === "article").map((i: PathItem) => i.slug);
 				targetArticleSlugs.push(...directArticles);
 
-				const subPathSlugs = parentPath.items.filter((i: PathItem) => i.type === PathItemType.PATH).map((i: PathItem) => i.slug);
+				const subPathSlugs = parentPath.items.filter((i: PathItem) => i.type === "path").map((i: PathItem) => i.slug);
 
 				if (subPathSlugs.length > 0) {
-					const subPaths = await ArticleEndpoints.pathModel
-						.find({ slug: { $in: subPathSlugs } })
-						.select("items")
-						.lean();
+					const subPaths = await ArticleEndpoints.pathModel.find({ slug: { $in: subPathSlugs } }).select("items").lean();
 
 					subPaths.forEach((sp) => {
 						if (sp.items) {
-							const subArticles = sp.items.filter((i: PathItem) => i.type === PathItemType.ARTICLE).map((i: PathItem) => i.slug);
+							const subArticles = sp.items.filter((i: PathItem) => i.type === "article").map((i: PathItem) => i.slug);
 							targetArticleSlugs.push(...subArticles);
 						}
 					});
@@ -77,14 +69,14 @@ export class ArticleEndpoints {
 
 				where.slug = { $in: [...new Set(targetArticleSlugs)] };
 			} else {
-				return create(ListArticlesResponseSchema, { articles: [] });
+				return { articles: [] };
 			}
 		}
 
-		if (req.listed !== undefined) where.listed = req.listed;
+		if (options.listed !== undefined) where.listed = options.listed;
 
-		if (req.q) {
-			const safe = req.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		if (options.q) {
+			const safe = options.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 			where.title = { $regex: safe, $options: "i" };
 		}
 
@@ -120,70 +112,47 @@ export class ArticleEndpoints {
 			{ $sort: { createdAt: -1 } },
 		];
 
-		if (req.limit) pipeline.push({ $limit: req.limit });
-		if (req.skip) pipeline.push({ $skip: req.skip });
+		if (options.limit) pipeline.push({ $limit: options.limit });
+		if (options.skip) pipeline.push({ $skip: options.skip });
 
 		const docs = await ArticleEndpoints.model.aggregate(pipeline);
 
-		return create(ListArticlesResponseSchema, {
-			articles: docs.map(docToProto),
-		});
+		return { articles: docs };
 	}
 
 	static async getBySlug(slug: string) {
 		const doc = await ArticleEndpoints.model.findOne({ slug }).lean();
-
-		return create(GetArticleResponseSchema, {
-			article: doc ? docToProto(doc as ArticleWithPathColor) : undefined,
-		});
+		return { article: doc || undefined };
 	}
 
-	static async create(req: CreateArticleRequest) {
-		const data = {
-			slug: req.slug,
-			title: req.title,
-			pathSlug: req.pathSlug,
-			blocks: req.blocks,
-			videoUrl: req.videoUrl,
-			image: req.image,
-			authorId: req.authorId,
-			listed: req.listed ?? true,
-			description: req.description,
-		};
-
-		const doc = await ArticleEndpoints.model.create(data);
-
-		return create(CreateArticleResponseSchema, {
-			article: docToProto(doc.toObject()),
+	static async create(data: CreateArticleData) {
+		const doc = await ArticleEndpoints.model.create({
+			...data,
+			listed: data.listed ?? true,
 		});
+		return { article: doc.toObject() };
 	}
 
-	static async update(req: UpdateArticleRequest) {
-		const data: Record<string, any> = {};
-		if (req.title !== undefined) data.title = req.title;
-		if (req.pathSlug !== undefined) data.pathSlug = req.pathSlug;
-		if (req.blocks.length > 0) data.blocks = req.blocks;
-		if (req.videoUrl !== undefined) data.videoUrl = req.videoUrl;
-		if (req.image !== undefined) data.image = req.image;
-		if (req.listed !== undefined) data.listed = req.listed;
-		if (req.description !== undefined) data.description = req.description;
+	static async update(data: UpdateArticleData) {
+		const { slug, ...updateData } = data;
 
-		const doc = await ArticleEndpoints.model.findOneAndUpdate({ slug: req.slug }, data, { new: true }).lean();
-
-		if (!doc) {
-			throw new Error(`Article with slug "${req.slug}" not found`);
+		// Filtrar campos undefined
+		const cleanData: Record<string, any> = {};
+		for (const [key, value] of Object.entries(updateData)) {
+			if (value !== undefined) cleanData[key] = value;
 		}
 
-		return create(UpdateArticleResponseSchema, {
-			article: docToProto(doc as ArticleWithPathColor),
-		});
+		const doc = await ArticleEndpoints.model.findOneAndUpdate({ slug }, cleanData, { new: true }).lean();
+
+		if (!doc) {
+			throw new Error(`Article with slug "${slug}" not found`);
+		}
+
+		return { article: doc };
 	}
 
 	static async delete(slug: string) {
 		const result = await ArticleEndpoints.model.deleteOne({ slug });
-
-		return create(DeleteArticleResponseSchema, {
-			success: result.deletedCount > 0,
-		});
+		return { success: result.deletedCount > 0 };
 	}
 }

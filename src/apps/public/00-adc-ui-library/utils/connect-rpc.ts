@@ -1,59 +1,18 @@
 /**
- * Cliente Connect RPC real usando @connectrpc/connect-web
- * Proporciona acceso tipado a los servicios definidos en Protocol Buffers
- *
- * - Desarrollo: JSON (protocolo Connect) para debugging fácil
- * - Producción: gRPC-web (binario) para eficiencia
+ * Re-exporta tipos centralizados de learning para uso en apps frontend
+ * Los tipos se definen en @common/ADC/types/learning.ts
  */
 
-import { createClient, type Client } from "@connectrpc/connect";
-import { createConnectTransport, createGrpcWebTransport } from "@connectrpc/connect-web";
-import { LearningService } from "@common/ADC/gen/learning/learning_pb.js";
-
-// Configuración del transporte
-// Detectamos desarrollo por hostname (localhost = dev server con backend en :3000)
-const isDevelopment = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-const baseUrl = isDevelopment ? "http://localhost:3000" : "";
-
-// JSON en desarrollo para debugging, gRPC-web binario en producción
-const transport = isDevelopment
-	? createConnectTransport({ baseUrl })
-	: createGrpcWebTransport({ baseUrl });
-
-/**
- * Cliente tipado para LearningService
- * Uso:
- *   const paths = await learningClient.listPaths({});
- *   const article = await learningClient.getArticle({ slug: "my-article" });
- */
-export const learningClient: Client<typeof LearningService> = createClient(LearningService, transport);
-
-// Re-exportar tipos útiles para los consumidores
 export type {
+	Block,
+	TextAlign,
+	TextMark,
+	CalloutTone,
+	CalloutRole,
+	LinkRel,
 	LearningPath,
-	Article,
 	PathItem,
+	PathItemLevel,
+	Article,
 	Image,
-	ListPathsRequest,
-	ListPathsResponse,
-	GetPathRequest,
-	GetPathResponse,
-	CreatePathRequest,
-	CreatePathResponse,
-	UpdatePathRequest,
-	UpdatePathResponse,
-	DeletePathRequest,
-	DeletePathResponse,
-	ListArticlesRequest,
-	ListArticlesResponse,
-	GetArticleRequest,
-	GetArticleResponse,
-	CreateArticleRequest,
-	CreateArticleResponse,
-	UpdateArticleRequest,
-	UpdateArticleResponse,
-	DeleteArticleRequest,
-	DeleteArticleResponse,
-} from "@common/ADC/gen/learning/learning_pb.js";
-
-export { PathItemType, PathItemLevel } from "@common/ADC/gen/learning/learning_pb.js";
+} from "@common/ADC/types/learning.js";

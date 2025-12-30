@@ -1,5 +1,5 @@
 import { Schema } from "mongoose";
-import { LearningPath } from "../../../../common/ADC/gen/learning/learning_pb.ts";
+import type { LearningPath } from "../../../../common/ADC/types/learning.js";
 
 export const LearningPathSchema = new Schema<LearningPath>(
 	{
