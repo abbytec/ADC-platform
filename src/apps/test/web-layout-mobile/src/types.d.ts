@@ -3,14 +3,5 @@ declare module "*.css" {
 	export default content;
 }
 
-declare namespace JSX {
-	interface IntrinsicElements {
-		"adc-button": any;
-		"adc-header": any;
-		"adc-container": any;
-		"adc-stat-card": any;
-		"adc-error": any;
-	}
-}
 declare module "@ui-library";
 declare module "@ui-library/styles";

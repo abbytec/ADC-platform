@@ -1,6 +1,5 @@
 import { Schema } from "mongoose";
-import { Article } from "../../../../common/ADC/gen/learning/learning_pb.ts";
-import { Block } from "../../../../common/ADC/gen/learning/block_pb.ts";
+import type { Article, Block } from "../../../../common/ADC/types/learning.js";
 
 const BlockSchema = new Schema<Block>({}, { strict: false, _id: false });
 

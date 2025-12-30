@@ -1,3 +1,4 @@
+import "@ui-library/utils/react-jsx";
 import { useEffect, useState } from "react";
 import { router } from "@ui-library/utils/router";
 import { HomePage } from "./pages/HomePage";

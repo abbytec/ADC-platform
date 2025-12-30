@@ -5,9 +5,11 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import { readFileSync } from "node:fs";
 import { BaseProvider } from "../../BaseProvider.js";
-import type { IHostBasedHttpProvider, HostOptions } from "../../../interfaces/modules/providers/IHttpServer.js";
+import type { IHostBasedHttpProvider, HostOptions, HttpHandler } from "../../../interfaces/modules/providers/IHttpServer.js";
 import { fastifyConnectPlugin } from "@connectrpc/connect-fastify";
 import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
+
+type FastifyHandler = (req: FastifyRequest<any>, reply: FastifyReply<any>) => void | Promise<void>;
 
 interface RegisteredHost {
 	pattern: string;
@@ -15,13 +17,13 @@ interface RegisteredHost {
 	directory: string;
 	options: HostOptions;
 	priority: number;
-	routes: Map<string, Map<string, (req: FastifyRequest<any, any>, reply: FastifyReply<any>, params?: Record<string, string>) => void>>;
+	routes: Map<string, Map<string, FastifyHandler>>;
 }
 
 interface GlobalRoute {
 	method: string;
 	path: string;
-	handler: (req: FastifyRequest<any, any>, reply: FastifyReply<any>, params?: Record<string, string>) => void;
+	handler: FastifyHandler;
 }
 
 interface PathMatchResult {
@@ -52,6 +54,58 @@ function calculatePriority(pattern: string, explicitPriority?: number): number {
 	const specificity = parts.length * 10 - wildcardCount * 100;
 
 	return specificity;
+}
+
+/**
+ * Detecta si un handler es de Express (tiene 3 params: req, res, next)
+ */
+function isExpressHandler(handler: HttpHandler): boolean {
+	return handler.length >= 3;
+}
+
+/**
+ * Adapta un handler de Express a Fastify (solo cuando es necesario)
+ */
+function adaptExpressHandler(handler: any): FastifyHandler {
+	return async (req: FastifyRequest, reply: FastifyReply) => {
+		const expressRes = {
+			status: (code: number) => {
+				reply.code(code);
+				return expressRes;
+			},
+			json: (data: any) => reply.send(data),
+			send: (data: any) => reply.send(data),
+			redirect: (url: string) => reply.redirect(url),
+			setHeader: (key: string, value: string) => {
+				reply.header(key, value);
+				return expressRes;
+			},
+			header: (key: string, value: string) => {
+				reply.header(key, value);
+				return expressRes;
+			},
+			type: (contentType: string) => {
+				reply.type(contentType);
+				return expressRes;
+			},
+		};
+
+		const next = (err?: any) => {
+			if (err) reply.code(500).send({ error: err.message || "Internal error" });
+		};
+
+		await handler(req, expressRes, next);
+	};
+}
+
+/**
+ * Normaliza un handler a formato Fastify
+ */
+function normalizeHandler(handler: HttpHandler): FastifyHandler {
+	if (isExpressHandler(handler)) {
+		return adaptExpressHandler(handler);
+	}
+	return handler as FastifyHandler;
 }
 
 /**
@@ -133,7 +187,7 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 		}
 
 		// Hook principal para host-based routing
-		this.app.addHook("preHandler", async (request, _reply) => {
+		this.app.addHook("preHandler", (async (request: FastifyRequest<any>, _reply: FastifyReply<any>) => {
 			const hostname = this.extractHostname(request);
 			const matchedHost = this.matchHost(hostname);
 
@@ -141,17 +195,13 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 				// Almacenar el host matcheado en la request para uso posterior
 				(request as any).matchedHost = matchedHost;
 			}
-		});
+		}) as any);
 
-		// Ruta catch-all para servir archivos estáticos por host
-		this.app.get("/*", async (request, reply) => {
+		// Usar setNotFoundHandler en lugar de catch-all para permitir que
+		// Connect RPC y otras rutas registradas posteriormente funcionen
+		this.app.setNotFoundHandler((async (request: FastifyRequest<any>, reply: FastifyReply<any>) => {
 			await this.handleStaticRequest(request, reply);
-		});
-
-		// También manejar la raíz
-		this.app.get("/", async (request, reply) => {
-			await this.handleStaticRequest(request, reply);
-		});
+		}) as any);
 	}
 
 	private extractHostname(request: FastifyRequest): string {
@@ -183,7 +233,9 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 
 			const matchResult = this.matchPath(route.path, urlPath);
 			if (matchResult.matched) {
-				return route.handler(request, reply, matchResult.params);
+				// Inyectar params en la request
+				(request.params as any) = { ...(request.params as any), ...matchResult.params };
+				return route.handler(request, reply);
 			}
 		}
 
@@ -208,9 +260,17 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 			for (const [routePath, handler] of hostRoutes) {
 				const matchResult = this.matchPath(routePath, urlPath);
 				if (matchResult.matched) {
-					return handler(request, reply, matchResult.params);
+					(request.params as any) = { ...(request.params as any), ...matchResult.params };
+					return handler(request, reply);
 				}
 			}
+		}
+
+		// Las rutas API no deben servirse como archivos estáticos
+		if (urlPath.startsWith("/api/")) {
+			this.logger.logWarn(`[DEBUG] API 404: ${urlPath}, globalRoutes: ${this.globalRoutes.length}, registered: ${this.globalRoutes.map((r) => r.path).join(", ")}`);
+			reply.code(404).send({ error: "API route not found", path: urlPath });
+			return;
 		}
 
 		// Servir archivos estáticos del host
@@ -342,13 +402,13 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 		}, options);
 	}
 
-	registerRoute(method: string, path: string, handler: any): void {
-		const adaptedHandler = this.adaptHandler(handler);
+	registerRoute(method: string, path: string, handler: HttpHandler): void {
+		const normalizedHandler = normalizeHandler(handler);
 
 		this.globalRoutes.push({
 			method: method.toUpperCase(),
 			path,
-			handler: adaptedHandler,
+			handler: normalizedHandler,
 		});
 
 		this.logger.logDebug(`Ruta global registrada: ${method.toUpperCase()} ${path}`);
@@ -385,7 +445,7 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 		this.logger.logDebug(`Host registrado: ${hostPattern} -> ${directory} (priority: ${priority})`);
 	}
 
-	registerHostRoute(hostPattern: string, method: string, path: string, handler: any): void {
+	registerHostRoute(hostPattern: string, method: string, path: string, handler: HttpHandler): void {
 		let host = this.registeredHosts.get(hostPattern);
 
 		if (!host) {
@@ -399,7 +459,7 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 			host.routes.set(methodUpper, new Map());
 		}
 
-		host.routes.get(methodUpper)!.set(path, this.adaptHandler(handler));
+		host.routes.get(methodUpper)!.set(path, normalizeHandler(handler));
 		this.logger.logDebug(`Ruta de host registrada: ${hostPattern} ${methodUpper} ${path}`);
 	}
 
@@ -409,80 +469,6 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 
 	supportsHostRouting(): boolean {
 		return true;
-	}
-
-	/**
-	 * Adapta un handler de Express a Fastify con soporte para params extraídos
-	 */
-	private adaptHandler(handler: any): (req: FastifyRequest<any, any>, reply: FastifyReply<any>, params?: Record<string, string>) => void {
-		return async (req: FastifyRequest<any, any>, reply: FastifyReply<any>, extractedParams?: Record<string, string>) => {
-			// Crear objetos compatibles con Express
-			// Combinar params de Fastify con los extraídos manualmente
-			const combinedParams = { ...(req.params as object), ...extractedParams };
-
-			const expressReq = {
-				...req,
-				params: combinedParams,
-				query: req.query,
-				body: req.body,
-				path: req.url,
-				method: req.method,
-				headers: req.headers,
-				get: (header: string) => req.headers[header.toLowerCase()],
-			};
-
-			// Track content-type para aplicarlo antes de send
-			let pendingContentType: string | null = null;
-
-			const expressRes = {
-				status: (code: number) => {
-					reply.code(code);
-					return expressRes;
-				},
-				code: (code: number) => {
-					reply.code(code);
-					return expressRes;
-				},
-				json: (data: any) => reply.send(data),
-				send: (data: any) => {
-					// Aplicar content-type antes de enviar para evitar que Fastify lo infiera
-					if (pendingContentType) {
-						reply.type(pendingContentType);
-					}
-					return reply.send(data);
-				},
-				redirect: (url: string) => reply.redirect(url),
-				setHeader: (key: string, value: string) => {
-					// Capturar Content-Type para aplicarlo antes de send
-					if (key.toLowerCase() === "content-type") {
-						pendingContentType = value;
-					}
-					reply.header(key, value);
-					return expressRes;
-				},
-				header: (key: string, value: string) => {
-					if (key.toLowerCase() === "content-type") {
-						pendingContentType = value;
-					}
-					reply.header(key, value);
-					return expressRes;
-				},
-				type: (contentType: string) => {
-					pendingContentType = contentType;
-					reply.type(contentType);
-					return expressRes;
-				},
-			};
-
-			try {
-				await handler(expressReq, expressRes);
-			} catch (error: any) {
-				this.logger.logError(`Error en handler: ${error.message}`);
-				if (!reply.sent) {
-					reply.code(500).send({ error: error.message });
-				}
-			}
-		};
 	}
 
 	async listen(port: number): Promise<void> {

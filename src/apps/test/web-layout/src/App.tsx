@@ -1,3 +1,4 @@
+import "@ui-library/utils/react-jsx";
 import { createElement, useState, useEffect, useRef } from "react";
 import { Shell } from "./components/Shell.tsx";
 import { router, type RouteDefinition } from "@ui-library/utils/router";

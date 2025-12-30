@@ -1,11 +1,11 @@
 import { BaseService } from "../../BaseService.js";
 import type { IMongoProvider } from "../../../providers/object/mongo/index.js";
-import type { IHostBasedHttpProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
+import type { IHostBasedHttpProvider, FastifyRequest, FastifyReply } from "../../../interfaces/modules/providers/IHttpServer.js";
 import { LearningPathSchema } from "./models/path.model.js";
 import { ArticleSchema } from "./models/article.model.js";
 import { PathEndpoints } from "./endpoints/paths.js";
 import { ArticleEndpoints } from "./endpoints/articles.js";
-import { Article, LearningPath, LearningService } from "../../../common/ADC/gen/learning/learning_pb.js";
+import type { LearningPath, Article } from "../../../common/ADC/types/learning.js";
 
 export default class ContentService extends BaseService {
 	public readonly name = "content-service";
@@ -25,7 +25,7 @@ export default class ContentService extends BaseService {
 		PathEndpoints.init(PathModel);
 		ArticleEndpoints.init(ArticleModel, PathModel);
 
-		await this.registerConnectRPC();
+		await this.registerRESTRoutes();
 
 		this.logger.logOk("[ContentService] Servicio de contenido iniciado correctamente");
 	}
@@ -43,36 +43,96 @@ export default class ContentService extends BaseService {
 		}
 	}
 
-	private async registerConnectRPC(): Promise<void> {
-		try {
-			const httpProvider = this.kernel.getProvider<IHostBasedHttpProvider>("http-server-provider");
+	private async registerRESTRoutes(): Promise<void> {
+		const httpProvider = this.kernel.getProvider<IHostBasedHttpProvider>("http-server-provider");
 
-			if (!httpProvider) {
-				this.logger.logWarn("[ContentService] No se pudo obtener httpProvider");
+		if (!httpProvider) {
+			this.logger.logWarn("[ContentService] No se pudo obtener httpProvider");
+			return;
+		}
+
+		// === Learning Paths ===
+		httpProvider.registerRoute("GET", "/api/learning/paths", async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+			const query = req.query as { public?: string; listed?: string; limit?: string; skip?: string };
+			const response = await PathEndpoints.list({
+				public: query.public === "true",
+				listed: query.listed === "true",
+				limit: query.limit ? parseInt(query.limit) : undefined,
+				skip: query.skip ? parseInt(query.skip) : undefined,
+			});
+			reply.send(response);
+		});
+
+		httpProvider.registerRoute("GET", "/api/learning/paths/:slug", async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+			const { slug } = req.params as { slug: string };
+			const response = await PathEndpoints.getBySlug(slug);
+			if (!response.path) {
+				reply.code(404).send({ error: "Path not found" });
 				return;
 			}
+			reply.send(response);
+		});
 
-			await httpProvider.registerConnectRPC((router) => {
-				router.service(LearningService, {
-					listPaths: (req) => PathEndpoints.list(req),
-					getPath: (req) => PathEndpoints.getBySlug(req.slug),
-					createPath: (req) => PathEndpoints.create(req),
-					updatePath: (req) => PathEndpoints.update(req),
-					deletePath: (req) => PathEndpoints.delete(req.slug),
+		httpProvider.registerRoute("POST", "/api/learning/paths", async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+			const response = await PathEndpoints.create(req.body as Parameters<typeof PathEndpoints.create>[0]);
+			reply.code(201).send(response);
+		});
 
-					listArticles: (req) => ArticleEndpoints.list(req),
-					getArticle: (req) => ArticleEndpoints.getBySlug(req.slug),
-					createArticle: (req) => ArticleEndpoints.create(req),
-					updateArticle: (req) => ArticleEndpoints.update(req),
-					deleteArticle: (req) => ArticleEndpoints.delete(req.slug),
-				});
+		httpProvider.registerRoute("PUT", "/api/learning/paths/:slug", async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+			const { slug } = req.params as { slug: string };
+			const body = req.body as Record<string, unknown>;
+			const response = await PathEndpoints.update({ ...body, slug });
+			reply.send(response);
+		});
+
+		httpProvider.registerRoute("DELETE", "/api/learning/paths/:slug", async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+			const { slug } = req.params as { slug: string };
+			const response = await PathEndpoints.delete(slug);
+			reply.send(response);
+		});
+
+		// === Articles ===
+		httpProvider.registerRoute("GET", "/api/learning/articles", async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+			const query = req.query as { pathSlug?: string; listed?: string; q?: string; limit?: string; skip?: string };
+			const response = await ArticleEndpoints.list({
+				pathSlug: query.pathSlug,
+				listed: query.listed === "true",
+				q: query.q,
+				limit: query.limit ? parseInt(query.limit) : undefined,
+				skip: query.skip ? parseInt(query.skip) : undefined,
 			});
+			reply.send(response);
+		});
 
-			this.logger.logOk("Connect RPC registrado: LearningService");
-		} catch (error: any) {
-			this.logger.logError(`Error registrando Connect RPC: ${error.message}`);
-			throw error;
-		}
+		httpProvider.registerRoute("GET", "/api/learning/articles/:slug", async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+			const { slug } = req.params as { slug: string };
+			const response = await ArticleEndpoints.getBySlug(slug);
+			if (!response.article) {
+				reply.code(404).send({ error: "Article not found" });
+				return;
+			}
+			reply.send(response);
+		});
+
+		httpProvider.registerRoute("POST", "/api/learning/articles", async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+			const response = await ArticleEndpoints.create(req.body as Parameters<typeof ArticleEndpoints.create>[0]);
+			reply.code(201).send(response);
+		});
+
+		httpProvider.registerRoute("PUT", "/api/learning/articles/:slug", async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+			const { slug } = req.params as { slug: string };
+			const body = req.body as Record<string, unknown>;
+			const response = await ArticleEndpoints.update({ ...body, slug });
+			reply.send(response);
+		});
+
+		httpProvider.registerRoute("DELETE", "/api/learning/articles/:slug", async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+			const { slug } = req.params as { slug: string };
+			const response = await ArticleEndpoints.delete(slug);
+			reply.send(response);
+		});
+
+		this.logger.logOk("REST API registrada: /api/learning/*");
 	}
 
 	async stop(kernelKey: symbol): Promise<void> {
