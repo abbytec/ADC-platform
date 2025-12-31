@@ -399,7 +399,7 @@ export default {
     },
     output: {
         path: '${normalizeForConfig(path.join(uiOutputBaseDir, module.uiConfig.name))}',
-        publicPath: 'auto',
+        publicPath: ${isHost ? "'/'" : "'auto'"},
         uniqueName: '${safeName}',
     },
     resolve: {

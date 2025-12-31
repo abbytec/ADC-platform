@@ -1,5 +1,4 @@
 import { Component, Prop, h } from "@stencil/core";
-import "./code-highlight.css";
 
 export interface Block {
 	type: "heading" | "paragraph" | "list" | "code" | "callout" | "quote" | "table" | "divider";

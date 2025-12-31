@@ -54,7 +54,7 @@ export function HomePage() {
 				<h2 className="text-2xl font-heading">Durante tu sesión de código: Cozy Beats</h2>
 				<adc-text>Música lofi para acompañar tus sesiones de código.</adc-text>
 				<div className="flex justify-center max-w-2xl mx-auto">
-					<adc-youtube-facade video-id="SXySxLgCV-8" title="Cozy Beats - Música lofi"></adc-youtube-facade>
+					<adc-youtube-facade src="SXySxLgCV-8" title="Cozy Beats - Música lofi"></adc-youtube-facade>
 				</div>
 			</section>
 

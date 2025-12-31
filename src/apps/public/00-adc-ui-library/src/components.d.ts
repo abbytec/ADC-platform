@@ -374,14 +374,14 @@ export namespace Components {
          */
         "height"?: string;
         /**
+          * URL o ID del video de YouTube (acepta URL completa o solo el ID)
+         */
+        "src": string;
+        /**
           * Título del video para accesibilidad
           * @default "Video de YouTube"
          */
         "title": string;
-        /**
-          * ID del video de YouTube (extraído de la URL)
-         */
-        "videoId": string;
         /**
           * Ancho del contenedor (opcional, por defecto responsive)
          */
@@ -1126,14 +1126,14 @@ declare namespace LocalJSX {
          */
         "height"?: string;
         /**
+          * URL o ID del video de YouTube (acepta URL completa o solo el ID)
+         */
+        "src": string;
+        /**
           * Título del video para accesibilidad
           * @default "Video de YouTube"
          */
         "title"?: string;
-        /**
-          * ID del video de YouTube (extraído de la URL)
-         */
-        "videoId": string;
         /**
           * Ancho del contenedor (opcional, por defecto responsive)
          */

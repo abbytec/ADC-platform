@@ -43,9 +43,9 @@ export class VueViteStrategy extends ViteBaseStrategy {
 			plugins.push(this.createImportMapPlugin(context));
 			plugins.push(this.createFederationResolverPlugin(context));
 
-			// Plugin de Module Federation para dev (si no es layout)
-			const isLayout = context.module.uiConfig.name === "layout";
-			if (!isLayout) {
+			// Plugin de Module Federation para dev (si no es host)
+			const isHost = context.module.uiConfig.isHost;
+			if (!isHost) {
 				try {
 					const federationModule: any = await import("@originjs/vite-plugin-federation");
 					const federation = federationModule.default;

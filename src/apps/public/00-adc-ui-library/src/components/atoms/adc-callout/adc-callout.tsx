@@ -9,15 +9,16 @@ export class AdcCallout {
 	@Prop() role: "note" | "status" | "alert" = "note";
 
 	private getToneClass(): string {
+		// Usa las variables CSS semánticas que soportan dark mode
 		switch (this.tone) {
 			case "warning":
-				return "bg-yellow-100/30 border-yellow-600 text-yellow-900";
+				return "bg-warn text-twarn border-twarn/45";
 			case "success":
-				return "bg-green-100/30 border-green-600 text-green-900";
+				return "bg-success text-tsuccess border-tsuccess/45";
 			case "error":
-				return "bg-red-100/30 border-red-600 text-red-900";
+				return "bg-danger text-tdanger border-tdanger/45";
 			default:
-				return "bg-cyan-100/30 border-blue-600 text-blue-900";
+				return "bg-info text-tinfo border-tinfo/45";
 		}
 	}
 
