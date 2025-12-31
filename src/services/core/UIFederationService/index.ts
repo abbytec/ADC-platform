@@ -144,6 +144,18 @@ export default class UIFederationService extends BaseService {
 	}
 
 	/**
+	 * Obtiene el módulo host (layout) de un namespace
+	 */
+	#getHostModule(namespace: string): RegisteredUIModule | null {
+		const namespaceModules = this.registeredModules.get(namespace);
+		if (!namespaceModules) return null;
+		for (const mod of namespaceModules.values()) {
+			if (mod.uiConfig.isHost) return mod;
+		}
+		return null;
+	}
+
+	/**
 	 * Busca un módulo por nombre en todos los namespaces (legacy, para retrocompatibilidad)
 	 */
 	#findModuleByName(name: string): { namespace: string; module: RegisteredUIModule } | null {
@@ -207,8 +219,11 @@ export default class UIFederationService extends BaseService {
 			// Registrar traducciones i18n si está habilitado
 			if (uiConfig.i18n && this.langManager) await this.langManager.registerNamespace(name, appDir);
 
+			// Generar y registrar i18n client si está habilitado (solo para layouts/hosts)
+			if (uiConfig.i18n && isHost) await this.#registerI18nClientEndpoint(namespace);
+
 			// Generar y registrar service worker si está habilitado (solo para layouts/hosts)
-			if (uiConfig.serviceWorker && name === "layout") await this.#registerPlatformEndpoints(namespace);
+			if (uiConfig.serviceWorker && isHost) await this.#registerServiceWorkerEndpoint(namespace);
 
 			// Si este es un módulo remote (no host), regenerar configs de hosts en el mismo namespace
 			if (!isHost && uiConfig.devPort) await this.#regenerateLayoutConfigsForNamespace(namespace);
@@ -683,8 +698,7 @@ export default class UIFederationService extends BaseService {
 		// Ruta raíz: solo registrar en desarrollo (en producción, Fastify maneja "/" por host)
 		if (this.isDevelopment) {
 			this.#httpProvider.registerRoute("GET", "/", (_req: any, res: any) => {
-				const defaultModules = this.registeredModules.get(DEFAULT_NAMESPACE);
-				const layoutModule = defaultModules?.get("layout");
+				const layoutModule = this.#getHostModule(DEFAULT_NAMESPACE);
 
 				// En desarrollo: redirigir al dev server de Vite
 				if (layoutModule?.uiConfig.devPort) {
@@ -703,12 +717,11 @@ export default class UIFederationService extends BaseService {
 						<ul>
 							${namespaces
 								.map((ns) => {
-									const nsModules = this.registeredModules.get(ns);
-									const nsLayout = nsModules?.get("layout");
+									const nsLayout = this.#getHostModule(ns);
 									if (nsLayout?.uiConfig.devPort) {
 										return `<li><a href="http://localhost:${nsLayout.uiConfig.devPort}/">${ns}</a></li>`;
 									}
-									return `<li><a href="/${ns}/layout/">${ns}</a></li>`;
+									return `<li><a href="/${ns}/${nsLayout?.name || "layout"}/">${ns}</a></li>`;
 								})
 								.join("")}
 						</ul>
@@ -740,17 +753,36 @@ export default class UIFederationService extends BaseService {
 		this.logger.logDebug(`Import maps inyectados en HTMLs de ${moduleName} [${namespace}]`);
 	}
 
-	async #registerPlatformEndpoints(namespace: string): Promise<void> {
+	async #registerI18nClientEndpoint(namespace: string): Promise<void> {
 		if (!this.#httpProvider) return;
 
 		const namespaceModules = this.#getNamespaceModules(namespace);
-		const layoutModule = namespaceModules.get("layout");
+		const layoutModule = this.#getHostModule(namespace);
 
 		if (!layoutModule) return;
 
-		// Registrar rutas solo si no están ya registradas
 		try {
-			// Generar y servir service worker para este namespace
+			const i18nClientContent = generateI18nClientCode(layoutModule, namespaceModules, this.port);
+			const i18nPath = layoutModule.uiConfig.devPort ? "/adc-i18n.js" : `/${namespace}/adc-i18n.js`;
+			this.#httpProvider.registerRoute("GET", i18nPath, (_req: any, res: any) => {
+				res.setHeader("Content-Type", "application/javascript");
+				res.send(i18nClientContent);
+			});
+			this.logger.logDebug(`i18n Client [${namespace}] registrado en ${i18nPath}`);
+		} catch (error: any) {
+			this.logger.logDebug(`Endpoint i18n ya registrado para ${namespace}`);
+		}
+	}
+
+	async #registerServiceWorkerEndpoint(namespace: string): Promise<void> {
+		if (!this.#httpProvider) return;
+
+		const namespaceModules = this.#getNamespaceModules(namespace);
+		const layoutModule = this.#getHostModule(namespace);
+
+		if (!layoutModule) return;
+
+		try {
 			const swContent = generateServiceWorker(layoutModule, namespaceModules, this.port);
 			const swPath = layoutModule.uiConfig.devPort ? "/adc-sw.js" : `/${namespace}/adc-sw.js`;
 			this.#httpProvider.registerRoute("GET", swPath, (_req: any, res: any) => {
@@ -759,19 +791,8 @@ export default class UIFederationService extends BaseService {
 				res.send(swContent);
 			});
 			this.logger.logDebug(`Service Worker [${namespace}] registrado en ${swPath}`);
-
-			// Generar y servir i18n para este namespace
-			const i18nClientContent = generateI18nClientCode(layoutModule, namespaceModules, this.port);
-			const i18nPath = layoutModule.uiConfig.devPort ? "/adc-i18n.js" : `/${namespace}/adc-i18n.js`;
-			this.#httpProvider.registerRoute("GET", i18nPath, (_req: any, res: any) => {
-				res.setHeader("Content-Type", "application/javascript");
-				res.send(i18nClientContent);
-			});
-
-			this.logger.logDebug(`i18n Client [${namespace}] registrado en ${i18nPath}`);
 		} catch (error: any) {
-			// Las rutas ya podrían existir si se recargó el módulo
-			this.logger.logDebug(`Endpoints SW ya registrados para ${namespace}`);
+			this.logger.logDebug(`Endpoint SW ya registrado para ${namespace}`);
 		}
 	}
 }

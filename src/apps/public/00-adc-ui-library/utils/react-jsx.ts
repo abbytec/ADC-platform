@@ -47,7 +47,7 @@ interface AdcIntrinsicElements {
 	"adc-table-block": WebComponentProps<{ caption?: string; columnAlign?: Array<"left" | "center" | "right">; header?: string[]; rowHeaders?: boolean; rows?: string[][] }>;
 	"adc-testimonial-card": WebComponentProps<{ author?: string; staticRender?: boolean }>;
 	"adc-text": WebComponentProps<{ contain?: boolean; staticRender?: boolean }>;
-	"adc-youtube-facade": WebComponentProps<{ height?: string; title?: string; "video-id": string; width?: string }>;
+	"adc-youtube-facade": WebComponentProps<{ height?: string; src: string; title?: string; width?: string }>;
 }
 
 declare module "react" {

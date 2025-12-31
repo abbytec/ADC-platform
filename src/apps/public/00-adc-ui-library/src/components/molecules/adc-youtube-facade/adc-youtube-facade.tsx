@@ -10,8 +10,8 @@ import { Component, Prop, State, h } from "@stencil/core";
 	shadow: false,
 })
 export class AdcYoutubeFacade {
-	/** ID del video de YouTube (extraído de la URL) */
-	@Prop() videoId!: string;
+	/** URL o ID del video de YouTube (acepta URL completa o solo el ID) */
+	@Prop() src!: string;
 
 	/** Título del video para accesibilidad */
 	@Prop() title: string = "Video de YouTube";
@@ -24,6 +24,27 @@ export class AdcYoutubeFacade {
 
 	/** Estado que controla si el iframe está activo */
 	@State() activated: boolean = false;
+
+	/** Extrae el video ID de una URL de YouTube o retorna el valor si ya es un ID */
+	private get videoId(): string | null {
+		if (!this.src) return null;
+
+		// Si ya es un ID (11 caracteres alfanuméricos)
+		if (/^[a-zA-Z0-9_-]{11}$/.test(this.src)) {
+			return this.src;
+		}
+
+		// Extraer de URLs de YouTube
+		const patterns = [
+			/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/,
+		];
+		for (const pattern of patterns) {
+			const match = this.src.match(pattern);
+			if (match) return match[1];
+		}
+
+		return null;
+	}
 
 	/**
 	 * Activa el iframe cuando el usuario hace click
@@ -43,13 +64,20 @@ export class AdcYoutubeFacade {
 	};
 
 	render() {
+		const id = this.videoId;
+
+		// Si no se pudo extraer el ID, no renderizar nada
+		if (!id) {
+			return null;
+		}
+
 		if (this.activated) {
 			// Renderizar iframe cuando está activado
 			return (
 				<iframe
 					width="560"
 					height="315"
-					src={`https://www.youtube.com/embed/${this.videoId}?autoplay=1`}
+					src={`https://www.youtube.com/embed/${id}?autoplay=1`}
 					title={this.title}
 					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
 					allowFullScreen
@@ -60,7 +88,7 @@ export class AdcYoutubeFacade {
 		}
 
 		// URL de la thumbnail de YouTube (calidad hqdefault para consistencia con temp-ui)
-		const thumbnailUrl = `https://i.ytimg.com/vi/${this.videoId}/hqdefault.jpg`;
+		const thumbnailUrl = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 
 		// Renderizar facade (thumbnail clickeable con dimensiones fijas 480x320)
 		return (

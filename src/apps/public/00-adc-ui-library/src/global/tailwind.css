@@ -17,6 +17,7 @@
         --palette-tone-2: var(--custom-tone-2);
 
         --c-text: #111111;
+        --c-negative-text: #fefefe;
 
         --c-header: oklch(36% 0.063 var(--palette-tone-2));
         --c-theader: oklch(97.5% 0.05 var(--palette-tone-2));
@@ -29,19 +30,39 @@
 
         --r-xxl: 16px;
         --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+
+        --c-warn: oklch(0.97 0.02 95);
+        --c-success: oklch(0.97 0.02 145);
+        --c-info: oklch(0.97 0.02 240);
+        --c-danger: oklch(0.97 0.02 10);
+        --c-twarn: oklch(0.47 0.12 70);
+        --c-tsuccess: oklch(0.47 0.12 145);
+        --c-tinfo: oklch(0.47 0.12 240);
+        --c-tdanger: oklch(0.47 0.12 10);
     }
 
     :root[dark-mode] {
         background-color: black;
         --c-header: oklch(45% 0.1 var(--palette-tone-1));
-        --c-theader: oklch(96.9% 0.046 var(--palette-tone-2));
+        --c-theader: oklch(97% 0.046 var(--palette-tone-2));
         --c-background: oklch(20% 0.02 var(--palette-tone-1));
-        --c-surface: oklch(21.9% 0.045 var(--palette-tone-1));
+        --c-surface: oklch(33% 0.045 var(--palette-tone-1));
         --c-primary: oklch(75% 0.25 var(--palette-tone-2));
         --c-tprimary: oklch(18% 0 var(--palette-tone-2));
         --c-accent: oklch(78% 0.129 var(--palette-tone-2));
 
-        --c-text: oklch(96.9% 0.046 var(--palette-tone-2));
+        --c-text: oklch(97% 0.046 var(--palette-tone-2));
+        --c-negative-text: oklch(18% 0 var(--palette-tone-2));
+
+        --c-warn: oklch(0.22 0.04 95);
+        --c-success: oklch(0.22 0.04 145);
+        --c-info: oklch(0.22 0.04 240);
+        --c-danger: oklch(0.22 0.04 10);
+
+        --c-twarn: oklch(0.88 0.06 100);
+        --c-tsuccess: oklch(0.88 0.06 145);
+        --c-tinfo: oklch(0.88 0.06 240);
+        --c-tdanger: oklch(0.88 0.06 10);
     }
 
     :root[rainbow-mode] {
@@ -83,9 +104,35 @@
     adc-quote {
         display: contents;
     }
+
+    .paperWarn {
+        background-color: var(--c-warn);
+        color: var(--c-twarn);
+    }
+
+    .paperSuccess {
+        background-color: var(--c-success);
+        color: var(--c-tsuccess);
+    }
+
+    .paperInfo {
+        background-color: var(--c-info);
+        color: var(--c-tinfo);
+    }
+
+    .paperDanger {
+        background-color: var(--c-danger);
+        color: var(--c-tdanger);
+    }
 }
 
 @layer components {
+    .border-default {
+        border-color: #e5e7eb;
+        border-width: 1px;
+        border-style: solid;
+    }
+
     .bg-surface {
         box-shadow: 0 8px 8px rgba(0, 0, 0, 0.15);
         margin-bottom: 18px;
@@ -115,7 +162,7 @@
     h1 {
         color: var(--c-text);
         font-family: Fredoka, sans-serif;
-        font-weight: 600;
+        font-weight: 400;
         font-size: 36px;
         line-height: 1.15;
         margin-top: 0.5rem;

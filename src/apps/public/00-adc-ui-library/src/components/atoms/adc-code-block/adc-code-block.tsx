@@ -1,7 +1,9 @@
 import { Component, Prop, h } from "@stencil/core";
+import { getHighlighter, escapeHtml, decodeEscapes } from "../../../utils/highlighter";
 
 @Component({
 	tag: "adc-code-block",
+	styleUrl: "adc-code-block.css",
 	shadow: false,
 })
 export class AdcCodeBlock {
@@ -9,23 +11,28 @@ export class AdcCodeBlock {
 	@Prop() content: string = "";
 	@Prop() ariaLabel?: string;
 
-	private escapeHtml(text: string): string {
-		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	private getHighlightedContent(): string {
+		const decoded = decodeEscapes(this.content);
+		if (!this.language) {
+			return escapeHtml(decoded);
+		}
+		const highlighter = getHighlighter(this.language);
+		return highlighter ? highlighter.highlight(decoded) : escapeHtml(decoded);
 	}
 
 	render() {
-		const escapedContent = this.escapeHtml(this.content);
+		const highlightedContent = this.getHighlightedContent();
 		const codeClass = this.language
 			? `block p-3 whitespace-pre break-normal language-${this.language} lang-${this.language}`
 			: "block p-3 whitespace-pre break-normal";
 
 		return (
 			<figure
-				class="bg-surface rounded-xxl px-6 pb-2 pt-4 ml-8 overflow-x-auto text-md mb-2 font-mono break-normal xl:max-w-[80vw]"
+				class="bg-alt text-text rounded-xxl px-6 pb-2 pt-4 ml-8 overflow-x-auto text-md mb-2 font-mono break-normal xl:max-w-[80vw]"
 				aria-label={this.ariaLabel}
 			>
 				{this.language && <figcaption class="text-blue-800">[{this.language}]</figcaption>}
-				<code class={codeClass} innerHTML={escapedContent}></code>
+				<code class={codeClass} innerHTML={highlightedContent}></code>
 			</figure>
 		);
 	}

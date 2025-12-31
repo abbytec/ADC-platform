@@ -1,7 +1,7 @@
 import type { LearningPath, Article } from "@ui-library/utils/connect-rpc";
 
 // Re-exportar tipos para uso en componentes
-export type { LearningPath, Article, Block } from "@ui-library/utils/connect-rpc";
+export type { LearningPath, Article, Block, PathItemLevel } from "@ui-library/utils/connect-rpc";
 
 interface ListPathsOptions {
 	public?: boolean;
