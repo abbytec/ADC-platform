@@ -8,6 +8,8 @@ interface PathPageProps {
 
 type Level = PathItemLevel;
 type ItemElement = Article | LearningPath;
+// Item poblado desde el backend
+type PopulatedItem = { slug: string; type: "article" | "path"; level?: Level; element: ItemElement };
 type ExpandedItem = { level: Level; element: ItemElement; type: "article" | "path"; row: number };
 
 const LEVEL_TITLES: Record<Level, string> = {
@@ -16,11 +18,21 @@ const LEVEL_TITLES: Record<Level, string> = {
 	opcional: "Opcional",
 };
 
-const LEVEL_COLORS: Record<Level, string> = {
-	critico: "bg-violet-100",
-	importante: "bg-violet-50",
-	opcional: "bg-gray-50",
+// Colores para artículos
+const ARTICLE_LEVEL_COLORS: Record<Level, string> = {
+	critico: "bg-amber-400",
+	importante: "bg-amber-200",
+	opcional: "bg-amber-100",
 };
+
+// Colores para paths
+const PATH_LEVEL_COLORS: Record<Level, string> = {
+	critico: "bg-violet-500 text-white",
+	importante: "bg-violet-300",
+	opcional: "bg-violet-100",
+};
+
+const getLevelColor = (type: "article" | "path", level: Level) => (type === "path" ? PATH_LEVEL_COLORS[level] : ARTICLE_LEVEL_COLORS[level]);
 
 const ALL_LEVELS: Level[] = ["critico", "importante", "opcional"];
 
@@ -46,28 +58,14 @@ export function PathPage({ slug }: PathPageProps) {
 			}
 			setPath(pathData);
 
-			// Expandir items cargando artículos/paths referenciados
-			const expandedItems: ExpandedItem[] = [];
-			let row = 2; // Row 1 es para headers
-
-			for (const item of pathData.items) {
-				let element: ItemElement | undefined;
-
-				if (item.type === "article") {
-					element = await contentAPI.getArticle(item.slug);
-				} else if (item.type === "path") {
-					element = await contentAPI.getPath(item.slug);
-				}
-
-				if (element) {
-					expandedItems.push({
-						level: item.level || "opcional",
-						element,
-						type: item.type,
-						row: row++,
-					});
-				}
-			}
+			const expandedItems: ExpandedItem[] = (pathData.items as PopulatedItem[])
+				.filter((item) => item.element)
+				.map((item, idx) => ({
+					level: item.level || "opcional",
+					element: item.element,
+					type: item.type,
+					row: idx + 2, // Row 1 es para headers
+				}));
 
 			setItems(expandedItems);
 		} catch (err) {
@@ -123,11 +121,7 @@ export function PathPage({ slug }: PathPageProps) {
 			<div style={{ padding: "2rem" }}>
 				<div className="text-center py-8">
 					<p className="text-tdanger">{error || "Ruta no encontrada"}</p>
-					<button
-						type="button"
-						onClick={handleBack}
-						className="mt-4 px-4 py-2 bg-primary text-tprimary rounded-xxl"
-					>
+					<button type="button" onClick={handleBack} className="mt-4 px-4 py-2 bg-primary text-tprimary rounded-xxl">
 						Volver a paths
 					</button>
 				</div>
@@ -188,7 +182,7 @@ export function PathPage({ slug }: PathPageProps) {
 			{availableLevels.length > 1 && (
 				<div className="flex flex-wrap gap-2 mb-4 md:hidden">
 					{availableLevels.map((level) => (
-						<span key={level} className={`px-2 py-1 rounded text-sm ${LEVEL_COLORS[level]}`}>
+						<span key={level} className={`px-2 py-1 rounded text-sm ${ARTICLE_LEVEL_COLORS[level]}`}>
 							{LEVEL_TITLES[level]}
 						</span>
 					))}
@@ -233,7 +227,10 @@ export function PathPage({ slug }: PathPageProps) {
 										e.preventDefault();
 										router.navigate(`/articles/${article.slug}?fromPath=${slug}`);
 									}}
-									className={`flex items-center gap-4 rounded-xxl shadow-cozy no-underline text-text transition-transform p-4 hover:scale-105 hover:z-10 max-w-[80vw] mx-auto ${LEVEL_COLORS[item.level]}`}
+									className={`flex items-center gap-4 rounded-xxl shadow-cozy no-underline text-text transition-transform p-4 hover:scale-105 hover:z-10 max-w-[80vw] mx-auto ${getLevelColor(
+										"article",
+										item.level
+									)}`}
 								>
 									{article.image && (
 										<img
@@ -253,7 +250,10 @@ export function PathPage({ slug }: PathPageProps) {
 										e.preventDefault();
 										router.navigate(`/paths/${subPath.slug}`);
 									}}
-									className="flex flex-col gap-3 rounded-xxl shadow-cozy no-underline text-text transition-transform p-4 hover:scale-105 hover:z-10 max-w-[80vw] mx-auto bg-violet-500 text-white"
+									className={`flex flex-col gap-3 rounded-xxl shadow-cozy no-underline text-text transition-transform p-4 hover:scale-105 hover:z-10 max-w-[80vw] mx-auto ${getLevelColor(
+										"path",
+										item.level
+									)}`}
 								>
 									{subPath.banner && (
 										<img

@@ -120,8 +120,6 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		}
 
 		try {
-			Logger.info(`[MongoProvider] Conectando a ${this.config.uri}...`);
-
 			// Usar createConnection en lugar de connect para permitir múltiples conexiones
 			this.connection = await mongoose
 				.createConnection(this.config.uri, {
@@ -134,6 +132,8 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 					minPoolSize: 5,
 				})
 				.asPromise();
+
+			Logger.info(`[MongoProvider] Conectado a ${this.connection.db.databaseName}...`);
 
 			this.retryCount = 0;
 			this.lastError = undefined;
