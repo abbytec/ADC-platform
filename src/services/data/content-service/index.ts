@@ -22,7 +22,7 @@ export default class ContentService extends BaseService {
 		const PathModel = this.mongoProvider.createModel<LearningPath>("LearningPath", LearningPathSchema);
 		const ArticleModel = this.mongoProvider.createModel<Article>("Article", ArticleSchema);
 
-		PathEndpoints.init(PathModel);
+		PathEndpoints.init(PathModel, ArticleModel);
 		ArticleEndpoints.init(ArticleModel, PathModel);
 
 		await this.registerRESTRoutes();
