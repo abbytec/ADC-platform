@@ -17,6 +17,18 @@ export interface IMongoConfig {
 }
 
 /**
+ * Estadísticas de múltiples conexiones
+ */
+export interface MultiDbStats {
+	connections: Array<{
+		uri: string;
+		databases: string[];
+		connected: boolean;
+		poolSize: number;
+	}>;
+}
+
+/**
  * Interfaz del servicio de MongoDB
  */
 export interface IMongoProvider {
@@ -59,6 +71,37 @@ export interface IMongoProvider {
 		retries: number;
 		lastError?: string;
 	};
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// Multi-DB Support
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * Obtiene o crea una conexión a una URI específica
+	 * Reutiliza conexiones existentes a la misma URI
+	 */
+	getOrCreateConnection(uri: string): Promise<Connection>;
+
+	/**
+	 * Cambia a una base de datos diferente en una conexión existente
+	 * Usa mongoose useDb() para conexiones virtuales
+	 */
+	useDb(connection: Connection, dbName: string): Connection;
+
+	/**
+	 * Crea un modelo para una conexión de base de datos específica
+	 */
+	createModelForDb<T>(dbConnection: Connection, name: string, schema: Schema): Model<T>;
+
+	/**
+	 * Cierra una conexión específica
+	 */
+	closeConnection(uri: string): Promise<void>;
+
+	/**
+	 * Obtiene estadísticas de múltiples conexiones
+	 */
+	getMultiDbStats(): MultiDbStats;
 }
 
 /**
@@ -69,7 +112,8 @@ export interface IMongoProvider {
  * - Reconexión automática en caso de desconexión
  * - Manejo de errores y timeout
  * - Pool de conexiones
- * - Estadísticas de conexión
+ * - Soporte multi-database con connection.useDb()
+ * - Reutilización de instancias por connectionUri
  */
 export default class MongoProvider extends BaseProvider implements IMongoProvider {
 	public readonly name = "mongo-provider";
@@ -82,6 +126,10 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 	private reconnectTimer: NodeJS.Timeout | null = null;
 	private initialized = false;
 	private isDisconnecting = false;
+
+	// Multi-DB support
+	#connections: Map<string, Connection> = new Map();
+	#dbConnections: Map<string, Connection> = new Map();
 
 	constructor(options?: any) {
 		super();
@@ -134,6 +182,9 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 				.asPromise();
 
 			Logger.info(`[MongoProvider] Conectado a ${this.connection.db.databaseName}...`);
+
+			// Registrar en el mapa de conexiones
+			this.#connections.set(this.config.uri, this.connection);
 
 			this.retryCount = 0;
 			this.lastError = undefined;
@@ -255,6 +306,120 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		};
 	}
 
+	// ─────────────────────────────────────────────────────────────────────────────
+	// Multi-DB Support
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * Obtiene o crea una conexión a una URI específica
+	 * Reutiliza conexiones existentes a la misma URI
+	 */
+	async getOrCreateConnection(uri: string): Promise<Connection> {
+		// Verificar si ya tenemos esta conexión
+		const existing = this.#connections.get(uri);
+		if (existing?.readyState === 1) {
+			return existing;
+		}
+
+		// Crear nueva conexión
+		const connection = await mongoose
+			.createConnection(uri, {
+				connectTimeoutMS: this.config.connectionTimeout,
+				serverSelectionTimeoutMS: this.config.serverSelectionTimeout,
+				socketTimeoutMS: this.config.socketTimeout,
+				retryWrites: true,
+				retryReads: true,
+				maxPoolSize: 10,
+				minPoolSize: 2,
+			})
+			.asPromise();
+
+		this.#connections.set(uri, connection);
+		Logger.ok(`[MongoProvider] Nueva conexión establecida: ${uri}`);
+
+		return connection;
+	}
+
+	/**
+	 * Cambia a una base de datos diferente en una conexión existente
+	 * Retorna una conexión virtual a la base de datos especificada
+	 */
+	useDb(connection: Connection, dbName: string): Connection {
+		const key = `${connection.host}:${connection.port}/${dbName}`;
+
+		// Verificar cache
+		const cached = this.#dbConnections.get(key);
+		if (cached) {
+			return cached;
+		}
+
+		// Crear conexión virtual usando useDb
+		const dbConnection = connection.useDb(dbName, { useCache: true });
+		this.#dbConnections.set(key, dbConnection);
+
+		Logger.debug(`[MongoProvider] Conexión virtual a DB: ${dbName}`);
+		return dbConnection;
+	}
+
+	/**
+	 * Crea un modelo para una conexión de base de datos específica
+	 */
+	createModelForDb<T>(dbConnection: Connection, name: string, schema: Schema): Model<T> {
+		try {
+			return dbConnection.model<T>(name);
+		} catch {
+			return dbConnection.model<T>(name, schema);
+		}
+	}
+
+	/**
+	 * Cierra una conexión específica
+	 */
+	async closeConnection(uri: string): Promise<void> {
+		const connection = this.#connections.get(uri);
+		if (connection) {
+			// Limpiar conexiones virtuales asociadas
+			const hostPort = `${connection.host}:${connection.port}`;
+			for (const [key] of this.#dbConnections) {
+				if (key.startsWith(hostPort)) {
+					this.#dbConnections.delete(key);
+				}
+			}
+
+			await connection.close();
+			this.#connections.delete(uri);
+			Logger.ok(`[MongoProvider] Conexión cerrada: ${uri}`);
+		}
+	}
+
+	/**
+	 * Obtiene estadísticas de múltiples conexiones
+	 */
+	getMultiDbStats(): MultiDbStats {
+		const connections: MultiDbStats["connections"] = [];
+
+		for (const [uri, conn] of this.#connections) {
+			const databases: string[] = [];
+			const hostPort = `${conn.host}:${conn.port}`;
+
+			for (const [key] of this.#dbConnections) {
+				if (key.startsWith(hostPort)) {
+					const dbName = key.split("/").pop();
+					if (dbName) databases.push(dbName);
+				}
+			}
+
+			connections.push({
+				uri,
+				databases,
+				connected: conn.readyState === 1,
+				poolSize: 10, // from config
+			});
+		}
+
+		return { connections };
+	}
+
 	/**
 	 * Desconecta de MongoDB
 	 */
@@ -278,6 +443,18 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 	async stop(kernelKey: symbol): Promise<void> {
 		await super.stop(kernelKey);
 		this.isDisconnecting = true;
+
+		// Cerrar todas las conexiones adicionales
+		for (const [uri] of this.#connections) {
+			if (uri !== this.config.uri) {
+				await this.closeConnection(uri);
+			}
+		}
+
+		// Limpiar caches
+		this.#connections.clear();
+		this.#dbConnections.clear();
+
 		await this.disconnect();
 	}
 }

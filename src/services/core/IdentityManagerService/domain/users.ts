@@ -10,14 +10,32 @@ export const userSchema = new Schema({
 	email: String,
 	roleIds: [String],
 	groupIds: [String],
+	orgMemberships: [
+		{
+			orgId: String,
+			roleIds: [String],
+			joinedAt: Date,
+		},
+	],
+	permissions: [
+		{
+			resource: { type: String, required: true },
+			action: { type: Number, required: true }, // Bitfield
+			scope: { type: Number, required: true }, // Bitfield
+		},
+	],
 	metadata: Schema.Types.Mixed,
 	isActive: { type: Boolean, default: true },
 	createdAt: { type: Date, default: Date.now },
 	updatedAt: { type: Date, default: Date.now },
 	lastLogin: Date,
 });
+
 export class UserManager {
-	constructor(private readonly userModel: Model<any>, private readonly logger: ILogger) {}
+	constructor(
+		private readonly userModel: Model<any>,
+		private readonly logger: ILogger
+	) {}
 
 	async authenticate(username: string, password: string): Promise<User | null> {
 		try {
@@ -30,7 +48,7 @@ export class UserManager {
 			if (!valid) return null;
 
 			user.lastLogin = new Date();
-			await this.userModel.findByIdAndUpdate(user.id, { lastLogin: user.lastLogin });
+			await this.userModel.findOneAndUpdate({ id: user.id }, { lastLogin: user.lastLogin });
 
 			return user;
 		} catch (error) {
@@ -112,6 +130,61 @@ export class UserManager {
 			return docs.map((d: any) => d.toObject?.() || d);
 		} catch (error) {
 			this.logger.logError(`Error obteniendo usuarios: ${error}`);
+			return [];
+		}
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// Métodos de membresía por organización
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	async addOrgMembership(userId: string, orgId: string, roleIds: string[] = []): Promise<User> {
+		try {
+			const updated = await this.userModel.findOneAndUpdate(
+				{ id: userId },
+				{
+					$addToSet: {
+						orgMemberships: { orgId, roleIds, joinedAt: new Date() },
+					},
+					updatedAt: new Date(),
+				},
+				{ new: true }
+			);
+			if (!updated) throw new Error(`Usuario ${userId} no encontrado`);
+			this.logger.logDebug(`Usuario ${userId} agregado a organización ${orgId}`);
+			return updated.toObject?.() || updated;
+		} catch (error) {
+			this.logger.logError(`Error agregando membresía de organización: ${error}`);
+			throw error;
+		}
+	}
+
+	async removeOrgMembership(userId: string, orgId: string): Promise<User> {
+		try {
+			const updated = await this.userModel.findOneAndUpdate(
+				{ id: userId },
+				{
+					$pull: { orgMemberships: { orgId } },
+					updatedAt: new Date(),
+				},
+				{ new: true }
+			);
+			if (!updated) throw new Error(`Usuario ${userId} no encontrado`);
+			this.logger.logDebug(`Usuario ${userId} removido de organización ${orgId}`);
+			return updated.toObject?.() || updated;
+		} catch (error) {
+			this.logger.logError(`Error removiendo membresía de organización: ${error}`);
+			throw error;
+		}
+	}
+
+	async getUserOrganizations(userId: string): Promise<string[]> {
+		try {
+			const user = await this.userModel.findOne({ id: userId });
+			if (!user) return [];
+			return user.orgMemberships?.map((m: any) => m.orgId) || [];
+		} catch (error) {
+			this.logger.logError(`Error obteniendo organizaciones del usuario: ${error}`);
 			return [];
 		}
 	}

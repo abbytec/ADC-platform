@@ -1,5 +1,5 @@
 import { Schema, type Model } from "mongoose";
-import type { Group } from "../types.js";
+import type { Group, User } from "../types.js";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "../utils/crypto.js";
 
@@ -8,14 +8,24 @@ export const groupSchema = new Schema({
 	name: { type: String, required: true },
 	description: String,
 	roleIds: [String],
-	userIds: [String],
+	permissions: [
+		{
+			resource: { type: String, required: true },
+			action: { type: Number, required: true }, // Bitfield
+			scope: { type: Number, required: true }, // Bitfield
+		},
+	],
 	metadata: Schema.Types.Mixed,
 	createdAt: { type: Date, default: Date.now },
 	updatedAt: { type: Date, default: Date.now },
 });
 
 export class GroupManager {
-	constructor(private readonly groupModel: Model<any>, private readonly userModel: Model<any>, private readonly logger: ILogger) {}
+	constructor(
+		private readonly groupModel: Model<any>,
+		private readonly userModel: Model<any>,
+		private readonly logger: ILogger
+	) {}
 
 	async createGroup(name: string, description: string, roleIds?: string[]): Promise<Group> {
 		try {
@@ -25,7 +35,6 @@ export class GroupManager {
 				name,
 				description,
 				roleIds: roleIds || [],
-				userIds: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
@@ -49,8 +58,24 @@ export class GroupManager {
 		}
 	}
 
+	async updateGroup(groupId: string, updates: Partial<Group>): Promise<Group> {
+		try {
+			updates.updatedAt = new Date();
+			const updated = await this.groupModel.findOneAndUpdate({ id: groupId }, updates, { new: true });
+			if (!updated) throw new Error(`Grupo ${groupId} no encontrado`);
+			this.logger.logDebug(`Grupo actualizado: ${groupId}`);
+			return updated.toObject?.() || updated;
+		} catch (error) {
+			this.logger.logError(`Error actualizando grupo: ${error}`);
+			throw error;
+		}
+	}
+
 	async deleteGroup(groupId: string): Promise<void> {
 		try {
+			// Remover groupId de todos los usuarios que pertenecen a este grupo
+			await this.userModel.updateMany({ groupIds: groupId }, { $pull: { groupIds: groupId } });
+
 			await this.groupModel.deleteOne({ id: groupId });
 			this.logger.logDebug(`Grupo eliminado: ${groupId}`);
 		} catch (error) {
@@ -69,45 +94,57 @@ export class GroupManager {
 		}
 	}
 
+	/**
+	 * Agrega un usuario a un grupo (solo modifica user.groupIds)
+	 */
 	async addUserToGroup(userId: string, groupId: string): Promise<void> {
 		try {
-			const user = await this.userModel.findOne({ id: userId });
 			const group = await this.groupModel.findOne({ id: groupId });
-
-			if (!user) throw new Error(`Usuario ${userId} no encontrado`);
 			if (!group) throw new Error(`Grupo ${groupId} no encontrado`);
 
-			if (!user.groupIds.includes(groupId)) {
-				user.groupIds.push(groupId);
-				await user.save();
-			}
+			const result = await this.userModel.findOneAndUpdate(
+				{ id: userId },
+				{ $addToSet: { groupIds: groupId }, updatedAt: new Date() }
+			);
 
-			if (!group.userIds.includes(userId)) {
-				group.userIds.push(userId);
-				await group.save();
-			}
+			if (!result) throw new Error(`Usuario ${userId} no encontrado`);
+
+			this.logger.logDebug(`Usuario ${userId} agregado al grupo ${groupId}`);
 		} catch (error) {
 			this.logger.logError(`Error agregando usuario a grupo: ${error}`);
 			throw error;
 		}
 	}
 
+	/**
+	 * Remueve un usuario de un grupo (solo modifica user.groupIds)
+	 */
 	async removeUserFromGroup(userId: string, groupId: string): Promise<void> {
 		try {
-			const user = await this.userModel.findOne({ id: userId });
-			const group = await this.groupModel.findOne({ id: groupId });
+			const result = await this.userModel.findOneAndUpdate(
+				{ id: userId },
+				{ $pull: { groupIds: groupId }, updatedAt: new Date() }
+			);
 
-			if (!user) throw new Error(`Usuario ${userId} no encontrado`);
-			if (!group) throw new Error(`Grupo ${groupId} no encontrado`);
+			if (!result) throw new Error(`Usuario ${userId} no encontrado`);
 
-			user.groupIds = user.groupIds.filter((gid: string) => gid !== groupId);
-			group.userIds = group.userIds.filter((uid: string) => uid !== userId);
-
-			await user.save();
-			await group.save();
+			this.logger.logDebug(`Usuario ${userId} removido del grupo ${groupId}`);
 		} catch (error) {
 			this.logger.logError(`Error removiendo usuario del grupo: ${error}`);
 			throw error;
+		}
+	}
+
+	/**
+	 * Obtiene todos los usuarios que pertenecen a un grupo
+	 */
+	async getGroupUsers(groupId: string): Promise<User[]> {
+		try {
+			const docs = await this.userModel.find({ groupIds: groupId });
+			return docs.map((d: any) => d.toObject?.() || d);
+		} catch (error) {
+			this.logger.logError(`Error obteniendo usuarios del grupo: ${error}`);
+			return [];
 		}
 	}
 }

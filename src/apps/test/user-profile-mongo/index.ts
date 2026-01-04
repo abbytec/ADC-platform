@@ -1,6 +1,7 @@
 import { BaseApp } from "../../BaseApp.js";
 import { IIdentityManager, Role } from "../../../services/core/IdentityManagerService/index.js";
 import { Logger } from "../../../utils/logger/Logger.js";
+import { Action } from "../../../interfaces/behaviours/Actions.js";
 
 interface IdentityTestData {
 	userIds: string[];
@@ -39,19 +40,19 @@ export default class UserProfileApp extends BaseApp {
 		try {
 			// Borrar usuarios
 			for (const userId of this.testData.userIds) {
-				await this.identityManager.deleteUser(userId);
+				await this.identityManager.users.deleteUser(userId);
 				Logger.ok(`[${this.name}] ✓ Usuario eliminado: ${userId}`);
 			}
 
 			// Borrar grupos
 			for (const groupId of this.testData.groupIds) {
-				await this.identityManager.deleteGroup(groupId);
+				await this.identityManager.groups.deleteGroup(groupId);
 				Logger.ok(`[${this.name}] ✓ Grupo eliminado: ${groupId}`);
 			}
 
 			// Borrar roles
 			for (const roleId of this.testData.roleIds) {
-				await this.identityManager.deleteRole(roleId);
+				await this.identityManager.roles.deleteRole(roleId);
 				Logger.ok(`[${this.name}] ✓ Rol eliminado: ${roleId}`);
 			}
 
@@ -91,19 +92,23 @@ export default class UserProfileApp extends BaseApp {
 			Logger.ok(`[${this.name}] ✓ Rol creado: ${role.name}`);
 
 			// 2. Crear grupo
-			const group = await this.identityManager.createGroup(`test-group-${Date.now()}`, "Grupo de prueba para user-profile", [role.id]);
+			const group = await this.identityManager.groups.createGroup(`test-group-${Date.now()}`, "Grupo de prueba para user-profile", [
+				role.id,
+			]);
 			this.testData.groupIds.push(group.id);
 			Logger.ok(`[${this.name}] ✓ Grupo creado: ${group.name}`);
 
 			// 3. Crear usuario
-			const user = await this.identityManager.createUser(`test-user-${Date.now()}`, `pwd-${Math.random().toString(36).substring(7)}`, [
-				role.id,
-			]);
+			const user = await this.identityManager.users.createUser(
+				`test-user-${Date.now()}`,
+				`pwd-${Math.random().toString(36).substring(7)}`,
+				[role.id]
+			);
 			this.testData.userIds.push(user.id);
 			Logger.ok(`[${this.name}] ✓ Usuario creado: ${user.username}`);
 
 			// 4. Asociar usuario con grupo
-			await this.identityManager.addUserToGroup(user.id, group.id);
+			await this.identityManager.groups.addUserToGroup(user.id, group.id);
 			Logger.ok(`[${this.name}] ✓ Usuario asociado al grupo`);
 
 			// 5. Mostrar estadísticas
@@ -124,9 +129,9 @@ export default class UserProfileApp extends BaseApp {
 	 * Crea un rol de prueba
 	 */
 	async #createTestRole(): Promise<Role> {
-		return await this.identityManager.createRole(`test-role-${Date.now()}`, "Rol de prueba para user-profile", [
-			{ resource: "user-profile", action: "read" },
-			{ resource: "user-profile", action: "write", scope: "self" },
+		return await this.identityManager.roles.createRole(`test-role-${Date.now()}`, "Rol de prueba para user-profile", [
+			{ resource: "user-profile", action: Action.READ, scope: 0xff },
+			{ resource: "user-profile", action: Action.WRITE, scope: 0xff },
 		]);
 	}
 }
