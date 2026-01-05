@@ -2,21 +2,10 @@ import type { Connection } from "mongoose";
 import { BaseService } from "../../BaseService.js";
 import type { IdentityStats, OrgScopedManagers } from "./types.js";
 import type { IMongoProvider } from "../../../providers/object/mongo/index.js";
-import { UserManager, userSchema } from "./domain/users.js";
-import { RoleManager, roleSchema } from "./domain/roles.js";
-import { GroupManager, groupSchema } from "./domain/groups.js";
-import { SystemManager } from "./domain/system.js";
-import { RegionManager, regionSchema } from "./domain/regions.js";
-import { OrgManager, organizationSchema } from "./domain/organizations.js";
-import { PermissionManager } from "./domain/permissions.js";
+import { userSchema, groupSchema, roleSchema, organizationSchema, regionSchema } from "./domain/index.js";
+import { UserManager, GroupManager, RoleManager, PermissionManager, SystemManager, RegionManager, OrgManager } from "./dao/index.js";
 import { type IAuthVerifier, type AuthVerifierGetter } from "./utils/auth-verifier.js";
 import type SessionManagerService from "../../security/SessionManagerService/index.js";
-
-// Re-exportar SystemRole para compatibilidad
-export { SystemRole } from "./domain/roles.js";
-// Re-exportar AuthorizationError
-export { AuthorizationError } from "./utils/auth-verifier.js";
-export { type IAuthVerifier } from "./utils/auth-verifier.js";
 
 /**
  * IdentityManagerService - Gestión centralizada de identidades, usuarios, roles y grupos
@@ -309,5 +298,11 @@ export default class IdentityManagerService extends BaseService {
 }
 
 // Re-exportar tipos para facilitar uso
-export type { User, Role, Group, Permission, Organization, RegionInfo, OrgScopedManagers } from "./types.js";
+export type { OrgScopedManagers } from "./types.js";
 export type { IdentityManagerService as IIdentityManager };
+export type { User, Role, Group, Permission, Organization, RegionInfo } from "./domain/index.js";
+// Re-exportar SystemRole para compatibilidad
+export { SystemRole } from "./defaults/systemRoles.js";
+// Re-exportar AuthorizationError
+export { AuthorizationError } from "./utils/auth-verifier.js";
+export { type IAuthVerifier } from "./utils/auth-verifier.js";

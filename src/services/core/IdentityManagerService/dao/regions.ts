@@ -1,27 +1,12 @@
-import { Schema, type Model } from "mongoose";
-import type { RegionInfo, RegionMetadata } from "../types.js";
+import type { Model } from "mongoose";
+import { RegionInfo, RegionMetadata } from "../domain/region.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-
-export const regionSchema = new Schema({
-	path: { type: String, required: true, unique: true },
-	isGlobal: { type: Boolean, default: false },
-	isActive: { type: Boolean, default: true },
-	metadata: {
-		objectConnectionUri: String,
-		cacheConnectionUri: String,
-	},
-	createdAt: { type: Date, default: Date.now },
-	updatedAt: { type: Date, default: Date.now },
-});
 
 export class RegionManager {
 	#regionsCache: Map<string, RegionInfo> = new Map();
 	#globalRegion: RegionInfo | null = null;
 
-	constructor(
-		private readonly regionModel: Model<any>,
-		private readonly logger: ILogger
-	) {}
+	constructor(private readonly regionModel: Model<any>, private readonly logger: ILogger) {}
 
 	/**
 	 * Precarga todas las regiones en memoria
@@ -145,11 +130,7 @@ export class RegionManager {
 			throw new Error(`Ya existe una región global: ${this.#globalRegion.path}`);
 		}
 
-		const region = await this.regionModel.findOneAndUpdate(
-			{ path },
-			{ ...updates, updatedAt: new Date() },
-			{ new: true }
-		);
+		const region = await this.regionModel.findOneAndUpdate({ path }, { ...updates, updatedAt: new Date() }, { new: true });
 
 		if (!region) throw new Error(`Región no encontrada: ${path}`);
 

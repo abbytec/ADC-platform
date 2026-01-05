@@ -1,9 +1,10 @@
 import type { Model } from "mongoose";
-import type { User } from "../types.js";
+import type { User } from "../domain/user.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import { generateId, hashPassword, generateRandomCredentials } from "../utils/crypto.js";
-import { SystemRole } from "./roles.js";
-import { OnlyKernel } from "../../../../utils/decorators/OnlyKernel.js";
+import { generateId, hashPassword, generateRandomCredentials } from "../utils/crypto.ts";
+import { SystemRole } from "../defaults/systemRoles.ts";
+import { OnlyKernel } from "../../../../utils/decorators/OnlyKernel.ts";
+
 /* tslint:disable:no-unused-variable */
 export class SystemManager {
 	#systemUser: User | null = null;

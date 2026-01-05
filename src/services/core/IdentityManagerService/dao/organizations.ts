@@ -1,33 +1,11 @@
-import { Schema, type Model } from "mongoose";
-import type { Organization } from "../types.js";
+import type { Model } from "mongoose";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import { generateId } from "../utils/crypto.js";
-import { RegionManager } from "./regions.js";
-
-export const organizationSchema = new Schema({
-	orgId: { type: String, required: true, unique: true },
-	slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
-	region: { type: String, required: true, default: "default/default" },
-	tier: { type: String, enum: ["default"], default: "default" },
-	status: { type: String, enum: ["active", "inactive", "blocked"], default: "active" },
-	permissions: [
-		{
-			resource: { type: String, required: true },
-			action: { type: Number, required: true }, // Bitfield
-			scope: { type: Number, required: true }, // Bitfield
-		},
-	],
-	metadata: Schema.Types.Mixed,
-	createdAt: { type: Date, default: Date.now },
-	updatedAt: { type: Date, default: Date.now },
-});
+import { generateId } from "../utils/crypto.ts";
+import type { RegionManager } from "./regions.js";
+import type { Organization } from "../domain/organization.ts";
 
 export class OrgManager {
-	constructor(
-		private readonly orgModel: Model<any>,
-		private readonly regionManager: RegionManager,
-		private readonly logger: ILogger
-	) {}
+	constructor(private readonly orgModel: Model<any>, private readonly regionManager: RegionManager, private readonly logger: ILogger) {}
 
 	/**
 	 * Crea una nueva organización
@@ -93,11 +71,7 @@ export class OrgManager {
 			}
 		}
 
-		const org = await this.orgModel.findOneAndUpdate(
-			{ orgId },
-			{ ...updates, updatedAt: new Date() },
-			{ new: true }
-		);
+		const org = await this.orgModel.findOneAndUpdate({ orgId }, { ...updates, updatedAt: new Date() }, { new: true });
 
 		if (!org) throw new Error(`Organización no encontrada: ${orgId}`);
 

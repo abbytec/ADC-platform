@@ -1,25 +1,8 @@
-import { Schema, type Model } from "mongoose";
-import type { Group, User } from "../types.js";
+import type { Model } from "mongoose";
+import type { Group, User } from "../domain/index.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import { generateId } from "../utils/crypto.js";
-import { type AuthVerifierGetter, PermissionChecker, Action, Scope } from "../utils/auth-verifier.js";
-
-export const groupSchema = new Schema({
-	id: { type: String, required: true, unique: true },
-	name: { type: String, required: true },
-	description: String,
-	roleIds: [String],
-	permissions: [
-		{
-			resource: { type: String, required: true },
-			action: { type: Number, required: true }, // Bitfield
-			scope: { type: Number, required: true }, // Bitfield
-		},
-	],
-	metadata: Schema.Types.Mixed,
-	createdAt: { type: Date, default: Date.now },
-	updatedAt: { type: Date, default: Date.now },
-});
+import { generateId } from "../utils/crypto.ts";
+import { type AuthVerifierGetter, PermissionChecker, Action, Scope } from "../utils/auth-verifier.ts";
 
 export class GroupManager {
 	#permissionChecker: PermissionChecker;
@@ -153,10 +136,7 @@ export class GroupManager {
 			const group = await this.groupModel.findOne({ id: groupId });
 			if (!group) throw new Error(`Grupo ${groupId} no encontrado`);
 
-			const result = await this.userModel.findOneAndUpdate(
-				{ id: userId },
-				{ $addToSet: { groupIds: groupId }, updatedAt: new Date() }
-			);
+			const result = await this.userModel.findOneAndUpdate({ id: userId }, { $addToSet: { groupIds: groupId }, updatedAt: new Date() });
 
 			if (!result) throw new Error(`Usuario ${userId} no encontrado`);
 
@@ -177,10 +157,7 @@ export class GroupManager {
 		}
 
 		try {
-			const result = await this.userModel.findOneAndUpdate(
-				{ id: userId },
-				{ $pull: { groupIds: groupId }, updatedAt: new Date() }
-			);
+			const result = await this.userModel.findOneAndUpdate({ id: userId }, { $pull: { groupIds: groupId }, updatedAt: new Date() });
 
 			if (!result) throw new Error(`Usuario ${userId} no encontrado`);
 

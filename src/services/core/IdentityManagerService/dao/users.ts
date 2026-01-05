@@ -1,45 +1,13 @@
-import { Schema, type Model } from "mongoose";
-import type { User } from "../types.js";
+import type { Model } from "mongoose";
+import type { User } from "../domain/user.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import { generateId, hashPassword, verifyPassword } from "../utils/crypto.js";
-import { type AuthVerifierGetter, AuthorizationError, PermissionChecker, Action, Scope } from "../utils/auth-verifier.js";
-
-export const userSchema = new Schema({
-	id: { type: String, required: true, unique: true },
-	username: { type: String, required: true, unique: true },
-	passwordHash: { type: String, required: true },
-	email: String,
-	roleIds: [String],
-	groupIds: [String],
-	orgMemberships: [
-		{
-			orgId: String,
-			roleIds: [String],
-			joinedAt: Date,
-		},
-	],
-	permissions: [
-		{
-			resource: { type: String, required: true },
-			action: { type: Number, required: true }, // Bitfield
-			scope: { type: Number, required: true }, // Bitfield
-		},
-	],
-	metadata: Schema.Types.Mixed,
-	isActive: { type: Boolean, default: true },
-	createdAt: { type: Date, default: Date.now },
-	updatedAt: { type: Date, default: Date.now },
-	lastLogin: Date,
-});
+import { generateId, hashPassword, verifyPassword } from "../utils/crypto.ts";
+import { type AuthVerifierGetter, AuthorizationError, PermissionChecker, Action, Scope } from "../utils/auth-verifier.ts";
 
 export class UserManager {
 	#permissionChecker: PermissionChecker;
 
-	constructor(
-		private readonly userModel: Model<any>,
-		private readonly logger: ILogger,
-		getAuthVerifier: AuthVerifierGetter = () => null
-	) {
+	constructor(private readonly userModel: Model<any>, private readonly logger: ILogger, getAuthVerifier: AuthVerifierGetter = () => null) {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "UserManager");
 	}
 

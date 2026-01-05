@@ -12,11 +12,7 @@ async function main() {
 	try {
 		const uiFederation = kernel.getService<UIFederationService>("UIFederationService");
 		if (uiFederation) {
-			if (uiFederation && typeof uiFederation.refreshAllImportMaps === "function") {
-				await uiFederation.refreshAllImportMaps();
-			} else {
-				Logger.warn("refreshAllImportMaps no está disponible en UIFederationService");
-			}
+			await uiFederation.refreshAllImportMaps();
 		} else {
 			Logger.warn("UIFederationService no encontrado");
 		}

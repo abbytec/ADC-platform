@@ -1,104 +1,16 @@
-import { Schema, type Model } from "mongoose";
-import type { Role, Permission } from "../types.js";
+import type { Model } from "mongoose";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import { generateId } from "../utils/crypto.js";
-import { RESOURCE_NAME, Scope } from "../permissions.js";
+import { generateId } from "../utils/crypto.ts";
+import { Scope } from "../permissions.ts";
 import { Action } from "../../../../interfaces/behaviours/Actions.ts";
-import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.js";
-
-export const roleSchema = new Schema({
-	id: { type: String, required: true, unique: true },
-	name: { type: String, required: true },
-	description: String,
-	permissions: [
-		{
-			resource: { type: String, required: true },
-			action: { type: Number, required: true }, // Bitfield
-			scope: { type: Number, required: true }, // Bitfield
-		},
-	],
-	isCustom: { type: Boolean, default: false },
-	createdAt: { type: Date, default: Date.now },
-});
-
-export enum SystemRole {
-	SYSTEM = "SYSTEM",
-	ADMIN = "Admin",
-	NETWORK_MANAGER = "Network Manager",
-	SECURITY_MANAGER = "Security Manager",
-	DATA_MANAGER = "Data Manager",
-	APP_MANAGER = "App Manager",
-	CONFIG_MANAGER = "Config Manager",
-	USER = "User",
-}
-
-const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; permissions: Permission[] }> = [
-	{
-		name: SystemRole.SYSTEM,
-		description: "Usuario del sistema con acceso total",
-		permissions: [{ resource: RESOURCE_NAME, action: Action.CRUD, scope: Scope.ALL }],
-	},
-	{
-		name: SystemRole.ADMIN,
-		description: "Administrador del sistema",
-		permissions: [{ resource: RESOURCE_NAME, action: Action.CRUD, scope: Scope.ALL }],
-	},
-	{
-		name: SystemRole.NETWORK_MANAGER,
-		description: "Gestor de redes",
-		permissions: [
-			{ resource: "network", action: Action.CRUD, scope: 0xff },
-			{ resource: "devices", action: Action.READ, scope: 0xff },
-		],
-	},
-	{
-		name: SystemRole.SECURITY_MANAGER,
-		description: "Gestor de seguridad",
-		permissions: [
-			{ resource: "security", action: Action.CRUD, scope: 0xff },
-			{ resource: "users", action: Action.READ, scope: 0xff },
-			{ resource: "audit", action: Action.READ, scope: 0xff },
-		],
-	},
-	{
-		name: SystemRole.DATA_MANAGER,
-		description: "Gestor de datos",
-		permissions: [
-			{ resource: "data", action: Action.CRUD, scope: 0xff },
-			{ resource: "database", action: Action.CRUD, scope: 0xff },
-		],
-	},
-	{
-		name: SystemRole.APP_MANAGER,
-		description: "Gestor de aplicaciones",
-		permissions: [
-			{ resource: "apps", action: Action.CRUD, scope: 0xff },
-			{ resource: "modules", action: Action.READ, scope: 0xff },
-		],
-	},
-	{
-		name: SystemRole.CONFIG_MANAGER,
-		description: "Gestor de configuración",
-		permissions: [
-			{ resource: "config", action: Action.CRUD, scope: 0xff },
-			{ resource: "system", action: Action.READ, scope: 0xff },
-		],
-	},
-	{
-		name: SystemRole.USER,
-		description: "Usuario estándar del sistema",
-		permissions: [{ resource: RESOURCE_NAME, action: Action.READ, scope: Scope.SELF }],
-	},
-];
+import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
+import type { Permission, Role } from "../domain/index.ts";
+import { PREDEFINED_ROLES } from "../defaults/systemRoles.ts";
 
 export class RoleManager {
 	#permissionChecker: PermissionChecker;
 
-	constructor(
-		private readonly roleModel: Model<any>,
-		private readonly logger: ILogger,
-		getAuthVerifier: AuthVerifierGetter = () => null
-	) {
+	constructor(private readonly roleModel: Model<any>, private readonly logger: ILogger, getAuthVerifier: AuthVerifierGetter = () => null) {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "RoleManager");
 	}
 
