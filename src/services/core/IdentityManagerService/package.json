@@ -4,5 +4,8 @@
 	"description": "Servicio de gestión de identidades, usuarios, roles y grupos",
 	"private": true,
 	"type": "module",
-	"main": "index.ts"
+	"main": "index.ts",
+	"dependencies": {
+		"mongoose": "^7.7.1"
+	}
 }

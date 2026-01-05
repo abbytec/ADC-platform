@@ -2,7 +2,7 @@ import type { Model } from "mongoose";
 import type { User } from "../domain/user.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId, hashPassword, verifyPassword } from "../utils/crypto.ts";
-import { type AuthVerifierGetter, AuthorizationError, PermissionChecker, Action, Scope } from "../utils/auth-verifier.ts";
+import { type AuthVerifierGetter, PermissionChecker, Action, Scope } from "../utils/auth-verifier.ts";
 
 export class UserManager {
 	#permissionChecker: PermissionChecker;
@@ -239,6 +239,3 @@ export class UserManager {
 		}
 	}
 }
-
-// Re-exportar AuthorizationError para uso externo
-export { AuthorizationError };

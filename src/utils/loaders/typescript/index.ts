@@ -11,7 +11,7 @@ import { Logger } from "../../logger/Logger.js";
 
 type Constructor<T> = new (...args: any[]) => T;
 
-export class TypeScriptLoader implements IModuleLoader {
+export default class TypeScriptLoader implements IModuleLoader {
 	readonly #extension = process.env.NODE_ENV === "development" ? ".ts" : ".js";
 
 	readonly #kernelKey: symbol;
@@ -92,5 +92,3 @@ export class TypeScriptLoader implements IModuleLoader {
 		};
 	}
 }
-
-export default TypeScriptLoader;

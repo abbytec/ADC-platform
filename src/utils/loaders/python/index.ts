@@ -95,7 +95,7 @@ function createPythonModuleProxy(options: PythonModuleOptions): IModule {
 /**
  * Loader optimizado con gestión de ciclo de vida ordenado.
  */
-export class PythonLoader implements IModuleLoader {
+export default class PythonLoader implements IModuleLoader {
 	// Almacenamos los wrappers clasificados para poder detenerlos en orden
 	private modules = {
 		provider: [] as IModule[],
@@ -263,5 +263,3 @@ export class PythonLoader implements IModuleLoader {
 		Logger.ok("[PythonLoader] Todos los procesos Python han sido detenidos.");
 	}
 }
-
-export default PythonLoader;

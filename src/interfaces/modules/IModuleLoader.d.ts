@@ -1,4 +1,4 @@
-import { IKernel } from "../IKernel.ts";
+import type { Kernel } from "../../kernel.js";
 import type { IProvider } from "../../providers/BaseProvider.ts";
 import type { IUtility } from "../../utilities/BaseUtility.ts";
 import type { IService } from "../../services/BaseService.ts";
@@ -20,7 +20,7 @@ export interface IModuleLoader {
 	/**
 	 * Carga un Service desde una ruta específica
 	 */
-	loadService(modulePath: string, kernel: IKernel, config?: Record<string, any>): Promise<IService<any>>;
+	loadService(modulePath: string, kernel: Kernel, config?: Record<string, any>): Promise<IService<any>>;
 
 	/**
 	 * Verifica si el loader puede manejar un módulo en una ruta específica

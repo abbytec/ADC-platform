@@ -1,5 +1,5 @@
 import type { UIModuleConfig } from "../../../../interfaces/modules/IUIModule.js";
-import type { IBuildContext, IBuildResult, IFrameworkStrategy, BundlerType } from "./types.js";
+import type { IBuildContext, IBuildResult, IFrameworkStrategy, BundlerType } from "./types.ts";
 
 /**
  * Clase base abstracta para estrategias de framework.
@@ -50,8 +50,7 @@ export abstract class BaseFrameworkStrategy implements IFrameworkStrategy {
 	validateConfig(config: UIModuleConfig): void {
 		if (this.requiresDevPort() && !config.devPort) {
 			throw new Error(
-				`Framework "${this.name}" requiere devPort configurado. ` +
-				`Por favor añade "devPort: <número>" en la configuración del módulo.`
+				`Framework "${this.name}" requiere devPort configurado. ` + `Por favor añade "devPort: <número>" en la configuración del módulo.`
 			);
 		}
 	}
@@ -119,42 +118,15 @@ export abstract class BaseFrameworkStrategy implements IFrameworkStrategy {
 }
 
 /**
- * Clase base para estrategias Rspack
- */
-export abstract class BaseRspackStrategy extends BaseFrameworkStrategy {
-	readonly bundler: BundlerType = "rspack";
-
-	requiresDevPort(): boolean {
-		return true;
-	}
-}
-
-/**
- * Clase base para estrategias Vite
- */
-export abstract class BaseViteStrategy extends BaseFrameworkStrategy {
-	readonly bundler: BundlerType = "vite";
-
-	requiresDevPort(): boolean {
-		return true;
-	}
-}
-
-/**
  * Clase base para estrategias CLI (Astro, Stencil)
  */
 export abstract class BaseCLIStrategy extends BaseFrameworkStrategy {
 	readonly bundler: BundlerType = "cli";
 
-	requiresDevPort(): boolean {
-		return false;
-	}
-
 	/**
-	 * Las estrategias CLI no inician dev server por defecto
+	 * Las estrategias CLI pueden tener watch mode pero no dev server HTTP
 	 */
 	protected shouldStartDevServer(_context: IBuildContext): boolean {
-		// Las estrategias CLI pueden tener watch mode pero no dev server HTTP
 		return false;
 	}
 }

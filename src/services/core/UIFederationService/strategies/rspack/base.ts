@@ -1,8 +1,8 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { spawn } from "node:child_process";
-import { BaseRspackStrategy } from "../base-strategy.js";
-import type { IBuildContext, IBuildResult } from "../types.js";
+import { BaseFrameworkStrategy } from "../base-strategy.js";
+import type { BundlerType, IBuildContext, IBuildResult } from "../types.js";
 import { getConfigDir, getBinPath, getLogsDir, normalizeForConfig } from "../../utils/path-resolver.js";
 import aliasGenerator from "../../utils/alias-generator.js";
 import { generateTailwindConfig, generatePostCSSConfig, hasTailwindEnabled } from "../../config-generators/tailwind.js";
@@ -10,7 +10,8 @@ import { generateTailwindConfig, generatePostCSSConfig, hasTailwindEnabled } fro
 /**
  * Clase base para estrategias Rspack con lógica común de generación de config
  */
-export abstract class RspackBaseStrategy extends BaseRspackStrategy {
+export abstract class RspackBaseStrategy extends BaseFrameworkStrategy {
+	readonly bundler: BundlerType = "rspack";
 	/**
 	 * Genera la configuración de Rspack
 	 */
@@ -354,37 +355,37 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const imports = this.getImports();
 		const shared = this.buildSharedConfig(usedFrameworks);
 
-	// Layouts cargan remotes, el resto se expone
-	const federationConfig = isLayout
-		? `remotes: ${JSON.stringify(remotes, null, 4)},`
-		: `
+		// Layouts cargan remotes, el resto se expone
+		const federationConfig = isLayout
+			? `remotes: ${JSON.stringify(remotes, null, 4)},`
+			: `
             filename: 'remoteEntry.js',
             exposes: {
                 './App': './src/App${appExtension}',
             },`;
 
-	// Determinar publicPath correcto
-	// Para módulos remotos (isRemote) en desarrollo, usar URL absoluta del dev server
-	// Esto es necesario para que cuando se carguen dinámicamente desde otro host,
-	// los chunks como __federation_expose_App.js se carguen desde el servidor correcto
-	// Para layouts (shell principal), usar '/'
-	// Para producción, usar 'auto'
-	const isRemote = module.uiConfig.isRemote ?? false;
-	const devPort = module.uiConfig.devPort;
-	let publicPath: string;
-	
-	if (isRemote && devPort && !isProduction) {
-		// Para módulos remotos en desarrollo, usar URL completa del dev server
-		// Esto aplica incluso si también son isHost (pueden ejecutarse standalone)
-		publicPath = `'http://localhost:${devPort}/'`;
-	} else if (isLayout) {
-		// Los layouts (shell principal) usan '/' porque son el punto de entrada
-		publicPath = "'/'";
-	} else {
-		publicPath = "'auto'";
-	}
+		// Determinar publicPath correcto
+		// Para módulos remotos (isRemote) en desarrollo, usar URL absoluta del dev server
+		// Esto es necesario para que cuando se carguen dinámicamente desde otro host,
+		// los chunks como __federation_expose_App.js se carguen desde el servidor correcto
+		// Para layouts (shell principal), usar '/'
+		// Para producción, usar 'auto'
+		const isRemote = module.uiConfig.isRemote ?? false;
+		const devPort = module.uiConfig.devPort;
+		let publicPath: string;
 
-	const devServerConfig = `
+		if (isRemote && devPort && !isProduction) {
+			// Para módulos remotos en desarrollo, usar URL completa del dev server
+			// Esto aplica incluso si también son isHost (pueden ejecutarse standalone)
+			publicPath = `'http://localhost:${devPort}/'`;
+		} else if (isLayout) {
+			// Los layouts (shell principal) usan '/' porque son el punto de entrada
+			publicPath = "'/'";
+		} else {
+			publicPath = "'auto'";
+		}
+
+		const devServerConfig = `
     devServer: {
         port: ${module.uiConfig.devPort},
         hot: ${hotReload},
@@ -408,7 +409,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
         ],
     },`;
 
-	return `
+		return `
 ${imports}
 
 export default {

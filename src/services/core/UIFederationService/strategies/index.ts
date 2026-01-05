@@ -8,7 +8,7 @@
  * - Validación de configuración
  */
 
-import type { IFrameworkStrategy, FrameworkInfo } from "./types.js";
+import type { IFrameworkStrategy } from "./types.js";
 
 // Rspack strategies (default para react, vue, vanilla)
 import { ReactRspackStrategy, VueRspackStrategy, VanillaRspackStrategy } from "./rspack/index.js";
@@ -40,21 +40,6 @@ const STRATEGY_MAP: Record<string, IFrameworkStrategy> = {
 };
 
 /**
- * Información de frameworks soportados
- */
-const FRAMEWORK_INFO: FrameworkInfo[] = [
-	{ id: "react", displayName: "React (Rspack)", bundler: "rspack", baseFramework: "react", requiresDevPort: true },
-	{ id: "vue", displayName: "Vue (Rspack)", bundler: "rspack", baseFramework: "vue", requiresDevPort: true },
-	{ id: "vanilla", displayName: "Vanilla JS (Rspack)", bundler: "rspack", baseFramework: "vanilla", requiresDevPort: true },
-	{ id: "vite-react", displayName: "React (Vite)", bundler: "vite", baseFramework: "react", requiresDevPort: true },
-	{ id: "vite-vue", displayName: "Vue (Vite)", bundler: "vite", baseFramework: "vue", requiresDevPort: true },
-	{ id: "vite", displayName: "Vanilla JS (Vite)", bundler: "vite", baseFramework: "vanilla", requiresDevPort: false },
-	{ id: "vite-vanilla", displayName: "Vanilla JS (Vite)", bundler: "vite", baseFramework: "vanilla", requiresDevPort: false },
-	{ id: "astro", displayName: "Astro", bundler: "cli", baseFramework: "astro", requiresDevPort: false },
-	{ id: "stencil", displayName: "Stencil", bundler: "cli", baseFramework: "stencil", requiresDevPort: false },
-];
-
-/**
  * Obtiene la estrategia para un framework específico
  * @param framework Identificador del framework (ej: "react", "vite-react", "astro")
  * @throws Error si el framework no está soportado
@@ -64,10 +49,7 @@ export function getStrategy(framework: string): IFrameworkStrategy {
 
 	if (!strategy) {
 		const supportedFrameworks = Object.keys(STRATEGY_MAP).join(", ");
-		throw new Error(
-			`Framework "${framework}" no soportado. ` +
-			`Opciones disponibles: ${supportedFrameworks}`
-		);
+		throw new Error(`Framework "${framework}" no soportado. ` + `Opciones disponibles: ${supportedFrameworks}`);
 	}
 
 	return strategy;
@@ -85,20 +67,6 @@ export function isFrameworkSupported(framework: string): boolean {
  */
 export function getSupportedFrameworks(): string[] {
 	return Object.keys(STRATEGY_MAP);
-}
-
-/**
- * Obtiene información detallada de todos los frameworks
- */
-export function getFrameworksInfo(): FrameworkInfo[] {
-	return [...FRAMEWORK_INFO];
-}
-
-/**
- * Obtiene información de un framework específico
- */
-export function getFrameworkInfo(framework: string): FrameworkInfo | null {
-	return FRAMEWORK_INFO.find((f) => f.id === framework) || null;
 }
 
 /**
@@ -132,7 +100,3 @@ export function parseFramework(framework: string): { baseFramework: string; bund
 		bundler: "cli",
 	};
 }
-
-// Re-exports
-export type { IFrameworkStrategy, IBuildContext, IBuildResult, BundlerType, FrameworkInfo } from "./types.js";
-export { BaseFrameworkStrategy, BaseRspackStrategy, BaseViteStrategy, BaseCLIStrategy } from "./base-strategy.js";

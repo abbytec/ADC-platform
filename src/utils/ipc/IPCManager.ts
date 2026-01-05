@@ -7,7 +7,7 @@ import { Logger } from "../logger/Logger.js";
 /**
  * Mensaje de IPC para comunicación entre procesos
  */
-export interface IPCMessage {
+interface IPCMessage {
 	/** ID único del mensaje */
 	id: string;
 	/** Tipo de mensaje: 'request' | 'response' | 'error' */
@@ -25,7 +25,7 @@ export interface IPCMessage {
 /**
  * Configuración para crear un servidor IPC
  */
-export interface IPCServerConfig {
+interface IPCServerConfig {
 	moduleName: string;
 	moduleVersion: string;
 	language: string;
@@ -36,7 +36,7 @@ export interface IPCServerConfig {
  * Gestor de comunicación entre procesos mediante named pipes.
  * Compatible con Windows (named pipes) y Unix (Unix domain sockets).
  */
-export class IPCManager {
+class IPCManager {
 	private static readonly PIPE_BASE_PATH = os.platform() === "win32" ? "\\\\.\\pipe\\" : path.join(os.tmpdir(), "adc-platform");
 
 	private servers = new Map<string, net.Server>();

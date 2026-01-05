@@ -95,7 +95,7 @@ function createCppModuleProxy(options: CppModuleOptions): IProvider & IUtility &
  * Loader para módulos C++.
  * Inicia procesos C++ y se comunica con ellos mediante IPC (named pipes).
  */
-export class CppLoader implements IModuleLoader {
+export default class CppLoader implements IModuleLoader {
 	private processes = new Map<string, ChildProcess>();
 	private modules = {
 		provider: [] as (IProvider & IUtility & IService)[],
@@ -322,5 +322,3 @@ export class CppLoader implements IModuleLoader {
 		this.processes.clear();
 	}
 }
-
-export default CppLoader;

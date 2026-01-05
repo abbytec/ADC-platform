@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { build, type InlineConfig } from "vite";
-import { BaseViteStrategy } from "../base-strategy.js";
-import type { IBuildContext, IBuildResult } from "../types.js";
+import { BaseFrameworkStrategy } from "../base-strategy.js";
+import type { BundlerType, IBuildContext, IBuildResult } from "../types.js";
 import aliasGenerator from "../../utils/alias-generator.js";
 import { generateCompleteImportMap } from "../../utils/import-map.js";
 import { copyPublicFiles } from "../../utils/file-operations.js";
@@ -9,7 +9,8 @@ import { copyPublicFiles } from "../../utils/file-operations.js";
 /**
  * Clase base para estrategias Vite
  */
-export abstract class ViteBaseStrategy extends BaseViteStrategy {
+export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
+	readonly bundler: BundlerType = "vite";
 	/**
 	 * Genera la configuración de Vite (no escribe archivo, retorna objeto)
 	 */
@@ -158,7 +159,9 @@ export abstract class ViteBaseStrategy extends BaseViteStrategy {
 				},
 			});
 
-			context.logger?.logOk(`${module.uiConfig.name} [${namespace}] Vite Production Server en http://localhost:${module.uiConfig.devPort}`);
+			context.logger?.logOk(
+				`${module.uiConfig.name} [${namespace}] Vite Production Server en http://localhost:${module.uiConfig.devPort}`
+			);
 
 			return {
 				watcher: {
