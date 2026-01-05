@@ -1,7 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { BaseService } from "../../BaseService.js";
-import { Kernel } from "../../../kernel.js";
 import type { RegisteredUIModule } from "./types.js";
 import type { ImportMap, UIModuleConfig } from "../../../interfaces/modules/IUIModule.js";
 import type { IHttpServerProvider, IHostBasedHttpProvider } from "../../../interfaces/modules/providers/IHttpServer.js";

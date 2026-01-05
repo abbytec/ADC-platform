@@ -39,7 +39,7 @@ export abstract class BaseApp implements IApp {
 	/**
 	 * Lógica de inicialización.
 	 */
-	public async start(kernelKey: symbol): Promise<void> {
+	public async start(_kernelKey: symbol): Promise<void> {
 		// Si la app tiene configuración UI, registrarla en UIFederationService
 		await this.#registerUIModuleIfNeeded();
 	}
@@ -87,7 +87,7 @@ export abstract class BaseApp implements IApp {
 	 */
 	protected getMyService<S>(name: string): S {
 		// Buscar el service en la configuración de esta app
-		const serviceConfig = this.config?.services?.find((s) => s.name === name);
+		const serviceConfig = this.config?.services?.find((s: any) => s.name === name);
 		if (!serviceConfig) {
 			throw new Error(`Service ${name} no está configurado en la app ${this.name}`);
 		}
