@@ -354,16 +354,37 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
 		const imports = this.getImports();
 		const shared = this.buildSharedConfig(usedFrameworks);
 
-		// Layouts cargan remotes, el resto se expone
-		const federationConfig = isLayout
-			? `remotes: ${JSON.stringify(remotes, null, 4)},`
-			: `
+	// Layouts cargan remotes, el resto se expone
+	const federationConfig = isLayout
+		? `remotes: ${JSON.stringify(remotes, null, 4)},`
+		: `
             filename: 'remoteEntry.js',
             exposes: {
                 './App': './src/App${appExtension}',
             },`;
 
-		const devServerConfig = `
+	// Determinar publicPath correcto
+	// Para módulos remotos (isRemote) en desarrollo, usar URL absoluta del dev server
+	// Esto es necesario para que cuando se carguen dinámicamente desde otro host,
+	// los chunks como __federation_expose_App.js se carguen desde el servidor correcto
+	// Para layouts (shell principal), usar '/'
+	// Para producción, usar 'auto'
+	const isRemote = module.uiConfig.isRemote ?? false;
+	const devPort = module.uiConfig.devPort;
+	let publicPath: string;
+	
+	if (isRemote && devPort && !isProduction) {
+		// Para módulos remotos en desarrollo, usar URL completa del dev server
+		// Esto aplica incluso si también son isHost (pueden ejecutarse standalone)
+		publicPath = `'http://localhost:${devPort}/'`;
+	} else if (isLayout) {
+		// Los layouts (shell principal) usan '/' porque son el punto de entrada
+		publicPath = "'/'";
+	} else {
+		publicPath = "'auto'";
+	}
+
+	const devServerConfig = `
     devServer: {
         port: ${module.uiConfig.devPort},
         hot: ${hotReload},
@@ -387,7 +408,7 @@ export abstract class RspackBaseStrategy extends BaseRspackStrategy {
         ],
     },`;
 
-		return `
+	return `
 ${imports}
 
 export default {
@@ -399,7 +420,7 @@ export default {
     },
     output: {
         path: '${normalizeForConfig(path.join(uiOutputBaseDir, module.uiConfig.name))}',
-        publicPath: ${isHost ? "'/'" : "'auto'"},
+        publicPath: ${publicPath},
         uniqueName: '${safeName}',
     },
     resolve: {
