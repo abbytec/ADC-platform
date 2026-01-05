@@ -23,13 +23,6 @@ const STATE_COOKIE_NAME = "oauth_state";
  * - GET /api/auth/callback/:provider - Callback del proveedor OAuth
  * - GET /api/auth/session - Verifica la sesión activa
  * - POST /api/auth/logout - Destruye la sesión
- *
- * Principios SOLID aplicados:
- * - S: Cada clase tiene una única responsabilidad
- * - O: Extensible mediante nuevos OAuth providers
- * - L: Providers intercambiables via IOAuthProvider
- * - I: Interfaces segregadas para cada funcionalidad
- * - D: Depende de abstracciones (IJWTProvider, IOAuthProvider)
  */
 export default class SessionManagerService extends BaseService {
 	public readonly name = "SessionManagerService";
