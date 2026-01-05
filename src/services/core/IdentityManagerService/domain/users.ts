@@ -2,6 +2,7 @@ import { Schema, type Model } from "mongoose";
 import type { User } from "../types.js";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId, hashPassword, verifyPassword } from "../utils/crypto.js";
+import { type AuthVerifierGetter, AuthorizationError, PermissionChecker, Action, Scope } from "../utils/auth-verifier.js";
 
 export const userSchema = new Schema({
 	id: { type: String, required: true, unique: true },
@@ -32,11 +33,20 @@ export const userSchema = new Schema({
 });
 
 export class UserManager {
+	#permissionChecker: PermissionChecker;
+
 	constructor(
 		private readonly userModel: Model<any>,
-		private readonly logger: ILogger
-	) {}
+		private readonly logger: ILogger,
+		getAuthVerifier: AuthVerifierGetter = () => null
+	) {
+		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "UserManager");
+	}
 
+	/**
+	 * Autentica un usuario con username y password
+	 * No requiere token (es el proceso de login)
+	 */
 	async authenticate(username: string, password: string): Promise<User | null> {
 		try {
 			const doc = await this.userModel.findOne({ username });
@@ -57,7 +67,15 @@ export class UserManager {
 		}
 	}
 
-	async createUser(username: string, password: string, roleIds?: string[]): Promise<User> {
+	/**
+	 * Crea un nuevo usuario
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async createUser(username: string, password: string, roleIds?: string[], token?: string): Promise<User> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.WRITE, Scope.USERS);
+		}
+
 		try {
 			const userId = generateId();
 			const user: User = {
@@ -82,7 +100,15 @@ export class UserManager {
 		}
 	}
 
-	async getUser(userId: string): Promise<User | null> {
+	/**
+	 * Obtiene un usuario por ID
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async getUser(userId: string, token?: string): Promise<User | null> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.USERS);
+		}
+
 		try {
 			const doc = await this.userModel.findOne({ id: userId });
 			return doc?.toObject?.() || doc || null;
@@ -92,7 +118,15 @@ export class UserManager {
 		}
 	}
 
-	async getUserByUsername(username: string): Promise<User | null> {
+	/**
+	 * Obtiene un usuario por username
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async getUserByUsername(username: string, token?: string): Promise<User | null> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.USERS);
+		}
+
 		try {
 			const doc = await this.userModel.findOne({ username });
 			return doc?.toObject?.() || doc || null;
@@ -102,7 +136,15 @@ export class UserManager {
 		}
 	}
 
-	async updateUser(userId: string, updates: Partial<User>): Promise<User> {
+	/**
+	 * Actualiza un usuario
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async updateUser(userId: string, updates: Partial<User>, token?: string): Promise<User> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.UPDATE, Scope.USERS);
+		}
+
 		try {
 			updates.updatedAt = new Date();
 			const updated = await this.userModel.findOneAndUpdate({ id: userId }, updates, { new: true });
@@ -114,7 +156,15 @@ export class UserManager {
 		}
 	}
 
-	async deleteUser(userId: string): Promise<void> {
+	/**
+	 * Elimina un usuario
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async deleteUser(userId: string, token?: string): Promise<void> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.DELETE, Scope.USERS);
+		}
+
 		try {
 			await this.userModel.deleteOne({ id: userId });
 			this.logger.logDebug(`Usuario eliminado: ${userId}`);
@@ -124,7 +174,15 @@ export class UserManager {
 		}
 	}
 
-	async getAllUsers(): Promise<User[]> {
+	/**
+	 * Obtiene todos los usuarios
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async getAllUsers(token?: string): Promise<User[]> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.USERS);
+		}
+
 		try {
 			const docs = await this.userModel.find({});
 			return docs.map((d: any) => d.toObject?.() || d);
@@ -138,7 +196,15 @@ export class UserManager {
 	// Métodos de membresía por organización
 	// ─────────────────────────────────────────────────────────────────────────────
 
-	async addOrgMembership(userId: string, orgId: string, roleIds: string[] = []): Promise<User> {
+	/**
+	 * Agrega membresía a una organización
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async addOrgMembership(userId: string, orgId: string, roleIds: string[] = [], token?: string): Promise<User> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.WRITE, Scope.USERS | Scope.ORGANIZATIONS, orgId);
+		}
+
 		try {
 			const updated = await this.userModel.findOneAndUpdate(
 				{ id: userId },
@@ -159,7 +225,15 @@ export class UserManager {
 		}
 	}
 
-	async removeOrgMembership(userId: string, orgId: string): Promise<User> {
+	/**
+	 * Remueve membresía de una organización
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async removeOrgMembership(userId: string, orgId: string, token?: string): Promise<User> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.DELETE, Scope.USERS | Scope.ORGANIZATIONS, orgId);
+		}
+
 		try {
 			const updated = await this.userModel.findOneAndUpdate(
 				{ id: userId },
@@ -178,7 +252,15 @@ export class UserManager {
 		}
 	}
 
-	async getUserOrganizations(userId: string): Promise<string[]> {
+	/**
+	 * Obtiene las organizaciones de un usuario
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async getUserOrganizations(userId: string, token?: string): Promise<string[]> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.USERS | Scope.ORGANIZATIONS);
+		}
+
 		try {
 			const user = await this.userModel.findOne({ id: userId });
 			if (!user) return [];
@@ -189,3 +271,6 @@ export class UserManager {
 		}
 	}
 }
+
+// Re-exportar AuthorizationError para uso externo
+export { AuthorizationError };

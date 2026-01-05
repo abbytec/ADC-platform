@@ -17,6 +17,7 @@ export class ModuleLoader {
 	readonly #servicesPath = path.resolve(this.#basePath, "services");
 
 	readonly #configCache = new Map<string, IModuleConfig>();
+	readonly #envCache = new Map<string, Record<string, string>>();
 
 	readonly #kernelKey: symbol;
 
@@ -29,6 +30,60 @@ export class ModuleLoader {
 
 	public getConfigByPath(modulePath: string): IModuleConfig | undefined {
 		return this.#configCache.get(modulePath);
+	}
+
+	/**
+	 * Obtiene las variables de entorno cargadas para un módulo específico
+	 */
+	public getEnvByPath(modulePath: string): Record<string, string> | undefined {
+		return this.#envCache.get(modulePath);
+	}
+
+	/**
+	 * Lee y parsea un archivo .env sin inyectarlo a process.env
+	 * @param envPath - Ruta al archivo .env
+	 * @returns Un objeto con las variables de entorno parseadas
+	 */
+	public async loadEnvFile(envPath: string): Promise<Record<string, string>> {
+		try {
+			const envContent = await fs.readFile(envPath, "utf-8");
+			const envVars: Record<string, string> = {};
+
+			// Parsear el contenido del archivo .env
+			for (const line of envContent.split("\n")) {
+				const trimmedLine = line.trim();
+
+				// Ignorar líneas vacías y comentarios
+				if (!trimmedLine || trimmedLine.startsWith("#")) {
+					continue;
+				}
+
+				// Buscar el patrón KEY=VALUE
+				const match = trimmedLine.match(/^([^=]+)=(.*)$/);
+				if (match) {
+					const key = match[1].trim();
+					let value = match[2].trim();
+
+					// Remover comillas si existen
+					if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+						value = value.slice(1, -1);
+					}
+
+					envVars[key] = value;
+				}
+			}
+
+			Logger.debug(`[ModuleLoader] Variables de entorno cargadas desde ${envPath}: ${Object.keys(envVars).length} variables`);
+			return envVars;
+		} catch (error: any) {
+			// Si el archivo no existe o no se puede leer, retornar objeto vacío
+			if (error.code === "ENOENT") {
+				Logger.debug(`[ModuleLoader] No se encontró archivo .env en ${envPath}`);
+			} else {
+				Logger.warn(`[ModuleLoader] Error leyendo archivo .env en ${envPath}: ${error.message}`);
+			}
+			return {};
+		}
 	}
 
 	/**
@@ -63,23 +118,26 @@ export class ModuleLoader {
 
 	/**
 	 * Interpola variables de entorno en un objeto de configuración
-	 * Reemplaza ${VAR_NAME} con el valor de process.env.VAR_NAME
+	 * Reemplaza ${VAR_NAME} con el valor de process.env.VAR_NAME o del envVars proporcionado
+	 * @param obj - Objeto a interpolar
+	 * @param envVars - Variables de entorno específicas del módulo (opcionales)
 	 */
-	#interpolateEnvVars(obj: any): any {
+	public interpolateEnvVars(obj: any, envVars?: Record<string, string>): any {
 		if (typeof obj === "string") {
 			return obj.replace(/\$\{([^}]+)\}/g, (_, varName) => {
-				return process.env[varName] || "";
+				// Priorizar variables del módulo, luego process.env
+				return envVars?.[varName] || process.env[varName] || "";
 			});
 		}
 
 		if (Array.isArray(obj)) {
-			return obj.map((item) => this.#interpolateEnvVars(item));
+			return obj.map((item) => this.interpolateEnvVars(item, envVars));
 		}
 
 		if (obj && typeof obj === "object") {
 			const result: any = {};
 			for (const [key, value] of Object.entries(obj)) {
-				result[key] = this.#interpolateEnvVars(value);
+				result[key] = this.interpolateEnvVars(value, envVars);
 			}
 			return result;
 		}
@@ -104,14 +162,11 @@ export class ModuleLoader {
 						const provider = await this.loadProvider(providerConfig);
 						// Pasar null como appName para que NO se registre como dependencia de la app actual
 						// Registrar por el nombre de la clase del provider
-						kernel.registerProvider(provider.name, provider, provider.type, providerConfig, null);
+						kernel.registerProvider(provider.name, provider, providerConfig, null);
 
 						// También registrar por el nombre del módulo/configuración para que sea encontrable
 						if (providerConfig.name !== provider.name) {
-							// Crear una clave única basada en el nombre del módulo
-							const moduleNameKey = `${providerConfig.name}`;
-							// Registrar el provider también por este nombre
-							kernel.registerProvider(moduleNameKey, provider, undefined, providerConfig, null);
+							kernel.registerProvider(providerConfig.name, provider, providerConfig, null);
 						}
 					} catch (error) {
 						const message = `Error cargando provider ${providerConfig.name}: ${error}`;
@@ -149,6 +204,26 @@ export class ModuleLoader {
 						// Clonar la configuración para poder mutarla, ya que el original está congelado
 						const mutableServiceConfig = structuredClone(serviceConfig);
 
+						// PASO 0: Cargar las variables de entorno del servicio primero
+						let serviceEnvVars: Record<string, string> = {};
+						try {
+							const resolved = await VersionResolver.resolveModuleVersion(
+								this.#servicesPath,
+								serviceConfig.name,
+								serviceConfig.version,
+								serviceConfig.language
+							);
+							if (resolved) {
+								// resolved.path ya es el directorio del servicio
+								const envPath = path.join(resolved.path, ".env");
+								Logger.debug(`[ModuleLoader] Intentando cargar .env del servicio desde: ${envPath}`);
+								serviceEnvVars = await this.loadEnvFile(envPath);
+								Logger.debug(`[ModuleLoader] Variables del servicio ${serviceConfig.name}: ${JSON.stringify(Object.keys(serviceEnvVars))}`);
+							}
+						} catch (error) {
+							Logger.warn(`[ModuleLoader] Error cargando variables de entorno del servicio ${serviceConfig.name}: ${error}`);
+						}
+
 						// PRIMERO: Calcular el uniqueKey para verificar si el servicio ya existe
 						// Necesitamos resolver los providers para construir el config correcto
 						let finalProviders = mutableServiceConfig.providers;
@@ -161,7 +236,8 @@ export class ModuleLoader {
 									serviceConfig.language
 								);
 								if (resolved) {
-									const configJsonPath = path.join(path.dirname(resolved.path), "config.json");
+									// resolved.path es el directorio del servicio, no el archivo
+									const configJsonPath = path.join(resolved.path, "config.json");
 									const configContent = await fs.readFile(configJsonPath, "utf-8");
 									const configJson = JSON.parse(configContent);
 									if (configJson.providers && Array.isArray(configJson.providers)) {
@@ -171,6 +247,11 @@ export class ModuleLoader {
 							} catch {
 								// Si no se puede leer, usar el array vacío
 							}
+						}
+
+						// Interpolar las configuraciones de los providers con las variables del servicio
+						if (finalProviders) {
+							finalProviders = this.interpolateEnvVars(finalProviders, serviceEnvVars);
 						}
 
 						// Construir el config que se usará para el uniqueKey
@@ -193,22 +274,30 @@ export class ModuleLoader {
 							for (const providerConfig of mutableServiceConfig.providers) {
 								// Solo cargar si no es global (los globales ya fueron cargados)
 								if (!providerConfig.global) {
+									Logger.debug(`[ModuleLoader] Provider config ANTES de interpolar: ${JSON.stringify(providerConfig)}`);
+									Logger.debug(`[ModuleLoader] Variables disponibles para interpolación: ${JSON.stringify(serviceEnvVars)}`);
+									
+									// Interpolar la configuración del provider con las variables del servicio
+									const interpolatedProviderConfig = this.interpolateEnvVars(providerConfig, serviceEnvVars);
+									Logger.debug(`[ModuleLoader] Provider config DESPUÉS de interpolar: ${JSON.stringify(interpolatedProviderConfig)}`);
+									
 									// Verificar si el provider ya existe
-									if (kernel.hasModule("provider", providerConfig.name, providerConfig.config)) {
-										Logger.debug(`[ModuleLoader] Provider ${providerConfig.name} ya existe, reutilizando`);
-										kernel.addModuleDependency("provider", providerConfig.name, providerConfig.config);
+									if (kernel.hasModule("provider", interpolatedProviderConfig.name, interpolatedProviderConfig.config)) {
+										Logger.debug(`[ModuleLoader] Provider ${interpolatedProviderConfig.name} ya existe, reutilizando`);
+										kernel.addModuleDependency("provider", interpolatedProviderConfig.name, interpolatedProviderConfig.config);
 										continue;
 									}
 									try {
-										const provider = await this.loadProvider(providerConfig);
-										kernel.registerProvider(provider.name, provider, provider.type, providerConfig);
+										// Pasar las variables del servicio al cargar el provider
+										const provider = await this.loadProvider(interpolatedProviderConfig, serviceEnvVars);
+										kernel.registerProvider(provider.name, provider, interpolatedProviderConfig);
 
 										// También registrar por el nombre del módulo/configuración
-										if (providerConfig.name !== provider.name) {
-											kernel.registerProvider(providerConfig.name, provider, undefined, providerConfig);
+										if (interpolatedProviderConfig.name !== provider.name) {
+											kernel.registerProvider(interpolatedProviderConfig.name, provider, interpolatedProviderConfig);
 										}
 									} catch (error) {
-										const message = `Error cargando provider ${providerConfig.name} del servicio ${serviceConfig.name}: ${error}`;
+										const message = `Error cargando provider ${interpolatedProviderConfig.name} del servicio ${serviceConfig.name}: ${error}`;
 										if (modulesConfig.failOnError) throw new Error(message);
 										Logger.warn(message);
 									}
@@ -283,8 +372,10 @@ export class ModuleLoader {
 
 	/**
 	 * Carga un Provider desde su configuración.
+	 * @param config - Configuración del provider
+	 * @param parentEnvVars - Variables de entorno del módulo padre (servicio) que usa este provider
 	 */
-	async loadProvider(config: IModuleConfig): Promise<BaseProvider> {
+	async loadProvider(config: IModuleConfig, parentEnvVars?: Record<string, string>): Promise<BaseProvider> {
 		const language = config.language || "typescript";
 		const version = config.version || "latest";
 
@@ -299,11 +390,20 @@ export class ModuleLoader {
 
 		this.#configCache.set(resolved.path, config);
 
+		// Cargar variables de entorno del módulo si existe .env
+		// resolved.path ya es el directorio del provider
+		const envPath = path.join(resolved.path, ".env");
+		const providerEnvVars = await this.loadEnvFile(envPath);
+
+		// Fusionar variables: prioridad a las del padre (servicio), luego las propias del provider
+		const mergedEnvVars = { ...providerEnvVars, ...parentEnvVars };
+		this.#envCache.set(resolved.path, mergedEnvVars);
+
 		// Obtener el loader correcto
 		const loader = this.#loaderManager.getLoader(language);
 
 		// Interpolar variables de entorno en todas las propiedades del config
-		const interpolatedConfig = this.#interpolateEnvVars(config);
+		const interpolatedConfig = this.interpolateEnvVars(config, mergedEnvVars);
 
 		// Enriquecer config con información del módulo para interoperabilidad
 		// Incluir tanto custom como options y cualquier otra propiedad
@@ -338,11 +438,17 @@ export class ModuleLoader {
 		}
 		this.#configCache.set(resolved.path, config);
 
+		// Cargar variables de entorno del módulo si existe .env
+		// resolved.path ya es el directorio de la utility
+		const envPath = path.join(resolved.path, ".env");
+		const envVars = await this.loadEnvFile(envPath);
+		this.#envCache.set(resolved.path, envVars);
+
 		// Obtener el loader correcto
 		const loader = this.#loaderManager.getLoader(language);
 
 		// Interpolar variables de entorno
-		const interpolatedConfig = this.#interpolateEnvVars(config);
+		const interpolatedConfig = this.interpolateEnvVars(config, envVars);
 
 		// Enriquecer config con información del módulo
 		const enrichedConfig = {
@@ -377,11 +483,17 @@ export class ModuleLoader {
 
 		this.#configCache.set(resolved.path, config);
 
+		// Cargar variables de entorno del módulo si existe .env
+		// resolved.path ya es el directorio del servicio
+		const envPath = path.join(resolved.path, ".env");
+		const envVars = await this.loadEnvFile(envPath);
+		this.#envCache.set(resolved.path, envVars);
+
 		// Obtener el loader correcto
 		const loader = this.#loaderManager.getLoader(language);
 
 		// Interpolar variables de entorno
-		const interpolatedConfig = this.#interpolateEnvVars(config);
+		const interpolatedConfig = this.interpolateEnvVars(config, envVars);
 
 		// Enriquecer config con información del módulo
 		const enrichedConfig = {
@@ -392,6 +504,7 @@ export class ModuleLoader {
 			moduleVersion: resolved.version,
 			language: language,
 			type: interpolatedConfig.type,
+			__modulePath: resolved.path, // Path del módulo para que BaseService.start() lo use
 		};
 
 		// Cargar el módulo (los services reciben kernel + config)

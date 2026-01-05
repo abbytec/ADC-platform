@@ -52,6 +52,8 @@ export class Kernel {
 
 	// Mapa de apps con docker-compose: appName -> directorio
 	readonly #appDockerComposeMap = new Map<string, string>();
+	// Mapa de servicios kernel con docker-compose: serviceName -> directorio
+	readonly #serviceDockerComposeMap = new Map<string, string>();
 	#statusInterval: NodeJS.Timeout | null = null;
 
 	#getRegistry(moduleType: ModuleType): Map<string, IModule> {
@@ -88,7 +90,18 @@ export class Kernel {
 	readonly #appsPath = path.resolve(this.#basePath, "apps");
 
 	#getUniqueKey(name: string, config?: Record<string, any>): string {
-		return `${name}:${JSON.stringify(config || {})}`;
+		if (!config || Object.keys(config).length === 0) {
+			return name;
+		}
+		// Crear hash simple del config para evitar keys muy largas
+		const configStr = JSON.stringify(config);
+		let hash = 0;
+		for (let i = 0; i < configStr.length; i++) {
+			const char = configStr.charCodeAt(i);
+			hash = (hash << 5) - hash + char;
+			hash = hash & hash; // Convertir a 32bit integer
+		}
+		return `${name}#${Math.abs(hash).toString(16)}`;
 	}
 
 	#addModuleToRegistry(
@@ -121,18 +134,21 @@ export class Kernel {
 			// Registrar nuevo módulo
 			registry.set(uniqueKey, instance);
 			refCountMap.set(uniqueKey, 1);
+		}
 
-			if (!nameMap.has(name)) {
-				nameMap.set(name, []);
-			}
-			const keys = nameMap.get(name)!;
+		// Siempre agregar el nombre al nameMap (permite aliases)
+		if (!nameMap.has(name)) {
+			nameMap.set(name, []);
+		}
+		const keys = nameMap.get(name)!;
+		if (!keys.includes(uniqueKey)) {
 			keys.push(uniqueKey);
+		}
 
-			// Contar instancias únicas para el log
-			if (!silent) {
-				const uniqueInstances = new Set(keys.map((k) => registry.get(k))).size;
-				this.#logger.logOk(`${capitalizedModuleType} registrado: ${name} (Instancias únicas: ${uniqueInstances})`);
-			}
+		// Log solo para registro nuevo (no para aliases)
+		if (!alreadyExists && !silent) {
+			const uniqueInstances = new Set(keys.map((k) => registry.get(k))).size;
+			this.#logger.logOk(`${capitalizedModuleType} registrado: ${name} (Instancias únicas: ${uniqueInstances})`);
 		}
 
 		// Registrar la dependencia en la app
@@ -190,19 +206,13 @@ export class Kernel {
 	}
 
 	// --- API Pública del Kernel ---
-	public registerProvider(name: string, instance: IProvider, type: string | undefined, config: IModuleConfig, appName?: string | null): void {
-		const nameUniqueKey = this.#getUniqueKey(name, config.config);
-		this.#addModuleToRegistry("provider", name, nameUniqueKey, instance, appName);
-
-		// Registrar también por tipo (alias) pero sin log
-		if (type && type !== name) {
-			const typeUniqueKey = this.#getUniqueKey(type, config.config);
-			this.#addModuleToRegistry("provider", type, typeUniqueKey, instance, appName, true); // silent = true
-		}
-	}
-
-	#registerModule(moduleType: "utility" | "service", name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
-		const uniqueKey = this.#getUniqueKey(name, config.config);
+	#registerModule(moduleType: ModuleType, name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
+		// Si el nombre de registro es diferente al instance.name, es un alias
+		// En ese caso, usar el nombre del alias para el uniqueKey para que coincida al buscarlo
+		const keyName = name !== instance.name ? name : instance.name;
+		// Para services se usa config.config, para providers/utilities se usa config.custom
+		const configForKey = config.custom || config.config || {};
+		const uniqueKey = this.#getUniqueKey(keyName, configForKey);
 		this.#addModuleToRegistry(moduleType, name, uniqueKey, instance, appName);
 	}
 	#getModule<T>(moduleType: ModuleType, name: string, config?: Record<string, any>): T {
@@ -300,6 +310,10 @@ export class Kernel {
 		return instance;
 	}
 
+	public registerProvider(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
+		this.#registerModule("provider", name, instance, config, appName);
+	}
+
 	public registerUtility(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
 		this.#registerModule("utility", name, instance, config, appName);
 	}
@@ -337,7 +351,6 @@ export class Kernel {
 				this.#appModuleDependencies.set(effectiveAppName, new Set());
 			}
 
-			const instance = registry.get(uniqueKey);
 			const deps = this.#appModuleDependencies.get(effectiveAppName)!;
 
 			// Agregar a las dependencias de la app (solo si no existe ya)
@@ -351,36 +364,19 @@ export class Kernel {
 
 				this.#logger.logDebug(`Dependencia agregada: ${moduleType} ${name} para ${effectiveAppName} (Referencias: ${currentCount + 1})`);
 			}
-
-			// Para providers, también agregar el alias (type) si existe
-			if (moduleType === "provider" && instance) {
-				const provider = instance as IProvider;
-				if (provider.type && provider.type !== name) {
-					const typeKey = this.#getUniqueKey(provider.type, config);
-					if (registry.has(typeKey)) {
-						const typeDepExists = Array.from(deps).some((d) => d.type === moduleType && d.uniqueKey === typeKey);
-						if (!typeDepExists) {
-							deps.add({ type: moduleType, uniqueKey: typeKey });
-							const typeCount = refCountMap.get(typeKey) || 0;
-							refCountMap.set(typeKey, typeCount + 1);
-							this.#logger.logDebug(
-								`Dependencia agregada (alias): ${moduleType} ${provider.type} para ${effectiveAppName} (Referencias: ${
-									typeCount + 1
-								})`
-							);
-						}
-					}
-				}
-			}
 		}
 	}
 
 	/**
-	 * Carga servicios en modo kernel antes de las apps
+	 * Carga servicios en modo kernel antes de las apps.
+	 * kernelMode puede ser:
+	 * - true: prioridad 1 (default)
+	 * - number: prioridad explícita (menor = se carga primero)
+	 * - falsy: no es servicio kernel
 	 */
 	async #loadKernelServices(): Promise<void> {
-		const findKernelServices = async (dir: string): Promise<Array<{ path: string; name: string }>> => {
-			const kernelServices: Array<{ path: string; name: string }> = [];
+		const findKernelServices = async (dir: string): Promise<Array<{ path: string; name: string; configPath: string; priority: number }>> => {
+			const kernelServices: Array<{ path: string; name: string; configPath: string; priority: number }> = [];
 
 			const traverse = async (currentDir: string) => {
 				const entries = await fs.readdir(currentDir, { withFileTypes: true });
@@ -396,19 +392,23 @@ export class Kernel {
 							const configContent = await fs.readFile(configPath, "utf-8");
 							const config = JSON.parse(configContent);
 
-							if (config.kernelMode === true) {
+							// kernelMode: true = prioridad 1, number = prioridad explícita
+							const kernelMode = config.kernelMode;
+							const priority = kernelMode === true ? 1 : typeof kernelMode === "number" ? kernelMode : null;
+
+							if (priority !== null) {
 								// Buscar el archivo index.ts o index.js
 								const indexTs = path.join(fullPath, "index.ts");
 								const indexJs = path.join(fullPath, "index.js");
 
 								try {
 									await fs.access(indexTs);
-									kernelServices.push({ path: indexTs, name: entry.name });
+									kernelServices.push({ path: indexTs, name: entry.name, configPath, priority });
 									continue;
 								} catch {
 									try {
 										await fs.access(indexJs);
-										kernelServices.push({ path: indexJs, name: entry.name });
+										kernelServices.push({ path: indexJs, name: entry.name, configPath, priority });
 										continue;
 									} catch {
 										// No tiene index, continuar buscando en subdirectorios
@@ -426,7 +426,8 @@ export class Kernel {
 			};
 
 			await traverse(dir);
-			return kernelServices;
+			// Ordenar por prioridad (menor = primero)
+			return kernelServices.sort((a, b) => a.priority - b.priority);
 		};
 
 		const kernelServices = await findKernelServices(this.#servicesPath);
@@ -434,8 +435,52 @@ export class Kernel {
 		if (kernelServices.length > 0) {
 			this.#logger.logInfo(`Cargando ${kernelServices.length} servicio(s) en modo kernel...`);
 
-			for (const { path: servicePath, name: serviceName } of kernelServices) {
+			for (const { path: servicePath, name: serviceName, configPath } of kernelServices) {
 				try {
+					// Leer la configuración del servicio
+					const configContent = await fs.readFile(configPath, "utf-8");
+					const serviceConfig = JSON.parse(configContent);
+
+					// Ejecutar docker-compose si existe
+					const serviceDir = path.dirname(servicePath);
+					try {
+						await this.#startDockerComposeForService(serviceDir, serviceName);
+					} catch {
+						this.#logger.logDebug(`docker-compose no disponible o no configurado para ${serviceName}`);
+					}
+
+					// Cargar variables de entorno del servicio antes de cargar providers
+					const envPath = path.join(serviceDir, ".env");
+					const serviceEnvVars = await Kernel.moduleLoader.loadEnvFile(envPath);
+
+					// Cargar providers del servicio kernel
+					if (serviceConfig.providers && Array.isArray(serviceConfig.providers)) {
+						for (const providerConfig of serviceConfig.providers) {
+							this.#logger.logDebug(`[Kernel] Provider config ANTES: ${JSON.stringify(providerConfig)}`);
+							
+							// Verificar si el provider ya existe
+							if (this.hasModule("provider", providerConfig.name, providerConfig.config)) {
+								this.#logger.logDebug(`Provider ${providerConfig.name} ya existe, reutilizando`);
+								continue;
+							}
+							try {
+								// Pasar las variables del servicio al cargar el provider
+								const provider = await Kernel.moduleLoader.loadProvider(providerConfig, serviceEnvVars);
+								// El loader ya llama a setKernelKey y start internamente
+								this.registerProvider(provider.name, provider, providerConfig, null);
+
+								// También registrar por el nombre del módulo si es diferente
+								if (providerConfig.name !== provider.name) {
+									this.registerProvider(providerConfig.name, provider, providerConfig, null);
+								}
+							} catch (error: any) {
+								this.#logger.logError(
+									`Error cargando provider ${providerConfig.name} para servicio kernel ${serviceName}: ${error.message}`
+								);
+							}
+						}
+					}
+
 					// Cargar el módulo directamente (sin versionado)
 					const serviceModule = await import(servicePath);
 					const ServiceClass = serviceModule.default;
@@ -444,17 +489,25 @@ export class Kernel {
 						throw new Error(`No se encontró export default en ${servicePath}`);
 					}
 
-					// Crear instancia del servicio
-					const serviceInstance: BaseService = new ServiceClass(this, {});
+					// Crear instancia del servicio con su configuración
+					const serviceInstance: BaseService = new ServiceClass(this, {
+						name: serviceName,
+						providers: serviceConfig.providers || [],
+						utilities: serviceConfig.utilities || [],
+						__modulePath: serviceDir,
+					});
 					serviceInstance.setKernelKey(Kernel.#kernelKey);
 					await serviceInstance.start(Kernel.#kernelKey);
 
-					// Registrar el servicio
+					// Registrar el servicio con su configuración para que el uniqueKey coincida
 					this.registerService(serviceName, serviceInstance, {
 						name: serviceName,
 						version: "1.0.0",
 						language: "typescript",
 						global: true,
+						config: {
+							__providers: serviceConfig.providers || [],
+						},
 					});
 
 					this.#logger.logOk(`Servicio en modo kernel cargado: ${serviceName}`);
@@ -501,7 +554,6 @@ export class Kernel {
 			const uCount = new Set(this.#moduleStore.utility.registry.values()).size;
 			const sCount = new Set(this.#moduleStore.service.registry.values()).size;
 			this.#logger.logInfo(`Providers: ${pCount} - Utilities: ${uCount} - Services: ${sCount}`);
-
 			const kernelState = {
 				apps: Array.from(this.#appsRegistry.keys()),
 				providers: {
@@ -841,9 +893,8 @@ export class Kernel {
 		switch (moduleType) {
 			case "provider": {
 				const providerModule: BaseProvider = await Kernel.moduleLoader.loadProvider(config);
-				providerModule.setKernelKey(Kernel.#kernelKey);
-				await providerModule.start?.(Kernel.#kernelKey);
-				this.registerProvider(providerModule.name, providerModule, providerModule.type, config);
+				// El loader ya llama a setKernelKey y start internamente
+				this.registerProvider(providerModule.name, providerModule, config);
 				module = providerModule;
 				break;
 			}
@@ -855,8 +906,7 @@ export class Kernel {
 			}
 			case "service": {
 				const serviceModule: BaseService = await Kernel.moduleLoader.loadService(config, this);
-				serviceModule.setKernelKey(Kernel.#kernelKey);
-				await serviceModule.start?.(Kernel.#kernelKey);
+				// El loader ya llama a setKernelKey y start internamente
 				this.registerService(serviceModule.name, serviceModule, config);
 				module = serviceModule;
 				break;
@@ -876,7 +926,7 @@ export class Kernel {
 
 			const module = await this.#loadAndRegisterSpecificModule(moduleType, config);
 
-			const uniqueKey = this.#getUniqueKey(module.name, config.config);
+			const uniqueKey = this.#getUniqueKey(module.name, config.custom);
 			const fileMap = this.#getFileToUniqueKeyMap(moduleType);
 			fileMap.set(filePath, uniqueKey);
 		} catch (e) {
@@ -903,7 +953,7 @@ export class Kernel {
 		this.#currentLoadingContext = instanceName;
 		try {
 			await app.loadModulesFromConfig();
-			await app.start?.();
+			await app.start?.(Kernel.#kernelKey);
 		} finally {
 			// Limpiar contexto de carga
 			this.#currentLoadingContext = null;
@@ -976,48 +1026,65 @@ export class Kernel {
 	}
 
 	/**
+	 * Ejecuta docker-compose.yml si existe en el directorio especificado
+	 */
+	async #runDockerCompose(dir: string, name: string, map: Map<string, string>): Promise<void> {
+		const dockerComposeFile = path.join(dir, "docker-compose.yml");
+		await fs.stat(dockerComposeFile);
+
+		this.#logger.logInfo(`Iniciando servicios Docker para ${name}...`);
+
+		const { spawn } = await import("node:child_process");
+		const docker = spawn("docker", ["compose", "-f", dockerComposeFile, "up", "-d"], {
+			cwd: dir,
+			stdio: "pipe",
+		});
+
+		return new Promise((resolve, reject) => {
+			let output = "";
+			docker.stdout?.on("data", (data) => {
+				output += data.toString();
+			});
+			docker.stderr?.on("data", (data) => {
+				output += data.toString();
+			});
+			docker.on("close", (code) => {
+				if (code === 0) {
+					this.#logger.logOk(`Servicios Docker iniciados para ${name}`);
+					map.set(name, dir);
+					// Esperar a que los servicios estén listos
+					setTimeout(() => resolve(), 3000);
+				} else {
+					this.#logger.logWarn(`docker-compose falló con código ${code}`);
+					reject(new Error(`docker-compose exit code: ${code}`));
+				}
+			});
+		});
+	}
+
+	/**
 	 * Ejecuta docker-compose.yml si existe en el directorio de la app
 	 */
 	async #startDockerCompose(appDir: string, appName: string): Promise<void> {
-		const dockerComposeFile = path.join(appDir, "docker-compose.yml");
 		try {
-			await fs.stat(dockerComposeFile);
-
-			// Archivo existe, ejecutar docker-compose up -d
-			this.#logger.logInfo(`Iniciando servicios Docker para app en ${appDir}...`);
-
-			const { spawn } = await import("node:child_process");
-			const docker = spawn("docker", ["compose", "-f", dockerComposeFile, "up", "-d"], {
-				cwd: appDir,
-				stdio: "pipe",
-			});
-
-			return new Promise((resolve, reject) => {
-				let output = "";
-				docker.stdout?.on("data", (data) => {
-					output += data.toString();
-				});
-				docker.stderr?.on("data", (data) => {
-					output += data.toString();
-				});
-				docker.on("close", (code) => {
-					if (code === 0) {
-						this.#logger.logOk("Servicios Docker iniciados");
-						// Registrar que esta app tiene docker-compose
-						this.#appDockerComposeMap.set(appName, appDir);
-						// Esperar a que los servicios estén listos
-						setTimeout(() => resolve(), 3000);
-					} else {
-						this.#logger.logWarn(`docker-compose falló con código ${code}`);
-						reject(new Error(`docker-compose exit code: ${code}`));
-					}
-				});
-			});
+			await this.#runDockerCompose(appDir, appName, this.#appDockerComposeMap);
 		} catch (error: any) {
 			if (error.code !== "ENOENT") {
 				this.#logger.logWarn(`No se pudo ejecutar docker-compose: ${error.message}`);
 			}
-			// Si no existe el archivo, simplemente continuar
+		}
+	}
+
+	/**
+	 * Ejecuta docker-compose.yml si existe en el directorio del servicio kernel
+	 */
+	async #startDockerComposeForService(serviceDir: string, serviceName: string): Promise<void> {
+		try {
+			await this.#runDockerCompose(serviceDir, serviceName, this.#serviceDockerComposeMap);
+		} catch (error: any) {
+			if (error.code !== "ENOENT") {
+				this.#logger.logWarn(`No se pudo ejecutar docker-compose para servicio: ${error.message}`);
+			}
 		}
 	}
 
@@ -1263,15 +1330,6 @@ export class Kernel {
 				this.#logger.logDebug(`Removiendo ${capitalizedModuleType}: ${module.name}`);
 				await module.stop?.(Kernel.#kernelKey);
 				registry.delete(uniqueKey);
-
-				if (moduleType === "provider") {
-					const provider = module as IProvider;
-					if (provider.type && provider.type !== provider.name) {
-						const typeKey = this.#getUniqueKey(provider.type, Kernel.moduleLoader.getConfigByPath(path.dirname(filePath))?.config);
-						const providerRegistry = this.#getRegistry("provider");
-						providerRegistry.delete(typeKey);
-					}
-				}
 
 				const nameMap = this.#getNameMap(moduleType);
 				const keys = nameMap.get(module.name);

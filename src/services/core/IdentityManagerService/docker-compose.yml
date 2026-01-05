@@ -1,17 +1,15 @@
-version: '3.8'
-
 services:
   mongo:
     image: mongo:latest
-    container_name: adc-user-profile-mongo
+    container_name: adc-identity-mongo
     ports:
       - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: password
-      MONGO_INITDB_DB: adc-user-profile-mongo
+      MONGO_INITDB_DB: adc-identity
     volumes:
-      - mongo_data:/data/db
+      - identity_mongo_data:/data/db
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
@@ -21,9 +19,8 @@ services:
       - adc-network
 
 volumes:
-  mongo_data:
+  identity_mongo_data:
 
 networks:
   adc-network:
     driver: bridge
-

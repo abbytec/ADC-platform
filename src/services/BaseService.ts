@@ -15,6 +15,7 @@ export interface IService extends IModule, ILifecycle {}
  */
 export abstract class BaseService implements IService {
 	private kernelKey?: symbol;
+	private isInitialized = false; // Flag para prevenir múltiples inicializaciones
 	/** Nombre único del service */
 	abstract readonly name: string;
 
@@ -41,13 +42,23 @@ export abstract class BaseService implements IService {
 	 */
 	@OnlyKernel()
 	public async start(_kernelKey: symbol): Promise<void> {
+		// Prevenir múltiples inicializaciones
+		if (this.isInitialized) {
+			this.logger.logDebug(`${this.name} ya está inicializado, saltando start()`);
+			return;
+		}
+
 		// Si ModuleLoader pasó el path real, usarlo; si no, calcular manualmente
 		const serviceDir = this.options?.__modulePath || this.getServiceDir();
 		const modulesConfigPath = path.join(serviceDir, "config.json");
+		const envPath = path.join(serviceDir, ".env");
 
 		this.logger.logInfo(`Inicializando ${this.name}...`);
 
 		try {
+			// Cargar variables de entorno del servicio usando ModuleLoader
+			const serviceEnvVars = await Kernel.moduleLoader.loadEnvFile(envPath);
+
 			let baseConfig: Partial<IModuleConfig> = {};
 			try {
 				const configContent = await fs.readFile(modulesConfigPath, "utf-8");
@@ -58,22 +69,28 @@ export abstract class BaseService implements IService {
 
 			// Determinar qué providers usar:
 			// - Si la app proporciona providers (options.providers), usar esos
-			// - Si no, cargar los del modules.json (dependencias por defecto del servicio)
+			// - Si no, cargar los del config.json del servicio
 			let providersToUse = this.options?.providers || [];
 
 			if (!providersToUse || providersToUse.length === 0) {
-				// No hay providers de la app, usar los del modules.json
+				// No hay providers de la app, usar los del config.json del servicio
 				if (baseConfig.providers && Array.isArray(baseConfig.providers)) {
-					providersToUse = baseConfig.providers;
-					// Cargar estos providers
-					for (const providerConfig of baseConfig.providers) {
+					// Interpolar las variables de entorno en los providers usando ModuleLoader
+					const interpolatedProviders = baseConfig.providers.map((p) =>
+						Kernel.moduleLoader.interpolateEnvVars(p, serviceEnvVars)
+					);
+
+					providersToUse = interpolatedProviders;
+					
+					// Cargar estos providers con las variables de entorno del servicio
+					for (const providerConfig of interpolatedProviders) {
 						try {
-							const provider = await Kernel.moduleLoader.loadProvider(providerConfig);
-							this.kernel.registerProvider(provider.name, provider, provider.type, providerConfig);
+							const provider = await Kernel.moduleLoader.loadProvider(providerConfig, serviceEnvVars);
+							this.kernel.registerProvider(provider.name, provider, providerConfig);
 
 							// También registrar por el nombre del módulo/configuración
 							if (providerConfig.name !== provider.name) {
-								this.kernel.registerProvider(providerConfig.name, provider, undefined, providerConfig);
+								this.kernel.registerProvider(providerConfig.name, provider, providerConfig);
 							}
 
 							// Agregar como dependencia de la app actual
@@ -121,7 +138,10 @@ export abstract class BaseService implements IService {
 				utilities: utilitiesToLoad,
 			} as IModuleConfig;
 
-			this.logger.logOk(`Inicialización completada`);
+			// Marcar como inicializado
+			this.isInitialized = true;
+
+			this.logger.logOk(`Inicialización base completada`);
 		} catch (error) {
 			this.logger.logError(`Error durante inicialización: ${error}`);
 			throw error;
@@ -162,9 +182,41 @@ export abstract class BaseService implements IService {
 	}
 
 	/**
+	 * Obtiene un provider que fue cargado por este servicio según su configuración.
+	 * Esto asegura que se obtiene la instancia correcta cuando hay múltiples providers del mismo tipo.
+	 * @param name - Nombre del provider
+	 * @returns La instancia del provider
+	 */
+	protected getMyProvider<P>(name: string): P {
+		// Buscar el provider en la configuración de este servicio
+		const providerConfig = this.config?.providers?.find((p) => p.name === name);
+		if (!providerConfig) {
+			throw new Error(`Provider ${name} no está configurado en el servicio ${this.name}`);
+		}
+
+		// El kernel usa config.custom para generar el uniqueKey
+		return this.kernel.getProvider<P>(name, providerConfig.custom);
+	}
+
+	/**
 	 * Obtener el utility del kernel
 	 */
 	protected getUtility<M>(name: string, config?: Record<string, any>): M {
 		return this.kernel.getUtility<M>(name, config);
+	}
+
+	/**
+	 * Obtiene una utility que fue cargada por este servicio según su configuración.
+	 * @param name - Nombre de la utility
+	 * @returns La instancia de la utility
+	 */
+	protected getMyUtility<U>(name: string): U {
+		// Buscar la utility en la configuración de este servicio
+		const utilityConfig = this.config?.utilities?.find((u) => u.name === name);
+		if (!utilityConfig) {
+			throw new Error(`Utility ${name} no está configurada en el servicio ${this.name}`);
+		}
+		// El kernel usa config.custom para generar el uniqueKey
+		return this.kernel.getUtility<U>(name, utilityConfig.custom);
 	}
 }

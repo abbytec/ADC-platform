@@ -35,8 +35,8 @@ export class TypeScriptLoader implements IModuleLoader {
 		try {
 			providerInstance.setKernelKey(this.#kernelKey);
 			await providerInstance.start(this.#kernelKey);
-		} catch {
-			// No-op
+		} catch (error: any) {
+			Logger.warn(`[TypeScriptLoader] Error iniciando provider ${providerInstance.name}: ${error.message}`);
 		}
 		return providerInstance;
 	}
@@ -53,8 +53,8 @@ export class TypeScriptLoader implements IModuleLoader {
 		try {
 			serviceInstance.setKernelKey(this.#kernelKey);
 			await serviceInstance.start(this.#kernelKey);
-		} catch {
-			// No-op
+		} catch (error: any) {
+			Logger.warn(`[TypeScriptLoader] Error iniciando service ${serviceInstance.name}: ${error.message}`);
 		}
 		return serviceInstance;
 	}

@@ -3,15 +3,16 @@ import type { User } from "../types.js";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId, hashPassword, generateRandomCredentials } from "../utils/crypto.js";
 import { SystemRole } from "./roles.js";
-
+import { OnlyKernel } from "../../../../utils/decorators/OnlyKernel.js";
+/* tslint:disable:no-unused-variable */
 export class SystemManager {
 	#systemUser: User | null = null;
-
 	constructor(
 		private readonly userModel: Model<any>,
 		private readonly roleModel: Model<any>,
 		private readonly groupModel: Model<any>,
-		private readonly logger: ILogger
+		private readonly logger: ILogger,
+		private readonly kernelKey: symbol
 	) {}
 
 	async initializeSystemUser(): Promise<void> {
@@ -48,14 +49,21 @@ export class SystemManager {
 		}
 	}
 
-	async getSystemUser(): Promise<User> {
+	/**
+	 * Obtiene el usuario SYSTEM.
+	 * REQUIERE kernelKey - solo código con acceso al kernel puede obtener el usuario SYSTEM.
+	 * @param kernelKey - La clave del kernel para verificar acceso privilegiado
+	 */
+	@OnlyKernel()
+	async getSystemUser(_kernelKey: symbol): Promise<User> {
+		void this.kernelKey; // Para evitar el error de typescript (no ts-lint) unused variable
 		if (!this.#systemUser) {
 			throw new Error("Usuario SYSTEM no está disponible");
 		}
 		return this.#systemUser;
 	}
-
-	clearSystemUser(): void {
+	@OnlyKernel()
+	clearSystemUser(_kernelKey: symbol): void {
 		this.#systemUser = null;
 	}
 

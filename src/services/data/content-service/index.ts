@@ -12,10 +12,10 @@ export default class ContentService extends BaseService {
 	private mongoProvider!: IMongoProvider;
 
 	async start(kernelKey: symbol): Promise<void> {
-		super.start(kernelKey);
+		await super.start(kernelKey);
 		this.logger.logInfo("Iniciando servicio de contenido...");
 
-		this.mongoProvider = this.kernel.getProvider<IMongoProvider>("object-provider");
+		this.mongoProvider = this.getMyProvider<IMongoProvider>("object/mongo");
 
 		await this.waitForMongo();
 
@@ -44,7 +44,7 @@ export default class ContentService extends BaseService {
 	}
 
 	private async registerRESTRoutes(): Promise<void> {
-		const httpProvider = this.kernel.getProvider<IHostBasedHttpProvider>("http-server-provider");
+		const httpProvider = this.kernel.getProvider<IHostBasedHttpProvider>("fastify-server");
 
 		if (!httpProvider) {
 			this.logger.logWarn("[ContentService] No se pudo obtener httpProvider");

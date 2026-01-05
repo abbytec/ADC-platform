@@ -9,9 +9,14 @@ import { SystemManager } from "./domain/system.js";
 import { RegionManager, regionSchema } from "./domain/regions.js";
 import { OrgManager, organizationSchema } from "./domain/organizations.js";
 import { PermissionManager } from "./domain/permissions.js";
+import { type IAuthVerifier, type AuthVerifierGetter } from "./utils/auth-verifier.js";
+import type SessionManagerService from "../../security/SessionManagerService/index.js";
 
 // Re-exportar SystemRole para compatibilidad
 export { SystemRole } from "./domain/roles.js";
+// Re-exportar AuthorizationError
+export { AuthorizationError } from "./utils/auth-verifier.js";
+export { type IAuthVerifier } from "./utils/auth-verifier.js";
 
 /**
  * IdentityManagerService - Gestión centralizada de identidades, usuarios, roles y grupos
@@ -27,6 +32,10 @@ export { SystemRole } from "./domain/roles.js";
  * **Multi-tenant:**
  * Soporta múltiples organizaciones con bases de datos aisladas.
  * Usa forOrg(slug, mode) para obtener managers con scope de organización.
+ *
+ * **Autenticación:**
+ * Los managers aceptan un parámetro `token` opcional en cada método.
+ * Si se proporciona, se verifican los permisos del usuario antes de ejecutar.
  */
 export default class IdentityManagerService extends BaseService {
 	public readonly name = "IdentityManagerService";
@@ -40,6 +49,9 @@ export default class IdentityManagerService extends BaseService {
 	#orgManager: OrgManager | null = null;
 	#permissionManager: PermissionManager | null = null;
 
+	// AuthVerifier para verificar tokens y permisos
+	#authVerifier: IAuthVerifier | null = null;
+
 	// MongoDB provider
 	#mongoProvider: IMongoProvider | null = null;
 
@@ -50,11 +62,16 @@ export default class IdentityManagerService extends BaseService {
 		super(kernel, options);
 	}
 
+	/**
+	 * Getter para el AuthVerifier (usado por los managers)
+	 */
+	#getAuthVerifier: AuthVerifierGetter = () => this.#authVerifier;
+
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
 
 		try {
-			this.#mongoProvider = this.kernel.getProvider<IMongoProvider>("mongo");
+			this.#mongoProvider = this.getMyProvider<IMongoProvider>("object/mongo");
 
 			// Esperar a que MongoDB esté conectado (máximo 10 segundos)
 			const maxWaitTime = 10000;
@@ -78,12 +95,12 @@ export default class IdentityManagerService extends BaseService {
 			this.#regionManager = new RegionManager(RegionModel, this.logger);
 			await this.#regionManager.initialize();
 
-			// Inicializar otros managers
+			// Inicializar otros managers con el getter de AuthVerifier
 			this.#orgManager = new OrgManager(OrganizationModel, this.#regionManager, this.logger);
-			this.#userManager = new UserManager(UserModel, this.logger);
-			this.#roleManager = new RoleManager(RoleModel, this.logger);
-			this.#groupManager = new GroupManager(GroupModel, UserModel, this.logger);
-			this.#systemManager = new SystemManager(UserModel, RoleModel, GroupModel, this.logger);
+			this.#userManager = new UserManager(UserModel, this.logger, this.#getAuthVerifier);
+			this.#roleManager = new RoleManager(RoleModel, this.logger, this.#getAuthVerifier);
+			this.#groupManager = new GroupManager(GroupModel, UserModel, this.logger, this.#getAuthVerifier);
+			this.#systemManager = new SystemManager(UserModel, RoleModel, GroupModel, this.logger, kernelKey);
 
 			// Inicializar roles predefinidos y usuario SYSTEM en BD local
 			await this.#roleManager.initializePredefinedRoles();
@@ -99,11 +116,44 @@ export default class IdentityManagerService extends BaseService {
 				60000 // TTL 1 minuto
 			);
 
-			this.logger.logOk("IdentityManagerService iniciado con soporte multi-tenant");
+			// Crear el AuthVerifier ahora que tenemos todos los componentes
+			this.#authVerifier = this.#createAuthVerifier();
+
+			this.logger.logOk("IdentityManagerService iniciado con soporte multi-tenant y autenticación");
 		} catch (error: any) {
 			this.logger.logError("MongoDB no está disponible. IdentityManagerService requiere MongoDB.");
 			throw new Error(`IdentityManagerService requiere MongoDB: ${error.message}`);
 		}
+	}
+
+	/**
+	 * Crea el AuthVerifier que usa SessionManagerService y PermissionManager
+	 */
+	#createAuthVerifier(): IAuthVerifier {
+		return {
+			verifyToken: async (token: string) => {
+				let sessionService: SessionManagerService;
+				try {
+					sessionService = this.kernel.getService<SessionManagerService>("SessionManagerService");
+				} catch {
+					return { valid: false, error: "SessionManagerService no disponible" };
+				}
+
+				const result = await sessionService.verifyToken(token);
+				if (!result.valid || !result.session) {
+					return { valid: false, error: result.error || "Token inválido" };
+				}
+
+				return { valid: true, userId: result.session.user.id };
+			},
+
+			hasPermission: async (userId: string, action: number, scope: number, orgId?: string) => {
+				if (!this.#permissionManager) {
+					return false;
+				}
+				return this.#permissionManager.hasPermission(userId, action, scope, orgId);
+			},
+		};
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────────
@@ -111,37 +161,37 @@ export default class IdentityManagerService extends BaseService {
 	// ─────────────────────────────────────────────────────────────────────────────
 
 	get users(): UserManager {
-		if (!this.#userManager) throw new Error("IdentityManagerService not initialized");
+		if (!this.#userManager) throw new Error("UserManager not initialized");
 		return this.#userManager;
 	}
 
 	get roles(): RoleManager {
-		if (!this.#roleManager) throw new Error("IdentityManagerService not initialized");
+		if (!this.#roleManager) throw new Error("RoleManager not initialized");
 		return this.#roleManager;
 	}
 
 	get groups(): GroupManager {
-		if (!this.#groupManager) throw new Error("IdentityManagerService not initialized");
+		if (!this.#groupManager) throw new Error("GroupManager not initialized");
 		return this.#groupManager;
 	}
 
 	get system(): SystemManager {
-		if (!this.#systemManager) throw new Error("IdentityManagerService not initialized");
+		if (!this.#systemManager) throw new Error("SystemManager not initialized");
 		return this.#systemManager;
 	}
 
 	get organizations(): OrgManager {
-		if (!this.#orgManager) throw new Error("IdentityManagerService not initialized");
+		if (!this.#orgManager) throw new Error("OrgManager not initialized");
 		return this.#orgManager;
 	}
 
 	get regions(): RegionManager {
-		if (!this.#regionManager) throw new Error("IdentityManagerService not initialized");
+		if (!this.#regionManager) throw new Error("RegionManager not initialized");
 		return this.#regionManager;
 	}
 
 	get permissions(): PermissionManager {
-		if (!this.#permissionManager) throw new Error("IdentityManagerService not initialized");
+		if (!this.#permissionManager) throw new Error("PermissionManager not initialized");
 		return this.#permissionManager;
 	}
 
@@ -203,10 +253,10 @@ export default class IdentityManagerService extends BaseService {
 		const OrgRoleModel = this.#mongoProvider!.createModelForDb(orgDbConnection, "Role", roleSchema);
 		const OrgGroupModel = this.#mongoProvider!.createModelForDb(orgDbConnection, "Group", groupSchema);
 
-		// Crear managers con scope de organización
-		const orgUserManager = new UserManager(OrgUserModel, this.logger);
-		const orgRoleManager = new RoleManager(OrgRoleModel, this.logger);
-		const orgGroupManager = new GroupManager(OrgGroupModel, OrgUserModel, this.logger);
+		// Crear managers con scope de organización (con AuthVerifier)
+		const orgUserManager = new UserManager(OrgUserModel, this.logger, this.#getAuthVerifier);
+		const orgRoleManager = new RoleManager(OrgRoleModel, this.logger, this.#getAuthVerifier);
+		const orgGroupManager = new GroupManager(OrgGroupModel, OrgUserModel, this.logger, this.#getAuthVerifier);
 
 		const managers: OrgScopedManagers = {
 			org,
@@ -251,7 +301,8 @@ export default class IdentityManagerService extends BaseService {
 		this.#orgConnectionCache.clear();
 
 		await super.stop(kernelKey);
-		this.#systemManager?.clearSystemUser();
+		this.#systemManager?.clearSystemUser(kernelKey);
+		this.#authVerifier = null;
 
 		this.logger.logOk("IdentityManagerService detenido");
 	}

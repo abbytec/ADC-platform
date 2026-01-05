@@ -57,19 +57,7 @@ export default class UIFederationService extends BaseService {
 
 		try {
 			// Usamos Fastify con host-based routing en todos los entornos
-			const providerName = "fastify-server";
-			this.logger.logInfo(`Cargando ${providerName}...`);
-
-			const providerConfig = {
-				name: providerName,
-				version: "latest",
-				language: "typescript",
-			};
-
-			const provider = await Kernel.moduleLoader.loadProvider(providerConfig);
-			this.kernel.registerProvider(provider.name, provider, provider.type, providerConfig, null);
-
-			this.#httpProvider = this.getProvider<any>(providerName);
+			this.#httpProvider = this.getProvider<any>("fastify-server");
 		} catch (error: any) {
 			this.logger.logError(`Error cargando HttpServerProvider: ${error.message}`);
 			throw error;

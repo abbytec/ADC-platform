@@ -1,0 +1,13 @@
+{
+	"name": "SessionManagerService",
+	"version": "1.0.0",
+	"kernelMode": 2,
+	"providers": [
+		{
+			"name": "security/jwt",
+			"custom": {
+				"jwtSecret": "${JWT_SECRET}"
+			}
+		}
+	]
+}

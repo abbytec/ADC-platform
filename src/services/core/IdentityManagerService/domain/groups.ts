@@ -2,6 +2,7 @@ import { Schema, type Model } from "mongoose";
 import type { Group, User } from "../types.js";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "../utils/crypto.js";
+import { type AuthVerifierGetter, PermissionChecker, Action, Scope } from "../utils/auth-verifier.js";
 
 export const groupSchema = new Schema({
 	id: { type: String, required: true, unique: true },
@@ -21,13 +22,26 @@ export const groupSchema = new Schema({
 });
 
 export class GroupManager {
+	#permissionChecker: PermissionChecker;
+
 	constructor(
 		private readonly groupModel: Model<any>,
 		private readonly userModel: Model<any>,
-		private readonly logger: ILogger
-	) {}
+		private readonly logger: ILogger,
+		getAuthVerifier: AuthVerifierGetter = () => null
+	) {
+		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "GroupManager");
+	}
 
-	async createGroup(name: string, description: string, roleIds?: string[]): Promise<Group> {
+	/**
+	 * Crea un grupo
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async createGroup(name: string, description: string, roleIds?: string[], token?: string): Promise<Group> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.WRITE, Scope.GROUPS);
+		}
+
 		try {
 			const groupId = generateId();
 			const group: Group = {
@@ -48,7 +62,15 @@ export class GroupManager {
 		}
 	}
 
-	async getGroup(groupId: string): Promise<Group | null> {
+	/**
+	 * Obtiene un grupo por ID
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async getGroup(groupId: string, token?: string): Promise<Group | null> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.GROUPS);
+		}
+
 		try {
 			const doc = await this.groupModel.findOne({ id: groupId });
 			return doc?.toObject?.() || doc || null;
@@ -58,7 +80,15 @@ export class GroupManager {
 		}
 	}
 
-	async updateGroup(groupId: string, updates: Partial<Group>): Promise<Group> {
+	/**
+	 * Actualiza un grupo
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async updateGroup(groupId: string, updates: Partial<Group>, token?: string): Promise<Group> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.UPDATE, Scope.GROUPS);
+		}
+
 		try {
 			updates.updatedAt = new Date();
 			const updated = await this.groupModel.findOneAndUpdate({ id: groupId }, updates, { new: true });
@@ -71,7 +101,15 @@ export class GroupManager {
 		}
 	}
 
-	async deleteGroup(groupId: string): Promise<void> {
+	/**
+	 * Elimina un grupo
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async deleteGroup(groupId: string, token?: string): Promise<void> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.DELETE, Scope.GROUPS);
+		}
+
 		try {
 			// Remover groupId de todos los usuarios que pertenecen a este grupo
 			await this.userModel.updateMany({ groupIds: groupId }, { $pull: { groupIds: groupId } });
@@ -84,7 +122,15 @@ export class GroupManager {
 		}
 	}
 
-	async getAllGroups(): Promise<Group[]> {
+	/**
+	 * Obtiene todos los grupos
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async getAllGroups(token?: string): Promise<Group[]> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.GROUPS);
+		}
+
 		try {
 			const docs = await this.groupModel.find({});
 			return docs.map((d: any) => d.toObject?.() || d);
@@ -96,8 +142,13 @@ export class GroupManager {
 
 	/**
 	 * Agrega un usuario a un grupo (solo modifica user.groupIds)
+	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
-	async addUserToGroup(userId: string, groupId: string): Promise<void> {
+	async addUserToGroup(userId: string, groupId: string, token?: string): Promise<void> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.WRITE, Scope.GROUPS | Scope.USERS);
+		}
+
 		try {
 			const group = await this.groupModel.findOne({ id: groupId });
 			if (!group) throw new Error(`Grupo ${groupId} no encontrado`);
@@ -118,8 +169,13 @@ export class GroupManager {
 
 	/**
 	 * Remueve un usuario de un grupo (solo modifica user.groupIds)
+	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
-	async removeUserFromGroup(userId: string, groupId: string): Promise<void> {
+	async removeUserFromGroup(userId: string, groupId: string, token?: string): Promise<void> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.DELETE, Scope.GROUPS | Scope.USERS);
+		}
+
 		try {
 			const result = await this.userModel.findOneAndUpdate(
 				{ id: userId },
@@ -137,8 +193,13 @@ export class GroupManager {
 
 	/**
 	 * Obtiene todos los usuarios que pertenecen a un grupo
+	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
-	async getGroupUsers(groupId: string): Promise<User[]> {
+	async getGroupUsers(groupId: string, token?: string): Promise<User[]> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.GROUPS | Scope.USERS);
+		}
+
 		try {
 			const docs = await this.userModel.find({ groupIds: groupId });
 			return docs.map((d: any) => d.toObject?.() || d);

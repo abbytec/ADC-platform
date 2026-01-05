@@ -17,19 +17,6 @@
 			}
 		]
 	},
-	"providers": [
-		{
-			"name": "object/mongo",
-			"version": "latest",
-			"language": "typescript",
-			"custom": {
-				"uri": "${MONGODB_URI}",
-				"maxRetries": 5,
-				"retryDelay": 5000,
-				"autoReconnect": true
-			}
-		}
-	],
 	"services": [
 		{
 			"name": "data/content-service",

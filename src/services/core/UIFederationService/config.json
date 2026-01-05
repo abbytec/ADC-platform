@@ -9,5 +9,10 @@
 				"format": "file"
 			}
 		}
-	}
+	},
+	"providers":[{
+		"name": "fastify-server",
+		"version": "latest",
+		"language": "typescript"
+	}]
 }

@@ -1,19 +1,5 @@
 {
-	"disabled": true,
 	"failOnError": false,
-	"providers": [
-		{
-			"name": "mongo",
-			"global": true,
-			"version": "latest",
-			"language": "typescript",
-			"custom": {
-				"uri": "mongodb://admin:password@localhost:27017/adc-user-profile-mongo?authSource=admin",
-				"maxRetries": 5,
-				"retryDelay": 5000
-			}
-		}
-	],
 	"services": [
 		{
 			"name": "IdentityManagerService",

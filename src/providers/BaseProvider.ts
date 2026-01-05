@@ -32,6 +32,7 @@ export abstract class BaseProvider implements IProvider {
 }
 
 export enum ProviderType {
+	HTTP_SERVER_PROVIDER = "http-server-provider",
 	STORAGE_PROVIDER = "storage-provider",
 	OBJECT_PROVIDER = "object-provider",
 	QUEUE_PROVIDER = "queue-provider",

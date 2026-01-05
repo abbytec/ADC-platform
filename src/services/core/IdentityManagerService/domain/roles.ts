@@ -4,6 +4,7 @@ import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "../utils/crypto.js";
 import { RESOURCE_NAME, Scope } from "../permissions.js";
 import { Action } from "../../../../interfaces/behaviours/Actions.ts";
+import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.js";
 
 export const roleSchema = new Schema({
 	id: { type: String, required: true, unique: true },
@@ -91,8 +92,20 @@ const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; permissio
 ];
 
 export class RoleManager {
-	constructor(private readonly roleModel: Model<any>, private readonly logger: ILogger) {}
+	#permissionChecker: PermissionChecker;
 
+	constructor(
+		private readonly roleModel: Model<any>,
+		private readonly logger: ILogger,
+		getAuthVerifier: AuthVerifierGetter = () => null
+	) {
+		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "RoleManager");
+	}
+
+	/**
+	 * Inicializa roles predefinidos del sistema
+	 * No requiere token (es proceso de inicialización)
+	 */
 	async initializePredefinedRoles(): Promise<void> {
 		for (const roleData of PREDEFINED_ROLES) {
 			try {
@@ -118,7 +131,15 @@ export class RoleManager {
 		}
 	}
 
-	async createRole(name: string, description: string, permissions?: Permission[]): Promise<Role> {
+	/**
+	 * Crea un rol personalizado
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async createRole(name: string, description: string, permissions?: Permission[], token?: string): Promise<Role> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.WRITE, Scope.ROLES);
+		}
+
 		try {
 			const roleId = generateId();
 			const role: Role = {
@@ -139,7 +160,15 @@ export class RoleManager {
 		}
 	}
 
-	async getRole(roleId: string): Promise<Role | null> {
+	/**
+	 * Obtiene un rol por ID
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async getRole(roleId: string, token?: string): Promise<Role | null> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.ROLES);
+		}
+
 		try {
 			const doc = await this.roleModel.findOne({ id: roleId });
 			return doc?.toObject?.() || doc || null;
@@ -149,7 +178,15 @@ export class RoleManager {
 		}
 	}
 
-	async getRoleByName(name: string): Promise<Role | null> {
+	/**
+	 * Obtiene un rol por nombre
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async getRoleByName(name: string, token?: string): Promise<Role | null> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.ROLES);
+		}
+
 		try {
 			const doc = await this.roleModel.findOne({ name });
 			return doc?.toObject?.() || doc || null;
@@ -159,7 +196,15 @@ export class RoleManager {
 		}
 	}
 
-	async updateRole(roleId: string, updates: Partial<Role>): Promise<Role> {
+	/**
+	 * Actualiza un rol
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async updateRole(roleId: string, updates: Partial<Role>, token?: string): Promise<Role> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.UPDATE, Scope.ROLES);
+		}
+
 		try {
 			const updated = await this.roleModel.findOneAndUpdate({ id: roleId }, updates, { new: true });
 			if (!updated) throw new Error(`Rol ${roleId} no encontrado`);
@@ -171,7 +216,15 @@ export class RoleManager {
 		}
 	}
 
-	async deleteRole(roleId: string): Promise<void> {
+	/**
+	 * Elimina un rol
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async deleteRole(roleId: string, token?: string): Promise<void> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.DELETE, Scope.ROLES);
+		}
+
 		try {
 			await this.roleModel.deleteOne({ id: roleId });
 			this.logger.logDebug(`Rol eliminado: ${roleId}`);
@@ -181,7 +234,15 @@ export class RoleManager {
 		}
 	}
 
-	async getAllRoles(): Promise<Role[]> {
+	/**
+	 * Obtiene todos los roles
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async getAllRoles(token?: string): Promise<Role[]> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.ROLES);
+		}
+
 		try {
 			const docs = await this.roleModel.find({});
 			return docs.map((d: any) => d.toObject?.() || d);
@@ -191,7 +252,15 @@ export class RoleManager {
 		}
 	}
 
-	async getPredefinedRoles(): Promise<Role[]> {
+	/**
+	 * Obtiene los roles predefinidos
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async getPredefinedRoles(token?: string): Promise<Role[]> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.ROLES);
+		}
+
 		try {
 			const docs = await this.roleModel.find({ isCustom: false });
 			return docs.map((d: any) => d.toObject?.() || d);

@@ -1,0 +1,9 @@
+{
+	"name": "@adc/provider-jwt",
+	"version": "1.0.0",
+	"type": "module",
+	"main": "index.ts",
+	"dependencies": {
+		"jose": "^5.2.0"
+	}
+}

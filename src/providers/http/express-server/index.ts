@@ -2,7 +2,7 @@ import express, { Application, RequestHandler } from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import { Server } from "node:http";
-import { BaseProvider } from "../../BaseProvider.js";
+import { BaseProvider, ProviderType } from "../../BaseProvider.js";
 import { IHttpServerProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
 import { expressConnectMiddleware } from "@connectrpc/connect-express";
 import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
@@ -12,7 +12,7 @@ import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
  */
 export default class ExpressServerProvider extends BaseProvider implements IHttpServerProvider {
 	public readonly name = "express-server";
-	public readonly type = "http-server-provider";
+	public readonly type = ProviderType.HTTP_SERVER_PROVIDER;
 	private app: Application;
 	private server: Server | null = null;
 	private isListening = false;

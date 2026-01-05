@@ -1,5 +1,17 @@
 {
-	"kernelMode": false,
+	"kernelMode": true,
 	"name": "IdentityManagerService",
-	"version": "1.0.0"
+	"version": "1.0.0",
+	"providers": [
+		{
+			"name": "object/mongo",
+			"version": "latest",
+			"language": "typescript",
+			"custom": {
+				"uri": "mongodb://admin:password@localhost:27017/adc-identity?authSource=admin",
+				"maxRetries": 5,
+				"retryDelay": 5000
+			}
+		}
+	]
 }

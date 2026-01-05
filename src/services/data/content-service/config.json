@@ -4,7 +4,13 @@
 		{
 			"name": "object/mongo",
 			"version": "latest",
-			"language": "typescript"
+			"language": "typescript",
+			"custom": {
+				"uri": "${MONGODB_URI}",
+				"maxRetries": 5,
+				"retryDelay": 5000,
+				"autoReconnect": true
+			}
 		},
 		{
 			"name": "http/fastify-server",

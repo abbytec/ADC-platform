@@ -39,7 +39,7 @@ export abstract class BaseApp implements IApp {
 	/**
 	 * Lógica de inicialización.
 	 */
-	public async start() {
+	public async start(kernelKey: symbol): Promise<void> {
 		// Si la app tiene configuración UI, registrarla en UIFederationService
 		await this.#registerUIModuleIfNeeded();
 	}
@@ -65,27 +65,49 @@ export abstract class BaseApp implements IApp {
 	}
 
 	/**
-	 * Combina la configuración de `default.json` (base) con la configuración
-	 * de la instancia específica de la app.
+	 * Obtiene un provider que fue cargado por esta app según su configuración.
+	 * Esto asegura que se obtiene la instancia correcta cuando hay múltiples providers del mismo tipo.
+	 * @param name - Nombre del provider
+	 * @returns La instancia del provider
 	 */
-	/**
-	 * Carga el archivo .env de la app si existe
-	 */
-	async #loadAppEnv(): Promise<void> {
-		try {
-			const { config } = await import("dotenv");
-			const envPath = path.join(this.appDir, ".env");
-
-			try {
-				await fs.access(envPath);
-				config({ path: envPath });
-				this.logger.logDebug(`Variables de entorno cargadas desde ${envPath}`);
-			} catch {
-				// No hay archivo .env, lo cual es aceptable
-			}
-		} catch (error: any) {
-			this.logger.logWarn(`Error cargando .env: ${error.message}`);
+	protected getMyProvider<P>(name: string): P {
+		// Buscar el provider en la configuración de esta app
+		const providerConfig = this.config?.providers?.find((p) => p.name === name);
+		if (!providerConfig) {
+			throw new Error(`Provider ${name} no está configurado en la app ${this.name}`);
 		}
+		// El kernel usa config.custom para generar el uniqueKey
+		return this.kernel.getProvider<P>(name, providerConfig.custom);
+	}
+
+	/**
+	 * Obtiene un service que fue cargado por esta app según su configuración.
+	 * @param name - Nombre del service
+	 * @returns La instancia del service
+	 */
+	protected getMyService<S>(name: string): S {
+		// Buscar el service en la configuración de esta app
+		const serviceConfig = this.config?.services?.find((s) => s.name === name);
+		if (!serviceConfig) {
+			throw new Error(`Service ${name} no está configurado en la app ${this.name}`);
+		}
+		// El kernel usa config.custom para generar el uniqueKey
+		return this.kernel.getService<S>(name, serviceConfig.custom);
+	}
+
+	/**
+	 * Obtiene una utility que fue cargada por esta app según su configuración.
+	 * @param name - Nombre de la utility
+	 * @returns La instancia de la utility
+	 */
+	protected getMyUtility<U>(name: string): U {
+		// Buscar la utility en la configuración de esta app
+		const utilityConfig = this.config?.utilities?.find((u) => u.name === name);
+		if (!utilityConfig) {
+			throw new Error(`Utility ${name} no está configurada en la app ${this.name}`);
+		}
+		// El kernel usa config.custom para generar el uniqueKey
+		return this.kernel.getUtility<U>(name, utilityConfig.custom);
 	}
 
 	async #mergeModuleConfigs(): Promise<void> {
@@ -143,9 +165,6 @@ export abstract class BaseApp implements IApp {
 	 */
 	public async loadModulesFromConfig(): Promise<void> {
 		try {
-			// Cargar variables de entorno de la app primero
-			await this.#loadAppEnv();
-
 			await this.#mergeModuleConfigs();
 			if (this.config) {
 				await Kernel.moduleLoader.loadAllModulesFromDefinition(this.config, this.kernel);

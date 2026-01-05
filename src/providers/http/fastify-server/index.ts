@@ -4,7 +4,7 @@ import fastifyFormbody from "@fastify/formbody";
 import * as path from "node:path";
 import * as fs from "node:fs";
 import { readFileSync } from "node:fs";
-import { BaseProvider } from "../../BaseProvider.js";
+import { BaseProvider, ProviderType } from "../../BaseProvider.js";
 import type { IHostBasedHttpProvider, HostOptions, HttpHandler } from "../../../interfaces/modules/providers/IHttpServer.js";
 import { fastifyConnectPlugin } from "@connectrpc/connect-fastify";
 import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
@@ -113,7 +113,7 @@ function normalizeHandler(handler: HttpHandler): FastifyHandler {
  */
 export default class FastifyServerProvider extends BaseProvider implements IHostBasedHttpProvider {
 	public readonly name = "fastify-server";
-	public readonly type = "http-server-provider";
+	public readonly type = ProviderType.HTTP_SERVER_PROVIDER;
 	private app: FastifyInstance<any>;
 	private isListening = false;
 	private registeredHosts = new Map<string, RegisteredHost>();
@@ -268,7 +268,11 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 
 		// Las rutas API no deben servirse como archivos estáticos
 		if (urlPath.startsWith("/api/")) {
-			this.logger.logWarn(`[DEBUG] API 404: ${urlPath}, globalRoutes: ${this.globalRoutes.length}, registered: ${this.globalRoutes.map((r) => r.path).join(", ")}`);
+			this.logger.logWarn(
+				`[DEBUG] API 404: ${urlPath}, globalRoutes: ${this.globalRoutes.length}, registered: ${this.globalRoutes
+					.map((r) => r.path)
+					.join(", ")}`
+			);
 			reply.code(404).send({ error: "API route not found", path: urlPath });
 			return;
 		}

@@ -15,7 +15,7 @@ export default class WebHomeApp extends BaseApp {
 	async #registerAPIEndpoints() {
 		try {
 			// Usar el tipo del provider (http-server-provider) para obtener el correcto según el entorno
-			const httpProvider = this.kernel.getProvider<IHttpServerProvider>("http-server-provider");
+			const httpProvider = this.kernel.getProvider<IHttpServerProvider>("fastify-server");
 
 			httpProvider.registerRoute("GET", "/api/dashboard/stats", async (_req: any, res: any) => {
 				try {
