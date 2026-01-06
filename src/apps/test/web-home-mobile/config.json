@@ -4,7 +4,7 @@
 		"uiNamespace": "mobile",
 		"framework": "vanilla",
 		"outputDir": "dist-ui",
-		"devPort": 3012,
+		"devPort": 3006,
 		"isHost": false,
 		"isRemote": true,
 		"uiDependencies": ["web-ui-library-mobile"],

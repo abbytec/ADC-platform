@@ -7,7 +7,7 @@
 		"isHost": true,
 		"isRemote": false,
 		"uiDependencies": ["web-ui-library-mobile", "home"],
-		"devPort": 3014,
+		"devPort": 3005,
 		"sharedLibs": ["react"],
 		"i18n": true,
 		"serviceWorker": true,

@@ -52,6 +52,8 @@ export interface UIModuleConfig {
 	serviceWorker?: boolean;
 	/** Exports que este módulo expone globalmente (ej: { "loader": "./loader", "utils": "./utils" }) */
 	exports?: Record<string, string>;
+	/** Exposes para Module Federation (ej: { "./App": "./src/App.tsx", "./Header": "./src/Header.tsx" }) */
+	federationExposes?: Record<string, string>;
 	/** Configuración de hosting para producción (dominios/subdominios) */
 	hosting?: UIHostingConfig[];
 }

@@ -356,13 +356,7 @@ export abstract class RspackBaseStrategy extends BaseFrameworkStrategy {
 		const shared = this.buildSharedConfig(usedFrameworks);
 
 		// Layouts cargan remotes, el resto se expone
-		const federationConfig = isLayout
-			? `remotes: ${JSON.stringify(remotes, null, 4)},`
-			: `
-            filename: 'remoteEntry.js',
-            exposes: {
-                './App': './src/App${appExtension}',
-            },`;
+		const federationConfig = isLayout ? `remotes: ${JSON.stringify(remotes, null, 4)},` : this.buildExposesConfig(context, appExtension);
 
 		// Determinar publicPath correcto
 		// Para módulos remotos (isRemote) en desarrollo, usar URL absoluta del dev server
@@ -486,6 +480,34 @@ export default {
 		return `{
         ${sharedLibs.join(",\n        ")}
     }`;
+	}
+
+	/**
+	 * Construye la configuración de exposes para Module Federation
+	 * Lee de federationExposes en config.json, o usa ./App por defecto
+	 */
+	protected buildExposesConfig(context: IBuildContext, appExtension: string): string {
+		const { module } = context;
+		const federationExposes = module.uiConfig.federationExposes;
+
+		// Si hay federationExposes configurados, usarlos
+		if (federationExposes && Object.keys(federationExposes).length > 0) {
+			const exposesEntries = Object.entries(federationExposes)
+				.map(([key, value]) => `                '${key}': '${value}'`)
+				.join(",\n");
+			return `
+            filename: 'remoteEntry.js',
+            exposes: {
+${exposesEntries}
+            },`;
+		}
+
+		// Por defecto, exponer solo ./App
+		return `
+            filename: 'remoteEntry.js',
+            exposes: {
+                './App': './src/App${appExtension}',
+            },`;
 	}
 
 	/**

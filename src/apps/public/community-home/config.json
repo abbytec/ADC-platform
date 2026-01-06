@@ -15,7 +15,11 @@
 				"domains": ["adigitalcafe.com"],
 				"subdomains": ["s-community"]
 			}
-		]
+		],
+		"federationExposes": {
+			"./App": "./src/App.tsx",
+			"./HeaderSlot": "./src/components/HeaderSlot.tsx"
+		}
 	},
 	"services": [
 		{
