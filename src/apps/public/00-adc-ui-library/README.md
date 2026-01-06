@@ -13,3 +13,9 @@ import "@ui-library/styles"; // CSS base (variables, tipografía)
 
 ## CSS Variables
 Definidas en `src/global/tailwind.css`: `--c-primary`, `--c-accent`, `--c-text`, etc.
+
+## Utils (ver `utils/README.md`)
+- `connect-rpc.ts`: Cliente Connect RPC tipado con Protocol Buffers
+- `router.ts`: Router SPA para navegación sin recargar página
+- `react-jsx.ts`: Declaraciones TypeScript JSX para React
+- `tailwind-preset.js`: Preset Tailwind con colores y utilidades ADC

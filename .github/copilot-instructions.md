@@ -1,0 +1,218 @@
+# ADC Platform - AI Coding Agent Instructions
+
+## Architecture Overview
+
+ADC Platform is a **modular kernel system** that dynamically loads four types of modules from the filesystem:
+
+-   **Providers** (I/O layer): Storage, databases, HTTP servers - in `src/providers/`
+-   **Utilities** (Logic layer): Serializers, validators, transformers - in `src/utilities/`
+-   **Services** (Reusable logic): Stateful functionality without auto-execution - in `src/services/`
+-   **Apps** (Business logic): Auto-executing applications consuming other modules - in `src/apps/`
+
+The **Kernel** (`src/kernel.ts`) orchestrates everything via recursive filesystem loading, Symbol-based dependency injection through `ModuleRegistry`, and supports hot-reloading in development.
+
+## Critical Patterns
+
+### Module Base Classes & Lifecycle
+
+All modules extend base classes with required lifecycle hooks:
+
+-   `BaseApp` → implements `start()` and `run()` (business logic goes in `run()`)
+-   `BaseService` → inherits `start()`/`stop()` with initialization guards
+-   `BaseProvider` → lightweight lifecycle, uses `@OnlyKernel()` decorator
+-   `BaseUtility` → similar to `BaseProvider`
+
+```typescript
+// Example App structure
+export default class MyApp extends BaseApp {
+	async run() {
+		// Business logic here - called after start()
+		const storage = this.getMyProvider<FileStorage>("file-storage");
+	}
+}
+```
+
+### Module Configuration Pattern
+
+Every module directory follows npm workspace structure:
+
+-   `package.json` - Declares dependencies (npm installs them separately per module)
+-   `config.json` or `default.json` - Declares module dependencies (providers/utilities/services)
+-   `README.md` - Brief documentation (max 15 lines, avoid redundancy)
+
+**Apps support multiple instances**: Place `config-*.json` files in app root or `configs/` subdirectory. Each creates a separate instance with format `app-name:config-suffix`.
+
+```json
+// Example config.json
+{
+	"failOnError": false,
+	"providers": [{ "name": "mongo", "global": true, "custom": { "uri": "..." } }],
+	"services": [{ "name": "IdentityManagerService", "version": "latest" }]
+}
+```
+
+### Dependency Injection
+
+Access modules via Kernel methods, **not** direct imports. Providers are referenced by **name**, not by type:
+
+```typescript
+// In Apps: Use getMyProvider() to get YOUR configured instance
+this.getMyProvider<MongoProvider>("mongo");
+
+// In Services/Providers: Use kernel directly
+this.kernel.getService<IdentityManagerService>("IdentityManagerService");
+this.kernel.getProvider<FileStorage>("file-storage");
+```
+
+### UI Apps Pattern (Module Federation)
+
+UI apps use **UIFederationService** for micro-frontend architecture:
+
+-   Configure via `uiModule` section in `config.json`
+-   Framework support: Astro, React, Vue, Vanilla
+-   Module Federation: `isHost` (consumes remotes) vs `isRemote` (exposes components)
+-   `uiDependencies` ensures load order (e.g., UI libraries load first)
+-   **Namespace isolation**: `uiNamespace` separates i18n translations and app contexts (`adc-platform`, `default`, `mobile`)
+
+**Deployment modes**:
+
+-   `npm run dev`: Apps serve on individual ports via `devPort` in config
+-   `npm run start`/`start:prodtests`: All apps serve via subdomain routing (`hosting.subdomains` in config)
+
+**Service Worker pattern**: Only enable `serviceWorker: true` in **layout apps** - it automatically works for all their child apps without re-enabling.
+
+```typescript
+// UI app main.tsx pattern
+import "@ui-library"; // Auto-registers Web Components
+import "@ui-library/styles"; // Base CSS variables
+import "./styles/tailwind.css"; // Local extensions only
+```
+
+### Distributed Execution
+
+Use `@Distributed` decorator on Services to enable worker-based execution:
+
+```typescript
+@Distributed
+class HeavyService extends BaseService {
+	async processData(data: any) {
+		// ExecutionManagerService may route this to a worker thread
+	}
+}
+```
+
+### Kernel-Mode Services
+
+Services with `kernelMode: true` in their `config.json` load during kernel startup (before apps). Examples:
+
+-   **ExecutionManagerService**: Manages worker pool for distributed execution
+-   **IdentityManagerService**: User/role/group management with PBKDF2 hashing, MongoDB persistence
+
+### Docker Compose Auto-Provisioning
+
+If an app directory contains `docker-compose.yml`, the Kernel automatically runs `docker-compose up -d` before starting the app. Use this for MongoDB, Redis, etc.
+
+## Development Workflows
+
+### Commands (see `package.json`)
+
+```bash
+npm run dev              # Development with hot-reload + test apps (individual ports)
+npm run start            # Production mode (port 80, no test apps, subdomain routing)
+npm run start:prodtests  # Production mode with test apps (port 3000, subdomain routing)
+npm run lint             # ESLint check with zero warnings
+npm run typecheck        # Recursive TypeScript check + knip unused exports
+npm run cleanup          # Kill orphaned processes
+```
+
+### Creating Modules
+
+Use scaffolding scripts:
+
+```bash
+npm run create:app -- my-app           # Creates src/apps/my-app/
+npm run create:service -- my-service   # Creates src/services/my-service/
+npm run create:provider -- my-provider # Creates src/providers/my-provider/
+npm run create:utility -- my-utility   # Creates src/utilities/my-utility/
+```
+
+### Hot Reload Behavior
+
+-   **Code changes**: Module reloads automatically
+-   **Config changes**: Only affected app instance reloads
+-   **New config file**: New app instance spawns
+-   **Delete config**: Instance stops and removes
+
+## Code Conventions
+
+### Principles
+
+Follow **KISS, DRY, SOLID, YAGNI** - stated explicitly in `CLAUDE.md`.
+
+### File Structure
+
+-   TypeScript files use `.ts` extension (`.js` imports include `.js` extension due to ESM)
+-   Each module is self-contained workspace (no shared dependencies)
+-   Recursive loading means subdirectories work automatically
+
+### Decorators
+
+-   `@OnlyKernel()`: Restricts method calls to kernel-provided Symbol (security)
+-   `@Distributed`: Enables ExecutionManagerService worker routing
+
+### Logging
+
+Use inherited logger from base classes:
+
+```typescript
+this.logger.logInfo("Message");
+this.logger.logError("Error");
+this.logger.logDebug("Debug info");
+this.logger.logOk("Success");
+```
+
+### Documentation
+
+-   Each module's `README.md`: **max 15 lines**, purpose + key features only
+-   `config.json` is self-documenting for dependencies
+-   Don't create redundant centralized docs
+-   Update module's own README when modifying it
+
+## Key Integration Points
+
+### Symbol-Based Registry
+
+`ModuleRegistry` uses Symbol keys for capability registration:
+
+```typescript
+const STORAGE_PROVIDER = Symbol("storage-provider");
+kernel.registerProvider("file-storage", instance, config);
+```
+
+### Version Resolution
+
+`VersionResolver` handles semver ranges (e.g., `^1.0.0`, `>=1.2.0`) when loading modules.
+
+## Common Gotchas
+
+1. **Config vs Modules**: `config.json` declares dependencies, `package.json` declares npm packages
+2. **Global Providers**: Set `"global": true` in provider config to share across app instances
+3. **Provider Reference**: Access providers by **name** (e.g., `"mongo"`, `"file-storage"`), not by type
+4. **UI Library Imports**: Always import UI library BEFORE local styles to ensure CSS variable availability
+5. **Service Worker**: Only enable in layout apps - automatically cascades to child apps
+6. **Dev vs Prod Deployment**: Dev uses individual ports (`devPort`), production uses subdomain routing
+7. **Worker Assignment**: `@Distributed` doesn't guarantee worker execution - ExecutionManagerService decides based on load
+8. **Instance Names**: App instances follow `{appName}:{configSuffix}` format (e.g., `user-profile:main`)
+
+## Reference Files
+
+-   **Kernel orchestration**: `src/kernel.ts` (807 lines)
+-   **App base class**: `src/apps/BaseApp.ts`
+-   **Service base**: `src/services/BaseService.ts`
+-   **Provider base**: `src/providers/BaseProvider.ts`
+-   **Module config interface**: `src/interfaces/modules/IModule.d.ts`
+-   **UI Federation**: `src/services/core/UIFederationService/`
+-   **Identity system**: `src/services/core/IdentityManagerService/`
+-   **Session management**: `src/services/security/SessionManagerService/`
+-   **Main UI Library**: `src/apps/public/00-adc-ui-library/` (includes components for building public apps, and utils for Connect RPC, router, React JSX, Tailwind preset)
+-   **Architecture docs**: `ARCHITECTURE.md`, `README.md`, `CLAUDE.md`

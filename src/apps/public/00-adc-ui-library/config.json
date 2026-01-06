@@ -4,6 +4,7 @@
 		"uiNamespace": "adc-platform",
 		"framework": "stencil",
 		"outputDir": "dist-ui",
+		"serviceWorker": true,
 		"exports": {
 			"loader": "./loader",
 			"utils": "./utils",
