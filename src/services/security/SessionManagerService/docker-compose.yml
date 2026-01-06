@@ -1,0 +1,24 @@
+services:
+  redis:
+    image: redis:alpine
+    container_name: adc-session-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - session_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - adc-network
+
+volumes:
+  session_redis_data:
+
+networks:
+  adc-network:
+    driver: bridge
+

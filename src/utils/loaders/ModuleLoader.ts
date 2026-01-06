@@ -507,7 +507,64 @@ export class ModuleLoader {
 			__modulePath: resolved.path, // Path del módulo para que BaseService.start() lo use
 		};
 
-		// Cargar el módulo (los services reciben kernel + config)
 		return await loader.loadService(resolved.path, kernel, enrichedConfig);
+	}
+
+	async loadKernelService(
+		servicePath: string,
+		configPath: string,
+		kernel: Kernel,
+		kernelKey: symbol
+	): Promise<{ instance: BaseService; config: IModuleConfig }> {
+		const serviceDir = path.dirname(servicePath);
+		const serviceName = path.basename(serviceDir);
+
+		const envPath = path.join(serviceDir, ".env");
+		const serviceEnvVars = await this.loadEnvFile(envPath);
+
+		const configContent = await fs.readFile(configPath, "utf-8");
+		const rawConfig = JSON.parse(configContent);
+		const serviceConfig = this.interpolateEnvVars(rawConfig, serviceEnvVars);
+
+		if (serviceConfig.providers && Array.isArray(serviceConfig.providers)) {
+			for (const providerConfig of serviceConfig.providers) {
+				if (kernel.hasModule("provider", providerConfig.name, providerConfig.config)) {
+					Logger.debug(`[ModuleLoader] Provider ${providerConfig.name} ya existe`);
+					continue;
+				}
+				const provider = await this.loadProvider(providerConfig, serviceEnvVars);
+				kernel.registerProvider(provider.name, provider, providerConfig, null);
+				if (providerConfig.name !== provider.name) {
+					kernel.registerProvider(providerConfig.name, provider, providerConfig, null);
+				}
+			}
+		}
+
+		const serviceModule = await import(servicePath);
+		const ServiceClass = serviceModule.default;
+
+		if (!ServiceClass) {
+			throw new Error(`No se encontró export default en ${servicePath}`);
+		}
+
+		const instance: BaseService = new ServiceClass(kernel, {
+			name: serviceName,
+			custom: serviceConfig.custom,
+			providers: serviceConfig.providers || [],
+			utilities: serviceConfig.utilities || [],
+			__modulePath: serviceDir,
+		});
+		instance.setKernelKey(kernelKey);
+		await instance.start(kernelKey);
+
+		const registrationConfig: IModuleConfig = {
+			name: serviceName,
+			version: "1.0.0",
+			language: "typescript",
+			global: true,
+			config: { __providers: serviceConfig.providers || [] },
+		};
+
+		return { instance, config: registrationConfig };
 	}
 }

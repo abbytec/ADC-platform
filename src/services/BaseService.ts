@@ -62,7 +62,8 @@ export abstract class BaseService implements IService {
 			let baseConfig: Partial<IModuleConfig> = {};
 			try {
 				const configContent = await fs.readFile(modulesConfigPath, "utf-8");
-				baseConfig = JSON.parse(configContent);
+				const rawConfig = JSON.parse(configContent);
+				baseConfig = Kernel.moduleLoader.interpolateEnvVars(rawConfig, serviceEnvVars);
 			} catch (e: any) {
 				this.logger.logDebug(`No se pudo leer config.json: ${e.message}`);
 			}
@@ -75,15 +76,10 @@ export abstract class BaseService implements IService {
 			if (!providersToUse || providersToUse.length === 0) {
 				// No hay providers de la app, usar los del config.json del servicio
 				if (baseConfig.providers && Array.isArray(baseConfig.providers)) {
-					// Interpolar las variables de entorno en los providers usando ModuleLoader
-					const interpolatedProviders = baseConfig.providers.map((p) =>
-						Kernel.moduleLoader.interpolateEnvVars(p, serviceEnvVars)
-					);
-
-					providersToUse = interpolatedProviders;
+					providersToUse = baseConfig.providers;
 					
 					// Cargar estos providers con las variables de entorno del servicio
-					for (const providerConfig of interpolatedProviders) {
+					for (const providerConfig of baseConfig.providers) {
 						try {
 							const provider = await Kernel.moduleLoader.loadProvider(providerConfig, serviceEnvVars);
 							this.kernel.registerProvider(provider.name, provider, providerConfig);

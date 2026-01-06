@@ -1,0 +1,7 @@
+{
+	"name": "@adc-platform/redis-provider",
+	"type": "module",
+	"dependencies": {
+		"ioredis": "^5.4.1"
+	}
+}

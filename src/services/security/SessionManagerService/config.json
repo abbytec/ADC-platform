@@ -2,11 +2,29 @@
 	"name": "SessionManagerService",
 	"version": "1.0.0",
 	"kernelMode": 2,
+	"custom": {
+		"discordClientId": "${DISCORD_CLIENT_ID}",
+		"discordClientSecret": "${DISCORD_CLIENT_SECRET}",
+		"googleClientId": "${GOOGLE_CLIENT_ID}",
+		"googleClientSecret": "${GOOGLE_CLIENT_SECRET}"
+	},
 	"providers": [
 		{
 			"name": "security/jwt",
 			"custom": {
 				"jwtSecret": "${JWT_SECRET}"
+			}
+		},
+		{
+			"name": "queue/redis",
+			"version": "latest",
+			"language": "typescript",
+			"custom": {
+				"host": "${REDIS_HOST:-localhost}",
+				"port": "${REDIS_PORT:-6379}",
+				"password": "${REDIS_PASSWORD}",
+				"db": 0,
+				"keyPrefix": "adc:session:"
 			}
 		}
 	]

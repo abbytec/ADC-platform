@@ -8,6 +8,8 @@ import { OnlyKernel } from "../../../../utils/decorators/OnlyKernel.ts";
 /* tslint:disable:no-unused-variable */
 export class SystemManager {
 	#systemUser: User | null = null;
+	#systemCredentials: { username: string; password: string } | null = null;
+
 	constructor(
 		private readonly userModel: Model<any>,
 		private readonly roleModel: Model<any>,
@@ -19,6 +21,7 @@ export class SystemManager {
 	async initializeSystemUser(): Promise<void> {
 		try {
 			const { username, password } = generateRandomCredentials();
+			this.#systemCredentials = { username, password };
 
 			// Obtener role SYSTEM
 			const systemRole = await this.roleModel.findOne({ name: SystemRole.SYSTEM });
@@ -63,9 +66,26 @@ export class SystemManager {
 		}
 		return this.#systemUser;
 	}
+
+	/**
+	 * Obtiene las credenciales del usuario SYSTEM.
+	 * REQUIERE kernelKey - solo código privilegiado puede acceder.
+	 * Las credenciales son válidas solo durante este arranque del sistema.
+	 * @param kernelKey - La clave del kernel para verificar acceso privilegiado
+	 */
+	@OnlyKernel()
+	getSystemCredentials(_kernelKey: symbol): { username: string; password: string } {
+		void this.kernelKey;
+		if (!this.#systemCredentials) {
+			throw new Error("Credenciales SYSTEM no disponibles");
+		}
+		return this.#systemCredentials;
+	}
+
 	@OnlyKernel()
 	clearSystemUser(_kernelKey: symbol): void {
 		this.#systemUser = null;
+		this.#systemCredentials = null;
 	}
 
 	async getStats(): Promise<{

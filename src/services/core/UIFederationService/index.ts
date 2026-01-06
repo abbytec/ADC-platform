@@ -30,7 +30,6 @@ export default class UIFederationService extends BaseService {
 	private readonly uiOutputBaseDir: string;
 	private port: number = 3000;
 	private readonly isDevelopment: boolean;
-	private readonly isProduction: boolean;
 	// Registro de hosts para producción: hostPattern -> { namespace, moduleName, directory }
 	private readonly hostRegistry = new Map<string, { namespace: string; moduleName: string; directory: string }>();
 
@@ -41,12 +40,11 @@ export default class UIFederationService extends BaseService {
 		super(kernel, options);
 
 		this.isDevelopment = process.env.NODE_ENV === "development";
-		this.isProduction = process.env.NODE_ENV === "production";
 		const basePath = this.isDevelopment ? path.resolve(process.cwd(), "src") : path.resolve(process.cwd(), "dist");
 		this.uiOutputBaseDir = path.resolve(basePath, "..", "temp", "ui-builds");
 
 		// Puerto: 80 para producción real, 3000 para prodtests/dev
-		const prodPort = this.isProduction && (process.env.PROD_PORT ?? 80);
+		const prodPort = !this.isDevelopment && (process.env.PROD_PORT ?? 80);
 		this.port = options?.port || prodPort || 3000;
 	}
 

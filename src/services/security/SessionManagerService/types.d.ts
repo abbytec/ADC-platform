@@ -103,6 +103,8 @@ export interface SessionCookieConfig {
 	path: string;
 	/** Tiempo de vida en segundos */
 	maxAge: number;
+	/** Dominio (opcional, para subdominios) */
+	domain?: string;
 }
 
 /**
@@ -131,6 +133,8 @@ export interface AuthRequest extends FastifyRequest {
 		error_description?: string;
 	};
 	cookies: Record<string, string>;
+	headers: Record<string, string | string[] | undefined>;
+	ip: string;
 }
 
 /**
@@ -139,6 +143,7 @@ export interface AuthRequest extends FastifyRequest {
 export interface AuthReply extends FastifyReply {
 	setCookie(name: string, value: string, options?: Record<string, unknown>): AuthReply;
 	clearCookie(name: string, options?: Record<string, unknown>): AuthReply;
+	header(name: string, value: string): AuthReply;
 }
 
 /**
@@ -148,6 +153,48 @@ export interface TokenVerificationResult {
 	valid: boolean;
 	session?: SessionData;
 	error?: string;
+	/** Si se verificó con clave anterior (requiere refresh) */
+	usedPreviousKey?: boolean;
+}
+
+/**
+ * Par de tokens retornado en login
+ */
+export interface LoginTokens {
+	/** Access Token (JWT) - va en cookie de sesión */
+	accessToken: string;
+	/** Refresh Token (opaco) - va en cookie HttpOnly con path /auth/refresh */
+	refreshToken: string;
+}
+
+/**
+ * Resultado de operación de login
+ */
+export interface LoginResult {
+	success: boolean;
+	tokens?: LoginTokens;
+	user?: {
+		id: string;
+		username: string;
+		email?: string;
+		permissions: string[];
+	};
+	error?: string;
+	/** Si el usuario está bloqueado */
+	blocked?: boolean;
+	/** Hasta cuándo está bloqueado (si es temporal) */
+	blockedUntil?: number;
+}
+
+/**
+ * Resultado de operación de refresh
+ */
+export interface RefreshResult {
+	success: boolean;
+	tokens?: LoginTokens;
+	error?: string;
+	/** Si el usuario fue bloqueado por refresh sospechoso */
+	blocked?: boolean;
 }
 
 /**
@@ -164,4 +211,12 @@ export interface SessionManagerConfig {
 	sessionCookie: SessionCookieConfig;
 	/** Providers OAuth configurados */
 	providers: Record<string, OAuthProviderConfig>;
+	/** Dominio para cookies (para subdominios) */
+	cookieDomain: string;
+	/** TTL del Access Token (default: 15m) */
+	accessTokenTtl: string;
+	/** TTL del Refresh Token en segundos (default: 30 días) */
+	refreshTokenTtlSeconds: number;
+	/** Intervalo de rotación de claves en ms (default: 24h) */
+	keyRotationInterval: number;
 }

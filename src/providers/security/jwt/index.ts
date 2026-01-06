@@ -9,6 +9,8 @@ export interface SessionPayload extends jose.JWTPayload {
 	userId: string;
 	/** Permisos en formato [resource].[scope].action */
 	permissions: string[];
+	/** ID del dispositivo (para vincular con refresh token) */
+	deviceId?: string;
 	/** Metadatos adicionales (org, etc) */
 	metadata?: Record<string, unknown>;
 }
@@ -41,7 +43,7 @@ export interface TokenVerificationResult {
 }
 
 /**
- * Interface del JWT Provider
+ * Interface del JWT Provider (básica - retrocompatible)
  */
 export interface IJWTProvider {
 	/**
@@ -61,12 +63,31 @@ export interface IJWTProvider {
 }
 
 /**
+ * Interface extendida del JWT Provider con soporte multi-key
+ */
+export interface IJWTProviderMultiKey extends IJWTProvider {
+	/**
+	 * Crea un JWT cifrado con una clave específica
+	 */
+	encryptWithKey(payload: SessionPayload, key: Uint8Array, expiresIn: string): Promise<string>;
+
+	/**
+	 * Descifra un JWT con una clave específica
+	 */
+	decryptWithKey(token: string, key: Uint8Array): Promise<TokenVerificationResult>;
+}
+
+/**
  * JWTProvider - Cifrado y descifrado de tokens JWT usando jose
  *
  * Implementa JWE (JSON Web Encryption) para tokens seguros.
  * Los tokens son firmados y cifrados para máxima seguridad.
+ *
+ * Soporta:
+ * - Operaciones con clave por defecto (retrocompatible)
+ * - Operaciones con clave específica (para rotación de secretos)
  */
-export default class JWTProvider extends BaseProvider implements IJWTProvider {
+export default class JWTProvider extends BaseProvider implements IJWTProviderMultiKey {
 	public readonly name = "jwt";
 	public readonly type = "security-token";
 
@@ -76,7 +97,7 @@ export default class JWTProvider extends BaseProvider implements IJWTProvider {
 	constructor(options?: any) {
 		super();
 		this.#config = {
-			secret: options?.jwtSecret || process.env.JWT_SECRET || "",
+			secret: options?.jwtSecret || "",
 			encryptionAlgorithm: "A256GCM",
 			keyEncryptionAlgorithm: "dir",
 			expiresIn: "7d",
@@ -89,12 +110,10 @@ export default class JWTProvider extends BaseProvider implements IJWTProvider {
 		await super.start(kernelKey);
 
 		const secret = this.#config.secret;
-		if (!secret || secret.length < 32) {
-			throw new Error("JWT_SECRET debe estar configurado con al menos 32 caracteres");
+		if (secret && secret.length < 32) {
+			// Crear clave de 256 bits para A256GCM
+			this.#secretKey = new TextEncoder().encode(secret.padEnd(32, "0").slice(0, 32));
 		}
-
-		// Crear clave de 256 bits para A256GCM
-		this.#secretKey = new TextEncoder().encode(secret.padEnd(32, "0").slice(0, 32));
 		this.logger.logOk("JWTProvider iniciado");
 	}
 
@@ -105,40 +124,57 @@ export default class JWTProvider extends BaseProvider implements IJWTProvider {
 
 	/**
 	 * Crea un JWT cifrado (JWE) con el payload proporcionado
+	 * Usa la clave por defecto del provider
 	 */
 	async encrypt(payload: SessionPayload): Promise<string> {
-		if (!this.#secretKey) {
-			throw new Error("JWTProvider no está inicializado");
+		if (!this.#secretKey || this.#secretKey.length < 32) {
+			throw new Error("JWTProvider no está inicializado correctamente");
 		}
 
-		const now = Math.floor(Date.now() / 1000);
-		const expiresIn = this.#parseExpiration(this.#config.expiresIn || "7d");
+		return this.encryptWithKey(payload, this.#secretKey, this.#config.expiresIn || "7d");
+	}
 
-		// Crear JWT cifrado (JWE) - los claims estándar se establecen via setters
+	/**
+	 * Crea un JWT cifrado (JWE) con una clave específica
+	 * Permite usar claves del KeyStore para rotación
+	 */
+	async encryptWithKey(payload: SessionPayload, key: Uint8Array, expiresIn: string): Promise<string> {
+		const now = Math.floor(Date.now() / 1000);
+		const expiresInSeconds = this.#parseExpiration(expiresIn);
+
+		// Crear JWT cifrado (JWE)
 		const token = await new jose.EncryptJWT(payload as jose.JWTPayload)
 			.setProtectedHeader({
 				alg: this.#config.keyEncryptionAlgorithm as "dir",
 				enc: this.#config.encryptionAlgorithm as "A256GCM",
 			})
 			.setIssuedAt(now)
-			.setExpirationTime(now + expiresIn)
+			.setExpirationTime(now + expiresInSeconds)
 			.setIssuer(this.#config.issuer!)
 			.setAudience(this.#config.audience!)
-			.encrypt(this.#secretKey);
+			.encrypt(key);
 
 		return token;
 	}
 
 	/**
-	 * Descifra y verifica un JWT
+	 * Descifra y verifica un JWT usando la clave por defecto
 	 */
 	async decrypt(token: string): Promise<TokenVerificationResult> {
 		if (!this.#secretKey) {
 			return { valid: false, error: "JWTProvider no está inicializado" };
 		}
 
+		return this.decryptWithKey(token, this.#secretKey);
+	}
+
+	/**
+	 * Descifra y verifica un JWT usando una clave específica
+	 * Permite verificar con claves del KeyStore (current o previous)
+	 */
+	async decryptWithKey(token: string, key: Uint8Array): Promise<TokenVerificationResult> {
 		try {
-			const { payload } = await jose.jwtDecrypt(token, this.#secretKey, {
+			const { payload } = await jose.jwtDecrypt(token, key, {
 				issuer: this.#config.issuer,
 				audience: this.#config.audience,
 			});
@@ -148,12 +184,18 @@ export default class JWTProvider extends BaseProvider implements IJWTProvider {
 				payload: payload as unknown as SessionPayload,
 			};
 		} catch (error: any) {
-			const errorMessage = error instanceof jose.errors.JWTExpired ? "Token expirado" : error.message || "Token inválido";
+			// Distinguir entre token expirado y otros errores
+			if (error instanceof jose.errors.JWTExpired) {
+				return { valid: false, error: "Token expirado" };
+			}
 
-			return {
-				valid: false,
-				error: errorMessage,
-			};
+			// Error de descifrado (clave incorrecta)
+			if (error instanceof jose.errors.JWEDecryptionFailed) {
+				return { valid: false, error: "Clave incorrecta" };
+			}
+
+			// Otros errores
+			return { valid: false, error: error.message || "Token inválido" };
 		}
 	}
 
@@ -162,6 +204,14 @@ export default class JWTProvider extends BaseProvider implements IJWTProvider {
 	 */
 	async verify(token: string): Promise<boolean> {
 		const result = await this.decrypt(token);
+		return result.valid;
+	}
+
+	/**
+	 * Verifica si un token es válido con una clave específica
+	 */
+	async verifyWithKey(token: string, key: Uint8Array): Promise<boolean> {
+		const result = await this.decryptWithKey(token, key);
 		return result.valid;
 	}
 

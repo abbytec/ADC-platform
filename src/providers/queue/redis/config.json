@@ -1,0 +1,15 @@
+{
+	"name": "redis",
+	"version": "1.0.0",
+	"type": "queue-provider",
+	"global": true,
+	"language": "typescript",
+	"config": {
+		"host": "${REDIS_HOST:-localhost}",
+		"port": "${REDIS_PORT:-6379}",
+		"password": "${REDIS_PASSWORD}",
+		"db": 0,
+		"keyPrefix": "adc:"
+	}
+}
+

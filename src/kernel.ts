@@ -6,6 +6,7 @@ import chokidar from "chokidar";
 import { IApp } from "./interfaces/modules/IApp.js";
 import { Logger } from "./utils/logger/Logger.js";
 import { ModuleLoader } from "./utils/loaders/ModuleLoader.js";
+import { ModuleRegistry } from "./utils/registry/ModuleRegistry.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModule, IModuleConfig } from "./interfaces/modules/IModule.js";
 import type { BaseProvider, IProvider } from "./providers/BaseProvider.ts";
@@ -20,526 +21,160 @@ export class Kernel {
 	#isStartingUp = true;
 	readonly #logger: ILogger = Logger.getLogger("Kernel");
 
-	// --- Contexto de carga para reference counting ---
-	#currentLoadingContext: string | null = null;
+	readonly #registry = new ModuleRegistry(Kernel.#kernelKey);
 
-	// --- Registros por categoría ---
-	readonly #appsRegistry = new Map<string, IApp>();
+	readonly #appFilePaths = new Map<string, string>();
+	readonly #appConfigFilePaths = new Map<string, string>();
 
-	readonly #moduleStore = {
-		provider: {
-			registry: new Map<string, IModule>(),
-			nameMap: new Map<string, string[]>(),
-			fileToUniqueKeyMap: new Map<string, string>(),
-			refCount: new Map<string, number>(),
-		},
-		utility: {
-			registry: new Map<string, IModule>(),
-			nameMap: new Map<string, string[]>(),
-			fileToUniqueKeyMap: new Map<string, string>(),
-			refCount: new Map<string, number>(),
-		},
-		service: {
-			registry: new Map<string, IModule>(),
-			nameMap: new Map<string, string[]>(),
-			fileToUniqueKeyMap: new Map<string, string>(),
-			refCount: new Map<string, number>(),
-		},
-	};
-
-	// Mapa de dependencias: appName -> Set<{type, uniqueKey}>
-	readonly #appModuleDependencies = new Map<string, Set<{ type: ModuleType; uniqueKey: string }>>();
-
-	// Mapa de apps con docker-compose: appName -> directorio
 	readonly #appDockerComposeMap = new Map<string, string>();
-	// Mapa de servicios kernel con docker-compose: serviceName -> directorio
 	readonly #serviceDockerComposeMap = new Map<string, string>();
 	#statusInterval: NodeJS.Timeout | null = null;
 
-	#getRegistry(moduleType: ModuleType): Map<string, IModule> {
-		return this.#moduleStore[moduleType].registry;
-	}
-
-	#getNameMap(moduleType: ModuleType): Map<string, string[]> {
-		return this.#moduleStore[moduleType].nameMap;
-	}
-
-	#getRefCountMap(moduleType: ModuleType): Map<string, number> {
-		return this.#moduleStore[moduleType].refCount;
-	}
-
-	readonly #appFilePaths = new Map<string, string>(); // filePath -> appName
-	readonly #appConfigFilePaths = new Map<string, string>(); // configFilePath -> instanceName
-
-	#getFileToUniqueKeyMap(moduleType: ModuleType): Map<string, string> {
-		return this.#moduleStore[moduleType].fileToUniqueKeyMap;
-	}
-
-	// --- Gestor de carga ---
 	public static readonly moduleLoader = new ModuleLoader(Kernel.#kernelKey);
 
-	// --- Determinación de entorno ---
 	readonly #isDevelopment = process.env.NODE_ENV === "development";
 	readonly #basePath = path.resolve(process.cwd(), "src");
 	readonly #fileExtension = ".ts";
 
-	// --- Rutas ---
 	readonly #providersPath = path.resolve(this.#basePath, "providers");
 	readonly #utilitiesPath = path.resolve(this.#basePath, "utilities");
 	readonly #servicesPath = path.resolve(this.#basePath, "services");
 	readonly #appsPath = path.resolve(this.#basePath, "apps");
 
-	#getUniqueKey(name: string, config?: Record<string, any>): string {
-		if (!config || Object.keys(config).length === 0) {
-			return name;
-		}
-		// Crear hash simple del config para evitar keys muy largas
-		const configStr = JSON.stringify(config);
-		let hash = 0;
-		for (let i = 0; i < configStr.length; i++) {
-			const char = configStr.charCodeAt(i);
-			hash = (hash << 5) - hash + char;
-			hash = hash & hash; // Convertir a 32bit integer
-		}
-		return `${name}#${Math.abs(hash).toString(16)}`;
-	}
-
-	#addModuleToRegistry(
-		moduleType: ModuleType,
-		name: string,
-		uniqueKey: string,
-		instance: IModule,
-		appName?: string | null,
-		silent = false
-	): void {
-		const registry = this.#getRegistry(moduleType);
-		const nameMap = this.#getNameMap(moduleType);
-		const refCountMap = this.#getRefCountMap(moduleType);
-		const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
-
-		// Usar el contexto de carga solo si appName es undefined (no si es null)
-		// null = explícitamente NO registrar como dependencia de app
-		const effectiveAppName = appName === undefined ? this.#currentLoadingContext : appName;
-
-		const alreadyExists = registry.has(uniqueKey);
-
-		if (alreadyExists) {
-			// Incrementar el contador de referencias
-			const currentCount = refCountMap.get(uniqueKey) || 0;
-			refCountMap.set(uniqueKey, currentCount + 1);
-			if (!silent) {
-				this.#logger.logDebug(`${capitalizedModuleType} ${name} reutilizado (Referencias: ${currentCount + 1})`);
-			}
-		} else {
-			// Registrar nuevo módulo
-			registry.set(uniqueKey, instance);
-			refCountMap.set(uniqueKey, 1);
-		}
-
-		// Siempre agregar el nombre al nameMap (permite aliases)
-		if (!nameMap.has(name)) {
-			nameMap.set(name, []);
-		}
-		const keys = nameMap.get(name)!;
-		if (!keys.includes(uniqueKey)) {
-			keys.push(uniqueKey);
-		}
-
-		// Log solo para registro nuevo (no para aliases)
-		if (!alreadyExists && !silent) {
-			const uniqueInstances = new Set(keys.map((k) => registry.get(k))).size;
-			this.#logger.logOk(`${capitalizedModuleType} registrado: ${name} (Instancias únicas: ${uniqueInstances})`);
-		}
-
-		// Registrar la dependencia en la app
-		if (effectiveAppName) {
-			if (!this.#appModuleDependencies.has(effectiveAppName)) {
-				this.#appModuleDependencies.set(effectiveAppName, new Set());
-			}
-			this.#appModuleDependencies.get(effectiveAppName)!.add({ type: moduleType, uniqueKey });
-		}
-	}
-
-	/**
-	 * Limpia las referencias de módulos de una app y remueve módulos sin referencias
-	 */
-	async #cleanupAppModules(appName: string): Promise<void> {
-		const dependencies = this.#appModuleDependencies.get(appName);
-		if (!dependencies) return;
-
-		for (const { type, uniqueKey } of dependencies) {
-			const refCountMap = this.#getRefCountMap(type);
-			const currentCount = refCountMap.get(uniqueKey) || 0;
-
-			if (currentCount > 1) {
-				// Decrementar el contador de referencias
-				refCountMap.set(uniqueKey, currentCount - 1);
-				this.#logger.logDebug(`Referencias decrementadas para ${type} ${uniqueKey}: ${currentCount - 1}`);
-			} else {
-				// Eliminar el módulo completamente
-				const registry = this.#getRegistry(type);
-				const module = registry.get(uniqueKey);
-
-				if (module) {
-					this.#logger.logDebug(`Limpiando ${type}: ${uniqueKey}`);
-					await module.stop?.(Kernel.#kernelKey);
-					registry.delete(uniqueKey);
-					refCountMap.delete(uniqueKey);
-
-					// Limpiar del nameMap
-					const nameMap = this.#getNameMap(type);
-					for (const [name, keys] of nameMap.entries()) {
-						const index = keys.indexOf(uniqueKey);
-						if (index > -1) {
-							keys.splice(index, 1);
-							if (keys.length === 0) {
-								nameMap.delete(name);
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// Limpiar las dependencias de la app
-		this.#appModuleDependencies.delete(appName);
-	}
-
-	// --- API Pública del Kernel ---
-	#registerModule(moduleType: ModuleType, name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
-		// Si el nombre de registro es diferente al instance.name, es un alias
-		// En ese caso, usar el nombre del alias para el uniqueKey para que coincida al buscarlo
-		const keyName = name !== instance.name ? name : instance.name;
-		// Para services se usa config.config, para providers/utilities se usa config.custom
-		const configForKey = config.custom || config.config || {};
-		const uniqueKey = this.#getUniqueKey(keyName, configForKey);
-		this.#addModuleToRegistry(moduleType, name, uniqueKey, instance, appName);
-	}
-	#getModule<T>(moduleType: ModuleType, name: string, config?: Record<string, any>): T {
-		const registry = this.#getRegistry(moduleType);
-		const nameMap = this.#getNameMap(moduleType);
-		const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
-
-		if (config) {
-			const uniqueKey = this.#getUniqueKey(name, config);
-			const instance = registry.get(uniqueKey);
-			if (!instance) {
-				const errorMessage = `${capitalizedModuleType} ${name} con la configuración especificada no encontrado.`;
-				this.#logger.logError(errorMessage);
-				throw new Error(errorMessage);
-			}
-			return instance as T;
-		}
-
-		let keys = nameMap.get(name);
-		if (!keys || keys.length === 0) {
-			const errorMessage = `${capitalizedModuleType} ${name} no encontrado.`;
-			this.#logger.logError(errorMessage);
-			throw new Error(errorMessage);
-		}
-
-		if (keys.length > 1) {
-			let filteredKeys = keys;
-
-			// 1. Try to filter by current app context
-			if (this.#currentLoadingContext) {
-				const appDependencies = this.#appModuleDependencies.get(this.#currentLoadingContext);
-				if (appDependencies) {
-					const appDependencyKeys = new Set(
-						Array.from(appDependencies)
-							.filter((dep) => dep.type === moduleType)
-							.map((dep) => dep.uniqueKey)
-					);
-					const matchingKeys = keys.filter((key) => appDependencyKeys.has(key));
-
-					if (matchingKeys.length > 0) {
-						filteredKeys = matchingKeys;
-					}
-				}
-			}
-
-			// 2. If still ambiguous, apply specificity rule WITHIN the filtered set
-			if (filteredKeys.length > 1) {
-				const sorted = [...filteredKeys].sort((a, b) => b.length - a.length);
-				// Only pick if there is a single most-specific key
-				if (sorted[0].length > sorted[1].length) {
-					filteredKeys = [sorted[0]];
-				}
-			}
-
-			keys = filteredKeys;
-		}
-
-		if (keys.length > 1) {
-			const errorMessage = `Múltiples instancias de ${capitalizedModuleType} ${name} encontradas. Por favor, especifique una configuración para desambiguar.`;
-			this.#logger.logError(errorMessage);
-			throw new Error(errorMessage);
-		}
-
-		return registry.get(keys[0]) as T;
-	}
-
 	public getProvider<T>(name: string, config?: Record<string, any>): T {
-		return this.#getModule("provider", name, config);
+		return this.#registry.getProvider(name, config);
 	}
 
 	public getUtility<T>(name: string, config?: Record<string, any>): T {
-		return this.#getModule("utility", name, config);
+		return this.#registry.getUtility(name, config);
 	}
 
 	public getService<T>(name: string, config?: Record<string, any>): T {
-		return this.#getModule("service", name, config);
+		return this.#registry.getService(name, config);
 	}
 
-	/**
-	 * Verifica si un módulo existe en el registry sin lanzar error.
-	 * Útil para evitar cargar módulos duplicados.
-	 */
 	public hasModule(moduleType: ModuleType, name: string, config?: Record<string, any>): boolean {
-		const registry = this.#getRegistry(moduleType);
-		const uniqueKey = this.#getUniqueKey(name, config);
-		return registry.has(uniqueKey);
+		return this.#registry.hasModule(moduleType, name, config);
 	}
 
 	public getApp(name: string): IApp {
-		const instance = this.#appsRegistry.get(name);
-		if (!instance) {
-			this.#logger.logError(`App '${name}' no encontrada.`);
-			throw new Error(`App '${name}' no encontrada.`);
-		}
-		return instance;
+		return this.#registry.getApp(name);
 	}
 
 	public registerProvider(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
-		this.#registerModule("provider", name, instance, config, appName);
+		this.#registry.registerProvider(name, instance, config, appName);
 	}
 
 	public registerUtility(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
-		this.#registerModule("utility", name, instance, config, appName);
+		this.#registry.registerUtility(name, instance, config, appName);
 	}
 
 	public registerService(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
-		this.#registerModule("service", name, instance, config, appName);
+		this.#registry.registerService(name, instance, config, appName);
 	}
 
 	public registerApp(name: string, instance: IApp): void {
-		if (this.#appsRegistry.has(name)) {
-			this.#logger.logDebug(`App '${name}' sobrescrita.`);
-		}
-		this.#appsRegistry.set(name, instance);
-		this.#logger.logOk(`App registrada: ${name}`);
+		this.#registry.registerApp(name, instance);
 	}
 
-	/**
-	 * Registra una dependencia de módulo existente para una app
-	 * (para reference counting sin volver a cargar el módulo)
-	 */
 	public addModuleDependency(moduleType: ModuleType, name: string, config?: Record<string, any>, appName?: string): void {
-		const uniqueKey = this.#getUniqueKey(name, config);
-		const registry = this.#getRegistry(moduleType);
-		const refCountMap = this.#getRefCountMap(moduleType);
+		this.#registry.addModuleDependency(moduleType, name, config, appName);
+	}
 
-		if (!registry.has(uniqueKey)) {
-			this.#logger.logWarn(`Intentando agregar dependencia de ${moduleType} ${name} que no existe en el registry`);
-			return;
-		}
+	async #loadKernelServices(): Promise<void> {
+		const kernelServices = await this.#findKernelServices(this.#servicesPath);
 
-		const effectiveAppName = appName || this.#currentLoadingContext;
+		if (kernelServices.length === 0) return;
 
-		if (effectiveAppName) {
-			if (!this.#appModuleDependencies.has(effectiveAppName)) {
-				this.#appModuleDependencies.set(effectiveAppName, new Set());
-			}
+		this.#logger.logInfo(`Cargando ${kernelServices.length} servicio(s) en modo kernel...`);
 
-			const deps = this.#appModuleDependencies.get(effectiveAppName)!;
+		for (const { path: servicePath, name: serviceName, configPath } of kernelServices) {
+			try {
+				const serviceDir = path.dirname(servicePath);
+				
+				try {
+					await this.#runDockerCompose(serviceDir, serviceName, this.#serviceDockerComposeMap);
+				} catch {
+					this.#logger.logDebug(`docker-compose no disponible para ${serviceName}`);
+				}
 
-			// Agregar a las dependencias de la app (solo si no existe ya)
-			const depExists = Array.from(deps).some((d) => d.type === moduleType && d.uniqueKey === uniqueKey);
-			if (!depExists) {
-				deps.add({ type: moduleType, uniqueKey });
+				const { instance, config } = await Kernel.moduleLoader.loadKernelService(
+					servicePath,
+					configPath,
+					this,
+					Kernel.#kernelKey
+				);
 
-				// Incrementar reference count
-				const currentCount = refCountMap.get(uniqueKey) || 0;
-				refCountMap.set(uniqueKey, currentCount + 1);
-
-				this.#logger.logDebug(`Dependencia agregada: ${moduleType} ${name} para ${effectiveAppName} (Referencias: ${currentCount + 1})`);
+				this.registerService(serviceName, instance, config);
+				this.#logger.logOk(`Servicio kernel cargado: ${serviceName}`);
+			} catch (error: any) {
+				this.#logger.logError(`Error cargando servicio kernel (${serviceName}): ${error.message}`);
 			}
 		}
 	}
 
-	/**
-	 * Carga servicios en modo kernel antes de las apps.
-	 * kernelMode puede ser:
-	 * - true: prioridad 1 (default)
-	 * - number: prioridad explícita (menor = se carga primero)
-	 * - falsy: no es servicio kernel
-	 */
-	async #loadKernelServices(): Promise<void> {
-		const findKernelServices = async (dir: string): Promise<Array<{ path: string; name: string; configPath: string; priority: number }>> => {
-			const kernelServices: Array<{ path: string; name: string; configPath: string; priority: number }> = [];
+	async #findKernelServices(dir: string): Promise<Array<{ path: string; name: string; configPath: string; priority: number }>> {
+		const kernelServices: Array<{ path: string; name: string; configPath: string; priority: number }> = [];
 
-			const traverse = async (currentDir: string) => {
-				const entries = await fs.readdir(currentDir, { withFileTypes: true });
+		const traverse = async (currentDir: string) => {
+			const entries = await fs.readdir(currentDir, { withFileTypes: true });
 
-				for (const entry of entries) {
-					const fullPath = path.join(currentDir, entry.name);
+			for (const entry of entries) {
+				const fullPath = path.join(currentDir, entry.name);
 
-					if (entry.isDirectory()) {
-						// Buscar config.json en este directorio
-						const configPath = path.join(fullPath, "config.json");
-						try {
-							await fs.access(configPath);
-							const configContent = await fs.readFile(configPath, "utf-8");
-							const config = JSON.parse(configContent);
+				if (entry.isDirectory()) {
+					const configPath = path.join(fullPath, "config.json");
+					try {
+						await fs.access(configPath);
+						const configContent = await fs.readFile(configPath, "utf-8");
+						const config = JSON.parse(configContent);
 
-							// kernelMode: true = prioridad 1, number = prioridad explícita
-							const kernelMode = config.kernelMode;
-							const priority = kernelMode === true ? 1 : typeof kernelMode === "number" ? kernelMode : null;
+						const kernelMode = config.kernelMode;
+						const priority = kernelMode === true ? 1 : typeof kernelMode === "number" ? kernelMode : null;
 
-							if (priority !== null) {
-								// Buscar el archivo index.ts o index.js
-								const indexTs = path.join(fullPath, "index.ts");
-								const indexJs = path.join(fullPath, "index.js");
+						if (priority !== null) {
+							const indexTs = path.join(fullPath, "index.ts");
+							const indexJs = path.join(fullPath, "index.js");
 
+							try {
+								await fs.access(indexTs);
+								kernelServices.push({ path: indexTs, name: entry.name, configPath, priority });
+								continue;
+							} catch {
 								try {
-									await fs.access(indexTs);
-									kernelServices.push({ path: indexTs, name: entry.name, configPath, priority });
+									await fs.access(indexJs);
+									kernelServices.push({ path: indexJs, name: entry.name, configPath, priority });
 									continue;
-								} catch {
-									try {
-										await fs.access(indexJs);
-										kernelServices.push({ path: indexJs, name: entry.name, configPath, priority });
-										continue;
-									} catch {
-										// No tiene index, continuar buscando en subdirectorios
-									}
-								}
+								} catch { /* no index */ }
 							}
-						} catch {
-							// No tiene config.json o no es válido, seguir buscando
 						}
+					} catch { /* no config.json */ }
 
-						// Continuar buscando recursivamente
-						await traverse(fullPath);
-					}
+					await traverse(fullPath);
 				}
-			};
-
-			await traverse(dir);
-			// Ordenar por prioridad (menor = primero)
-			return kernelServices.sort((a, b) => a.priority - b.priority);
+			}
 		};
 
-		const kernelServices = await findKernelServices(this.#servicesPath);
-
-		if (kernelServices.length > 0) {
-			this.#logger.logInfo(`Cargando ${kernelServices.length} servicio(s) en modo kernel...`);
-
-			for (const { path: servicePath, name: serviceName, configPath } of kernelServices) {
-				try {
-					// Leer la configuración del servicio
-					const configContent = await fs.readFile(configPath, "utf-8");
-					const serviceConfig = JSON.parse(configContent);
-
-					// Ejecutar docker-compose si existe
-					const serviceDir = path.dirname(servicePath);
-					try {
-						await this.#startDockerComposeForService(serviceDir, serviceName);
-					} catch {
-						this.#logger.logDebug(`docker-compose no disponible o no configurado para ${serviceName}`);
-					}
-
-					// Cargar variables de entorno del servicio antes de cargar providers
-					const envPath = path.join(serviceDir, ".env");
-					const serviceEnvVars = await Kernel.moduleLoader.loadEnvFile(envPath);
-
-					// Cargar providers del servicio kernel
-					if (serviceConfig.providers && Array.isArray(serviceConfig.providers)) {
-						for (const providerConfig of serviceConfig.providers) {
-							this.#logger.logDebug(`[Kernel] Provider config ANTES: ${JSON.stringify(providerConfig)}`);
-							
-							// Verificar si el provider ya existe
-							if (this.hasModule("provider", providerConfig.name, providerConfig.config)) {
-								this.#logger.logDebug(`Provider ${providerConfig.name} ya existe, reutilizando`);
-								continue;
-							}
-							try {
-								// Pasar las variables del servicio al cargar el provider
-								const provider = await Kernel.moduleLoader.loadProvider(providerConfig, serviceEnvVars);
-								// El loader ya llama a setKernelKey y start internamente
-								this.registerProvider(provider.name, provider, providerConfig, null);
-
-								// También registrar por el nombre del módulo si es diferente
-								if (providerConfig.name !== provider.name) {
-									this.registerProvider(providerConfig.name, provider, providerConfig, null);
-								}
-							} catch (error: any) {
-								this.#logger.logError(
-									`Error cargando provider ${providerConfig.name} para servicio kernel ${serviceName}: ${error.message}`
-								);
-							}
-						}
-					}
-
-					// Cargar el módulo directamente (sin versionado)
-					const serviceModule = await import(servicePath);
-					const ServiceClass = serviceModule.default;
-
-					if (!ServiceClass) {
-						throw new Error(`No se encontró export default en ${servicePath}`);
-					}
-
-					// Crear instancia del servicio con su configuración
-					const serviceInstance: BaseService = new ServiceClass(this, {
-						name: serviceName,
-						providers: serviceConfig.providers || [],
-						utilities: serviceConfig.utilities || [],
-						__modulePath: serviceDir,
-					});
-					serviceInstance.setKernelKey(Kernel.#kernelKey);
-					await serviceInstance.start(Kernel.#kernelKey);
-
-					// Registrar el servicio con su configuración para que el uniqueKey coincida
-					this.registerService(serviceName, serviceInstance, {
-						name: serviceName,
-						version: "1.0.0",
-						language: "typescript",
-						global: true,
-						config: {
-							__providers: serviceConfig.providers || [],
-						},
-					});
-
-					this.#logger.logOk(`Servicio en modo kernel cargado: ${serviceName}`);
-				} catch (error: any) {
-					this.#logger.logError(`Error cargando servicio en modo kernel (${serviceName}): ${error.message}`);
-				}
-			}
-		}
+		await traverse(dir);
+		return kernelServices.sort((a, b) => a.priority - b.priority);
 	}
 
-	// --- Lógica de Arranque ---
 	public async start(): Promise<void> {
 		this.#logger.logInfo("Iniciando...");
 		this.#logger.logInfo(`Modo: ${this.#isDevelopment ? "DESARROLLO" : "PRODUCCIÓN"}`);
 		this.#logger.logDebug(`Base path: ${this.#basePath}`);
 
-		// Cargar servicios en modo kernel primero
 		await this.#loadKernelServices();
 
-		// Solo cargar Apps (que cargarán sus propios módulos desde config.json)
-		// En producción, excluir apps de test (cuando ENABLE_TESTS !== true)
 		const excludeTests = process.env.ENABLE_TESTS !== "true" && !this.#isDevelopment;
 		const excludeList = excludeTests ? ["BaseApp.ts", "test"] : ["BaseApp.ts"];
 		await this.#loadLayerRecursive(this.#appsPath, this.#loadApp.bind(this), excludeList);
 
-		// Iniciar watchers para carga dinámica
-		this.#watchLayer(this.#providersPath, this.#loadAndRegisterModule.bind(this, "provider"), this.#unloadModule.bind(this, "provider"));
-		this.#watchLayer(this.#utilitiesPath, this.#loadAndRegisterModule.bind(this, "utility"), this.#unloadModule.bind(this, "utility"));
-		this.#watchLayer(this.#servicesPath, this.#loadAndRegisterModule.bind(this, "service"), this.#unloadModule.bind(this, "service"));
+		this.#watchLayer(this.#providersPath, this.#loadAndRegisterModule.bind(this, "provider"), this.#registry.unloadModule.bind(this, "provider", Kernel.#kernelKey));
+		this.#watchLayer(this.#utilitiesPath, this.#loadAndRegisterModule.bind(this, "utility"),  this.#registry.unloadModule.bind(this, "utility", Kernel.#kernelKey));
+		this.#watchLayer(this.#servicesPath, this.#loadAndRegisterModule.bind(this, "service"),  this.#registry.unloadModule.bind(this, "service", Kernel.#kernelKey));
 		this.#watchLayer(this.#appsPath, this.#loadApp.bind(this), this.#unloadApp.bind(this), ["BaseApp.ts"]);
 
-		// Watcher para archivos de configuración de apps
 		this.#watchAppConfigs();
 
 		setTimeout(() => {
@@ -548,35 +183,10 @@ export class Kernel {
 		}, 10000);
 
 		this.#statusInterval = setInterval(() => {
-			// Contar instancias únicas (no entradas en el registry)
-			// Los providers se registran 2 veces (name y type), así que contamos instancias únicas
-			const pCount = new Set(this.#moduleStore.provider.registry.values()).size;
-			const uCount = new Set(this.#moduleStore.utility.registry.values()).size;
-			const sCount = new Set(this.#moduleStore.service.registry.values()).size;
-			this.#logger.logInfo(`Providers: ${pCount} - Utilities: ${uCount} - Services: ${sCount}`);
+			const stats = this.#registry.getModuleStats();
+			this.#logger.logInfo(`Providers: ${stats.providers} - Utilities: ${stats.utilities} - Services: ${stats.services}`);
 			const kernelState = {
-				apps: Array.from(this.#appsRegistry.keys()),
-				providers: {
-					keys: Array.from(this.#moduleStore.provider.registry.keys()),
-					refs: Object.fromEntries(this.#moduleStore.provider.refCount),
-				},
-				utilities: {
-					keys: Array.from(this.#moduleStore.utility.registry.keys()),
-					refs: Object.fromEntries(this.#moduleStore.utility.refCount),
-				},
-				services: {
-					keys: Array.from(this.#moduleStore.service.registry.keys()),
-					refs: Object.fromEntries(this.#moduleStore.service.refCount),
-				},
-				appDependencies: Object.fromEntries(
-					Array.from(this.#appModuleDependencies.entries()).map(([appName, deps]) => [
-						appName,
-						Array.from(deps).map((dep) => ({
-							type: dep.type,
-							key: dep.uniqueKey,
-						})),
-					])
-				),
+				...this.#registry.getStateSnapshot(),
 				appFiles: Object.fromEntries(this.#appFilePaths),
 				appConfigFiles: Object.fromEntries(this.#appConfigFilePaths),
 			};
@@ -584,9 +194,6 @@ export class Kernel {
 		}, 30000);
 	}
 
-	/**
-	 * Carga un módulo específico de un tipo (provider, utility o service)
-	 */
 	public async loadModuleOfType(
 		type: "provider" | "utility" | "service",
 		moduleName: string,
@@ -601,12 +208,10 @@ export class Kernel {
 		}
 	}
 
-	// --- Lógica de Cierre ---
 	public async stop(): Promise<void> {
 		this.#logger.logInfo("\nIniciando cierre ordenado...");
 		if (this.#statusInterval) clearInterval(this.#statusInterval);
 
-		// Helper para ejecutar con timeout
 		const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, name: string): Promise<T | undefined> => {
 			const timeoutPromise = new Promise<undefined>((resolve) => {
 				setTimeout(() => {
@@ -617,19 +222,16 @@ export class Kernel {
 			return Promise.race([promise, timeoutPromise]);
 		};
 
-		// Detener Apps
 		this.#logger.logInfo(`Deteniendo Apps...`);
-		for (const [name, instance] of this.#appsRegistry) {
+		for (const [name, instance] of this.#registry.getAppsRegistry()) {
 			try {
 				this.#logger.logDebug(`Deteniendo App ${name}`);
 				if (instance.stop) {
 					await withTimeout(instance.stop(), 3000, `App ${name}`);
 				}
 
-				// Extraer el nombre base de la app (antes del primer ':')
 				const appBaseName = name.split(":")[0];
 
-				// Detener docker-compose si existe para esta app
 				if (this.#appDockerComposeMap.has(appBaseName)) {
 					const appDir = this.#appDockerComposeMap.get(appBaseName)!;
 					try {
@@ -644,74 +246,34 @@ export class Kernel {
 			}
 		}
 
-		// Detener otros módulos
-		for (const moduleType of ["provider", "utility", "service"] as ModuleType[]) {
-			const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
-			this.#logger.logInfo(`Deteniendo ${capitalizedModuleType == "Utility" ? "Utilitie" : capitalizedModuleType}s...`);
-			const registry = this.#getRegistry(moduleType);
-			for (const [key, instance] of registry) {
-				try {
-					this.#logger.logDebug(`Deteniendo ${capitalizedModuleType} ${key}`);
-					if (instance.stop) {
-						await withTimeout(instance.stop(Kernel.#kernelKey), 2000, `${capitalizedModuleType} ${key}`);
-					}
-				} catch (e) {
-					this.#logger.logError(`Error deteniendo ${capitalizedModuleType} ${key}: ${e}`);
-				}
-			}
-		}
+		await this.#registry.stopAllModules(Kernel.#kernelKey, withTimeout);
 		this.#logger.logOk("Cierre completado.");
 	}
 
-	/**
-	 * Búsqueda recursiva ilimitada de cada 'index.ts'/'index.js' en una capa.
-	 * Carga apps en PARALELO cuando no tienen dependencias entre sí.
-	 */
 	async #loadLayerRecursive(dir: string, loader: (entryPath: string) => Promise<void>, exclude: string[] = []): Promise<void> {
 		try {
-			// Primero, buscar si el mismo directorio tiene index
 			const indexPath = path.join(dir, `index${this.#fileExtension}`);
 			try {
 				if ((await fs.stat(indexPath)).isFile()) {
 					await loader(indexPath);
-					return; // Si encontramos index aquí, no buscar más
+					return;
 				}
-			} catch {
-				// No hay index en este nivel, continuar
-			}
+			} catch { /* no index */ }
 
-			// Luego, buscar recursivamente en subdirectorios
 			const entries = await fs.readdir(dir, { withFileTypes: true });
-
-			// Construir niveles de carga basados en dependencias (para carga paralela)
 			const loadLevels = await this.#buildAppLoadLevels(dir, entries, exclude);
 
-			// Cargar cada nivel en paralelo (apps del mismo nivel no tienen dependencias entre sí)
 			for (const level of loadLevels) {
 				if (level.length === 1) {
-					// Un solo elemento, cargar directamente
 					await this.#loadLayerRecursive(level[0], loader, exclude);
 				} else if (level.length > 1) {
-					// Múltiples elementos sin dependencias entre sí: cargar en paralelo
 					this.#logger.logDebug(`Cargando ${level.length} apps en paralelo...`);
 					await Promise.all(level.map((subDirPath) => this.#loadLayerRecursive(subDirPath, loader, exclude)));
 				}
 			}
-		} catch {
-			// El directorio no existe o no se puede leer, ignorar
-		}
+		} catch { /* dir no existe */ }
 	}
 
-	/**
-	 * Construye NIVELES de carga de apps basados en uiDependencies.
-	 * Apps del mismo nivel pueden cargarse en PARALELO (no tienen dependencias entre sí).
-	 * Retorna: Array de niveles, cada nivel es un array de paths de apps.
-	 *
-	 * Nivel 0: UI libraries (Stencil) - siempre primero
-	 * Nivel 1: Apps sin dependencias (o solo dependen de UI libs)
-	 * Nivel 2+: Apps que dependen de apps del nivel anterior
-	 * Último nivel: Hosts (isHost=true) - siempre al final para que detecten remotes
-	 */
 	async #buildAppLoadLevels(dir: string, entries: Dirent[], exclude: string[]): Promise<string[][]> {
 		const appConfigs: Array<{
 			path: string;
@@ -723,7 +285,6 @@ export class Kernel {
 			isRemote: boolean;
 		}> = [];
 
-		// 1. Recopilar información de todas las apps
 		for (const entry of entries) {
 			if (!entry.isDirectory() || exclude.includes(entry.name)) continue;
 
@@ -737,68 +298,32 @@ export class Kernel {
 				if (config.uiModule) {
 					const uiModule = config.uiModule;
 					const appName = uiModule.name || entry.name;
-
-					// Detectar UI libraries (Stencil con exports)
 					const isUILib = uiModule.framework === "stencil" && uiModule.exports;
-
-					// Detectar hosts y remotes
 					const isHost = uiModule.isHost ?? false;
 					const isRemote = uiModule.isRemote ?? false;
-
-					// Obtener dependencias explícitas
 					const dependencies = uiModule.uiDependencies || [];
 
-					appConfigs.push({
-						path: subDirPath,
-						dirName: entry.name,
-						name: appName,
-						dependencies,
-						isUILib,
-						isHost,
-						isRemote,
-					});
+					appConfigs.push({ path: subDirPath, dirName: entry.name, name: appName, dependencies, isUILib, isHost, isRemote });
 				} else {
-					// Apps sin uiModule se cargan con prioridad normal
-					appConfigs.push({
-						path: subDirPath,
-						dirName: entry.name,
-						name: entry.name,
-						dependencies: [],
-						isUILib: false,
-						isHost: false,
-						isRemote: false,
-					});
+					appConfigs.push({ path: subDirPath, dirName: entry.name, name: entry.name, dependencies: [], isUILib: false, isHost: false, isRemote: false });
 				}
 			} catch {
-				// Si no hay config o error al leerlo, cargar sin dependencias
-				appConfigs.push({
-					path: subDirPath,
-					dirName: entry.name,
-					name: entry.name,
-					dependencies: [],
-					isUILib: false,
-					isHost: false,
-					isRemote: false,
-				});
+				appConfigs.push({ path: subDirPath, dirName: entry.name, name: entry.name, dependencies: [], isUILib: false, isHost: false, isRemote: false });
 			}
 		}
 
-		// 2. Construir niveles de carga
 		const levels: string[][] = [];
 		const loadedAppNames = new Set<string>();
 
-		// Nivel 0: UI libraries (siempre primero, en paralelo entre ellas)
 		const uiLibs = appConfigs.filter((app) => app.isUILib);
 		if (uiLibs.length > 0) {
 			levels.push(uiLibs.map((app) => app.path));
 			uiLibs.forEach((app) => loadedAppNames.add(app.name));
 		}
 
-		// Separar hosts de otros
 		const hosts = appConfigs.filter((app) => app.isHost && !app.isUILib);
 		const others = appConfigs.filter((app) => !app.isUILib && !app.isHost);
 
-		// Procesar apps no-host por niveles de dependencia
 		let pendingQueue = [...others];
 		const maxIterations = 50;
 		let iteration = 0;
@@ -808,7 +333,6 @@ export class Kernel {
 			const stillPending: typeof pendingQueue = [];
 
 			for (const app of pendingQueue) {
-				// Verificar si todas las dependencias ya están cargadas
 				const allDepsLoaded = app.dependencies.every((depName) => loadedAppNames.has(depName));
 
 				if (allDepsLoaded) {
@@ -822,7 +346,6 @@ export class Kernel {
 			if (currentLevel.length > 0) {
 				levels.push(currentLevel);
 			} else if (stillPending.length > 0) {
-				// Deadlock: dependencias no satisfechas
 				const pendingNames = stillPending.map((app) => app.name).join(", ");
 				const missingDeps = stillPending
 					.map((app) => {
@@ -831,12 +354,8 @@ export class Kernel {
 					})
 					.join("; ");
 
-				this.#logger.logWarn(
-					`Dependencias circulares o faltantes: ${pendingNames}. ` +
-						`Faltantes: ${missingDeps}. Se cargarán en paralelo de todas formas.`
-				);
+				this.#logger.logWarn(`Dependencias circulares o faltantes: ${pendingNames}. Faltantes: ${missingDeps}.`);
 
-				// Cargar todas las pendientes en un solo nivel
 				levels.push(stillPending.map((app) => app.path));
 				stillPending.forEach((app) => loadedAppNames.add(app.name));
 				break;
@@ -846,9 +365,7 @@ export class Kernel {
 			iteration++;
 		}
 
-		// Último nivel: Hosts (para que detecten todos los remotes ya registrados)
 		if (hosts.length > 0) {
-			// Los hosts también pueden tener dependencias entre sí, ordenarlos
 			let pendingHosts = [...hosts];
 			let hostIterations = 0;
 
@@ -869,7 +386,6 @@ export class Kernel {
 				if (currentHostLevel.length > 0) {
 					levels.push(currentHostLevel);
 				} else {
-					// Cargar hosts restantes
 					levels.push(stillPendingHosts.map((h) => h.path));
 					break;
 				}
@@ -879,7 +395,6 @@ export class Kernel {
 			}
 		}
 
-		// Log de niveles para debug
 		if (levels.length > 1) {
 			this.#logger.logDebug(`Niveles de carga: ${levels.map((l, i) => `L${i}(${l.length})`).join(" -> ")}`);
 		}
@@ -893,7 +408,6 @@ export class Kernel {
 		switch (moduleType) {
 			case "provider": {
 				const providerModule: BaseProvider = await Kernel.moduleLoader.loadProvider(config);
-				// El loader ya llama a setKernelKey y start internamente
 				this.registerProvider(providerModule.name, providerModule, config);
 				module = providerModule;
 				break;
@@ -906,7 +420,6 @@ export class Kernel {
 			}
 			case "service": {
 				const serviceModule: BaseService = await Kernel.moduleLoader.loadService(config, this);
-				// El loader ya llama a setKernelKey y start internamente
 				this.registerService(serviceModule.name, serviceModule, config);
 				module = serviceModule;
 				break;
@@ -926,8 +439,8 @@ export class Kernel {
 
 			const module = await this.#loadAndRegisterSpecificModule(moduleType, config);
 
-			const uniqueKey = this.#getUniqueKey(module.name, config.custom);
-			const fileMap = this.#getFileToUniqueKeyMap(moduleType);
+			const uniqueKey = this.#registry.getUniqueKey(module.name, config.custom);
+			const fileMap = this.#registry.getFileToUniqueKeyMap(moduleType);
 			fileMap.set(filePath, uniqueKey);
 		} catch (e) {
 			const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
@@ -949,14 +462,12 @@ export class Kernel {
 		this.registerApp(instanceName, app);
 		this.#logger.logDebug(`Inicializando App ${app.name}`);
 
-		// Establecer contexto de carga para reference counting
-		this.#currentLoadingContext = instanceName;
+		this.#registry.setLoadingContext(instanceName);
 		try {
 			await app.loadModulesFromConfig();
 			await app.start?.(Kernel.#kernelKey);
 		} finally {
-			// Limpiar contexto de carga
-			this.#currentLoadingContext = null;
+			this.#registry.setLoadingContext(null);
 		}
 
 		this.#appFilePaths.set(`${filePath}:${instanceName}`, instanceName);
@@ -978,18 +489,15 @@ export class Kernel {
 				return;
 			}
 
-			// Detener y remover la instancia actual
-			const app = this.#appsRegistry.get(instanceName);
+			const app = this.#registry.hasApp(instanceName) ? this.#registry.getApp(instanceName) : null;
 			if (app) {
 				this.#logger.logInfo(`Recargando instancia de App: ${instanceName}`);
 				await app.stop?.();
 
-				// Limpiar módulos asociados a esta app
-				await this.#cleanupAppModules(instanceName);
+				await this.#registry.cleanupAppModules(instanceName, Kernel.#kernelKey);
 
-				this.#appsRegistry.delete(instanceName);
+				this.#registry.deleteApp(instanceName);
 
-				// Limpiar referencias en #appFilePaths
 				for (const [key, value] of this.#appFilePaths.entries()) {
 					if (value === instanceName) {
 						this.#appFilePaths.delete(key);
@@ -997,14 +505,12 @@ export class Kernel {
 				}
 			}
 
-			// Obtener información de la app
 			const appName = instanceName.split(":")[0];
 			const appDir = configPath.includes(`${path.sep}configs${path.sep}`)
 				? path.dirname(path.dirname(configPath))
 				: path.dirname(configPath);
 			const appFilePath = path.join(appDir, `index${this.#fileExtension}`);
 
-			// Cargar la clase de la app
 			const module = await import(`${appFilePath}?v=${Date.now()}`);
 			const AppClass = module.default;
 			if (!AppClass) {
@@ -1012,10 +518,8 @@ export class Kernel {
 				return;
 			}
 
-			// Leer la configuración actualizada
 			const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
 
-			// Crear y ejecutar la nueva instancia
 			const newApp: IApp = new AppClass(this, instanceName, config, appFilePath);
 			await this.#initializeAndRunApp(newApp, appFilePath, instanceName, configPath);
 
@@ -1025,9 +529,6 @@ export class Kernel {
 		}
 	}
 
-	/**
-	 * Ejecuta docker-compose.yml si existe en el directorio especificado
-	 */
 	async #runDockerCompose(dir: string, name: string, map: Map<string, string>): Promise<void> {
 		const dockerComposeFile = path.join(dir, "docker-compose.yml");
 		await fs.stat(dockerComposeFile);
@@ -1052,7 +553,6 @@ export class Kernel {
 				if (code === 0) {
 					this.#logger.logOk(`Servicios Docker iniciados para ${name}`);
 					map.set(name, dir);
-					// Esperar a que los servicios estén listos
 					setTimeout(() => resolve(), 3000);
 				} else {
 					this.#logger.logWarn(`docker-compose falló con código ${code}`);
@@ -1062,9 +562,6 @@ export class Kernel {
 		});
 	}
 
-	/**
-	 * Ejecuta docker-compose.yml si existe en el directorio de la app
-	 */
 	async #startDockerCompose(appDir: string, appName: string): Promise<void> {
 		try {
 			await this.#runDockerCompose(appDir, appName, this.#appDockerComposeMap);
@@ -1075,22 +572,6 @@ export class Kernel {
 		}
 	}
 
-	/**
-	 * Ejecuta docker-compose.yml si existe en el directorio del servicio kernel
-	 */
-	async #startDockerComposeForService(serviceDir: string, serviceName: string): Promise<void> {
-		try {
-			await this.#runDockerCompose(serviceDir, serviceName, this.#serviceDockerComposeMap);
-		} catch (error: any) {
-			if (error.code !== "ENOENT") {
-				this.#logger.logWarn(`No se pudo ejecutar docker-compose para servicio: ${error.message}`);
-			}
-		}
-	}
-
-	/**
-	 * Detiene docker-compose.yml en el directorio de la app
-	 */
 	async #stopDockerCompose(appDir: string): Promise<void> {
 		const dockerComposeFile = path.join(appDir, "docker-compose.yml");
 		try {
@@ -1126,7 +607,6 @@ export class Kernel {
 			if (error.code !== "ENOENT") {
 				this.#logger.logWarn(`No se pudo detener docker-compose: ${error.message}`);
 			}
-			// Si no existe el archivo, simplemente continuar
 		}
 	}
 
@@ -1139,7 +619,6 @@ export class Kernel {
 			const appDir = path.dirname(filePath);
 			const appName = path.basename(appDir);
 
-			// Verificar si la app está deshabilitada en default.json o config.json
 			try {
 				const defaultConfigPath = path.join(appDir, "default.json");
 				const defaultConfigContent = await fs.readFile(defaultConfigPath, "utf-8");
@@ -1147,13 +626,10 @@ export class Kernel {
 
 				if (defaultConfig.disabled === true) {
 					this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
-					return; // No continuar con esta app
+					return;
 				}
-			} catch (error) {
-				// No hay default.json o no se puede leer, intentar config.json
-			}
+			} catch { /* no default.json */ }
 
-			// También verificar en config.json
 			try {
 				const configPath = path.join(appDir, "config.json");
 				const configContent = await fs.readFile(configPath, "utf-8");
@@ -1161,17 +637,14 @@ export class Kernel {
 
 				if (config.disabled === true) {
 					this.#logger.logDebug(`App ${appName} está deshabilitada (config.json)`);
-					return; // No continuar con esta app
+					return;
 				}
-			} catch (error) {
-				// No hay config.json o no se puede leer, continuar normalmente
-			}
+			} catch { /* no config.json */ }
 
-			// Ejecutar docker-compose si existe
 			try {
 				await this.#startDockerCompose(appDir, appName);
 			} catch {
-				this.#logger.logDebug(`docker-compose no disponible o no configurado para ${appName}`);
+				this.#logger.logDebug(`docker-compose no disponible para ${appName}`);
 			}
 
 			const configDirs = [appDir, path.join(appDir, "configs")];
@@ -1196,7 +669,6 @@ export class Kernel {
 				for (const configPath of allConfigFiles) {
 					const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
 
-					// Check if app is disabled
 					if (config.disabled === true) {
 						this.#logger.logDebug(`App ${appName} está deshabilitada (config: ${path.basename(configPath)})`);
 						continue;
@@ -1216,7 +688,7 @@ export class Kernel {
 		} catch (e: any) {
 			if (e.code === "ERR_MODULE_NOT_FOUND") {
 				this.#logger.logError(
-					`Faltan dependencias de Node.js para la app en ${filePath}. Por favor, instálalas. Reintentando en 30 segundos...`
+					`Faltan dependencias de Node.js para la app en ${filePath}. Reintentando en 30 segundos...`
 				);
 				setTimeout(() => this.#loadApp(filePath), 30000);
 			} else {
@@ -1225,16 +697,13 @@ export class Kernel {
 		}
 	}
 
-	// --- Lógica de Watchers y Descarga ---
 	#watchAppConfigs() {
-		// Siempre observar los archivos fuente en src/
 		const srcAppsPath = path.resolve(process.cwd(), "src", "apps");
 		const patterns = [path.join(srcAppsPath, "**/*.json"), path.join(srcAppsPath, "**/configs/*.json")];
 
 		const watcher = chokidar.watch(patterns, {
 			ignoreInitial: true,
 			ignored: (filePath) => {
-				// Ignorar archivos default.json
 				return ["default.json", "tsonfig.json"].includes(path.basename(filePath));
 			},
 			awaitWriteFinish: {
@@ -1252,8 +721,6 @@ export class Kernel {
 		watcher.on("add", async (srcConfigPath) => {
 			if (this.#isStartingUp) return;
 
-			// Cuando se agrega un nuevo archivo de configuración, necesitamos cargar la app completa
-			// para crear la nueva instancia
 			const appDirResolved = srcConfigPath.includes("/configs/") ? path.dirname(path.dirname(srcConfigPath)) : path.dirname(srcConfigPath);
 			const appFilePath = path.join(appDirResolved, `index${this.#fileExtension}`);
 
@@ -1261,34 +728,28 @@ export class Kernel {
 				await fs.stat(appFilePath);
 				this.#logger.logInfo(`Nuevo archivo de configuración detectado: ${path.basename(srcConfigPath)}`);
 				await this.#loadApp(appFilePath);
-			} catch {
-				// El archivo de app no existe, ignorar
-			}
+			} catch { /* app no existe */ }
 		});
 
 		watcher.on("unlink", async (srcConfigPath) => {
 			if (this.#isStartingUp) return;
 
-			// Determinar la ruta correcta según el entorno
 			let targetConfigPath = srcConfigPath;
 			if (!this.#isDevelopment) {
 				const relativePath = path.relative(srcAppsPath, srcConfigPath);
 				targetConfigPath = path.join(this.#appsPath, relativePath);
-				// Eliminar el archivo en dist/ también
 				try {
 					await fs.unlink(targetConfigPath);
-				} catch {
-					// Ignorar si no existe
-				}
+				} catch { /* archivo no existe */ }
 			}
 
 			const instanceName = this.#appConfigFilePaths.get(targetConfigPath);
 			if (instanceName) {
 				this.#logger.logInfo(`Archivo de configuración eliminado: ${path.basename(srcConfigPath)}`);
-				const app = this.#appsRegistry.get(instanceName);
-				if (app) {
+				if (this.#registry.hasApp(instanceName)) {
+					const app = this.#registry.getApp(instanceName);
 					await app.stop?.();
-					this.#appsRegistry.delete(instanceName);
+					this.#registry.deleteApp(instanceName);
 				}
 				this.#appConfigFilePaths.delete(targetConfigPath);
 			}
@@ -1319,54 +780,24 @@ export class Kernel {
 		});
 	}
 
-	async #unloadModule(moduleType: ModuleType, filePath: string) {
-		const fileMap = this.#getFileToUniqueKeyMap(moduleType);
-		const uniqueKey = fileMap.get(filePath);
-		if (uniqueKey) {
-			const registry = this.#getRegistry(moduleType);
-			const module = registry.get(uniqueKey) as Module;
-			if (module) {
-				const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
-				this.#logger.logDebug(`Removiendo ${capitalizedModuleType}: ${module.name}`);
-				await module.stop?.(Kernel.#kernelKey);
-				registry.delete(uniqueKey);
-
-				const nameMap = this.#getNameMap(moduleType);
-				const keys = nameMap.get(module.name);
-				if (keys) {
-					const index = keys.indexOf(uniqueKey);
-					if (index > -1) {
-						keys.splice(index, 1);
-					}
-				}
-			}
-			fileMap.delete(filePath);
-		}
-	}
-
 	async #unloadApp(filePath: string) {
-		// Find all apps associated with this file path
 		const keysToUnload = Array.from(this.#appFilePaths.keys()).filter((key) => key.startsWith(filePath));
 
 		for (const key of keysToUnload) {
 			const appName = this.#appFilePaths.get(key);
-			if (appName) {
-				const app = this.#appsRegistry.get(appName);
-				if (app) {
-					this.#logger.logDebug(`Removiendo app: ${app.name}`);
-					await app.stop?.();
+			if (appName && this.#registry.hasApp(appName)) {
+				const app = this.#registry.getApp(appName);
+				this.#logger.logDebug(`Removiendo app: ${app.name}`);
+				await app.stop?.();
 
-					// Limpiar módulos asociados a esta app
-					await this.#cleanupAppModules(appName);
+				await this.#registry.cleanupAppModules(appName, Kernel.#kernelKey);
 
-					this.#appsRegistry.delete(app.name);
-					this.#appFilePaths.delete(key);
+				this.#registry.deleteApp(app.name);
+				this.#appFilePaths.delete(key);
 
-					// Limpiar referencias en appConfigFilePaths
-					for (const [configPath, instanceName] of this.#appConfigFilePaths.entries()) {
-						if (instanceName === appName) {
-							this.#appConfigFilePaths.delete(configPath);
-						}
+				for (const [configPath, instanceName] of this.#appConfigFilePaths.entries()) {
+					if (instanceName === appName) {
+						this.#appConfigFilePaths.delete(configPath);
 					}
 				}
 			}

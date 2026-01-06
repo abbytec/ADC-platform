@@ -1,7 +1,7 @@
 import { BaseApp } from "../../BaseApp.js";
 import type IdentityManagerService from "../../../services/core/IdentityManagerService/index.js";
 import { AuthorizationError } from "../../../services/core/IdentityManagerService/index.js";
-import type { Role, User } from "../../../services/core/IdentityManagerService/types.js";
+import type { Role, User } from "../../../services/core/IdentityManagerService/domain/index.js";
 import type SessionManagerService from "../../../services/security/SessionManagerService/index.js";
 import { Logger } from "../../../utils/logger/Logger.js";
 import { Action } from "../../../interfaces/behaviours/Actions.js";
@@ -23,6 +23,7 @@ export default class UserProfileApp extends BaseApp {
 	private identityManager!: IdentityManagerService;
 	private sessionManager!: SessionManagerService;
 	#systemUser: User | null = null;
+	#kernelKey!: symbol;
 	private testData: IdentityTestData = {
 		userIds: [],
 		roleIds: [],
@@ -30,6 +31,7 @@ export default class UserProfileApp extends BaseApp {
 	};
 
 	async start(kernelKey: symbol) {
+		this.#kernelKey = kernelKey;
 		this.identityManager = this.kernel.getService<IdentityManagerService>("IdentityManagerService");
 		this.sessionManager = this.kernel.getService<SessionManagerService>("SessionManagerService");
 		this.#systemUser = await this.identityManager.system.getSystemUser(kernelKey);
@@ -152,20 +154,21 @@ export default class UserProfileApp extends BaseApp {
 	async #testAuthenticatedOperations(): Promise<void> {
 		Logger.info(`\n[${this.name}] --- Test: Operaciones Autenticadas (con token) ---`);
 
-		// Obtener JWT provider para generar tokens
-		const jwtProvider = this.kernel.getProvider<any>("jwt");
-
-		// 1. Obtener el usuario SYSTEM (tiene todos los permisos)
-		// REQUIERE kernelKey - solo apps con acceso al kernel pueden obtener el usuario SYSTEM
-
+		// 1. Obtener el usuario SYSTEM y sus credenciales (requiere kernelKey)
 		Logger.ok(`[${this.name}] ✓ Usuario SYSTEM obtenido: ${this.#systemUser!.username}`);
 
-		// 2. Generar token para el usuario SYSTEM
-		const systemToken = await jwtProvider.encrypt({
-			userId: this.#systemUser!.id,
-			permissions: [`identity.${Scope.ALL}.${Action.ALL}`],
-		});
-		Logger.ok(`[${this.name}] ✓ Token SYSTEM generado`);
+		// 2. Hacer login del SYSTEM usando sus credenciales reales
+		// Las credenciales solo son accesibles con kernelKey (seguro)
+		const systemCredentials = this.identityManager.system.getSystemCredentials(this.#kernelKey);
+		const systemToken = await this.sessionManager.loginProgrammatic(
+			this.#kernelKey,
+			systemCredentials.username,
+			systemCredentials.password
+		);
+		if (!systemToken) {
+			throw new Error("No se pudo obtener token para usuario SYSTEM");
+		}
+		Logger.ok(`[${this.name}] ✓ Token SYSTEM generado via login real`);
 
 		// 3. Crear rol con permisos limitados (solo lectura)
 		const limitedRole = await this.identityManager.roles.createRole(`limited-role-${Date.now()}`, "Rol con permisos limitados", [
@@ -180,12 +183,12 @@ export default class UserProfileApp extends BaseApp {
 		this.testData.userIds.push(limitedUser.id);
 		Logger.ok(`[${this.name}] ✓ Usuario limitado creado: ${limitedUser.username}`);
 
-		// 5. Generar token para el usuario limitado
-		const limitedToken = await jwtProvider.encrypt({
-			userId: limitedUser.id,
-			permissions: [`identity.${Scope.USERS}.${Action.READ}`],
-		});
-		Logger.ok(`[${this.name}] ✓ Token limitado generado`);
+		// 5. Hacer login del usuario limitado usando sus credenciales reales
+		const limitedToken = await this.sessionManager.loginProgrammatic(this.#kernelKey, limitedUser.username, limitedPassword);
+		if (!limitedToken) {
+			throw new Error("No se pudo obtener token para usuario limitado");
+		}
+		Logger.ok(`[${this.name}] ✓ Token limitado generado via login real`);
 
 		// 6. Test: SYSTEM puede crear usuarios pasando token como parámetro
 		Logger.info(`[${this.name}] Probando operaciones con token SYSTEM...`);
