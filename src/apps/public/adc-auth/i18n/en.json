@@ -1,0 +1,33 @@
+{
+	"auth": {
+		"login": {
+			"title": "Sign In",
+			"username": "Username or Email",
+			"password": "Password",
+			"submit": "Sign In",
+			"submitting": "Signing in...",
+			"noAccount": "Don't have an account?",
+			"register": "Sign up",
+			"orContinueWith": "Or continue with"
+		},
+		"register": {
+			"title": "Create Account",
+			"username": "Username",
+			"email": "Email",
+			"password": "Password",
+			"confirmPassword": "Confirm Password",
+			"submit": "Create Account",
+			"submitting": "Creating account...",
+			"hasAccount": "Already have an account?",
+			"login": "Sign in",
+			"orRegisterWith": "Or sign up with"
+		},
+		"errors": {
+			"invalidCredentials": "Invalid credentials",
+			"passwordMismatch": "Passwords don't match",
+			"passwordTooShort": "Password must be at least 8 characters",
+			"serverError": "Server error",
+			"accountBlocked": "Account temporarily blocked"
+		}
+	}
+}

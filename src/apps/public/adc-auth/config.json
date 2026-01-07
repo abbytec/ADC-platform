@@ -1,0 +1,27 @@
+{
+	"uiModule": {
+		"name": "adc-auth",
+		"uiNamespace": "adc-platform",
+		"framework": "react",
+		"outputDir": "dist-ui",
+		"isHost": true,
+		"isRemote": false,
+		"uiDependencies": ["adc-ui-library"],
+		"devPort": 3012,
+		"sharedLibs": ["react", "tailwind"],
+		"i18n": true,
+		"hosting": [
+			{
+				"domains": ["adigitalcafe.com"],
+				"subdomains": ["auth"]
+			}
+		]
+	},
+	"services": [
+		{
+			"name": "security/SessionManagerService",
+			"version": "latest",
+			"language": "typescript"
+		}
+	]
+}

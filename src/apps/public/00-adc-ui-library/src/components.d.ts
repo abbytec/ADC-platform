@@ -5,20 +5,92 @@
  * It contains typing information for all components that exist in this project.
  */
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
+import { AccessMenuItem } from "./components/molecules/adc-access-button/adc-access-button";
 import { Block } from "./components/organisms/adc-blocks-renderer/adc-blocks-renderer";
 import { DropdownMenuItem } from "./components/molecules/adc-dropdown-menu/adc-dropdown-menu";
 import { InlineToken } from "./components/atoms/adc-inline-tokens/adc-inline-tokens";
 import { SelectOption } from "./components/atoms/adc-select/adc-select";
+import { AccessMenuItem as AccessMenuItem1 } from "./components/molecules/adc-access-button/adc-access-button.js";
+export { AccessMenuItem } from "./components/molecules/adc-access-button/adc-access-button";
 export { Block } from "./components/organisms/adc-blocks-renderer/adc-blocks-renderer";
 export { DropdownMenuItem } from "./components/molecules/adc-dropdown-menu/adc-dropdown-menu";
 export { InlineToken } from "./components/atoms/adc-inline-tokens/adc-inline-tokens";
 export { SelectOption } from "./components/atoms/adc-select/adc-select";
+export { AccessMenuItem as AccessMenuItem1 } from "./components/molecules/adc-access-button/adc-access-button.js";
 export namespace Components {
+    /**
+     * Botón de acceso que muestra:
+     * - Si logueado: avatar + dropdown con menú de items + logout
+     * - Si no logueado: botón "Ingresar" que redirige a auth
+     */
+    interface AdcAccessButton {
+        /**
+          * URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com)
+          * @default "https://auth.adigitalcafe.com"
+         */
+        "authUrl": string;
+        /**
+          * Texto del botón cuando no está logueado
+          * @default "Ingresar"
+         */
+        "loginText": string;
+        /**
+          * URL de logout
+          * @default "/api/auth/logout"
+         */
+        "logoutApiUrl": string;
+        /**
+          * Texto del botón de logout
+          * @default "Cerrar sesión"
+         */
+        "logoutText": string;
+        /**
+          * Items del menú dropdown (array de {label, href, icon?})
+          * @default []
+         */
+        "menuItems": AccessMenuItem[];
+        /**
+          * URL de la API de sesión
+          * @default "/api/auth/session"
+         */
+        "sessionApiUrl": string;
+    }
     interface AdcBlocksRenderer {
         /**
           * @default []
          */
         "blocks": Block[];
+    }
+    /**
+     * Panel con efecto glassmorphism/blur
+     * Ideal para formularios de auth, modales y tarjetas destacadas
+     */
+    interface AdcBlurPanel {
+        /**
+          * Intensidad del blur (sm, md, lg, xl)
+          * @default "lg"
+         */
+        "blur": "sm" | "md" | "lg" | "xl";
+        /**
+          * Mostrar borde luminoso sutil
+          * @default false
+         */
+        "glow": boolean;
+        /**
+          * Padding interno (none, sm, md, lg, xl)
+          * @default "lg"
+         */
+        "padding": "none" | "sm" | "md" | "lg" | "xl";
+        /**
+          * Radio de borde (sm, md, lg, xl, full)
+          * @default "xl"
+         */
+        "radius": "sm" | "md" | "lg" | "xl" | "full";
+        /**
+          * Variante de estilo - default: fondo semi-transparente estándar - elevated: más opaco con sombra pronunciada - subtle: casi transparente, solo blur
+          * @default "default"
+         */
+        "variant": "default" | "elevated" | "subtle";
     }
     interface AdcButton {
         "ariaLabel"?: string;
@@ -27,6 +99,10 @@ export namespace Components {
           * @default "button"
          */
         "type": "button" | "submit" | "reset";
+        /**
+          * @default "primary"
+         */
+        "variant": "primary" | "accent";
     }
     interface AdcButtonRounded {
         "ariaLabel"?: string;
@@ -302,6 +378,11 @@ export namespace Components {
     }
     interface AdcSiteHeader {
         /**
+          * URL base para auth (dev vs prod)
+          * @default "https://auth.adigitalcafe.com"
+         */
+        "authUrl": string;
+        /**
           * @default "/"
          */
         "homeHref": string;
@@ -313,6 +394,16 @@ export namespace Components {
           * @default ""
          */
         "logoSrc": string;
+        /**
+          * Mostrar botón de acceso/perfil
+          * @default true
+         */
+        "showAccessButton": boolean;
+        /**
+          * Items del menú de usuario (array de {label, href, icon?})
+          * @default []
+         */
+        "userMenuItems": AccessMenuItem1[];
     }
     interface AdcStarRating {
         "average"?: number | null;
@@ -388,6 +479,10 @@ export namespace Components {
         "width"?: string;
     }
 }
+export interface AdcAccessButtonCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcAccessButtonElement;
+}
 export interface AdcButtonCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcButtonElement;
@@ -425,11 +520,44 @@ export interface AdcStarRatingCustomEvent<T> extends CustomEvent<T> {
     target: HTMLAdcStarRatingElement;
 }
 declare global {
+    interface HTMLAdcAccessButtonElementEventMap {
+        "adcLogout": void;
+        "adcLoginClick": void;
+    }
+    /**
+     * Botón de acceso que muestra:
+     * - Si logueado: avatar + dropdown con menú de items + logout
+     * - Si no logueado: botón "Ingresar" que redirige a auth
+     */
+    interface HTMLAdcAccessButtonElement extends Components.AdcAccessButton, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcAccessButtonElementEventMap>(type: K, listener: (this: HTMLAdcAccessButtonElement, ev: AdcAccessButtonCustomEvent<HTMLAdcAccessButtonElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcAccessButtonElementEventMap>(type: K, listener: (this: HTMLAdcAccessButtonElement, ev: AdcAccessButtonCustomEvent<HTMLAdcAccessButtonElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcAccessButtonElement: {
+        prototype: HTMLAdcAccessButtonElement;
+        new (): HTMLAdcAccessButtonElement;
+    };
     interface HTMLAdcBlocksRendererElement extends Components.AdcBlocksRenderer, HTMLStencilElement {
     }
     var HTMLAdcBlocksRendererElement: {
         prototype: HTMLAdcBlocksRendererElement;
         new (): HTMLAdcBlocksRendererElement;
+    };
+    /**
+     * Panel con efecto glassmorphism/blur
+     * Ideal para formularios de auth, modales y tarjetas destacadas
+     */
+    interface HTMLAdcBlurPanelElement extends Components.AdcBlurPanel, HTMLStencilElement {
+    }
+    var HTMLAdcBlurPanelElement: {
+        prototype: HTMLAdcBlurPanelElement;
+        new (): HTMLAdcBlurPanelElement;
     };
     interface HTMLAdcButtonElementEventMap {
         "adcClick": MouseEvent;
@@ -578,7 +706,7 @@ declare global {
         new (): HTMLAdcInlineTokensElement;
     };
     interface HTMLAdcInputElementEventMap {
-        "adcInput": string;
+        "onAdcInput": string;
     }
     interface HTMLAdcInputElement extends Components.AdcInput, HTMLStencilElement {
         addEventListener<K extends keyof HTMLAdcInputElementEventMap>(type: K, listener: (this: HTMLAdcInputElement, ev: AdcInputCustomEvent<HTMLAdcInputElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
@@ -722,7 +850,9 @@ declare global {
         new (): HTMLAdcYoutubeFacadeElement;
     };
     interface HTMLElementTagNameMap {
+        "adc-access-button": HTMLAdcAccessButtonElement;
         "adc-blocks-renderer": HTMLAdcBlocksRendererElement;
+        "adc-blur-panel": HTMLAdcBlurPanelElement;
         "adc-button": HTMLAdcButtonElement;
         "adc-button-rounded": HTMLAdcButtonRoundedElement;
         "adc-callout": HTMLAdcCalloutElement;
@@ -757,11 +887,87 @@ declare global {
     }
 }
 declare namespace LocalJSX {
+    /**
+     * Botón de acceso que muestra:
+     * - Si logueado: avatar + dropdown con menú de items + logout
+     * - Si no logueado: botón "Ingresar" que redirige a auth
+     */
+    interface AdcAccessButton {
+        /**
+          * URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com)
+          * @default "https://auth.adigitalcafe.com"
+         */
+        "authUrl"?: string;
+        /**
+          * Texto del botón cuando no está logueado
+          * @default "Ingresar"
+         */
+        "loginText"?: string;
+        /**
+          * URL de logout
+          * @default "/api/auth/logout"
+         */
+        "logoutApiUrl"?: string;
+        /**
+          * Texto del botón de logout
+          * @default "Cerrar sesión"
+         */
+        "logoutText"?: string;
+        /**
+          * Items del menú dropdown (array de {label, href, icon?})
+          * @default []
+         */
+        "menuItems"?: AccessMenuItem[];
+        /**
+          * Evento emitido al hacer login
+         */
+        "onAdcLoginClick"?: (event: AdcAccessButtonCustomEvent<void>) => void;
+        /**
+          * Evento emitido al cerrar sesión
+         */
+        "onAdcLogout"?: (event: AdcAccessButtonCustomEvent<void>) => void;
+        /**
+          * URL de la API de sesión
+          * @default "/api/auth/session"
+         */
+        "sessionApiUrl"?: string;
+    }
     interface AdcBlocksRenderer {
         /**
           * @default []
          */
         "blocks"?: Block[];
+    }
+    /**
+     * Panel con efecto glassmorphism/blur
+     * Ideal para formularios de auth, modales y tarjetas destacadas
+     */
+    interface AdcBlurPanel {
+        /**
+          * Intensidad del blur (sm, md, lg, xl)
+          * @default "lg"
+         */
+        "blur"?: "sm" | "md" | "lg" | "xl";
+        /**
+          * Mostrar borde luminoso sutil
+          * @default false
+         */
+        "glow"?: boolean;
+        /**
+          * Padding interno (none, sm, md, lg, xl)
+          * @default "lg"
+         */
+        "padding"?: "none" | "sm" | "md" | "lg" | "xl";
+        /**
+          * Radio de borde (sm, md, lg, xl, full)
+          * @default "xl"
+         */
+        "radius"?: "sm" | "md" | "lg" | "xl" | "full";
+        /**
+          * Variante de estilo - default: fondo semi-transparente estándar - elevated: más opaco con sombra pronunciada - subtle: casi transparente, solo blur
+          * @default "default"
+         */
+        "variant"?: "default" | "elevated" | "subtle";
     }
     interface AdcButton {
         "ariaLabel"?: string;
@@ -771,6 +977,10 @@ declare namespace LocalJSX {
           * @default "button"
          */
         "type"?: "button" | "submit" | "reset";
+        /**
+          * @default "primary"
+         */
+        "variant"?: "primary" | "accent";
     }
     interface AdcButtonRounded {
         "ariaLabel"?: string;
@@ -916,7 +1126,7 @@ declare namespace LocalJSX {
           * @default ""
          */
         "name"?: string;
-        "onAdcInput"?: (event: AdcInputCustomEvent<string>) => void;
+        "onOnAdcInput"?: (event: AdcInputCustomEvent<string>) => void;
         /**
           * @default ""
          */
@@ -1053,6 +1263,11 @@ declare namespace LocalJSX {
     }
     interface AdcSiteHeader {
         /**
+          * URL base para auth (dev vs prod)
+          * @default "https://auth.adigitalcafe.com"
+         */
+        "authUrl"?: string;
+        /**
           * @default "/"
          */
         "homeHref"?: string;
@@ -1064,6 +1279,16 @@ declare namespace LocalJSX {
           * @default ""
          */
         "logoSrc"?: string;
+        /**
+          * Mostrar botón de acceso/perfil
+          * @default true
+         */
+        "showAccessButton"?: boolean;
+        /**
+          * Items del menú de usuario (array de {label, href, icon?})
+          * @default []
+         */
+        "userMenuItems"?: AccessMenuItem1[];
     }
     interface AdcStarRating {
         "average"?: number | null;
@@ -1140,7 +1365,9 @@ declare namespace LocalJSX {
         "width"?: string;
     }
     interface IntrinsicElements {
+        "adc-access-button": AdcAccessButton;
         "adc-blocks-renderer": AdcBlocksRenderer;
+        "adc-blur-panel": AdcBlurPanel;
         "adc-button": AdcButton;
         "adc-button-rounded": AdcButtonRounded;
         "adc-callout": AdcCallout;
@@ -1178,7 +1405,18 @@ export { LocalJSX as JSX };
 declare module "@stencil/core" {
     export namespace JSX {
         interface IntrinsicElements {
+            /**
+             * Botón de acceso que muestra:
+             * - Si logueado: avatar + dropdown con menú de items + logout
+             * - Si no logueado: botón "Ingresar" que redirige a auth
+             */
+            "adc-access-button": LocalJSX.AdcAccessButton & JSXBase.HTMLAttributes<HTMLAdcAccessButtonElement>;
             "adc-blocks-renderer": LocalJSX.AdcBlocksRenderer & JSXBase.HTMLAttributes<HTMLAdcBlocksRendererElement>;
+            /**
+             * Panel con efecto glassmorphism/blur
+             * Ideal para formularios de auth, modales y tarjetas destacadas
+             */
+            "adc-blur-panel": LocalJSX.AdcBlurPanel & JSXBase.HTMLAttributes<HTMLAdcBlurPanelElement>;
             "adc-button": LocalJSX.AdcButton & JSXBase.HTMLAttributes<HTMLAdcButtonElement>;
             "adc-button-rounded": LocalJSX.AdcButtonRounded & JSXBase.HTMLAttributes<HTMLAdcButtonRoundedElement>;
             "adc-callout": LocalJSX.AdcCallout & JSXBase.HTMLAttributes<HTMLAdcCalloutElement>;

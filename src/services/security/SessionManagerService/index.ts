@@ -4,7 +4,7 @@ import type { IHttpServerProvider } from "../../../interfaces/modules/providers/
 import type IdentityManagerService from "../../core/IdentityManagerService/index.js";
 import type { IJWTProviderMultiKey } from "../../../providers/security/jwt/index.js";
 import type { IRedisProvider } from "../../../providers/queue/redis/index.js";
-import type { AuthenticatedUser, OAuthProviderConfig, AuthRequest, AuthReply, TokenVerificationResult } from "./types.js";
+import type { AuthenticatedUser, OAuthProviderConfig, TokenVerificationResult } from "./types.js";
 
 // Domain components
 import { KeyStore } from "./domain/keys/KeyStore.js";
@@ -14,6 +14,10 @@ import { LoginAttemptTracker } from "./domain/security/LoginAttemptTracker.js";
 import { GeoIPValidator } from "./domain/security/GeoIPValidator.js";
 import { SessionManager } from "./domain/session/manager.js";
 import { OAuthProviderRegistry, PlatformAuthProvider } from "./domain/oauth/index.js";
+
+// Endpoints
+import { AuthEndpoints } from "./endpoints/auth.js";
+import { OAuthEndpoints } from "./endpoints/oauth.js";
 
 // Re-exportar tipos
 export type { AuthenticatedUser, TokenVerificationResult };
@@ -29,10 +33,6 @@ interface SessionManagerConfig {
 
 /** Nombre de las cookies */
 const ACCESS_COOKIE_NAME = "access_token";
-const REFRESH_COOKIE_NAME = "refresh_token";
-const STATE_COOKIE_NAME = "oauth_state";
-
-const isProd = process.env.NODE_ENV === "production";
 
 /**
  * SessionManagerService - Orquestador de autenticación y sesiones
@@ -63,6 +63,10 @@ export default class SessionManagerService extends BaseService {
 	#geoValidator: GeoIPValidator | null = null;
 	#sessionManager: SessionManager | null = null;
 	#oauthRegistry: OAuthProviderRegistry | null = null;
+
+	// Endpoints
+	#authEndpoints: AuthEndpoints | null = null;
+	#oauthEndpoints: OAuthEndpoints | null = null;
 
 	// Configuración
 	#defaultRedirectUrl = "https://adigitalcafe.com";
@@ -151,6 +155,7 @@ export default class SessionManagerService extends BaseService {
 		this.#geoValidator = new GeoIPValidator();
 
 		// SessionManager (para state OAuth)
+		const isProd = process.env.NODE_ENV === "production";
 		this.#sessionManager = new SessionManager({
 			jwtProvider: this.#jwtProvider!,
 			cookieConfig: {
@@ -171,321 +176,51 @@ export default class SessionManagerService extends BaseService {
 				return this.#validatePlatformCredentials(username, password);
 			})
 		);
+
+		// Crear instancias de endpoints
+		this.#authEndpoints = new AuthEndpoints(
+			{
+				keyStore: this.#keyStore,
+				tokenService: this.#tokenService,
+				refreshTokenRepo: this.#refreshTokenRepo,
+				loginTracker: this.#loginTracker,
+				geoValidator: this.#geoValidator,
+				identityService: this.#identityService,
+				cookieDomain: this.#cookieDomain,
+				defaultRedirectUrl: this.#defaultRedirectUrl,
+				logger: this.logger,
+			},
+			(username, password) => this.#validatePlatformCredentials(username, password)
+		);
+
+		this.#oauthEndpoints = new OAuthEndpoints({
+			tokenService: this.#tokenService,
+			geoValidator: this.#geoValidator,
+			sessionManager: this.#sessionManager,
+			oauthRegistry: this.#oauthRegistry,
+			identityService: this.#identityService,
+			cookieDomain: this.#cookieDomain,
+			defaultRedirectUrl: this.#defaultRedirectUrl,
+			getProviderConfig: (provider) => this.#getProviderConfig(provider),
+			logger: this.logger,
+		});
 	}
 
 	#registerEndpoints(): void {
-		if (!this.#httpProvider) return;
+		if (!this.#httpProvider || !this.#authEndpoints || !this.#oauthEndpoints) return;
 
-		this.#httpProvider.registerRoute("GET", "/api/auth/login/:provider", (req: any, res: any) => this.#handleLogin(req, res));
-		this.#httpProvider.registerRoute("GET", "/api/auth/callback/:provider", (req: any, res: any) => this.#handleCallback(req, res));
-		this.#httpProvider.registerRoute("POST", "/api/auth/login", (req: any, res: any) => this.#handleNativeLogin(req, res));
-		this.#httpProvider.registerRoute("GET", "/api/auth/session", (req: any, res: any) => this.#handleSession(req, res));
-		this.#httpProvider.registerRoute("POST", "/api/auth/refresh", (req: any, res: any) => this.#handleRefresh(req, res));
-		this.#httpProvider.registerRoute("POST", "/api/auth/logout", (req: any, res: any) => this.#handleLogout(req, res));
-	}
-
-	async #handleLogin(req: AuthRequest, res: AuthReply): Promise<void> {
-		const provider = req.params?.provider || "platform";
-
-		if (!this.#oauthRegistry?.has(provider)) {
-			res.status(400).send({ error: `Proveedor '${provider}' no soportado` });
-			return;
-		}
-
-		const oauthProvider = this.#oauthRegistry.get(provider)!;
-		const config = this.#getProviderConfig(provider);
-
-		if (!config) {
-			res.status(500).send({ error: `Configuración del proveedor '${provider}' no encontrada` });
-			return;
-		}
-
-		const state = this.#sessionManager!.generateState();
-
-		res.setCookie(STATE_COOKIE_NAME, state, {
-			httpOnly: true,
-			secure: isProd,
-			sameSite: "lax",
-			path: "/",
-			maxAge: 600,
-		});
-
-		const authUrl = oauthProvider.getAuthorizationUrl(state, config);
-		res.redirect(authUrl);
-	}
-
-	async #handleCallback(req: AuthRequest, res: AuthReply): Promise<void> {
-		const provider = req.params?.provider || "platform";
-		const { code, state, error, error_description } = req.query || {};
-
-		if (error) {
-			this.logger.logError(`OAuth error de ${provider}: ${error} - ${error_description}`);
-			res.redirect(`/auth/error?error=${encodeURIComponent(error_description || error)}`);
-			return;
-		}
-
-		if (!code || !state) {
-			res.status(400).send({ error: "Parámetros code o state faltantes" });
-			return;
-		}
-
-		const cookieState = req.cookies?.[STATE_COOKIE_NAME];
-		if (!this.#sessionManager!.validateState(state, cookieState || "")) {
-			res.status(403).send({ error: "State inválido - posible ataque CSRF" });
-			return;
-		}
-
-		res.clearCookie(STATE_COOKIE_NAME, { path: "/" });
-
-		try {
-			const oauthProvider = this.#oauthRegistry!.get(provider);
-			if (!oauthProvider) {
-				res.status(400).send({ error: `Proveedor '${provider}' no soportado` });
-				return;
-			}
-
-			const config = this.#getProviderConfig(provider);
-			if (!config) {
-				res.status(500).send({ error: "Configuración del proveedor no encontrada" });
-				return;
-			}
-
-			const tokens = await oauthProvider.exchangeCode(code, config);
-			const profile = await oauthProvider.getUserProfile(tokens.accessToken);
-			const user = await this.#getOrCreateUser(provider, profile);
-
-			await this.#issueTokens(req, res, user);
-
-			const redirectUrl = this.#getRedirectUrl(user);
-			res.redirect(redirectUrl);
-		} catch (err: any) {
-			this.logger.logError(`Error en callback de ${provider}: ${err.message}`);
-			res.redirect(`/auth/error?error=${encodeURIComponent("Error durante la autenticación")}`);
-		}
-	}
-
-	async #handleNativeLogin(req: any, res: AuthReply): Promise<void> {
-		const { username, password } = req.body || {};
-
-		if (!username || !password) {
-			res.status(400).send({ error: "Username y password son requeridos" });
-			return;
-		}
-
-		try {
-			const profile = await this.#validatePlatformCredentials(username, password);
-
-			if (!profile) {
-				const tempUserId = `login_attempt_${username}`;
-				const blockStatus = await this.#loginTracker!.recordLoginAttempt(tempUserId, false, req.ip);
-
-				if (blockStatus.blocked) {
-					res.status(403).send({
-						error: "Cuenta bloqueada temporalmente",
-						blockedUntil: blockStatus.blockedUntil,
-						permanent: blockStatus.permanent,
-					});
-					return;
-				}
-
-				res.status(401).send({ error: "Credenciales inválidas" });
-				return;
-			}
-
-			const user = await this.#getOrCreateUser("platform", {
-				id: profile.id,
-				username: profile.username,
-				email: profile.email,
-			});
-
-			const blockStatus = await this.#loginTracker!.isBlocked(user.id);
-			if (blockStatus.blocked) {
-				res.status(403).send({
-					error: blockStatus.permanent ? "Cuenta bloqueada" : "Cuenta bloqueada temporalmente",
-					blockedUntil: blockStatus.blockedUntil,
-					permanent: blockStatus.permanent,
-				});
-				return;
-			}
-
-			await this.#loginTracker!.recordLoginAttempt(user.id, true, req.ip);
-			await this.#issueTokens(req, res, user);
-
-			res.send({
-				success: true,
-				user: {
-					id: user.id,
-					username: user.username,
-					email: user.email,
-					permissions: user.permissions,
-				},
-			});
-		} catch (err: any) {
-			this.logger.logError(`Error en login nativo: ${err.message}`);
-			res.status(500).send({ error: "Error durante la autenticación" });
-		}
-	}
-
-	async #handleSession(req: AuthRequest, res: AuthReply): Promise<void> {
-		const token = req.cookies?.[ACCESS_COOKIE_NAME];
-
-		if (!token) {
-			res.status(401).send({ authenticated: false, error: "No hay sesión activa" });
-			return;
-		}
-
-		const result = await this.#tokenService!.verifyAccessToken(token);
-
-		if (!result.valid || !result.session) {
-			res.status(401).send({ authenticated: false, error: result.error });
-			return;
-		}
-
-		if (result.usedPreviousKey) {
-			res.header("X-Refresh-Required", "true");
-		}
-
-		res.send({
-			authenticated: true,
-			user: {
-				id: result.session.user.id,
-				username: result.session.user.username,
-				email: result.session.user.email,
-				avatar: result.session.user.avatar,
-				provider: result.session.user.provider,
-				orgId: result.session.user.orgId,
-			},
-			expiresAt: result.session.expiresAt,
-		});
-	}
-
-	async #handleRefresh(req: AuthRequest, res: AuthReply): Promise<void> {
-		const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
-
-		if (!refreshToken) {
-			res.status(401).send({ error: "No hay refresh token" });
-			return;
-		}
-
-		const storedToken = await this.#refreshTokenRepo!.findByToken(refreshToken);
-
-		if (!storedToken) {
-			res.status(401).send({ error: "Refresh token inválido" });
-			return;
-		}
-
-		// Validar cambio de país usando Cloudflare headers
-		const currentCountry = this.#geoValidator!.getCountryFromHeaders(req.headers);
-		const geoValidation = this.#geoValidator!.validateLocationChange(currentCountry, storedToken.country);
-
-		if (!geoValidation.valid) {
-			await this.#tokenService!.revokeAllUserTokens(storedToken.userId);
-			this.logger.logWarn(`Cambio de país detectado para usuario ${storedToken.userId}: ${geoValidation.reason}`);
-
-			res.status(401).send({
-				error: "Sesión invalidada por cambio de ubicación",
-				requireRelogin: true,
-			});
-			return;
-		}
-
-		const refreshAttempt = await this.#loginTracker!.recordRefreshAttempt(storedToken.userId, true);
-
-		if (refreshAttempt.blocked) {
-			if (refreshAttempt.shouldDeleteTokens) {
-				await this.#tokenService!.deleteAllUserTokens(storedToken.userId);
-			}
-
-			res.status(403).send({
-				error: "Cuenta bloqueada por actividad sospechosa",
-				permanent: refreshAttempt.status.permanent,
-			});
-			return;
-		}
-
-		const ipAddress = this.#geoValidator!.extractRealIP(req.headers, req.ip);
-		const result = await this.#tokenService!.refreshTokens(
-			refreshToken,
-			ipAddress,
-			currentCountry,
-			req.headers["user-agent"]?.toString() || "unknown",
-			async (userId) => this.#getUserById(userId)
+		// OAuth endpoints
+		this.#httpProvider.registerRoute("GET", "/api/auth/login/:provider", (req: any, res: any) => this.#oauthEndpoints!.handleLogin(req, res));
+		this.#httpProvider.registerRoute("GET", "/api/auth/callback/:provider", (req: any, res: any) =>
+			this.#oauthEndpoints!.handleCallback(req, res)
 		);
 
-		if (!result.success || !result.tokens) {
-			const failResult = await this.#loginTracker!.recordRefreshAttempt(storedToken.userId, false);
-
-			if (failResult.blocked && failResult.shouldDeleteTokens) {
-				await this.#tokenService!.deleteAllUserTokens(storedToken.userId);
-			}
-
-			res.status(401).send({ error: result.error || "Error al refrescar tokens" });
-			return;
-		}
-
-		this.#setTokenCookies(res, result.tokens.accessToken, result.tokens.refreshToken.token);
-		res.send({ success: true });
-	}
-
-	async #handleLogout(req: AuthRequest, res: AuthReply): Promise<void> {
-		const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
-
-		if (refreshToken) {
-			await this.#refreshTokenRepo!.revoke(refreshToken);
-		}
-
-		res.clearCookie(ACCESS_COOKIE_NAME, { path: "/" });
-		res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth/refresh", domain: this.#cookieDomain });
-
-		res.send({ success: true, message: "Sesión cerrada" });
-	}
-
-	async #issueTokens(req: AuthRequest, res: AuthReply, user: AuthenticatedUser): Promise<void> {
-		const ipAddress = this.#geoValidator!.extractRealIP(req.headers, req.ip);
-		const country = this.#geoValidator!.getCountryFromHeaders(req.headers);
-		const deviceId = this.#generateDeviceId(req);
-		const userAgent = req.headers["user-agent"]?.toString() || "unknown";
-
-		const tokens = await this.#tokenService!.createTokenPair(user, deviceId, ipAddress, country, userAgent);
-		this.#setTokenCookies(res, tokens.accessToken, tokens.refreshToken.token);
-	}
-
-	#setTokenCookies(res: AuthReply, accessToken: string, refreshToken: string): void {
-		const accessConfig = this.#tokenService!.getAccessCookieConfig();
-		const refreshConfig = this.#tokenService!.getRefreshCookieConfig();
-
-		res.setCookie(accessConfig.name, accessToken, {
-			httpOnly: accessConfig.httpOnly,
-			secure: accessConfig.secure,
-			sameSite: accessConfig.sameSite,
-			path: accessConfig.path,
-			maxAge: accessConfig.maxAge,
-		});
-
-		res.setCookie(refreshConfig.name, refreshToken, {
-			httpOnly: refreshConfig.httpOnly,
-			secure: refreshConfig.secure,
-			sameSite: refreshConfig.sameSite,
-			path: refreshConfig.path,
-			maxAge: refreshConfig.maxAge,
-			domain: refreshConfig.domain,
-		});
-	}
-
-	#generateDeviceId(req: AuthRequest): string {
-		const ua = req.headers["user-agent"]?.toString() || "";
-		const accept = req.headers["accept"]?.toString() || "";
-		const lang = req.headers["accept-language"]?.toString() || "";
-
-		const fingerprint = `${ua}|${accept}|${lang}`;
-		let hash = 0;
-		for (let i = 0; i < fingerprint.length; i++) {
-			const char = fingerprint.charCodeAt(i);
-			hash = (hash << 5) - hash + char;
-			hash = hash & hash;
-		}
-
-		return `device_${Math.abs(hash).toString(36)}`;
+		// Auth nativo endpoints
+		this.#httpProvider.registerRoute("POST", "/api/auth/login", (req: any, res: any) => this.#authEndpoints!.handleNativeLogin(req, res));
+		this.#httpProvider.registerRoute("POST", "/api/auth/register", (req: any, res: any) => this.#authEndpoints!.handleRegister(req, res));
+		this.#httpProvider.registerRoute("GET", "/api/auth/session", (req: any, res: any) => this.#authEndpoints!.handleSession(req, res));
+		this.#httpProvider.registerRoute("POST", "/api/auth/refresh", (req: any, res: any) => this.#authEndpoints!.handleRefresh(req, res));
+		this.#httpProvider.registerRoute("POST", "/api/auth/logout", (req: any, res: any) => this.#authEndpoints!.handleLogout(req, res));
 	}
 
 	async verifyToken(token: string): Promise<TokenVerificationResult> {
@@ -501,7 +236,6 @@ export default class SessionManagerService extends BaseService {
 			usedPreviousKey: result.usedPreviousKey,
 		};
 	}
-
 
 	/**
 	 * Login programático - Solo para servicios del kernel
@@ -583,73 +317,6 @@ export default class SessionManagerService extends BaseService {
 		return configs[provider] || null;
 	}
 
-	async #getOrCreateUser(
-		provider: string,
-		profile: { id: string; username: string; email?: string; avatar?: string }
-	): Promise<AuthenticatedUser> {
-		if (!this.#identityService) {
-			return {
-				id: `temp_${profile.id}`,
-				providerId: profile.id,
-				provider,
-				username: profile.username,
-				email: profile.email,
-				avatar: profile.avatar,
-				permissions: ["public.read"],
-			};
-		}
-
-		const providerIdField = `${provider}Id`;
-		const users = this.#identityService.users;
-		const allUsers = await users.getAllUsers();
-		let existingUser = allUsers.find(
-			(u: any) => u.metadata?.[providerIdField] === profile.id || (profile.email && u.email === profile.email)
-		);
-
-		if (existingUser) {
-			if (!existingUser.metadata?.[providerIdField]) {
-				const updatedMetadata = { ...existingUser.metadata, [providerIdField]: profile.id };
-				await users.updateUser(existingUser.id, { metadata: updatedMetadata });
-				existingUser = { ...existingUser, metadata: updatedMetadata };
-			}
-
-			const permissions = await this.#getUserPermissions(existingUser.id);
-			return {
-				id: existingUser.id,
-				providerId: profile.id,
-				provider,
-				username: existingUser.username,
-				email: existingUser.email,
-				avatar: profile.avatar || existingUser.metadata?.avatar,
-				permissions,
-				metadata: existingUser.metadata,
-			};
-		}
-
-		const randomPassword = randomBytes(16).toString("base64");
-		const newUser = await users.createUser(profile.username, randomPassword, []);
-
-		await users.updateUser(newUser.id, {
-			email: profile.email,
-			metadata: {
-				[providerIdField]: profile.id,
-				avatar: profile.avatar,
-				createdVia: provider,
-			},
-		});
-
-		const defaultPermissions = await this.#getDefaultPermissions();
-		return {
-			id: newUser.id,
-			providerId: profile.id,
-			provider,
-			username: newUser.username,
-			email: profile.email,
-			avatar: profile.avatar,
-			permissions: defaultPermissions,
-		};
-	}
-
 	async #getUserById(userId: string): Promise<AuthenticatedUser | null> {
 		if (!this.#identityService) return null;
 
@@ -683,17 +350,6 @@ export default class SessionManagerService extends BaseService {
 		} catch {
 			return ["public.read"];
 		}
-	}
-
-	async #getDefaultPermissions(): Promise<string[]> {
-		return ["public.read", "profile.self.read", "profile.self.write"];
-	}
-
-	#getRedirectUrl(user: AuthenticatedUser): string {
-		if (user.orgId) {
-			return `https://${user.orgId}.adigitalcafe.com`;
-		}
-		return this.#defaultRedirectUrl;
 	}
 
 	async #validatePlatformCredentials(username: string, password: string): Promise<{ id: string; username: string; email?: string } | null> {

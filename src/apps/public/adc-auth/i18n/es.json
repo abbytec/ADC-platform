@@ -1,0 +1,33 @@
+{
+	"auth": {
+		"login": {
+			"title": "Iniciar Sesión",
+			"username": "Usuario o Email",
+			"password": "Contraseña",
+			"submit": "Ingresar",
+			"submitting": "Ingresando...",
+			"noAccount": "¿No tienes cuenta?",
+			"register": "Regístrate",
+			"orContinueWith": "O continúa con"
+		},
+		"register": {
+			"title": "Crear Cuenta",
+			"username": "Nombre de Usuario",
+			"email": "Email",
+			"password": "Contraseña",
+			"confirmPassword": "Confirmar Contraseña",
+			"submit": "Crear Cuenta",
+			"submitting": "Creando cuenta...",
+			"hasAccount": "¿Ya tienes cuenta?",
+			"login": "Inicia sesión",
+			"orRegisterWith": "O regístrate con"
+		},
+		"errors": {
+			"invalidCredentials": "Credenciales inválidas",
+			"passwordMismatch": "Las contraseñas no coinciden",
+			"passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
+			"serverError": "Error del servidor",
+			"accountBlocked": "Cuenta bloqueada temporalmente"
+		}
+	}
+}

@@ -26,7 +26,7 @@
 
         --c-primary: oklch(33.72% 0.063 var(--palette-tone-2));
         --c-tprimary: oklch(97.5% 0.05 var(--palette-tone-2));
-        --c-accent: oklch(64.21% 0.129 var(--palette-tone-2));
+        --c-accent: oklch(64.21% 0.063 var(--palette-tone-2));
 
         --r-xxl: 16px;
         --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
@@ -160,7 +160,7 @@
     }
 
     h1 {
-        color: var(--c-text);
+        color: rgb(var(--c-text));
         font-family: Fredoka, sans-serif;
         font-weight: 400;
         font-size: 36px;
@@ -171,7 +171,7 @@
     }
 
     h2 {
-        color: var(--c-text);
+        color: rgb(var(--c-text));
         font-family: Fredoka, sans-serif;
         font-weight: 400;
         font-size: 26px;
@@ -182,7 +182,7 @@
 
     h3,
     .h3 {
-        color: var(--c-text);
+        color: rgb(var(--c-text));
         font-family: Fredoka, sans-serif;
         font-weight: 400;
         font-size: 20px;
@@ -191,7 +191,7 @@
     }
 
     .breadcumb > * {
-        color: var(--c-text);
+        color: rgb(var(--c-text));
         font-family: Fredoka, sans-serif;
         font-size: 20px;
         margin-bottom: 0;

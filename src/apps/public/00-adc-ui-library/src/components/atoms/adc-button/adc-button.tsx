@@ -1,11 +1,11 @@
 import { Component, Prop, h, Event, EventEmitter } from "@stencil/core";
-
 @Component({
 	tag: "adc-button",
 	shadow: false,
 })
 export class AdcButton {
 	@Prop() type: "button" | "submit" | "reset" = "button";
+	@Prop() variant: "primary" | "accent" = "primary";
 	@Prop() href?: string;
 	@Prop() ariaLabel?: string;
 

@@ -514,8 +514,7 @@ ${exposesEntries}
 	 * Template para i18n
 	 */
 	protected getI18nTemplate(moduleName: string): string {
-		return (
-			`
+		return `
             scriptLoading: 'blocking',
             inject: 'body',
             templateContent: ({ htmlWebpackPlugin }) => \`
@@ -525,19 +524,24 @@ ${exposesEntries}
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${moduleName}</title>
-    <style>
-      body { margin: 0; font-family: system-ui, sans-serif; }
-    </style>
-    <scr` +
-			`ipt src="/adc-i18n.js"></scr` +
-			`ipt>
+    <script>
+      (function () {
+        const savedTheme = localStorage.getItem('theme');
+		console.log('Saved theme:', savedTheme);
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.setAttribute('dark-mode', '');
+		} else {
+		  document.documentElement.removeAttribute('dark-mode');
+		}
+      })();
+    </script>
+    <script src="/adc-i18n.js"></script>
   </head>
   <body>
     <div id="root"></div>
   </body>
 </html>
-\`,`
-		);
+\`,`;
 	}
 
 	/**

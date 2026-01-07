@@ -13,11 +13,11 @@ export class AdcInput {
 	@Prop() autocomplete?: string = "off";
 	@Prop() ariaLabel?: string = "";
 
-	@Event() adcInput!: EventEmitter<string>;
+	@Event() onAdcInput!: EventEmitter<string>;
 
 	private handleInput = (event: Event) => {
 		const target = event.target as HTMLInputElement;
-		this.adcInput.emit(target.value);
+		this.onAdcInput.emit(target.value);
 	};
 
 	render() {

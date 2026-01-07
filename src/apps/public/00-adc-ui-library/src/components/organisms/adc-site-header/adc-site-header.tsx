@@ -1,4 +1,5 @@
 import { Component, Prop, h } from "@stencil/core";
+import type { AccessMenuItem } from "../../molecules/adc-access-button/adc-access-button.js";
 
 export interface NavItem {
 	label: string;
@@ -14,6 +15,15 @@ export class AdcSiteHeader {
 	@Prop() logoAlt: string = "";
 	@Prop() homeHref: string = "/";
 
+	/** URL base para auth (dev vs prod) */
+	@Prop() authUrl: string = "https://auth.adigitalcafe.com";
+
+	/** Mostrar botón de acceso/perfil */
+	@Prop() showAccessButton: boolean = true;
+
+	/** Items del menú de usuario (array de {label, href, icon?}) */
+	@Prop() userMenuItems: AccessMenuItem[] = [];
+
 	render() {
 		return (
 			<header class="flex items-center justify-between gap-6 px-8 py-6 shadow-cozy bg-header text-theader font-bold rounded-b-xxl">
@@ -23,8 +33,12 @@ export class AdcSiteHeader {
 					)}
 				</a>
 
-				<nav class="flex flex-wrap items-center mr-8" style={{ minHeight: "48px" }} aria-label="Menu">
+				<nav class="flex flex-wrap items-center gap-4" style={{ minHeight: "48px" }} aria-label="Menu">
 					<slot></slot>
+
+					{this.showAccessButton && (
+						<adc-access-button auth-url={this.authUrl} menuItems={this.userMenuItems}></adc-access-button>
+					)}
 				</nav>
 			</header>
 		);

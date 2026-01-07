@@ -4,11 +4,7 @@ import { processHTMLFiles } from "./file-operations.js";
 /**
  * Inyecta import maps en todos los archivos HTML de un módulo
  */
-export async function injectImportMapsInHTMLs(
-	outputPath: string,
-	importMap: Record<string, string>,
-	logger?: any
-): Promise<void> {
+export async function injectImportMapsInHTMLs(outputPath: string, importMap: Record<string, string>, logger?: any): Promise<void> {
 	const importMapScript = `<script type="importmap">
 ${JSON.stringify({ imports: importMap }, null, 2)}
 </script>`;
@@ -39,9 +35,16 @@ export function generateIndexHtml(name: string, framework: string): string {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
-    <style>
-      body { margin: 0; font-family: system-ui, sans-serif; }
-    </style>
+    <script>
+      (function () {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+		  document.documentElement.setAttribute('dark-mode', '');
+		} else {
+		  document.documentElement.removeAttribute('dark-mode');
+		}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
@@ -80,4 +83,3 @@ createApp(App).mount('#root');
 
 	return "";
 }
-

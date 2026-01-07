@@ -1,0 +1,11 @@
+{
+	"extends": "../../../../tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": "./dist",
+		"rootDir": "./src",
+		"jsx": "react-jsx",
+		"lib": ["DOM", "DOM.Iterable", "ES2022"],
+		"types": ["vite/client"]
+	},
+	"include": ["src/**/*", "src/**/*.d.ts", "*.d.ts", "../../../../globals.d.ts"]
+}
