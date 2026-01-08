@@ -15,11 +15,11 @@ export default class WebHomeMobileApp extends BaseApp {
 	async #registerAPIEndpoints() {
 		try {
 			// Usar el tipo del provider (http-server-provider) para obtener el correcto según el entorno
-			const httpProvider = this.kernel.getProvider<IHttpServerProvider>("fastify-server");
+			const httpProvider = this.getMyProvider<IHttpServerProvider>("fastify-server");
 
 			httpProvider.registerRoute("GET", "/api/dashboard/stats", async (_req: any, res: any) => {
 				try {
-					const identityService = this.kernel.getService<IdentityManagerService>("IdentityManagerService");
+					const identityService = this.getMyService<IdentityManagerService>("IdentityManagerService");
 					const stats = await identityService.getStats();
 
 					res.json({

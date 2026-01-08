@@ -2,7 +2,7 @@
 	"name": "SessionManagerService",
 	"version": "1.0.0",
 	"kernelMode": 2,
-	"custom": {
+	"private": {
 		"discordClientId": "${DISCORD_CLIENT_ID}",
 		"discordClientSecret": "${DISCORD_CLIENT_SECRET}",
 		"googleClientId": "${GOOGLE_CLIENT_ID}",
@@ -26,6 +26,18 @@
 				"db": 0,
 				"keyPrefix": "adc:session:"
 			}
+		},
+		{
+			"name": "fastify-server",
+			"version": "latest",
+			"language": "typescript"
+		}
+	],
+	"services": [
+		{
+			"name": "IdentityManagerService",
+			"version": "latest",
+			"language": "typescript"
 		}
 	]
 }

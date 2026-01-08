@@ -31,9 +31,10 @@ export default class UserProfileApp extends BaseApp {
 	};
 
 	async start(kernelKey: symbol) {
+		await super.start(kernelKey);
 		this.#kernelKey = kernelKey;
-		this.identityManager = this.kernel.getService<IdentityManagerService>("IdentityManagerService");
-		this.sessionManager = this.kernel.getService<SessionManagerService>("SessionManagerService");
+		this.identityManager = this.getMyService<IdentityManagerService>("IdentityManagerService");
+		this.sessionManager = this.getMyService<SessionManagerService>("SessionManagerService");
 		this.#systemUser = await this.identityManager.system.getSystemUser(kernelKey);
 	}
 
@@ -160,11 +161,7 @@ export default class UserProfileApp extends BaseApp {
 		// 2. Hacer login del SYSTEM usando sus credenciales reales
 		// Las credenciales solo son accesibles con kernelKey (seguro)
 		const systemCredentials = this.identityManager.system.getSystemCredentials(this.#kernelKey);
-		const systemToken = await this.sessionManager.loginProgrammatic(
-			this.#kernelKey,
-			systemCredentials.username,
-			systemCredentials.password
-		);
+		const systemToken = await this.sessionManager.loginProgrammatic(this.#kernelKey, systemCredentials.username, systemCredentials.password);
 		if (!systemToken) {
 			throw new Error("No se pudo obtener token para usuario SYSTEM");
 		}

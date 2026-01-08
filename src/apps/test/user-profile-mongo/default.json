@@ -5,6 +5,11 @@
 			"name": "IdentityManagerService",
 			"version": "latest",
 			"language": "typescript"
+		},
+		{
+			"name": "SessionManagerService",
+			"version": "latest",
+			"language": "typescript"
 		}
 	]
 }

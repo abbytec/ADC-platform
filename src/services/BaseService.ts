@@ -1,11 +1,10 @@
 import * as path from "node:path";
 import { IModule, IModuleConfig } from "../interfaces/modules/IModule.js";
 import * as fs from "node:fs/promises";
-import { Logger } from "../utils/logger/Logger.js";
-import { ILogger } from "../interfaces/utils/ILogger.js";
 import { Kernel } from "../kernel.js";
 import { ILifecycle } from "../interfaces/behaviours/ILifecycle.js";
 import { OnlyKernel } from "../utils/decorators/OnlyKernel.ts";
+import { BaseModule } from "../common/BaseModule.js";
 
 export interface IService extends IModule, ILifecycle {}
 
@@ -13,21 +12,17 @@ export interface IService extends IModule, ILifecycle {}
  * Clase base abstracta para todos los Services.
  * Maneja la inyección del Kernel y la carga de módulos desde config.json.
  */
-export abstract class BaseService implements IService {
+export abstract class BaseService extends BaseModule implements IService {
 	private kernelKey?: symbol;
 	private isInitialized = false; // Flag para prevenir múltiples inicializaciones
 	/** Nombre único del service */
 	abstract readonly name: string;
 
-	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
-	protected config: IModuleConfig;
+	#kernel: Kernel;
 
-	constructor(protected readonly kernel: Kernel, protected readonly options?: IModuleConfig) {
-		// Inicialización parcial segura
-		this.config = {
-			name: "unknown",
-			...options,
-		} as IModuleConfig;
+	constructor(kernel: Kernel, protected readonly options?: IModuleConfig) {
+		super(kernel, options);
+		this.#kernel = kernel;
 	}
 
 	public readonly setKernelKey = (key: symbol): void => {
@@ -77,20 +72,20 @@ export abstract class BaseService implements IService {
 				// No hay providers de la app, usar los del config.json del servicio
 				if (baseConfig.providers && Array.isArray(baseConfig.providers)) {
 					providersToUse = baseConfig.providers;
-					
+
 					// Cargar estos providers con las variables de entorno del servicio
 					for (const providerConfig of baseConfig.providers) {
 						try {
 							const provider = await Kernel.moduleLoader.loadProvider(providerConfig, serviceEnvVars);
-							this.kernel.registerProvider(provider.name, provider, providerConfig);
+							this.#kernel.registry.registerProvider(provider.name, provider, providerConfig);
 
 							// También registrar por el nombre del módulo/configuración
 							if (providerConfig.name !== provider.name) {
-								this.kernel.registerProvider(providerConfig.name, provider, providerConfig);
+								this.#kernel.registry.registerProvider(providerConfig.name, provider, providerConfig);
 							}
 
 							// Agregar como dependencia de la app actual
-							this.kernel.addModuleDependency("provider", providerConfig.name, providerConfig.config);
+							this.#kernel.registry.addModuleDependency("provider", providerConfig.name, providerConfig.config);
 						} catch (error) {
 							const message = `Error cargando provider ${providerConfig.name}: ${error}`;
 							// failOnError puede venir del config.json del servicio
@@ -110,12 +105,12 @@ export abstract class BaseService implements IService {
 				for (const utilityConfig of utilitiesToLoad) {
 					try {
 						const utility = await Kernel.moduleLoader.loadUtility(utilityConfig);
-						this.kernel.registerUtility(utility.name, utility, utilityConfig, null);
+						this.#kernel.registry.registerUtility(utility.name, utility, utilityConfig, null);
 
 						// Si el nombre contiene "/", también registrar con el nombre base como alias
 						if (utilityConfig.name.includes("/")) {
 							const baseName = utilityConfig.name.split("/").pop()!;
-							this.kernel.registerUtility(baseName, utility, utilityConfig, null);
+							this.#kernel.registry.registerUtility(baseName, utility, utilityConfig, null);
 						}
 					} catch (error: any) {
 						const message = `Error cargando utility ${utilityConfig.name}: ${error.message || error}`;
@@ -149,7 +144,7 @@ export abstract class BaseService implements IService {
 	 */
 	@OnlyKernel()
 	public async stop(_kernelKey: symbol): Promise<void> {
-		this.logger.logDebug(`Deteniendo ${this.name}`);
+		this.logger.logDebug(`Deteniendo servicio ${this.name}`);
 	}
 
 	/**
@@ -168,51 +163,5 @@ export abstract class BaseService implements IService {
 			: path.resolve(process.cwd(), "dist", "services", serviceName);
 
 		return serviceDir;
-	}
-
-	/**
-	 * Obtener el provider del kernel
-	 */
-	protected getProvider<P>(name: string, config?: Record<string, any>): P {
-		return this.kernel.getProvider<P>(name, config);
-	}
-
-	/**
-	 * Obtiene un provider que fue cargado por este servicio según su configuración.
-	 * Esto asegura que se obtiene la instancia correcta cuando hay múltiples providers del mismo tipo.
-	 * @param name - Nombre del provider
-	 * @returns La instancia del provider
-	 */
-	protected getMyProvider<P>(name: string): P {
-		// Buscar el provider en la configuración de este servicio
-		const providerConfig = this.config?.providers?.find((p) => p.name === name);
-		if (!providerConfig) {
-			throw new Error(`Provider ${name} no está configurado en el servicio ${this.name}`);
-		}
-
-		// El kernel usa config.custom para generar el uniqueKey
-		return this.kernel.getProvider<P>(name, providerConfig.custom);
-	}
-
-	/**
-	 * Obtener el utility del kernel
-	 */
-	protected getUtility<M>(name: string, config?: Record<string, any>): M {
-		return this.kernel.getUtility<M>(name, config);
-	}
-
-	/**
-	 * Obtiene una utility que fue cargada por este servicio según su configuración.
-	 * @param name - Nombre de la utility
-	 * @returns La instancia de la utility
-	 */
-	protected getMyUtility<U>(name: string): U {
-		// Buscar la utility en la configuración de este servicio
-		const utilityConfig = this.config?.utilities?.find((u) => u.name === name);
-		if (!utilityConfig) {
-			throw new Error(`Utility ${name} no está configurada en el servicio ${this.name}`);
-		}
-		// El kernel usa config.custom para generar el uniqueKey
-		return this.kernel.getUtility<U>(name, utilityConfig.custom);
 	}
 }

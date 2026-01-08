@@ -13,5 +13,12 @@
 				"retryDelay": 5000
 			}
 		}
+	],
+	"services": [
+		{
+			"name": "SessionManagerService",
+			"version": "latest",
+			"optional": true
+		}
 	]
 }

@@ -1,13 +1,23 @@
-import { IModule } from "../interfaces/modules/IModule.js";
-import { ILogger } from "../interfaces/utils/ILogger.js";
-import { Logger } from "../utils/logger/Logger.js";
+import { IModule, IModuleConfig } from "../interfaces/modules/IModule.js";
+import { BaseModule } from "../common/BaseModule.js";
+import { Kernel } from "../kernel.js";
+import { OnlyKernel } from "../utils/decorators/OnlyKernel.ts";
 
 export type IUtility = IModule;
-export abstract class BaseUtility implements IUtility {
-	abstract readonly name: string;
-	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
 
+/**
+ * Clase base abstracta para todas las Utilities.
+ * Las utilities son módulos de lógica reutilizable (serializers, validators, transformers).
+ */
+export abstract class BaseUtility extends BaseModule implements IUtility {
+	abstract readonly name: string;
+
+	constructor(kernel: Kernel, config?: IModuleConfig) {
+		super(kernel, config);
+	}
+
+	@OnlyKernel()
 	public async stop(): Promise<void> {
-		this.logger.logInfo(`Shutting down...`);
+		this.logger.logInfo(`Deteniendo Utility ${this.name}`);
 	}
 }

@@ -13,7 +13,7 @@
 			}
 		},
 		{
-			"name": "http/fastify-server",
+			"name": "fastify-server",
 			"version": "latest",
 			"language": "typescript"
 		}

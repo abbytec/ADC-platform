@@ -10,9 +10,18 @@
 			}
 		}
 	},
-	"providers":[{
-		"name": "fastify-server",
-		"version": "latest",
-		"language": "typescript"
-	}]
+	"providers": [
+		{
+			"name": "fastify-server",
+			"version": "latest",
+			"language": "typescript"
+		}
+	],
+	"services": [
+		{
+			"name": "LangManagerService",
+			"version": "latest",
+			"language": "typescript"
+		}
+	]
 }

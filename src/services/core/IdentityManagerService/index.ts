@@ -123,7 +123,8 @@ export default class IdentityManagerService extends BaseService {
 			verifyToken: async (token: string) => {
 				let sessionService: SessionManagerService;
 				try {
-					sessionService = this.kernel.getService<SessionManagerService>("SessionManagerService");
+					// SessionManagerService está declarado como dependencia opcional en config.json
+					sessionService = this.getMyService<SessionManagerService>("SessionManagerService");
 				} catch {
 					return { valid: false, error: "SessionManagerService no disponible" };
 				}

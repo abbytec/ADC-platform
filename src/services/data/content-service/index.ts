@@ -44,7 +44,7 @@ export default class ContentService extends BaseService {
 	}
 
 	private async registerRESTRoutes(): Promise<void> {
-		const httpProvider = this.kernel.getProvider<IHostBasedHttpProvider>("fastify-server");
+		const httpProvider = this.getMyProvider<IHostBasedHttpProvider>("fastify-server");
 
 		if (!httpProvider) {
 			this.logger.logWarn("[ContentService] No se pudo obtener httpProvider");

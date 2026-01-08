@@ -38,12 +38,12 @@ export default class JsonFileCrudService extends BaseService implements IJsonFil
 		const storageProviderConfig = this.config?.providers?.find((p) => p.name === "file-storage" || p.type === "storage-provider")?.config;
 
 		// 2. Obtener la instancia específica del storage (con el basePath correcto)
-		this.storage = this.getProvider<IStorage>("storage-provider", storageProviderConfig);
+		this.storage = this.getMyProvider<IStorage>("storage-provider", storageProviderConfig);
 
 		// 3. Repetir para el utility adaptador de archivos
 		const fileAdapterConfig = this.config?.utilities?.find((m) => m.name === "json-file-adapter" || m.type === "json-file-adapter")?.config;
 
-		this.fileAdapter = this.getUtility<IFileAdapter<any>>("json-file-adapter", fileAdapterConfig);
+		this.fileAdapter = this.getMyUtility<IFileAdapter<any>>("json-file-adapter", fileAdapterConfig);
 
 		this.logger.logOk("JsonFileCrudService iniciado");
 	}

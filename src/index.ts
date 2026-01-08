@@ -10,7 +10,7 @@ async function main() {
 
 	// Reinyectar import maps ahora que todos los módulos UI están cargados
 	try {
-		const uiFederation = kernel.getService<UIFederationService>("UIFederationService");
+		const uiFederation = kernel.registry.getService<UIFederationService>("UIFederationService");
 		if (uiFederation) {
 			await uiFederation.refreshAllImportMaps();
 		} else {

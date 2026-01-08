@@ -54,7 +54,7 @@ export default class UIFederationService extends BaseService {
 
 		try {
 			// Usamos Fastify con host-based routing en todos los entornos
-			this.#httpProvider = this.getProvider<any>("fastify-server");
+			this.#httpProvider = this.getMyProvider<any>("fastify-server");
 		} catch (error: any) {
 			this.logger.logError(`Error cargando HttpServerProvider: ${error.message}`);
 			throw error;
@@ -62,7 +62,7 @@ export default class UIFederationService extends BaseService {
 
 		// Obtener LangManagerService si está disponible
 		try {
-			this.langManager = this.kernel.getService<any>("LangManagerService");
+			this.langManager = this.getMyService<any>("LangManagerService");
 			this.logger.logDebug("LangManagerService conectado");
 		} catch {
 			this.logger.logDebug("LangManagerService no disponible, i18n deshabilitado");

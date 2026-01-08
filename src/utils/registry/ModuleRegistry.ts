@@ -280,7 +280,7 @@ export class ModuleRegistry {
 
 			const deps = this.#appModuleDependencies.get(effectiveAppName)!;
 			const depExists = Array.from(deps).some((d) => d.type === moduleType && d.uniqueKey === uniqueKey);
-			
+
 			if (!depExists) {
 				deps.add({ type: moduleType, uniqueKey });
 				const currentCount = refCountMap.get(uniqueKey) || 0;
@@ -353,7 +353,10 @@ export class ModuleRegistry {
 		}
 	}
 
-	async stopAllModules(kernelKey: symbol, withTimeout: <T>(promise: Promise<T>, timeoutMs: number, name: string) => Promise<T | undefined>): Promise<void> {
+	async stopAllModules(
+		kernelKey: symbol,
+		withTimeout: <T>(promise: Promise<T>, timeoutMs: number, name: string) => Promise<T | undefined>
+	): Promise<void> {
 		for (const moduleType of ["provider", "utility", "service"] as ModuleType[]) {
 			const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
 			this.#logger.logInfo(`Deteniendo ${capitalizedModuleType === "Utility" ? "Utilitie" : capitalizedModuleType}s...`);
@@ -403,4 +406,3 @@ export class ModuleRegistry {
 		};
 	}
 }
-

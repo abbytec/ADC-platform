@@ -87,36 +87,6 @@ export class ModuleLoader {
 	}
 
 	/**
-	 * Carga todos los módulos (providers, utilities, services) desde un objeto de definición de módulos.
-	 * Usa el contexto de carga del kernel para reference counting.
-	 * @param modulesConfig - El objeto de definición de módulos.
-	 * @param kernel - La instancia del kernel.
-	 */
-	#globalConfigs: {
-		providers: IModuleConfig[];
-		utilities: IModuleConfig[];
-	} = { providers: [], utilities: [] };
-
-	/**
-	 * Procesa y almacena las configuraciones globales de la definición de módulos.
-	 * @param modulesConfig - El objeto de definición de módulos.
-	 */
-	#processGlobalConfigs(modulesConfig: IModuleConfig): void {
-		this.#globalConfigs = { providers: [], utilities: [] }; // Reset
-
-		const process = (configs: IModuleConfig[] = [], type: "providers" | "utilities") => {
-			for (const config of configs) {
-				if (config.global) {
-					this.#globalConfigs[type].push(config);
-				}
-			}
-		};
-
-		process(modulesConfig.providers, "providers");
-		process(modulesConfig.utilities, "utilities");
-	}
-
-	/**
 	 * Interpola variables de entorno en un objeto de configuración
 	 * Reemplaza ${VAR_NAME} con el valor de process.env.VAR_NAME o del envVars proporcionado
 	 * @param obj - Objeto a interpolar
@@ -145,16 +115,20 @@ export class ModuleLoader {
 		return obj;
 	}
 
+	/**
+	 * Carga todos los módulos (providers, utilities, services) desde un objeto de definición de módulos.
+	 * Usa el contexto de carga del kernel para reference counting.
+	 * @param modulesConfig - El objeto de definición de módulos.
+	 * @param kernel - La instancia del kernel.
+	 */
 	async loadAllModulesFromDefinition(modulesConfig: IModuleConfig, kernel: Kernel): Promise<void> {
-		this.#processGlobalConfigs(modulesConfig); // Procesar globales primero
-
 		try {
 			// Cargar providers globales (NO se registran como dependencias de la app)
 			// Solo se registran como dependencias cuando un servicio los usa
 			if (modulesConfig.providers && Array.isArray(modulesConfig.providers)) {
 				for (const providerConfig of modulesConfig.providers) {
 					// Verificar si el provider ya existe antes de cargarlo
-					if (kernel.hasModule("provider", providerConfig.name, providerConfig.config)) {
+					if (kernel.registry.hasModule("provider", providerConfig.name, providerConfig.config)) {
 						Logger.debug(`[ModuleLoader] Provider global ${providerConfig.name} ya existe, saltando`);
 						continue;
 					}
@@ -162,11 +136,11 @@ export class ModuleLoader {
 						const provider = await this.loadProvider(providerConfig);
 						// Pasar null como appName para que NO se registre como dependencia de la app actual
 						// Registrar por el nombre de la clase del provider
-						kernel.registerProvider(provider.name, provider, providerConfig, null);
+						kernel.registry.registerProvider(provider.name, provider, providerConfig, null);
 
 						// También registrar por el nombre del módulo/configuración para que sea encontrable
 						if (providerConfig.name !== provider.name) {
-							kernel.registerProvider(providerConfig.name, provider, providerConfig, null);
+							kernel.registry.registerProvider(providerConfig.name, provider, providerConfig, null);
 						}
 					} catch (error) {
 						const message = `Error cargando provider ${providerConfig.name}: ${error}`;
@@ -182,12 +156,12 @@ export class ModuleLoader {
 					try {
 						const utility = await this.loadUtility(utilityConfig);
 						// Pasar null como appName para que NO se registre como dependencia de la app actual
-						kernel.registerUtility(utility.name, utility, utilityConfig, null);
+						kernel.registry.registerUtility(utility.name, utility, utilityConfig, null);
 
 						// Si el nombre contiene "/", también registrar con el nombre base como alias
 						if (utilityConfig.name.includes("/")) {
 							const baseName = utilityConfig.name.split("/").pop()!;
-							kernel.registerUtility(baseName, utility, utilityConfig, null);
+							kernel.registry.registerUtility(baseName, utility, utilityConfig, null);
 						}
 					} catch (error) {
 						const message = `Error cargando utility ${utilityConfig.name}: ${error}`;
@@ -218,7 +192,9 @@ export class ModuleLoader {
 								const envPath = path.join(resolved.path, ".env");
 								Logger.debug(`[ModuleLoader] Intentando cargar .env del servicio desde: ${envPath}`);
 								serviceEnvVars = await this.loadEnvFile(envPath);
-								Logger.debug(`[ModuleLoader] Variables del servicio ${serviceConfig.name}: ${JSON.stringify(Object.keys(serviceEnvVars))}`);
+								Logger.debug(
+									`[ModuleLoader] Variables del servicio ${serviceConfig.name}: ${JSON.stringify(Object.keys(serviceEnvVars))}`
+								);
 							}
 						} catch (error) {
 							Logger.warn(`[ModuleLoader] Error cargando variables de entorno del servicio ${serviceConfig.name}: ${error}`);
@@ -261,10 +237,10 @@ export class ModuleLoader {
 						};
 
 						// VERIFICAR si el servicio ya existe antes de cargarlo
-						if (kernel.hasModule("service", serviceConfig.name, serviceUniqueConfig)) {
+						if (kernel.registry.hasModule("service", serviceConfig.name, serviceUniqueConfig)) {
 							Logger.debug(`[ModuleLoader] Servicio ${serviceConfig.name} ya existe, reutilizando instancia`);
 							// Solo agregar la dependencia a la app actual (el kernel lo maneja internamente)
-							kernel.addModuleDependency("service", serviceConfig.name, serviceUniqueConfig);
+							kernel.registry.addModuleDependency("service", serviceConfig.name, serviceUniqueConfig);
 							continue; // Saltar al siguiente servicio
 						}
 
@@ -276,25 +252,37 @@ export class ModuleLoader {
 								if (!providerConfig.global) {
 									Logger.debug(`[ModuleLoader] Provider config ANTES de interpolar: ${JSON.stringify(providerConfig)}`);
 									Logger.debug(`[ModuleLoader] Variables disponibles para interpolación: ${JSON.stringify(serviceEnvVars)}`);
-									
+
 									// Interpolar la configuración del provider con las variables del servicio
 									const interpolatedProviderConfig = this.interpolateEnvVars(providerConfig, serviceEnvVars);
-									Logger.debug(`[ModuleLoader] Provider config DESPUÉS de interpolar: ${JSON.stringify(interpolatedProviderConfig)}`);
-									
+									Logger.debug(
+										`[ModuleLoader] Provider config DESPUÉS de interpolar: ${JSON.stringify(interpolatedProviderConfig)}`
+									);
+
 									// Verificar si el provider ya existe
-									if (kernel.hasModule("provider", interpolatedProviderConfig.name, interpolatedProviderConfig.config)) {
+									if (
+										kernel.registry.hasModule("provider", interpolatedProviderConfig.name, interpolatedProviderConfig.config)
+									) {
 										Logger.debug(`[ModuleLoader] Provider ${interpolatedProviderConfig.name} ya existe, reutilizando`);
-										kernel.addModuleDependency("provider", interpolatedProviderConfig.name, interpolatedProviderConfig.config);
+										kernel.registry.addModuleDependency(
+											"provider",
+											interpolatedProviderConfig.name,
+											interpolatedProviderConfig.config
+										);
 										continue;
 									}
 									try {
 										// Pasar las variables del servicio al cargar el provider
 										const provider = await this.loadProvider(interpolatedProviderConfig, serviceEnvVars);
-										kernel.registerProvider(provider.name, provider, interpolatedProviderConfig);
+										kernel.registry.registerProvider(provider.name, provider, interpolatedProviderConfig);
 
 										// También registrar por el nombre del módulo/configuración
 										if (interpolatedProviderConfig.name !== provider.name) {
-											kernel.registerProvider(interpolatedProviderConfig.name, provider, interpolatedProviderConfig);
+											kernel.registry.registerProvider(
+												interpolatedProviderConfig.name,
+												provider,
+												interpolatedProviderConfig
+											);
 										}
 									} catch (error) {
 										const message = `Error cargando provider ${interpolatedProviderConfig.name} del servicio ${serviceConfig.name}: ${error}`;
@@ -317,13 +305,13 @@ export class ModuleLoader {
 								} else {
 									try {
 										const utility = await this.loadUtility(utilityConfig);
-										kernel.registerUtility(utility.name, utility, utilityConfig);
+										kernel.registry.registerUtility(utility.name, utility, utilityConfig);
 
 										// Si el nombre contiene "/", también registrar con el nombre base como alias
 										if (utilityConfig.name.includes("/")) {
 											const baseName = utilityConfig.name.split("/").pop()!;
 											Logger.debug(`[ModuleLoader] Registrando alias '${baseName}' para utility '${utilityConfig.name}'`);
-											kernel.registerUtility(baseName, utility, utilityConfig);
+											kernel.registry.registerUtility(baseName, utility, utilityConfig);
 										}
 									} catch (error) {
 										const message = `Error cargando utility ${utilityConfig.name} del servicio ${serviceConfig.name}: ${error}`;
@@ -344,7 +332,7 @@ export class ModuleLoader {
 								// Agregar el provider como dependencia de la app actual
 								// Esto incrementa el reference count y lo añade a appModuleDependencies
 								// addModuleDependency también maneja automáticamente los aliases (type)
-								kernel.addModuleDependency("provider", providerConfig.name, providerConfig.config);
+								kernel.registry.addModuleDependency("provider", providerConfig.name, providerConfig.config);
 							}
 						}
 
@@ -355,7 +343,7 @@ export class ModuleLoader {
 							language: serviceConfig.language,
 							config: serviceUniqueConfig,
 						};
-						kernel.registerService(service.name, service, registrationConfig);
+						kernel.registry.registerService(service.name, service, registrationConfig);
 					} catch (error) {
 						const message = `Error cargando service ${serviceConfig.name}: ${error}`;
 						if (modulesConfig.failOnError) throw new Error(message);
@@ -406,9 +394,11 @@ export class ModuleLoader {
 		const interpolatedConfig = this.interpolateEnvVars(config, mergedEnvVars);
 
 		// Enriquecer config con información del módulo para interoperabilidad
-		// Incluir tanto custom como options y cualquier otra propiedad
+		// Incluir custom, private, options y cualquier otra propiedad
+		// Nota: "private" no afecta el uniqueKey, solo se pasa al módulo
 		const enrichedConfig = {
 			...interpolatedConfig.custom,
+			...interpolatedConfig.private,
 			...interpolatedConfig.options,
 			...interpolatedConfig.config,
 			moduleName: interpolatedConfig.name,
@@ -451,8 +441,10 @@ export class ModuleLoader {
 		const interpolatedConfig = this.interpolateEnvVars(config, envVars);
 
 		// Enriquecer config con información del módulo
+		// Nota: "private" no afecta el uniqueKey, solo se pasa al módulo
 		const enrichedConfig = {
 			...interpolatedConfig.custom,
+			...interpolatedConfig.private,
 			...interpolatedConfig.options,
 			...interpolatedConfig.config,
 			moduleName: interpolatedConfig.name,
@@ -496,8 +488,10 @@ export class ModuleLoader {
 		const interpolatedConfig = this.interpolateEnvVars(config, envVars);
 
 		// Enriquecer config con información del módulo
+		// Nota: "private" no afecta el uniqueKey, solo se pasa al módulo
 		const enrichedConfig = {
 			...interpolatedConfig.custom,
+			...interpolatedConfig.private,
 			...interpolatedConfig.options,
 			...interpolatedConfig.config,
 			moduleName: interpolatedConfig.name,
@@ -528,14 +522,14 @@ export class ModuleLoader {
 
 		if (serviceConfig.providers && Array.isArray(serviceConfig.providers)) {
 			for (const providerConfig of serviceConfig.providers) {
-				if (kernel.hasModule("provider", providerConfig.name, providerConfig.config)) {
+				if (kernel.registry.hasModule("provider", providerConfig.name, providerConfig.config)) {
 					Logger.debug(`[ModuleLoader] Provider ${providerConfig.name} ya existe`);
 					continue;
 				}
 				const provider = await this.loadProvider(providerConfig, serviceEnvVars);
-				kernel.registerProvider(provider.name, provider, providerConfig, null);
+				kernel.registry.registerProvider(provider.name, provider, providerConfig, null);
 				if (providerConfig.name !== provider.name) {
-					kernel.registerProvider(providerConfig.name, provider, providerConfig, null);
+					kernel.registry.registerProvider(providerConfig.name, provider, providerConfig, null);
 				}
 			}
 		}
@@ -550,6 +544,7 @@ export class ModuleLoader {
 		const instance: BaseService = new ServiceClass(kernel, {
 			name: serviceName,
 			custom: serviceConfig.custom,
+			...serviceConfig.private, // Config privado que no afecta uniqueKey
 			providers: serviceConfig.providers || [],
 			utilities: serviceConfig.utilities || [],
 			__modulePath: serviceDir,

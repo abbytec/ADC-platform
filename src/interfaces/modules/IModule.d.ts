@@ -17,6 +17,11 @@ export interface IModuleConfig {
 	language?: string;
 	/** Configuración personalizada para pasar al constructor del módulo */
 	custom?: Record<string, any>;
+	/**
+	 * Configuración privada que se pasa al módulo pero NO afecta su uniqueKey.
+	 * Útil para credenciales, secretos, o config que no debería diferenciar instancias.
+	 */
+	private?: Record<string, any>;
 	/** Providers que este módulo necesita como dependencias */
 	providers?: IModuleConfig[];
 	/** Utilities que este módulo necesita como dependencias */

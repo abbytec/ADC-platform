@@ -8,7 +8,7 @@ import { Logger } from "./utils/logger/Logger.js";
 import { ModuleLoader } from "./utils/loaders/ModuleLoader.js";
 import { ModuleRegistry } from "./utils/registry/ModuleRegistry.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
-import { IModule, IModuleConfig } from "./interfaces/modules/IModule.js";
+import { IModuleConfig } from "./interfaces/modules/IModule.js";
 import type { BaseProvider, IProvider } from "./providers/BaseProvider.ts";
 import type { IUtility } from "./utilities/BaseUtility.ts";
 import type { BaseService, IService } from "./services/BaseService.ts";
@@ -21,7 +21,7 @@ export class Kernel {
 	#isStartingUp = true;
 	readonly #logger: ILogger = Logger.getLogger("Kernel");
 
-	readonly #registry = new ModuleRegistry(Kernel.#kernelKey);
+	public readonly registry = new ModuleRegistry(Kernel.#kernelKey);
 
 	readonly #appFilePaths = new Map<string, string>();
 	readonly #appConfigFilePaths = new Map<string, string>();
@@ -41,46 +41,6 @@ export class Kernel {
 	readonly #servicesPath = path.resolve(this.#basePath, "services");
 	readonly #appsPath = path.resolve(this.#basePath, "apps");
 
-	public getProvider<T>(name: string, config?: Record<string, any>): T {
-		return this.#registry.getProvider(name, config);
-	}
-
-	public getUtility<T>(name: string, config?: Record<string, any>): T {
-		return this.#registry.getUtility(name, config);
-	}
-
-	public getService<T>(name: string, config?: Record<string, any>): T {
-		return this.#registry.getService(name, config);
-	}
-
-	public hasModule(moduleType: ModuleType, name: string, config?: Record<string, any>): boolean {
-		return this.#registry.hasModule(moduleType, name, config);
-	}
-
-	public getApp(name: string): IApp {
-		return this.#registry.getApp(name);
-	}
-
-	public registerProvider(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
-		this.#registry.registerProvider(name, instance, config, appName);
-	}
-
-	public registerUtility(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
-		this.#registry.registerUtility(name, instance, config, appName);
-	}
-
-	public registerService(name: string, instance: IModule, config: IModuleConfig, appName?: string | null): void {
-		this.#registry.registerService(name, instance, config, appName);
-	}
-
-	public registerApp(name: string, instance: IApp): void {
-		this.#registry.registerApp(name, instance);
-	}
-
-	public addModuleDependency(moduleType: ModuleType, name: string, config?: Record<string, any>, appName?: string): void {
-		this.#registry.addModuleDependency(moduleType, name, config, appName);
-	}
-
 	async #loadKernelServices(): Promise<void> {
 		const kernelServices = await this.#findKernelServices(this.#servicesPath);
 
@@ -91,21 +51,16 @@ export class Kernel {
 		for (const { path: servicePath, name: serviceName, configPath } of kernelServices) {
 			try {
 				const serviceDir = path.dirname(servicePath);
-				
+
 				try {
 					await this.#runDockerCompose(serviceDir, serviceName, this.#serviceDockerComposeMap);
 				} catch {
 					this.#logger.logDebug(`docker-compose no disponible para ${serviceName}`);
 				}
 
-				const { instance, config } = await Kernel.moduleLoader.loadKernelService(
-					servicePath,
-					configPath,
-					this,
-					Kernel.#kernelKey
-				);
+				const { instance, config } = await Kernel.moduleLoader.loadKernelService(servicePath, configPath, this, Kernel.#kernelKey);
 
-				this.registerService(serviceName, instance, config);
+				this.registry.registerService(serviceName, instance, config);
 				this.#logger.logOk(`Servicio kernel cargado: ${serviceName}`);
 			} catch (error: any) {
 				this.#logger.logError(`Error cargando servicio kernel (${serviceName}): ${error.message}`);
@@ -145,10 +100,14 @@ export class Kernel {
 									await fs.access(indexJs);
 									kernelServices.push({ path: indexJs, name: entry.name, configPath, priority });
 									continue;
-								} catch { /* no index */ }
+								} catch {
+									/* no index */
+								}
 							}
 						}
-					} catch { /* no config.json */ }
+					} catch {
+						/* no config.json */
+					}
 
 					await traverse(fullPath);
 				}
@@ -170,9 +129,21 @@ export class Kernel {
 		const excludeList = excludeTests ? ["BaseApp.ts", "test"] : ["BaseApp.ts"];
 		await this.#loadLayerRecursive(this.#appsPath, this.#loadApp.bind(this), excludeList);
 
-		this.#watchLayer(this.#providersPath, this.#loadAndRegisterModule.bind(this, "provider"), this.#registry.unloadModule.bind(this, "provider", Kernel.#kernelKey));
-		this.#watchLayer(this.#utilitiesPath, this.#loadAndRegisterModule.bind(this, "utility"),  this.#registry.unloadModule.bind(this, "utility", Kernel.#kernelKey));
-		this.#watchLayer(this.#servicesPath, this.#loadAndRegisterModule.bind(this, "service"),  this.#registry.unloadModule.bind(this, "service", Kernel.#kernelKey));
+		this.#watchLayer(
+			this.#providersPath,
+			this.#loadAndRegisterModule.bind(this, "provider"),
+			this.registry.unloadModule.bind(this, "provider", Kernel.#kernelKey)
+		);
+		this.#watchLayer(
+			this.#utilitiesPath,
+			this.#loadAndRegisterModule.bind(this, "utility"),
+			this.registry.unloadModule.bind(this, "utility", Kernel.#kernelKey)
+		);
+		this.#watchLayer(
+			this.#servicesPath,
+			this.#loadAndRegisterModule.bind(this, "service"),
+			this.registry.unloadModule.bind(this, "service", Kernel.#kernelKey)
+		);
 		this.#watchLayer(this.#appsPath, this.#loadApp.bind(this), this.#unloadApp.bind(this), ["BaseApp.ts"]);
 
 		this.#watchAppConfigs();
@@ -183,10 +154,10 @@ export class Kernel {
 		}, 10000);
 
 		this.#statusInterval = setInterval(() => {
-			const stats = this.#registry.getModuleStats();
+			const stats = this.registry.getModuleStats();
 			this.#logger.logInfo(`Providers: ${stats.providers} - Utilities: ${stats.utilities} - Services: ${stats.services}`);
 			const kernelState = {
-				...this.#registry.getStateSnapshot(),
+				...this.registry.getStateSnapshot(),
 				appFiles: Object.fromEntries(this.#appFilePaths),
 				appConfigFiles: Object.fromEntries(this.#appConfigFilePaths),
 			};
@@ -223,7 +194,7 @@ export class Kernel {
 		};
 
 		this.#logger.logInfo(`Deteniendo Apps...`);
-		for (const [name, instance] of this.#registry.getAppsRegistry()) {
+		for (const [name, instance] of this.registry.getAppsRegistry()) {
 			try {
 				this.#logger.logDebug(`Deteniendo App ${name}`);
 				if (instance.stop) {
@@ -246,7 +217,7 @@ export class Kernel {
 			}
 		}
 
-		await this.#registry.stopAllModules(Kernel.#kernelKey, withTimeout);
+		await this.registry.stopAllModules(Kernel.#kernelKey, withTimeout);
 		this.#logger.logOk("Cierre completado.");
 	}
 
@@ -258,7 +229,9 @@ export class Kernel {
 					await loader(indexPath);
 					return;
 				}
-			} catch { /* no index */ }
+			} catch {
+				/* no index */
+			}
 
 			const entries = await fs.readdir(dir, { withFileTypes: true });
 			const loadLevels = await this.#buildAppLoadLevels(dir, entries, exclude);
@@ -271,7 +244,9 @@ export class Kernel {
 					await Promise.all(level.map((subDirPath) => this.#loadLayerRecursive(subDirPath, loader, exclude)));
 				}
 			}
-		} catch { /* dir no existe */ }
+		} catch {
+			/* dir no existe */
+		}
 	}
 
 	async #buildAppLoadLevels(dir: string, entries: Dirent[], exclude: string[]): Promise<string[][]> {
@@ -305,10 +280,26 @@ export class Kernel {
 
 					appConfigs.push({ path: subDirPath, dirName: entry.name, name: appName, dependencies, isUILib, isHost, isRemote });
 				} else {
-					appConfigs.push({ path: subDirPath, dirName: entry.name, name: entry.name, dependencies: [], isUILib: false, isHost: false, isRemote: false });
+					appConfigs.push({
+						path: subDirPath,
+						dirName: entry.name,
+						name: entry.name,
+						dependencies: [],
+						isUILib: false,
+						isHost: false,
+						isRemote: false,
+					});
 				}
 			} catch {
-				appConfigs.push({ path: subDirPath, dirName: entry.name, name: entry.name, dependencies: [], isUILib: false, isHost: false, isRemote: false });
+				appConfigs.push({
+					path: subDirPath,
+					dirName: entry.name,
+					name: entry.name,
+					dependencies: [],
+					isUILib: false,
+					isHost: false,
+					isRemote: false,
+				});
 			}
 		}
 
@@ -408,19 +399,19 @@ export class Kernel {
 		switch (moduleType) {
 			case "provider": {
 				const providerModule: BaseProvider = await Kernel.moduleLoader.loadProvider(config);
-				this.registerProvider(providerModule.name, providerModule, config);
+				this.registry.registerProvider(providerModule.name, providerModule, config);
 				module = providerModule;
 				break;
 			}
 			case "utility": {
 				const utilityModule: IUtility = await Kernel.moduleLoader.loadUtility(config);
-				this.registerUtility(utilityModule.name, utilityModule, config);
+				this.registry.registerUtility(utilityModule.name, utilityModule, config);
 				module = utilityModule;
 				break;
 			}
 			case "service": {
 				const serviceModule: BaseService = await Kernel.moduleLoader.loadService(config, this);
-				this.registerService(serviceModule.name, serviceModule, config);
+				this.registry.registerService(serviceModule.name, serviceModule, config);
 				module = serviceModule;
 				break;
 			}
@@ -439,8 +430,8 @@ export class Kernel {
 
 			const module = await this.#loadAndRegisterSpecificModule(moduleType, config);
 
-			const uniqueKey = this.#registry.getUniqueKey(module.name, config.custom);
-			const fileMap = this.#registry.getFileToUniqueKeyMap(moduleType);
+			const uniqueKey = this.registry.getUniqueKey(module.name, config.custom);
+			const fileMap = this.registry.getFileToUniqueKeyMap(moduleType);
 			fileMap.set(filePath, uniqueKey);
 		} catch (e) {
 			const capitalizedModuleType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
@@ -459,15 +450,15 @@ export class Kernel {
 
 	async #initializeAndRunApp(app: IApp, filePath: string, instanceName: string, configPath?: string): Promise<void> {
 		this.#logger.logInfo(`Inicializando App: ${instanceName} desde ${path.basename(filePath)}`);
-		this.registerApp(instanceName, app);
+		this.registry.registerApp(instanceName, app);
 		this.#logger.logDebug(`Inicializando App ${app.name}`);
 
-		this.#registry.setLoadingContext(instanceName);
+		this.registry.setLoadingContext(instanceName);
 		try {
 			await app.loadModulesFromConfig();
 			await app.start?.(Kernel.#kernelKey);
 		} finally {
-			this.#registry.setLoadingContext(null);
+			this.registry.setLoadingContext(null);
 		}
 
 		this.#appFilePaths.set(`${filePath}:${instanceName}`, instanceName);
@@ -489,14 +480,14 @@ export class Kernel {
 				return;
 			}
 
-			const app = this.#registry.hasApp(instanceName) ? this.#registry.getApp(instanceName) : null;
+			const app = this.registry.hasApp(instanceName) ? this.registry.getApp(instanceName) : null;
 			if (app) {
 				this.#logger.logInfo(`Recargando instancia de App: ${instanceName}`);
 				await app.stop?.();
 
-				await this.#registry.cleanupAppModules(instanceName, Kernel.#kernelKey);
+				await this.registry.cleanupAppModules(instanceName, Kernel.#kernelKey);
 
-				this.#registry.deleteApp(instanceName);
+				this.registry.deleteApp(instanceName);
 
 				for (const [key, value] of this.#appFilePaths.entries()) {
 					if (value === instanceName) {
@@ -628,7 +619,9 @@ export class Kernel {
 					this.#logger.logDebug(`App ${appName} está deshabilitada (default.json)`);
 					return;
 				}
-			} catch { /* no default.json */ }
+			} catch {
+				/* no default.json */
+			}
 
 			try {
 				const configPath = path.join(appDir, "config.json");
@@ -639,7 +632,9 @@ export class Kernel {
 					this.#logger.logDebug(`App ${appName} está deshabilitada (config.json)`);
 					return;
 				}
-			} catch { /* no config.json */ }
+			} catch {
+				/* no config.json */
+			}
 
 			try {
 				await this.#startDockerCompose(appDir, appName);
@@ -687,9 +682,7 @@ export class Kernel {
 			}
 		} catch (e: any) {
 			if (e.code === "ERR_MODULE_NOT_FOUND") {
-				this.#logger.logError(
-					`Faltan dependencias de Node.js para la app en ${filePath}. Reintentando en 30 segundos...`
-				);
+				this.#logger.logError(`Faltan dependencias de Node.js para la app en ${filePath}. Reintentando en 30 segundos...`);
 				setTimeout(() => this.#loadApp(filePath), 30000);
 			} else {
 				this.#logger.logError(`Error ejecutando App ${filePath}: ${e}`);
@@ -728,7 +721,9 @@ export class Kernel {
 				await fs.stat(appFilePath);
 				this.#logger.logInfo(`Nuevo archivo de configuración detectado: ${path.basename(srcConfigPath)}`);
 				await this.#loadApp(appFilePath);
-			} catch { /* app no existe */ }
+			} catch {
+				/* app no existe */
+			}
 		});
 
 		watcher.on("unlink", async (srcConfigPath) => {
@@ -740,16 +735,18 @@ export class Kernel {
 				targetConfigPath = path.join(this.#appsPath, relativePath);
 				try {
 					await fs.unlink(targetConfigPath);
-				} catch { /* archivo no existe */ }
+				} catch {
+					/* archivo no existe */
+				}
 			}
 
 			const instanceName = this.#appConfigFilePaths.get(targetConfigPath);
 			if (instanceName) {
 				this.#logger.logInfo(`Archivo de configuración eliminado: ${path.basename(srcConfigPath)}`);
-				if (this.#registry.hasApp(instanceName)) {
-					const app = this.#registry.getApp(instanceName);
+				if (this.registry.hasApp(instanceName)) {
+					const app = this.registry.getApp(instanceName);
 					await app.stop?.();
-					this.#registry.deleteApp(instanceName);
+					this.registry.deleteApp(instanceName);
 				}
 				this.#appConfigFilePaths.delete(targetConfigPath);
 			}
@@ -785,14 +782,14 @@ export class Kernel {
 
 		for (const key of keysToUnload) {
 			const appName = this.#appFilePaths.get(key);
-			if (appName && this.#registry.hasApp(appName)) {
-				const app = this.#registry.getApp(appName);
+			if (appName && this.registry.hasApp(appName)) {
+				const app = this.registry.getApp(appName);
 				this.#logger.logDebug(`Removiendo app: ${app.name}`);
 				await app.stop?.();
 
-				await this.#registry.cleanupAppModules(appName, Kernel.#kernelKey);
+				await this.registry.cleanupAppModules(appName, Kernel.#kernelKey);
 
-				this.#registry.deleteApp(app.name);
+				this.registry.deleteApp(app.name);
 				this.#appFilePaths.delete(key);
 
 				for (const [configPath, instanceName] of this.#appConfigFilePaths.entries()) {

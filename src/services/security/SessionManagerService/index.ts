@@ -84,13 +84,13 @@ export default class SessionManagerService extends BaseService {
 		this.#kernelKey = kernelKey;
 
 		// Obtener providers
-		this.#httpProvider = this.kernel.getProvider<IHttpServerProvider>("fastify-server");
-		this.#jwtProvider = this.kernel.getProvider<IJWTProviderMultiKey>("security/jwt");
-		this.#identityService = this.kernel.getService<IdentityManagerService>("IdentityManagerService");
+		this.#httpProvider = this.getMyProvider<IHttpServerProvider>("fastify-server");
+		this.#jwtProvider = this.getMyProvider<IJWTProviderMultiKey>("security/jwt");
+		this.#identityService = this.getMyService<IdentityManagerService>("IdentityManagerService");
 
 		// Redis es opcional - funciona con fallback en memoria
 		try {
-			this.#redis = this.kernel.getProvider<IRedisProvider>("redis");
+			this.#redis = this.getMyProvider<IRedisProvider>("queue/redis");
 		} catch {
 			this.logger.logWarn("Redis no disponible, usando almacenamiento en memoria");
 		}
@@ -210,7 +210,9 @@ export default class SessionManagerService extends BaseService {
 		if (!this.#httpProvider || !this.#authEndpoints || !this.#oauthEndpoints) return;
 
 		// OAuth endpoints
-		this.#httpProvider.registerRoute("GET", "/api/auth/login/:provider", (req: any, res: any) => this.#oauthEndpoints!.handleLogin(req, res));
+		this.#httpProvider.registerRoute("GET", "/api/auth/login/:provider", (req: any, res: any) =>
+			this.#oauthEndpoints!.handleLogin(req, res)
+		);
 		this.#httpProvider.registerRoute("GET", "/api/auth/callback/:provider", (req: any, res: any) =>
 			this.#oauthEndpoints!.handleCallback(req, res)
 		);

@@ -16,9 +16,10 @@ interface UserProfile {
 export default class UserProfileFileApp extends BaseApp {
 	private crud!: IJsonFileCrud;
 
-	async start() {
+	async start(kernelKey: symbol) {
+		await super.start(kernelKey);
 		try {
-			this.crud = this.kernel.getService<any>("json-file-crud");
+			this.crud = this.getMyService<IJsonFileCrud>("json-file-crud");
 
 			Logger.ok(`[${this.name}] JsonFileCrudService disponible`);
 		} catch (err) {
