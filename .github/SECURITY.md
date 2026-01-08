@@ -5,7 +5,6 @@ Si encontrás una vulnerabilidad, **no abras un issue público**.
 ## Versiones soportadas
 
 -   `main`: soporte activo
--   Último `major` publicado de `nuxt-modelator`: parches críticos
 
 ## Reportar una vulnerabilidad
 
@@ -25,4 +24,4 @@ Confirmaremos recepción dentro de **7 días hábiles** y daremos una ETA inicia
 3. Lanzamiento de versión parche.
 4. Aviso público con agradecimiento (si deseás crédito).
 
-Gracias por ayudar a mantener seguro el ecosistema de **nuxt-modelator**.
+Gracias por ayudar a mantener seguro el ecosistema de **ADC-Platform**.
