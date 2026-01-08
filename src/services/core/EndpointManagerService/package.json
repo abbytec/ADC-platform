@@ -1,0 +1,7 @@
+{
+	"name": "@adc/endpoint-manager-service",
+	"version": "1.0.0",
+	"type": "module",
+	"private": true,
+	"dependencies": {}
+}

@@ -26,11 +26,6 @@
 				"db": 0,
 				"keyPrefix": "adc:session:"
 			}
-		},
-		{
-			"name": "fastify-server",
-			"version": "latest",
-			"language": "typescript"
 		}
 	],
 	"services": [
@@ -38,6 +33,10 @@
 			"name": "IdentityManagerService",
 			"version": "latest",
 			"language": "typescript"
+		},
+		{
+			"name": "EndpointManagerService",
+			"version": "latest"
 		}
 	]
 }

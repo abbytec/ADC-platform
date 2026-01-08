@@ -1,15 +1,16 @@
 import type { Model, PipelineStage } from "mongoose";
 import type { Article, LearningPath, PathItem, Block } from "../../../../common/ADC/types/learning.js";
+import { RegisterEndpoint, HttpError, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
 
-interface ListArticlesOptions {
+interface ListArticlesQuery {
 	pathSlug?: string;
-	listed?: boolean;
+	listed?: string;
 	q?: string;
-	limit?: number;
-	skip?: number;
+	limit?: string;
+	skip?: string;
 }
 
-interface CreateArticleData {
+interface CreateArticleBody {
 	slug: string;
 	title: string;
 	pathSlug?: string;
@@ -21,8 +22,7 @@ interface CreateArticleData {
 	description?: string;
 }
 
-interface UpdateArticleData {
-	slug: string;
+interface UpdateArticleBody {
 	title?: string;
 	pathSlug?: string;
 	blocks?: Block[];
@@ -30,6 +30,10 @@ interface UpdateArticleData {
 	image?: { url: string; width?: number; height?: number; alt?: string };
 	listed?: boolean;
 	description?: string;
+}
+
+interface SlugParams {
+	slug: string;
 }
 
 export class ArticleEndpoints {
@@ -41,12 +45,18 @@ export class ArticleEndpoints {
 		ArticleEndpoints.pathModel ??= pathModel;
 	}
 
-	static async list(options: ListArticlesOptions) {
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/learning/articles",
+		permissions: [],
+	})
+	static async list(ctx: EndpointCtx<Record<string, string>, never>): Promise<{ articles: Article[] }> {
+		const query = ctx.query as ListArticlesQuery;
 		const where: Record<string, any> = {};
 
 		// Filtro por path (incluye artículos de sub-paths)
-		if (options.pathSlug) {
-			const parentPath = await ArticleEndpoints.pathModel.findOne({ slug: options.pathSlug }).select("items").lean();
+		if (query.pathSlug) {
+			const parentPath = await ArticleEndpoints.pathModel.findOne({ slug: query.pathSlug }).select("items").lean();
 
 			if (parentPath?.items?.length) {
 				const targetArticleSlugs: string[] = [];
@@ -57,7 +67,10 @@ export class ArticleEndpoints {
 				const subPathSlugs = parentPath.items.filter((i: PathItem) => i.type === "path").map((i: PathItem) => i.slug);
 
 				if (subPathSlugs.length > 0) {
-					const subPaths = await ArticleEndpoints.pathModel.find({ slug: { $in: subPathSlugs } }).select("items").lean();
+					const subPaths = await ArticleEndpoints.pathModel
+						.find({ slug: { $in: subPathSlugs } })
+						.select("items")
+						.lean();
 
 					subPaths.forEach((sp) => {
 						if (sp.items) {
@@ -73,10 +86,10 @@ export class ArticleEndpoints {
 			}
 		}
 
-		if (options.listed !== undefined) where.listed = options.listed;
+		if (query.listed !== undefined) where.listed = query.listed === "true";
 
-		if (options.q) {
-			const safe = options.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		if (query.q) {
+			const safe = query.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 			where.title = { $regex: safe, $options: "i" };
 		}
 
@@ -112,47 +125,90 @@ export class ArticleEndpoints {
 			{ $sort: { createdAt: -1 } },
 		];
 
-		if (options.limit) pipeline.push({ $limit: options.limit });
-		if (options.skip) pipeline.push({ $skip: options.skip });
+		const limit = query.limit ? parseInt(query.limit) : undefined;
+		const skip = query.skip ? parseInt(query.skip) : undefined;
+
+		if (limit) pipeline.push({ $limit: limit });
+		if (skip) pipeline.push({ $skip: skip });
 
 		const docs = await ArticleEndpoints.model.aggregate(pipeline);
 
 		return { articles: docs };
 	}
 
-	static async getBySlug(slug: string) {
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/learning/articles/:slug",
+		permissions: [],
+	})
+	static async getBySlug(ctx: EndpointCtx<SlugParams>): Promise<{ article: Article }> {
+		const { slug } = ctx.params;
 		const doc = await ArticleEndpoints.model.findOne({ slug }).lean();
-		return { article: doc || undefined };
+
+		if (!doc) {
+			throw new HttpError(404, "ARTICLE_NOT_FOUND", "Article not found");
+		}
+
+		return { article: doc as Article };
 	}
 
-	static async create(data: CreateArticleData) {
+	@RegisterEndpoint({
+		method: "POST",
+		url: "/api/learning/articles",
+		permissions: ["content.write"],
+	})
+	static async create(ctx: EndpointCtx<Record<string, string>, CreateArticleBody>): Promise<{ article: Article }> {
+		const data = ctx.data;
+
+		if (!data.slug || !data.title || !data.authorId) {
+			throw new HttpError(400, "MISSING_FIELDS", "slug, title and authorId are required");
+		}
+
 		const doc = await ArticleEndpoints.model.create({
 			...data,
 			listed: data.listed ?? true,
 		});
-		return { article: doc.toObject() };
+
+		return { article: doc.toObject() as Article };
 	}
 
-	static async update(data: UpdateArticleData) {
-		const { slug, ...updateData } = data;
+	@RegisterEndpoint({
+		method: "PUT",
+		url: "/api/learning/articles/:slug",
+		permissions: ["content.write"],
+	})
+	static async update(ctx: EndpointCtx<SlugParams, UpdateArticleBody>): Promise<{ article: Article }> {
+		const { slug } = ctx.params;
+		const updateData = ctx.data;
 
 		// Filtrar campos undefined
 		const cleanData: Record<string, any> = {};
-		for (const [key, value] of Object.entries(updateData)) {
+		for (const [key, value] of Object.entries(updateData || {})) {
 			if (value !== undefined) cleanData[key] = value;
 		}
 
 		const doc = await ArticleEndpoints.model.findOneAndUpdate({ slug }, cleanData, { new: true }).lean();
 
 		if (!doc) {
-			throw new Error(`Article with slug "${slug}" not found`);
+			throw new HttpError(404, "ARTICLE_NOT_FOUND", `Article with slug "${slug}" not found`);
 		}
 
-		return { article: doc };
+		return { article: doc as Article };
 	}
 
-	static async delete(slug: string) {
+	@RegisterEndpoint({
+		method: "DELETE",
+		url: "/api/learning/articles/:slug",
+		permissions: ["content.delete"],
+	})
+	static async delete(ctx: EndpointCtx<SlugParams>): Promise<{ success: boolean }> {
+		const { slug } = ctx.params;
 		const result = await ArticleEndpoints.model.deleteOne({ slug });
-		return { success: result.deletedCount > 0 };
+
+		if (result.deletedCount === 0) {
+			throw new HttpError(404, "ARTICLE_NOT_FOUND", `Article with slug "${slug}" not found`);
+		}
+
+		return { success: true };
 	}
 }

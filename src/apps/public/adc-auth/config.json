@@ -16,12 +16,5 @@
 				"subdomains": ["auth"]
 			}
 		]
-	},
-	"services": [
-		{
-			"name": "security/SessionManagerService",
-			"version": "latest",
-			"language": "typescript"
-		}
-	]
+	}
 }

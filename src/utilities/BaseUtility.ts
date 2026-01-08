@@ -17,6 +17,11 @@ export abstract class BaseUtility extends BaseModule implements IUtility {
 	}
 
 	@OnlyKernel()
+	public async start(): Promise<void> {
+		this.logger.logInfo(`Iniciando Utility ${this.name}`);
+	}
+
+	@OnlyKernel()
 	public async stop(): Promise<void> {
 		this.logger.logInfo(`Deteniendo Utility ${this.name}`);
 	}

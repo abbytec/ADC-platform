@@ -1,0 +1,135 @@
+/**
+ * HTTP Error class for throwing business errors with HTTP semantics
+ *
+ * @example
+ * throw new HttpError(404, "NOT_FOUND", "User does not exist");
+ * throw new HttpError(400, "VALIDATION_ERROR", "Invalid email", { field: "email" });
+ */
+export class HttpError extends Error {
+	public readonly status: number;
+	public readonly errorKey: string;
+	public readonly data?: Record<string, unknown>;
+
+	constructor(status: number, errorKey: string, message: string, data?: Record<string, unknown>) {
+		super(message);
+		this.name = "HttpError";
+		this.status = status;
+		this.errorKey = errorKey;
+		this.data = data;
+		if (Error.captureStackTrace) Error.captureStackTrace(this, HttpError);
+	}
+
+	toJSON() {
+		return { status: this.status, errorKey: this.errorKey, message: this.message, data: this.data };
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UncommonResponse - For responses requiring cookies, redirects, or custom headers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CookieOptions {
+	httpOnly?: boolean;
+	secure?: boolean;
+	sameSite?: "strict" | "lax" | "none";
+	path?: string;
+	domain?: string;
+	maxAge?: number;
+}
+
+export interface SetCookie {
+	name: string;
+	value: string;
+	options?: CookieOptions;
+}
+
+export interface ClearCookie {
+	name: string;
+	options?: Pick<CookieOptions, "path" | "domain">;
+}
+
+/**
+ * UncommonResponse - For endpoints that need cookies, redirects, or custom headers
+ * Throw this instead of returning data when you need HTTP-level control
+ *
+ * @example
+ * // Redirect with cookies (OAuth callback)
+ * throw UncommonResponse.redirect("/dashboard", {
+ *   cookies: [{ name: "token", value: jwt, options: { httpOnly: true } }]
+ * });
+ *
+ * // JSON response with cookies (login)
+ * throw UncommonResponse.json({ success: true, user }, {
+ *   cookies: [{ name: "access_token", value: token }]
+ * });
+ *
+ * // Clear cookies (logout)
+ * throw UncommonResponse.json({ success: true }, {
+ *   clearCookies: [{ name: "access_token", options: { path: "/" } }]
+ * });
+ */
+export class UncommonResponse {
+	public readonly type: "json" | "redirect";
+	public readonly status: number;
+	public readonly body?: unknown;
+	public readonly redirectUrl?: string;
+	public readonly headers: Record<string, string>;
+	public readonly cookies: SetCookie[];
+	public readonly clearCookies: ClearCookie[];
+
+	private constructor(config: {
+		type: "json" | "redirect";
+		status: number;
+		body?: unknown;
+		redirectUrl?: string;
+		headers?: Record<string, string>;
+		cookies?: SetCookie[];
+		clearCookies?: ClearCookie[];
+	}) {
+		this.type = config.type;
+		this.status = config.status;
+		this.body = config.body;
+		this.redirectUrl = config.redirectUrl;
+		this.headers = config.headers || {};
+		this.cookies = config.cookies || [];
+		this.clearCookies = config.clearCookies || [];
+	}
+
+	/** JSON response with optional cookies/headers */
+	static json(
+		body: unknown,
+		options?: {
+			status?: number;
+			headers?: Record<string, string>;
+			cookies?: SetCookie[];
+			clearCookies?: ClearCookie[];
+		}
+	): UncommonResponse {
+		return new UncommonResponse({
+			type: "json",
+			status: options?.status || 200,
+			body,
+			headers: options?.headers,
+			cookies: options?.cookies,
+			clearCookies: options?.clearCookies,
+		});
+	}
+
+	/** Redirect response with optional cookies */
+	static redirect(
+		url: string,
+		options?: {
+			status?: 301 | 302 | 303 | 307 | 308;
+			cookies?: SetCookie[];
+			clearCookies?: ClearCookie[];
+		}
+	): UncommonResponse {
+		return new UncommonResponse({
+			type: "redirect",
+			status: options?.status || 302,
+			redirectUrl: url,
+			cookies: options?.cookies,
+			clearCookies: options?.clearCookies,
+		});
+	}
+}

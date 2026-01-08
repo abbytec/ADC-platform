@@ -41,6 +41,9 @@ export default class IdentityManagerService extends BaseService {
 	// AuthVerifier para verificar tokens y permisos
 	#authVerifier: IAuthVerifier | null = null;
 
+	// SessionManagerService (lazy-loaded singleton)
+	#sessionManager: SessionManagerService | null = null;
+
 	// MongoDB provider
 	#mongoProvider: IMongoProvider | null = null;
 
@@ -121,15 +124,17 @@ export default class IdentityManagerService extends BaseService {
 	#createAuthVerifier(): IAuthVerifier {
 		return {
 			verifyToken: async (token: string) => {
-				let sessionService: SessionManagerService;
-				try {
-					// SessionManagerService está declarado como dependencia opcional en config.json
-					sessionService = this.getMyService<SessionManagerService>("SessionManagerService");
-				} catch {
-					return { valid: false, error: "SessionManagerService no disponible" };
+				// Lazy-load singleton pattern para SessionManagerService
+				if (!this.#sessionManager) {
+					try {
+						// SessionManagerService está declarado como dependencia opcional en config.json
+						this.#sessionManager = this.getMyService<SessionManagerService>("SessionManagerService");
+					} catch {
+						return { valid: false, error: "SessionManagerService no disponible" };
+					}
 				}
 
-				const result = await sessionService.verifyToken(token);
+				const result = await this.#sessionManager.verifyToken(token);
 				if (!result.valid || !result.session) {
 					return { valid: false, error: result.error || "Token inválido" };
 				}

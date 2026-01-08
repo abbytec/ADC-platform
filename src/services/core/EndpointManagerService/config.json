@@ -1,0 +1,19 @@
+{
+	"name": "EndpointManagerService",
+	"version": "1.0.0",
+	"kernelMode": 1,
+	"providers": [
+		{
+			"name": "fastify-server",
+			"version": "latest",
+			"language": "typescript"
+		}
+	],
+	"services": [
+		{
+			"name": "SessionManagerService",
+			"version": "latest",
+			"optional": true
+		}
+	]
+}

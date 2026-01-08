@@ -19,6 +19,11 @@
 			"name": "SessionManagerService",
 			"version": "latest",
 			"optional": true
+		},
+		{
+			"name": "EndpointManagerService",
+			"version": "latest",
+			"optional": true
 		}
 	]
 }

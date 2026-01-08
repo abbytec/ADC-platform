@@ -2,22 +2,19 @@
 
 Servicio de gestión de artículos y rutas de aprendizaje con MongoDB.
 
-## Connect RPC
+## Endpoints (via @RegisterEndpoint)
 
-Usa Protocol Buffers para definir el API tipado. Proto en `src/common/ADC/proto/learning/`.
+| Método | Ruta                           | Permisos       | Descripción        |
+| ------ | ------------------------------ | -------------- | ------------------ |
+| GET    | `/api/learning/paths`          | público        | Lista paths        |
+| GET    | `/api/learning/paths/:slug`    | público        | Obtiene path       |
+| POST   | `/api/learning/paths`          | content.write  | Crea path          |
+| PUT    | `/api/learning/paths/:slug`    | content.write  | Actualiza path     |
+| DELETE | `/api/learning/paths/:slug`    | content.delete | Elimina path       |
+| GET    | `/api/learning/articles`       | público        | Lista artículos    |
+| GET    | `/api/learning/articles/:slug` | público        | Obtiene artículo   |
+| POST   | `/api/learning/articles`       | content.write  | Crea artículo      |
+| PUT    | `/api/learning/articles/:slug` | content.write  | Actualiza artículo |
+| DELETE | `/api/learning/articles/:slug` | content.delete | Elimina artículo   |
 
-```bash
-npm run proto:gen  # Regenerar tipos TypeScript
-```
-
-## Servicio: LearningService
-
-### Paths
-- `ListPaths` - Lista paths (filtros: public, listed, limit, skip)
-- `GetPath` - Obtiene path por slug
-- `CreatePath`, `UpdatePath`, `DeletePath` - CRUD
-
-### Articles
-- `ListArticles` - Lista artículos (filtros: listed, pathSlug, q, limit, skip)
-- `GetArticle` - Obtiene artículo por slug
-- `CreateArticle`, `UpdateArticle`, `DeleteArticle` - CRUD
+Usa `@EnableEndpoints()` y `@DisableEndpoints()` para registro automático via EndpointManagerService.

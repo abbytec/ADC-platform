@@ -127,6 +127,7 @@ export abstract class BaseService extends BaseModule implements IService {
 				...this.options, // options tiene prioridad
 				providers: providersToUse,
 				utilities: utilitiesToLoad,
+				services: this.options?.services || baseConfig.services || [],
 			} as IModuleConfig;
 
 			// Marcar como inicializado

@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { BaseService } from "../../BaseService.js";
-import type { IHttpServerProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
 import type IdentityManagerService from "../../core/IdentityManagerService/index.js";
 import type { IJWTProviderMultiKey } from "../../../providers/security/jwt/index.js";
 import type { IRedisProvider } from "../../../providers/queue/redis/index.js";
@@ -15,9 +14,12 @@ import { GeoIPValidator } from "./domain/security/GeoIPValidator.js";
 import { SessionManager } from "./domain/session/manager.js";
 import { OAuthProviderRegistry, PlatformAuthProvider } from "./domain/oauth/index.js";
 
-// Endpoints
+// Endpoints (singleton)
 import { AuthEndpoints } from "./endpoints/auth.js";
 import { OAuthEndpoints } from "./endpoints/oauth.js";
+
+// Decoradores
+import { EnableEndpoints, DisableEndpoints } from "../../core/EndpointManagerService/index.js";
 
 // Re-exportar tipos
 export type { AuthenticatedUser, TokenVerificationResult };
@@ -50,7 +52,6 @@ export default class SessionManagerService extends BaseService {
 	public readonly name = "SessionManagerService";
 
 	// Providers externos
-	#httpProvider: IHttpServerProvider | null = null;
 	#identityService: IdentityManagerService | null = null;
 	#jwtProvider: IJWTProviderMultiKey | null = null;
 	#redis: IRedisProvider | null = null;
@@ -64,10 +65,6 @@ export default class SessionManagerService extends BaseService {
 	#sessionManager: SessionManager | null = null;
 	#oauthRegistry: OAuthProviderRegistry | null = null;
 
-	// Endpoints
-	#authEndpoints: AuthEndpoints | null = null;
-	#oauthEndpoints: OAuthEndpoints | null = null;
-
 	// Configuración
 	#defaultRedirectUrl = "https://adigitalcafe.com";
 	#cookieDomain = ".adigitalcafe.com";
@@ -79,12 +76,17 @@ export default class SessionManagerService extends BaseService {
 		return (this.config?.custom || {}) as SessionManagerConfig;
 	}
 
+	// ─────────────────────────────────────────────────────────────────────────────
+	// Lifecycle
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	@EnableEndpoints({
+		managers: () => [AuthEndpoints, OAuthEndpoints],
+	})
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
 		this.#kernelKey = kernelKey;
 
-		// Obtener providers
-		this.#httpProvider = this.getMyProvider<IHttpServerProvider>("fastify-server");
 		this.#jwtProvider = this.getMyProvider<IJWTProviderMultiKey>("security/jwt");
 		this.#identityService = this.getMyService<IdentityManagerService>("IdentityManagerService");
 
@@ -95,19 +97,12 @@ export default class SessionManagerService extends BaseService {
 			this.logger.logWarn("Redis no disponible, usando almacenamiento en memoria");
 		}
 
-		if (!this.#httpProvider) {
-			throw new Error("SessionManagerService requiere http-server-provider");
-		}
-
 		if (!this.#jwtProvider) {
 			throw new Error("SessionManagerService requiere jwt provider");
 		}
 
 		// Inicializar componentes de dominio con Redis si está disponible
 		await this.#initDomainComponents();
-
-		// Registrar endpoints
-		this.#registerEndpoints();
 
 		this.logger.logOk(`SessionManagerService iniciado${this.#redis ? " con Redis" : ""}`);
 	}
@@ -177,52 +172,33 @@ export default class SessionManagerService extends BaseService {
 			})
 		);
 
-		// Crear instancias de endpoints
-		this.#authEndpoints = new AuthEndpoints(
+		// Inicializar singletons de endpoints
+		AuthEndpoints.init(
 			{
-				keyStore: this.#keyStore,
-				tokenService: this.#tokenService,
-				refreshTokenRepo: this.#refreshTokenRepo,
-				loginTracker: this.#loginTracker,
-				geoValidator: this.#geoValidator,
+				keyStore: this.#keyStore!,
+				tokenService: this.#tokenService!,
+				refreshTokenRepo: this.#refreshTokenRepo!,
+				loginTracker: this.#loginTracker!,
+				geoValidator: this.#geoValidator!,
 				identityService: this.#identityService,
 				cookieDomain: this.#cookieDomain,
 				defaultRedirectUrl: this.#defaultRedirectUrl,
 				logger: this.logger,
 			},
-			(username, password) => this.#validatePlatformCredentials(username, password)
+			(username: string, password: string) => this.#validatePlatformCredentials(username, password)
 		);
 
-		this.#oauthEndpoints = new OAuthEndpoints({
-			tokenService: this.#tokenService,
-			geoValidator: this.#geoValidator,
-			sessionManager: this.#sessionManager,
-			oauthRegistry: this.#oauthRegistry,
+		OAuthEndpoints.init({
+			tokenService: this.#tokenService!,
+			geoValidator: this.#geoValidator!,
+			sessionManager: this.#sessionManager!,
+			oauthRegistry: this.#oauthRegistry!,
 			identityService: this.#identityService,
 			cookieDomain: this.#cookieDomain,
 			defaultRedirectUrl: this.#defaultRedirectUrl,
-			getProviderConfig: (provider) => this.#getProviderConfig(provider),
+			getProviderConfig: (provider: string) => this.#getProviderConfig(provider),
 			logger: this.logger,
 		});
-	}
-
-	#registerEndpoints(): void {
-		if (!this.#httpProvider || !this.#authEndpoints || !this.#oauthEndpoints) return;
-
-		// OAuth endpoints
-		this.#httpProvider.registerRoute("GET", "/api/auth/login/:provider", (req: any, res: any) =>
-			this.#oauthEndpoints!.handleLogin(req, res)
-		);
-		this.#httpProvider.registerRoute("GET", "/api/auth/callback/:provider", (req: any, res: any) =>
-			this.#oauthEndpoints!.handleCallback(req, res)
-		);
-
-		// Auth nativo endpoints
-		this.#httpProvider.registerRoute("POST", "/api/auth/login", (req: any, res: any) => this.#authEndpoints!.handleNativeLogin(req, res));
-		this.#httpProvider.registerRoute("POST", "/api/auth/register", (req: any, res: any) => this.#authEndpoints!.handleRegister(req, res));
-		this.#httpProvider.registerRoute("GET", "/api/auth/session", (req: any, res: any) => this.#authEndpoints!.handleSession(req, res));
-		this.#httpProvider.registerRoute("POST", "/api/auth/refresh", (req: any, res: any) => this.#authEndpoints!.handleRefresh(req, res));
-		this.#httpProvider.registerRoute("POST", "/api/auth/logout", (req: any, res: any) => this.#authEndpoints!.handleLogout(req, res));
 	}
 
 	async verifyToken(token: string): Promise<TokenVerificationResult> {
@@ -369,6 +345,7 @@ export default class SessionManagerService extends BaseService {
 		}
 	}
 
+	@DisableEndpoints()
 	async stop(kernelKey: symbol): Promise<void> {
 		await super.stop(kernelKey);
 

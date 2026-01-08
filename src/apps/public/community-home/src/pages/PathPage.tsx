@@ -20,16 +20,16 @@ const LEVEL_TITLES: Record<Level, string> = {
 
 // Colores para artículos
 const ARTICLE_LEVEL_COLORS: Record<Level, string> = {
-	critico: "bg-amber-400",
-	importante: "bg-amber-200",
-	opcional: "bg-amber-100",
+	critico: "bg-amber-400 text-black",
+	importante: "bg-amber-200 text-black",
+	opcional: "bg-amber-100 text-black",
 };
 
 // Colores para paths
 const PATH_LEVEL_COLORS: Record<Level, string> = {
 	critico: "bg-violet-500 text-white",
-	importante: "bg-violet-300",
-	opcional: "bg-violet-100",
+	importante: "bg-violet-300 text-black",
+	opcional: "bg-violet-100 text-black",
 };
 
 const getLevelColor = (type: "article" | "path", level: Level) => (type === "path" ? PATH_LEVEL_COLORS[level] : ARTICLE_LEVEL_COLORS[level]);
@@ -227,7 +227,7 @@ export function PathPage({ slug }: PathPageProps) {
 										e.preventDefault();
 										router.navigate(`/articles/${article.slug}?fromPath=${slug}`);
 									}}
-									className={`flex items-center gap-4 rounded-xxl shadow-cozy no-underline text-text transition-transform p-4 hover:scale-105 hover:z-10 max-w-[80vw] mx-auto ${getLevelColor(
+									className={`flex items-center gap-4 rounded-xxl shadow-cozy no-underline transition-transform p-4 hover:scale-105 hover:z-10 max-w-[80vw] mx-auto ${getLevelColor(
 										"article",
 										item.level
 									)}`}
@@ -250,7 +250,7 @@ export function PathPage({ slug }: PathPageProps) {
 										e.preventDefault();
 										router.navigate(`/paths/${subPath.slug}`);
 									}}
-									className={`flex flex-col gap-3 rounded-xxl shadow-cozy no-underline text-text transition-transform p-4 hover:scale-105 hover:z-10 max-w-[80vw] mx-auto ${getLevelColor(
+									className={`flex flex-col gap-3 rounded-xxl shadow-cozy no-underline transition-transform p-4 hover:scale-105 hover:z-10 max-w-[80vw] mx-auto ${getLevelColor(
 										"path",
 										item.level
 									)}`}

@@ -1,10 +1,18 @@
-import type { AuthRequest, AuthReply, AuthenticatedUser } from "../types.js";
 import type { KeyStore } from "../domain/keys/KeyStore.js";
 import type { TokenService } from "../domain/tokens/TokenService.js";
 import type { RefreshTokenRepository } from "../domain/tokens/RefreshTokenRepository.js";
 import type { LoginAttemptTracker } from "../domain/security/LoginAttemptTracker.js";
 import type { GeoIPValidator } from "../domain/security/GeoIPValidator.js";
 import type IdentityManagerService from "../../../core/IdentityManagerService/index.js";
+import {
+	RegisterEndpoint,
+	HttpError,
+	UncommonResponse,
+	type EndpointCtx,
+	type SetCookie,
+	type ClearCookie,
+} from "../../../core/EndpointManagerService/index.js";
+import type { AuthenticatedUser } from "../types.js";
 
 /** Nombre de las cookies */
 const ACCESS_COOKIE_NAME = "access_token";
@@ -22,136 +30,147 @@ export interface AuthEndpointsDeps {
 	logger: { logError: (msg: string) => void; logWarn: (msg: string) => void };
 }
 
+interface LoginBody {
+	username?: string;
+	password?: string;
+}
+
+interface RegisterBody {
+	username?: string;
+	email?: string;
+	password?: string;
+}
+
 /**
  * Endpoints de autenticación nativa (usuario/contraseña)
+ * Singleton con métodos estáticos y @RegisterEndpoint
  */
 export class AuthEndpoints {
-	#deps: AuthEndpointsDeps;
-	#validateCredentials: (username: string, password: string) => Promise<{ id: string; username: string; email?: string } | null>;
+	private static deps: AuthEndpointsDeps;
+	private static validateCredentials: (username: string, password: string) => Promise<{ id: string; username: string; email?: string } | null>;
 
-	constructor(
+	static init(
 		deps: AuthEndpointsDeps,
 		validateCredentials: (username: string, password: string) => Promise<{ id: string; username: string; email?: string } | null>
-	) {
-		this.#deps = deps;
-		this.#validateCredentials = validateCredentials;
+	): void {
+		AuthEndpoints.deps ??= deps;
+		AuthEndpoints.validateCredentials ??= validateCredentials;
 	}
 
 	/**
 	 * POST /api/auth/login - Login con usuario/contraseña
 	 */
-	async handleNativeLogin(req: AuthRequest, res: AuthReply): Promise<void> {
-		const body = (req.body || {}) as { username?: string; password?: string };
-		const { username, password } = body;
+	@RegisterEndpoint({
+		method: "POST",
+		url: "/api/auth/login",
+		permissions: [],
+	})
+	static async handleNativeLogin(ctx: EndpointCtx<Record<string, string>, LoginBody>): Promise<unknown> {
+		const { username, password } = ctx.data || {};
 
 		if (!username || !password) {
-			res.status(400).send({ error: "Username y password son requeridos" });
-			return;
+			throw new HttpError(400, "MISSING_CREDENTIALS", "Username y password son requeridos");
 		}
 
 		try {
-			const profile = await this.#validateCredentials(username, password);
+			const profile = await AuthEndpoints.validateCredentials(username, password);
 
 			if (!profile) {
 				const tempUserId = `login_attempt_${username}`;
-				const blockStatus = await this.#deps.loginTracker.recordLoginAttempt(tempUserId, false, req.ip);
+				const blockStatus = await AuthEndpoints.deps.loginTracker.recordLoginAttempt(tempUserId, false, ctx.ip);
 
 				if (blockStatus.blocked) {
-					res.status(403).send({
-						error: "Cuenta bloqueada temporalmente",
+					throw new HttpError(403, "ACCOUNT_BLOCKED", "Cuenta bloqueada temporalmente", {
 						blockedUntil: blockStatus.blockedUntil,
 						permanent: blockStatus.permanent,
 					});
-					return;
 				}
 
-				res.status(401).send({ error: "Credenciales inválidas" });
-				return;
+				throw new HttpError(401, "INVALID_CREDENTIALS", "Credenciales inválidas");
 			}
 
-			const user = await this.#getOrCreateUser("platform", {
+			const user = await AuthEndpoints.getOrCreateUser("platform", {
 				id: profile.id,
 				username: profile.username,
 				email: profile.email,
 			});
 
-			const blockStatus = await this.#deps.loginTracker.isBlocked(user.id);
+			const blockStatus = await AuthEndpoints.deps.loginTracker.isBlocked(user.id);
 			if (blockStatus.blocked) {
-				res.status(403).send({
-					error: blockStatus.permanent ? "Cuenta bloqueada" : "Cuenta bloqueada temporalmente",
+				throw new HttpError(403, "ACCOUNT_BLOCKED", blockStatus.permanent ? "Cuenta bloqueada" : "Cuenta bloqueada temporalmente", {
 					blockedUntil: blockStatus.blockedUntil,
 					permanent: blockStatus.permanent,
 				});
-				return;
 			}
 
-			await this.#deps.loginTracker.recordLoginAttempt(user.id, true, req.ip);
-			await this.#issueTokens(req, res, user);
+			await AuthEndpoints.deps.loginTracker.recordLoginAttempt(user.id, true, ctx.ip);
+			const cookies = await AuthEndpoints.getTokenCookies(ctx, user);
 
-			res.send({
-				success: true,
-				user: {
-					id: user.id,
-					username: user.username,
-					email: user.email,
-					permissions: user.permissions,
+			throw UncommonResponse.json(
+				{
+					success: true,
+					user: {
+						id: user.id,
+						username: user.username,
+						email: user.email,
+						permissions: user.permissions,
+					},
 				},
-			});
+				{ cookies }
+			);
 		} catch (err: any) {
-			this.#deps.logger.logError(`Error en login nativo: ${err.message}`);
-			res.status(500).send({ error: "Error durante la autenticación" });
+			if (err instanceof HttpError || err instanceof UncommonResponse) throw err;
+			AuthEndpoints.deps.logger.logError(`Error en login nativo: ${err.message}`);
+			throw new HttpError(500, "AUTH_ERROR", "Error durante la autenticación");
 		}
 	}
 
 	/**
 	 * POST /api/auth/register - Registro de nuevo usuario
 	 */
-	async handleRegister(req: AuthRequest, res: AuthReply): Promise<void> {
-		const body = (req.body || {}) as { username?: string; email?: string; password?: string };
-		const { username, email, password } = body;
+	@RegisterEndpoint({
+		method: "POST",
+		url: "/api/auth/register",
+		permissions: [],
+	})
+	static async handleRegister(ctx: EndpointCtx<Record<string, string>, RegisterBody>): Promise<unknown> {
+		const { username, email, password } = ctx.data || {};
 
 		if (!username || !email || !password) {
-			res.status(400).send({ error: "Username, email y password son requeridos" });
-			return;
+			throw new HttpError(400, "MISSING_FIELDS", "Username, email y password son requeridos");
 		}
 
 		// Validaciones básicas
 		if (username.length < 3 || username.length > 30) {
-			res.status(400).send({ error: "El nombre de usuario debe tener entre 3 y 30 caracteres" });
-			return;
+			throw new HttpError(400, "INVALID_USERNAME", "El nombre de usuario debe tener entre 3 y 30 caracteres");
 		}
 
 		if (password.length < 8) {
-			res.status(400).send({ error: "La contraseña debe tener al menos 8 caracteres" });
-			return;
+			throw new HttpError(400, "WEAK_PASSWORD", "La contraseña debe tener al menos 8 caracteres");
 		}
 
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 		if (!emailRegex.test(email)) {
-			res.status(400).send({ error: "El email no es válido" });
-			return;
+			throw new HttpError(400, "INVALID_EMAIL", "El email no es válido");
 		}
 
-		if (!this.#deps.identityService) {
-			res.status(500).send({ error: "Servicio de identidad no disponible" });
-			return;
+		if (!AuthEndpoints.deps.identityService) {
+			throw new HttpError(500, "SERVICE_UNAVAILABLE", "Servicio de identidad no disponible");
 		}
 
 		try {
 			// Verificar si el usuario o email ya existe
-			const users = this.#deps.identityService.users;
+			const users = AuthEndpoints.deps.identityService.users;
 			const allUsers = await users.getAllUsers();
 			const existingUsername = allUsers.find((u: any) => u.username.toLowerCase() === username.toLowerCase());
 			const existingEmail = allUsers.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
 
 			if (existingUsername) {
-				res.status(409).send({ error: "El nombre de usuario ya está en uso" });
-				return;
+				throw new HttpError(409, "USERNAME_EXISTS", "El nombre de usuario ya está en uso");
 			}
 
 			if (existingEmail) {
-				res.status(409).send({ error: "El email ya está registrado" });
-				return;
+				throw new HttpError(409, "EMAIL_EXISTS", "El email ya está registrado");
 			}
 
 			// Crear usuario
@@ -167,53 +186,80 @@ export class AuthEndpoints {
 			});
 
 			// Obtener usuario completo para login automático
-			const user = await this.#getOrCreateUser("platform", {
+			const user = await AuthEndpoints.getOrCreateUser("platform", {
 				id: newUser.id,
 				username,
 				email,
 			});
 
 			// Emitir tokens (login automático tras registro)
-			await this.#issueTokens(req, res, user);
+			const cookies = await AuthEndpoints.getTokenCookies(ctx, user);
 
-			res.send({
-				success: true,
-				user: {
-					id: user.id,
-					username: user.username,
-					email: user.email,
-					permissions: user.permissions,
+			throw UncommonResponse.json(
+				{
+					success: true,
+					user: {
+						id: user.id,
+						username: user.username,
+						email: user.email,
+						permissions: user.permissions,
+					},
 				},
-			});
+				{ cookies }
+			);
 		} catch (err: any) {
-			this.#deps.logger.logError(`Error en registro: ${err.message}`);
-			res.status(500).send({ error: "Error al crear la cuenta" });
+			if (err instanceof HttpError || err instanceof UncommonResponse) throw err;
+			AuthEndpoints.deps.logger.logError(`Error en registro: ${err.message}`);
+			throw new HttpError(500, "REGISTER_ERROR", "Error al crear la cuenta");
 		}
 	}
 
 	/**
 	 * GET /api/auth/session - Verificar sesión actual
 	 */
-	async handleSession(req: AuthRequest, res: AuthReply): Promise<void> {
-		const token = req.cookies?.[ACCESS_COOKIE_NAME];
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/auth/session",
+		permissions: [],
+	})
+	static async handleSession(ctx: EndpointCtx): Promise<unknown> {
+		const token = ctx.cookies?.[ACCESS_COOKIE_NAME];
 
 		if (!token) {
-			res.status(401).send({ authenticated: false, error: "No hay sesión activa" });
-			return;
+			throw new HttpError(401, "NO_SESSION", "No hay sesión activa");
 		}
 
-		const result = await this.#deps.tokenService.verifyAccessToken(token);
+		const result = await AuthEndpoints.deps.tokenService.verifyAccessToken(token);
 
 		if (!result.valid || !result.session) {
-			res.status(401).send({ authenticated: false, error: result.error });
-			return;
+			throw new HttpError(401, "INVALID_SESSION", result.error || "Sesión inválida");
 		}
 
+		const headers: Record<string, string> = {};
 		if (result.usedPreviousKey) {
-			res.header("X-Refresh-Required", "true");
+			headers["X-Refresh-Required"] = "true";
 		}
 
-		res.send({
+		// Si hay headers especiales, usar UncommonResponse
+		if (Object.keys(headers).length > 0) {
+			throw UncommonResponse.json(
+				{
+					authenticated: true,
+					user: {
+						id: result.session.user.id,
+						username: result.session.user.username,
+						email: result.session.user.email,
+						avatar: result.session.user.avatar,
+						provider: result.session.user.provider,
+						orgId: result.session.user.orgId,
+					},
+					expiresAt: result.session.expiresAt,
+				},
+				{ headers }
+			);
+		}
+
+		return {
 			authenticated: true,
 			user: {
 				id: result.session.user.id,
@@ -224,134 +270,148 @@ export class AuthEndpoints {
 				orgId: result.session.user.orgId,
 			},
 			expiresAt: result.session.expiresAt,
-		});
+		};
 	}
 
 	/**
 	 * POST /api/auth/refresh - Refrescar tokens
 	 */
-	async handleRefresh(req: AuthRequest, res: AuthReply): Promise<void> {
-		const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
+	@RegisterEndpoint({
+		method: "POST",
+		url: "/api/auth/refresh",
+		permissions: [],
+	})
+	static async handleRefresh(ctx: EndpointCtx): Promise<never> {
+		const refreshToken = ctx.cookies?.[REFRESH_COOKIE_NAME];
 
 		if (!refreshToken) {
-			res.status(401).send({ error: "No hay refresh token" });
-			return;
+			throw new HttpError(401, "NO_REFRESH_TOKEN", "No hay refresh token");
 		}
 
-		const storedToken = await this.#deps.refreshTokenRepo.findByToken(refreshToken);
+		const storedToken = await AuthEndpoints.deps.refreshTokenRepo.findByToken(refreshToken);
 
 		if (!storedToken) {
-			res.status(401).send({ error: "Refresh token inválido" });
-			return;
+			throw new HttpError(401, "INVALID_REFRESH_TOKEN", "Refresh token inválido");
 		}
 
 		// Validar cambio de país usando Cloudflare headers
-		const currentCountry = this.#deps.geoValidator.getCountryFromHeaders(req.headers);
-		const geoValidation = this.#deps.geoValidator.validateLocationChange(currentCountry, storedToken.country);
+		const currentCountry = AuthEndpoints.deps.geoValidator.getCountryFromHeaders(ctx.headers);
+		const geoValidation = AuthEndpoints.deps.geoValidator.validateLocationChange(currentCountry, storedToken.country);
 
 		if (!geoValidation.valid) {
-			await this.#deps.tokenService.revokeAllUserTokens(storedToken.userId);
-			this.#deps.logger.logWarn(`Cambio de país detectado para usuario ${storedToken.userId}: ${geoValidation.reason}`);
+			await AuthEndpoints.deps.tokenService.revokeAllUserTokens(storedToken.userId);
+			AuthEndpoints.deps.logger.logWarn(`Cambio de país detectado para usuario ${storedToken.userId}: ${geoValidation.reason}`);
 
-			res.status(401).send({
-				error: "Sesión invalidada por cambio de ubicación",
+			throw new HttpError(401, "LOCATION_CHANGE", "Sesión invalidada por cambio de ubicación", {
 				requireRelogin: true,
 			});
-			return;
 		}
 
-		const refreshAttempt = await this.#deps.loginTracker.recordRefreshAttempt(storedToken.userId, true);
+		const refreshAttempt = await AuthEndpoints.deps.loginTracker.recordRefreshAttempt(storedToken.userId, true);
 
 		if (refreshAttempt.blocked) {
 			if (refreshAttempt.shouldDeleteTokens) {
-				await this.#deps.tokenService.deleteAllUserTokens(storedToken.userId);
+				await AuthEndpoints.deps.tokenService.deleteAllUserTokens(storedToken.userId);
 			}
 
-			res.status(403).send({
-				error: "Cuenta bloqueada por actividad sospechosa",
+			throw new HttpError(403, "ACCOUNT_BLOCKED", "Cuenta bloqueada por actividad sospechosa", {
 				permanent: refreshAttempt.status.permanent,
 			});
-			return;
 		}
 
-		const ipAddress = this.#deps.geoValidator.extractRealIP(req.headers, req.ip);
-		const result = await this.#deps.tokenService.refreshTokens(
+		const ipAddress = AuthEndpoints.deps.geoValidator.extractRealIP(ctx.headers, ctx.ip);
+		const result = await AuthEndpoints.deps.tokenService.refreshTokens(
 			refreshToken,
 			ipAddress,
 			currentCountry,
-			req.headers["user-agent"]?.toString() || "unknown",
-			async (userId) => this.#getUserById(userId)
+			ctx.headers["user-agent"]?.toString() || "unknown",
+			async (userId: string) => AuthEndpoints.getUserById(userId)
 		);
 
 		if (!result.success || !result.tokens) {
-			const failResult = await this.#deps.loginTracker.recordRefreshAttempt(storedToken.userId, false);
+			const failResult = await AuthEndpoints.deps.loginTracker.recordRefreshAttempt(storedToken.userId, false);
 
 			if (failResult.blocked && failResult.shouldDeleteTokens) {
-				await this.#deps.tokenService.deleteAllUserTokens(storedToken.userId);
+				await AuthEndpoints.deps.tokenService.deleteAllUserTokens(storedToken.userId);
 			}
 
-			res.status(401).send({ error: result.error || "Error al refrescar tokens" });
-			return;
+			throw new HttpError(401, "REFRESH_FAILED", result.error || "Error al refrescar tokens");
 		}
 
-		this.#setTokenCookies(res, result.tokens.accessToken, result.tokens.refreshToken.token);
-		res.send({ success: true });
+		const cookies = AuthEndpoints.buildTokenCookies(result.tokens.accessToken, result.tokens.refreshToken.token);
+		throw UncommonResponse.json({ success: true }, { cookies });
 	}
 
 	/**
 	 * POST /api/auth/logout - Cerrar sesión
 	 */
-	async handleLogout(req: AuthRequest, res: AuthReply): Promise<void> {
-		const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
+	@RegisterEndpoint({
+		method: "POST",
+		url: "/api/auth/logout",
+		permissions: [],
+	})
+	static async handleLogout(ctx: EndpointCtx): Promise<never> {
+		const refreshToken = ctx.cookies?.[REFRESH_COOKIE_NAME];
 
 		if (refreshToken) {
-			await this.#deps.refreshTokenRepo.revoke(refreshToken);
+			await AuthEndpoints.deps.refreshTokenRepo.revoke(refreshToken);
 		}
 
-		res.clearCookie(ACCESS_COOKIE_NAME, { path: "/" });
-		res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth/refresh", domain: this.#deps.cookieDomain });
+		const clearCookies: ClearCookie[] = [
+			{ name: ACCESS_COOKIE_NAME, options: { path: "/" } },
+			{ name: REFRESH_COOKIE_NAME, options: { path: "/api/auth/refresh", domain: AuthEndpoints.deps.cookieDomain } },
+		];
 
-		res.send({ success: true, message: "Sesión cerrada" });
+		throw UncommonResponse.json({ success: true, message: "Sesión cerrada" }, { clearCookies });
 	}
 
-	// ============ Métodos auxiliares ============
+	// ============ Métodos auxiliares (privados estáticos) ============
 
-	async #issueTokens(req: AuthRequest, res: AuthReply, user: AuthenticatedUser): Promise<void> {
-		const ipAddress = this.#deps.geoValidator.extractRealIP(req.headers, req.ip);
-		const country = this.#deps.geoValidator.getCountryFromHeaders(req.headers);
-		const deviceId = this.#generateDeviceId(req);
-		const userAgent = req.headers["user-agent"]?.toString() || "unknown";
+	private static async getTokenCookies(ctx: EndpointCtx, user: AuthenticatedUser): Promise<SetCookie[]> {
+		const ipAddress = AuthEndpoints.deps.geoValidator.extractRealIP(ctx.headers, ctx.ip);
+		const country = AuthEndpoints.deps.geoValidator.getCountryFromHeaders(ctx.headers);
+		const deviceId = AuthEndpoints.generateDeviceId(ctx.headers);
+		const userAgent = ctx.headers["user-agent"]?.toString() || "unknown";
 
-		const tokens = await this.#deps.tokenService.createTokenPair(user, deviceId, ipAddress, country, userAgent);
-		this.#setTokenCookies(res, tokens.accessToken, tokens.refreshToken.token);
+		const tokens = await AuthEndpoints.deps.tokenService.createTokenPair(user, deviceId, ipAddress, country, userAgent);
+		return AuthEndpoints.buildTokenCookies(tokens.accessToken, tokens.refreshToken.token);
 	}
 
-	#setTokenCookies(res: AuthReply, accessToken: string, refreshToken: string): void {
-		const accessConfig = this.#deps.tokenService.getAccessCookieConfig();
-		const refreshConfig = this.#deps.tokenService.getRefreshCookieConfig();
+	private static buildTokenCookies(accessToken: string, refreshToken: string): SetCookie[] {
+		const accessConfig = AuthEndpoints.deps.tokenService.getAccessCookieConfig();
+		const refreshConfig = AuthEndpoints.deps.tokenService.getRefreshCookieConfig();
 
-		res.setCookie(accessConfig.name, accessToken, {
-			httpOnly: accessConfig.httpOnly,
-			secure: accessConfig.secure,
-			sameSite: accessConfig.sameSite,
-			path: accessConfig.path,
-			maxAge: accessConfig.maxAge,
-		});
-
-		res.setCookie(refreshConfig.name, refreshToken, {
-			httpOnly: refreshConfig.httpOnly,
-			secure: refreshConfig.secure,
-			sameSite: refreshConfig.sameSite,
-			path: refreshConfig.path,
-			maxAge: refreshConfig.maxAge,
-			domain: refreshConfig.domain,
-		});
+		return [
+			{
+				name: accessConfig.name,
+				value: accessToken,
+				options: {
+					httpOnly: accessConfig.httpOnly,
+					secure: accessConfig.secure,
+					sameSite: accessConfig.sameSite,
+					path: accessConfig.path,
+					maxAge: accessConfig.maxAge,
+				},
+			},
+			{
+				name: refreshConfig.name,
+				value: refreshToken,
+				options: {
+					httpOnly: refreshConfig.httpOnly,
+					secure: refreshConfig.secure,
+					sameSite: refreshConfig.sameSite,
+					path: refreshConfig.path,
+					maxAge: refreshConfig.maxAge,
+					domain: refreshConfig.domain,
+				},
+			},
+		];
 	}
 
-	#generateDeviceId(req: AuthRequest): string {
-		const ua = req.headers["user-agent"]?.toString() || "";
-		const accept = req.headers["accept"]?.toString() || "";
-		const lang = req.headers["accept-language"]?.toString() || "";
+	private static generateDeviceId(headers: Record<string, string | undefined>): string {
+		const ua = headers["user-agent"]?.toString() || "";
+		const accept = headers["accept"]?.toString() || "";
+		const lang = headers["accept-language"]?.toString() || "";
 
 		const fingerprint = `${ua}|${accept}|${lang}`;
 		let hash = 0;
@@ -364,11 +424,11 @@ export class AuthEndpoints {
 		return `device_${Math.abs(hash).toString(36)}`;
 	}
 
-	async #getOrCreateUser(
+	private static async getOrCreateUser(
 		provider: string,
 		profile: { id: string; username: string; email?: string; avatar?: string }
 	): Promise<AuthenticatedUser> {
-		if (!this.#deps.identityService) {
+		if (!AuthEndpoints.deps.identityService) {
 			return {
 				id: `temp_${profile.id}`,
 				providerId: profile.id,
@@ -381,7 +441,7 @@ export class AuthEndpoints {
 		}
 
 		const providerIdField = `${provider}Id`;
-		const users = this.#deps.identityService.users;
+		const users = AuthEndpoints.deps.identityService.users;
 		const allUsers = await users.getAllUsers();
 		let existingUser = allUsers.find(
 			(u: any) => u.metadata?.[providerIdField] === profile.id || (profile.email && u.email === profile.email)
@@ -394,7 +454,7 @@ export class AuthEndpoints {
 				existingUser = { ...existingUser, metadata: updatedMetadata };
 			}
 
-			const permissions = await this.#getUserPermissions(existingUser.id);
+			const permissions = await AuthEndpoints.getUserPermissions(existingUser.id);
 			return {
 				id: existingUser.id,
 				providerId: profile.id,
@@ -420,7 +480,7 @@ export class AuthEndpoints {
 			},
 		});
 
-		const defaultPermissions = await this.#getDefaultPermissions();
+		const defaultPermissions = await AuthEndpoints.getDefaultPermissions();
 		return {
 			id: newUser.id,
 			providerId: profile.id,
@@ -432,15 +492,15 @@ export class AuthEndpoints {
 		};
 	}
 
-	async #getUserById(userId: string): Promise<AuthenticatedUser | null> {
-		if (!this.#deps.identityService) return null;
+	private static async getUserById(userId: string): Promise<AuthenticatedUser | null> {
+		if (!AuthEndpoints.deps.identityService) return null;
 
 		try {
-			const users = this.#deps.identityService.users;
+			const users = AuthEndpoints.deps.identityService.users;
 			const user = await users.getUser(userId);
 			if (!user) return null;
 
-			const permissions = await this.#getUserPermissions(userId);
+			const permissions = await AuthEndpoints.getUserPermissions(userId);
 			return {
 				id: user.id,
 				provider: (user.metadata?.createdVia as string) || "platform",
@@ -455,11 +515,11 @@ export class AuthEndpoints {
 		}
 	}
 
-	async #getUserPermissions(userId: string): Promise<string[]> {
-		if (!this.#deps.identityService) return ["public.read"];
+	private static async getUserPermissions(userId: string): Promise<string[]> {
+		if (!AuthEndpoints.deps.identityService) return ["public.read"];
 
 		try {
-			const permissions = this.#deps.identityService.permissions;
+			const permissions = AuthEndpoints.deps.identityService.permissions;
 			const resolved = await permissions.resolvePermissions(userId);
 			return resolved.map((p: { resource: string; scope: number; action: number }) => `${p.resource}.${p.scope}.${p.action}`);
 		} catch {
@@ -467,7 +527,7 @@ export class AuthEndpoints {
 		}
 	}
 
-	async #getDefaultPermissions(): Promise<string[]> {
+	private static async getDefaultPermissions(): Promise<string[]> {
 		return ["public.read", "profile.self.read", "profile.self.write"];
 	}
 }

@@ -1,9 +1,17 @@
-import type { AuthRequest, AuthReply, AuthenticatedUser, OAuthProviderConfig } from "../types.js";
 import type { TokenService } from "../domain/tokens/TokenService.js";
 import type { GeoIPValidator } from "../domain/security/GeoIPValidator.js";
 import type { SessionManager } from "../domain/session/manager.js";
 import type { OAuthProviderRegistry } from "../domain/oauth/index.js";
 import type IdentityManagerService from "../../../core/IdentityManagerService/index.js";
+import {
+	RegisterEndpoint,
+	HttpError,
+	UncommonResponse,
+	type EndpointCtx,
+	type SetCookie,
+	type ClearCookie,
+} from "../../../core/EndpointManagerService/index.js";
+import type { AuthenticatedUser, OAuthProviderConfig } from "../types.js";
 
 /** Nombre de las cookies */
 const STATE_COOKIE_NAME = "oauth_state";
@@ -23,170 +31,219 @@ export interface OAuthEndpointsDeps {
 	logger: { logError: (msg: string) => void; logWarn: (msg: string) => void };
 }
 
+interface ProviderParams {
+	provider: string;
+}
+
 /**
  * Endpoints de autenticación OAuth (Discord, Google, etc.)
+ * Singleton con métodos estáticos y @RegisterEndpoint
  */
 export class OAuthEndpoints {
-	#deps: OAuthEndpointsDeps;
+	private static deps: OAuthEndpointsDeps;
 
-	constructor(deps: OAuthEndpointsDeps) {
-		this.#deps = deps;
+	static init(deps: OAuthEndpointsDeps): void {
+		OAuthEndpoints.deps ??= deps;
 	}
 
 	/**
 	 * GET /api/auth/login/:provider - Iniciar flujo OAuth
 	 */
-	async handleLogin(req: AuthRequest, res: AuthReply): Promise<void> {
-		const provider = req.params?.provider || "platform";
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/auth/login/:provider",
+		permissions: [],
+	})
+	static async handleLogin(ctx: EndpointCtx<ProviderParams>): Promise<never> {
+		const provider = ctx.params.provider || "platform";
 
-		if (!this.#deps.oauthRegistry.has(provider)) {
-			res.status(400).send({ error: `Proveedor '${provider}' no soportado` });
-			return;
+		if (!OAuthEndpoints.deps.oauthRegistry.has(provider)) {
+			throw new HttpError(400, "PROVIDER_NOT_SUPPORTED", `Proveedor '${provider}' no soportado`);
 		}
 
-		const oauthProvider = this.#deps.oauthRegistry.get(provider)!;
-		const config = this.#deps.getProviderConfig(provider);
+		const oauthProvider = OAuthEndpoints.deps.oauthRegistry.get(provider)!;
+		const config = OAuthEndpoints.deps.getProviderConfig(provider);
 
 		if (!config) {
-			res.status(500).send({ error: `Configuración del proveedor '${provider}' no encontrada` });
-			return;
+			throw new HttpError(500, "CONFIG_NOT_FOUND", `Configuración del proveedor '${provider}' no encontrada`);
 		}
 
 		// Capturar originPath de query params para redirect post-auth
-		const originPath = (req.query as { originPath?: string })?.originPath || "/";
+		const originPath = ctx.query?.originPath || "/";
 
 		// Generar state para CSRF protection
-		const state = this.#deps.sessionManager.generateState();
+		const state = OAuthEndpoints.deps.sessionManager.generateState();
 
-		// Guardar state en cookie segura
-		res.setCookie(STATE_COOKIE_NAME, state, {
-			httpOnly: true,
-			secure: isProd,
-			sameSite: "lax",
-			path: "/",
-			maxAge: 10 * 60, // 10 minutos
-		});
+		// Preparar cookies
+		const cookies: SetCookie[] = [
+			{
+				name: STATE_COOKIE_NAME,
+				value: state,
+				options: {
+					httpOnly: true,
+					secure: isProd,
+					sameSite: "lax",
+					path: "/",
+					maxAge: 10 * 60, // 10 minutos
+				},
+			},
+		];
 
-		// Guardar originPath en cookie separada
+		// Guardar originPath en cookie separada si no es "/"
 		if (originPath && originPath !== "/") {
-			res.setCookie(ORIGIN_PATH_COOKIE_NAME, originPath, {
-				httpOnly: true,
-				secure: isProd,
-				sameSite: "lax",
-				path: "/",
-				maxAge: 10 * 60,
+			cookies.push({
+				name: ORIGIN_PATH_COOKIE_NAME,
+				value: originPath,
+				options: {
+					httpOnly: true,
+					secure: isProd,
+					sameSite: "lax",
+					path: "/",
+					maxAge: 10 * 60,
+				},
 			});
 		}
 
 		const authUrl = oauthProvider.getAuthorizationUrl(state, config);
-		res.redirect(authUrl);
+		throw UncommonResponse.redirect(authUrl, { status: 302, cookies });
 	}
 
 	/**
 	 * GET /api/auth/callback/:provider - Callback OAuth
 	 */
-	async handleCallback(req: AuthRequest, res: AuthReply): Promise<void> {
-		const provider = req.params?.provider || "platform";
-		const query = req.query as { code?: string; state?: string; error?: string };
-		const { code, state, error } = query;
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/auth/callback/:provider",
+		permissions: [],
+	})
+	static async handleCallback(ctx: EndpointCtx<ProviderParams>): Promise<never> {
+		const provider = ctx.params.provider || "platform";
+		const { code, state, error } = ctx.query || {};
+
+		// Cookies a limpiar (siempre limpiar state cookies)
+		const clearCookies: ClearCookie[] = [
+			{ name: STATE_COOKIE_NAME, options: { path: "/" } },
+			{ name: ORIGIN_PATH_COOKIE_NAME, options: { path: "/" } },
+		];
 
 		if (error) {
-			res.redirect(`/auth/error?error=${encodeURIComponent(error)}`);
-			return;
+			throw UncommonResponse.redirect(`/auth/error?error=${encodeURIComponent(error)}`, {
+				status: 302,
+				clearCookies,
+			});
 		}
 
 		if (!code || !state) {
-			res.redirect("/auth/error?error=Código o estado faltante");
-			return;
+			throw UncommonResponse.redirect("/auth/error?error=Código o estado faltante", {
+				status: 302,
+				clearCookies,
+			});
 		}
 
 		// Validar state contra la cookie
-		const stateCookie = req.cookies?.[STATE_COOKIE_NAME];
+		const stateCookie = ctx.cookies?.[STATE_COOKIE_NAME];
 		if (!stateCookie) {
-			res.redirect("/auth/error?error=Estado faltante en cookies");
-			return;
+			throw UncommonResponse.redirect("/auth/error?error=Estado faltante en cookies", {
+				status: 302,
+				clearCookies,
+			});
 		}
 
 		// Usar el método validateState con ambos argumentos
-		const stateValid = this.#deps.sessionManager.validateState(state, stateCookie);
+		const stateValid = OAuthEndpoints.deps.sessionManager.validateState(state, stateCookie);
 		if (!stateValid) {
-			res.redirect("/auth/error?error=Estado inválido (posible ataque CSRF)");
-			return;
+			throw UncommonResponse.redirect("/auth/error?error=Estado inválido (posible ataque CSRF)", {
+				status: 302,
+				clearCookies,
+			});
 		}
-
-		// Limpiar cookie de state
-		res.clearCookie(STATE_COOKIE_NAME, { path: "/" });
 
 		// Obtener originPath de la cookie
-		const originPath = req.cookies?.[ORIGIN_PATH_COOKIE_NAME] || "/";
-		res.clearCookie(ORIGIN_PATH_COOKIE_NAME, { path: "/" });
+		const originPath = ctx.cookies?.[ORIGIN_PATH_COOKIE_NAME] || "/";
 
-		const oauthProvider = this.#deps.oauthRegistry.get(provider);
+		const oauthProvider = OAuthEndpoints.deps.oauthRegistry.get(provider);
 		if (!oauthProvider) {
-			res.redirect("/auth/error?error=Proveedor no encontrado");
-			return;
+			throw UncommonResponse.redirect("/auth/error?error=Proveedor no encontrado", {
+				status: 302,
+				clearCookies,
+			});
 		}
 
-		const config = this.#deps.getProviderConfig(provider);
+		const config = OAuthEndpoints.deps.getProviderConfig(provider);
 		if (!config) {
-			res.status(500).send({ error: "Configuración del proveedor no encontrada" });
-			return;
+			throw new HttpError(500, "CONFIG_NOT_FOUND", "Configuración del proveedor no encontrada");
 		}
 
 		try {
 			const tokens = await oauthProvider.exchangeCode(code, config);
 			const profile = await oauthProvider.getUserProfile(tokens.accessToken);
-			const user = await this.#getOrCreateUser(provider, profile);
+			const user = await OAuthEndpoints.getOrCreateUser(provider, profile);
 
-			await this.#issueTokens(req, res, user);
+			const tokenCookies = await OAuthEndpoints.getTokenCookies(ctx, user);
 
 			// Redirigir al originPath o al default
-			const redirectUrl = this.#getRedirectUrl(user, originPath);
-			res.redirect(redirectUrl);
+			const redirectUrl = OAuthEndpoints.getRedirectUrl(user, originPath);
+			throw UncommonResponse.redirect(redirectUrl, {
+				status: 302,
+				cookies: tokenCookies,
+				clearCookies,
+			});
 		} catch (err: any) {
-			this.#deps.logger.logError(`Error en callback de ${provider}: ${err.message}`);
-			res.redirect(`/auth/error?error=${encodeURIComponent("Error durante la autenticación")}`);
+			// Si ya es un UncommonResponse o HttpError, re-lanzar
+			if (err instanceof UncommonResponse || err instanceof HttpError) throw err;
+
+			OAuthEndpoints.deps.logger.logError(`Error en callback de ${provider}: ${err.message}`);
+			throw UncommonResponse.redirect(`/auth/error?error=${encodeURIComponent("Error durante la autenticación")}`, {
+				status: 302,
+				clearCookies,
+			});
 		}
 	}
 
-	// ============ Métodos auxiliares ============
+	// ============ Métodos auxiliares (privados estáticos) ============
 
-	async #issueTokens(req: AuthRequest, res: AuthReply, user: AuthenticatedUser): Promise<void> {
-		const ipAddress = this.#deps.geoValidator.extractRealIP(req.headers, req.ip);
-		const country = this.#deps.geoValidator.getCountryFromHeaders(req.headers);
-		const deviceId = this.#generateDeviceId(req);
-		const userAgent = req.headers["user-agent"]?.toString() || "unknown";
+	private static async getTokenCookies(ctx: EndpointCtx<ProviderParams>, user: AuthenticatedUser): Promise<SetCookie[]> {
+		const ipAddress = OAuthEndpoints.deps.geoValidator.extractRealIP(ctx.headers, ctx.ip);
+		const country = OAuthEndpoints.deps.geoValidator.getCountryFromHeaders(ctx.headers);
+		const deviceId = OAuthEndpoints.generateDeviceId(ctx.headers);
+		const userAgent = ctx.headers["user-agent"]?.toString() || "unknown";
 
-		const tokens = await this.#deps.tokenService.createTokenPair(user, deviceId, ipAddress, country, userAgent);
-		this.#setTokenCookies(res, tokens.accessToken, tokens.refreshToken.token);
+		const tokens = await OAuthEndpoints.deps.tokenService.createTokenPair(user, deviceId, ipAddress, country, userAgent);
+
+		const accessConfig = OAuthEndpoints.deps.tokenService.getAccessCookieConfig();
+		const refreshConfig = OAuthEndpoints.deps.tokenService.getRefreshCookieConfig();
+
+		return [
+			{
+				name: accessConfig.name,
+				value: tokens.accessToken,
+				options: {
+					httpOnly: accessConfig.httpOnly,
+					secure: accessConfig.secure,
+					sameSite: accessConfig.sameSite,
+					path: accessConfig.path,
+					maxAge: accessConfig.maxAge,
+				},
+			},
+			{
+				name: refreshConfig.name,
+				value: tokens.refreshToken.token,
+				options: {
+					httpOnly: refreshConfig.httpOnly,
+					secure: refreshConfig.secure,
+					sameSite: refreshConfig.sameSite,
+					path: refreshConfig.path,
+					maxAge: refreshConfig.maxAge,
+					domain: refreshConfig.domain,
+				},
+			},
+		];
 	}
 
-	#setTokenCookies(res: AuthReply, accessToken: string, refreshToken: string): void {
-		const accessConfig = this.#deps.tokenService.getAccessCookieConfig();
-		const refreshConfig = this.#deps.tokenService.getRefreshCookieConfig();
-
-		res.setCookie(accessConfig.name, accessToken, {
-			httpOnly: accessConfig.httpOnly,
-			secure: accessConfig.secure,
-			sameSite: accessConfig.sameSite,
-			path: accessConfig.path,
-			maxAge: accessConfig.maxAge,
-		});
-
-		res.setCookie(refreshConfig.name, refreshToken, {
-			httpOnly: refreshConfig.httpOnly,
-			secure: refreshConfig.secure,
-			sameSite: refreshConfig.sameSite,
-			path: refreshConfig.path,
-			maxAge: refreshConfig.maxAge,
-			domain: refreshConfig.domain,
-		});
-	}
-
-	#generateDeviceId(req: AuthRequest): string {
-		const ua = req.headers["user-agent"]?.toString() || "";
-		const accept = req.headers["accept"]?.toString() || "";
-		const lang = req.headers["accept-language"]?.toString() || "";
+	private static generateDeviceId(headers: Record<string, string | undefined>): string {
+		const ua = headers["user-agent"]?.toString() || "";
+		const accept = headers["accept"]?.toString() || "";
+		const lang = headers["accept-language"]?.toString() || "";
 
 		const fingerprint = `${ua}|${accept}|${lang}`;
 		let hash = 0;
@@ -199,8 +256,8 @@ export class OAuthEndpoints {
 		return `device_${Math.abs(hash).toString(36)}`;
 	}
 
-	#getRedirectUrl(user: AuthenticatedUser, originPath?: string): string {
-		const baseUrl = user.orgId ? `https://${user.orgId}.adigitalcafe.com` : this.#deps.defaultRedirectUrl;
+	private static getRedirectUrl(user: AuthenticatedUser, originPath?: string): string {
+		const baseUrl = user.orgId ? `https://${user.orgId}.adigitalcafe.com` : OAuthEndpoints.deps.defaultRedirectUrl;
 
 		if (originPath && originPath !== "/") {
 			return `${baseUrl}${originPath}`;
@@ -209,11 +266,11 @@ export class OAuthEndpoints {
 		return baseUrl;
 	}
 
-	async #getOrCreateUser(
+	private static async getOrCreateUser(
 		provider: string,
 		profile: { id: string; username: string; email?: string; avatar?: string }
 	): Promise<AuthenticatedUser> {
-		if (!this.#deps.identityService) {
+		if (!OAuthEndpoints.deps.identityService) {
 			return {
 				id: `temp_${profile.id}`,
 				providerId: profile.id,
@@ -226,7 +283,7 @@ export class OAuthEndpoints {
 		}
 
 		const providerIdField = `${provider}Id`;
-		const users = this.#deps.identityService.users;
+		const users = OAuthEndpoints.deps.identityService.users;
 		const allUsers = await users.getAllUsers();
 		let existingUser = allUsers.find(
 			(u: any) => u.metadata?.[providerIdField] === profile.id || (profile.email && u.email === profile.email)
@@ -239,7 +296,7 @@ export class OAuthEndpoints {
 				existingUser = { ...existingUser, metadata: updatedMetadata };
 			}
 
-			const permissions = await this.#getUserPermissions(existingUser.id);
+			const permissions = await OAuthEndpoints.getUserPermissions(existingUser.id);
 			return {
 				id: existingUser.id,
 				providerId: profile.id,
@@ -265,7 +322,7 @@ export class OAuthEndpoints {
 			},
 		});
 
-		const defaultPermissions = await this.#getDefaultPermissions();
+		const defaultPermissions = await OAuthEndpoints.getDefaultPermissions();
 		return {
 			id: newUser.id,
 			providerId: profile.id,
@@ -277,11 +334,11 @@ export class OAuthEndpoints {
 		};
 	}
 
-	async #getUserPermissions(userId: string): Promise<string[]> {
-		if (!this.#deps.identityService) return ["public.read"];
+	private static async getUserPermissions(userId: string): Promise<string[]> {
+		if (!OAuthEndpoints.deps.identityService) return ["public.read"];
 
 		try {
-			const permissions = this.#deps.identityService.permissions;
+			const permissions = OAuthEndpoints.deps.identityService.permissions;
 			const resolved = await permissions.resolvePermissions(userId);
 			return resolved.map((p: { resource: string; scope: number; action: number }) => `${p.resource}.${p.scope}.${p.action}`);
 		} catch {
@@ -289,7 +346,7 @@ export class OAuthEndpoints {
 		}
 	}
 
-	async #getDefaultPermissions(): Promise<string[]> {
+	private static async getDefaultPermissions(): Promise<string[]> {
 		return ["public.read", "profile.self.read", "profile.self.write"];
 	}
 }

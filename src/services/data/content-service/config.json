@@ -11,11 +11,12 @@
 				"retryDelay": 5000,
 				"autoReconnect": true
 			}
-		},
+		}
+	],
+	"services": [
 		{
-			"name": "fastify-server",
-			"version": "latest",
-			"language": "typescript"
+			"name": "EndpointManagerService",
+			"version": "latest"
 		}
 	]
 }

@@ -1,14 +1,15 @@
 import type { Model } from "mongoose";
 import type { LearningPath, Article, PathItem } from "../../../../common/ADC/types/learning.js";
+import { RegisterEndpoint, HttpError, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
 
-interface ListPathsOptions {
-	public?: boolean;
-	listed?: boolean;
-	limit?: number;
-	skip?: number;
+interface ListPathsQuery {
+	public?: string;
+	listed?: string;
+	limit?: string;
+	skip?: string;
 }
 
-interface CreatePathData {
+interface CreatePathBody {
 	slug: string;
 	title: string;
 	description: string;
@@ -19,8 +20,7 @@ interface CreatePathData {
 	items?: Array<{ slug: string; type: string; level?: string }>;
 }
 
-interface UpdatePathData {
-	slug: string;
+interface UpdatePathBody {
 	title?: string;
 	description?: string;
 	color?: string;
@@ -28,6 +28,10 @@ interface UpdatePathData {
 	public?: boolean;
 	listed?: boolean;
 	items?: Array<{ slug: string; type: string; level?: string }>;
+}
+
+interface SlugParams {
+	slug: string;
 }
 
 // PathItem con elemento poblado
@@ -44,24 +48,38 @@ export class PathEndpoints {
 		PathEndpoints.articleModel ??= articleModel;
 	}
 
-	static async list(options: ListPathsOptions) {
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/learning/paths",
+		permissions: [],
+	})
+	static async list(ctx: EndpointCtx): Promise<{ paths: LearningPath[] }> {
+		const query = ctx.query as unknown as ListPathsQuery;
 		const filter: Record<string, any> = {};
-		if (options.public !== undefined) filter.public = options.public;
-		if (options.listed !== undefined) filter.listed = options.listed;
 
-		const docs = await PathEndpoints.model
-			.find(filter)
-			.limit(options.limit || 100)
-			.skip(options.skip || 0)
-			.sort({ createdAt: -1 })
-			.lean();
+		if (query.public !== undefined) filter.public = query.public === "true";
+		if (query.listed !== undefined) filter.listed = query.listed === "true";
 
-		return { paths: docs };
+		const limit = query.limit ? parseInt(query.limit) : 100;
+		const skip = query.skip ? parseInt(query.skip) : 0;
+
+		const docs = await PathEndpoints.model.find(filter).limit(limit).skip(skip).sort({ createdAt: -1 }).lean();
+
+		return { paths: docs as LearningPath[] };
 	}
 
-	static async getBySlug(slug: string) {
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/learning/paths/:slug",
+		permissions: [],
+	})
+	static async getBySlug(ctx: EndpointCtx<SlugParams>): Promise<{ path: LearningPath & { items: PopulatedPathItem[] } }> {
+		const { slug } = ctx.params;
 		const doc = await PathEndpoints.model.findOne({ slug }).lean<LearningPath | null>();
-		if (!doc) return { path: undefined };
+
+		if (!doc) {
+			throw new HttpError(404, "PATH_NOT_FOUND", "Path not found");
+		}
 
 		// Extraer slugs por tipo para queries batch
 		const articleSlugs = doc.items.filter((i) => i.type === "article").map((i) => i.slug);
@@ -100,28 +118,64 @@ export class PathEndpoints {
 		return { path: { ...doc, items: populatedItems } };
 	}
 
-	static async create(data: CreatePathData) {
+	@RegisterEndpoint({
+		method: "POST",
+		url: "/api/learning/paths",
+		permissions: ["content.write"],
+	})
+	static async create(ctx: EndpointCtx<Record<string, string>, CreatePathBody>): Promise<{ path: LearningPath }> {
+		const data = ctx.data;
+
+		if (!data.slug || !data.title || !data.description || !data.color) {
+			throw new HttpError(400, "MISSING_FIELDS", "slug, title, description and color are required");
+		}
+
 		const doc = await PathEndpoints.model.create({
 			...data,
 			public: data.public ?? true,
 			listed: data.listed ?? true,
 		});
-		return { path: doc.toObject() };
+
+		return { path: doc.toObject() as LearningPath };
 	}
 
-	static async update(data: UpdatePathData) {
-		const { slug, ...updateData } = data;
-		const doc = await PathEndpoints.model.findOneAndUpdate({ slug }, updateData, { new: true }).lean();
+	@RegisterEndpoint({
+		method: "PUT",
+		url: "/api/learning/paths/:slug",
+		permissions: ["content.write"],
+	})
+	static async update(ctx: EndpointCtx<SlugParams, UpdatePathBody>): Promise<{ path: LearningPath }> {
+		const { slug } = ctx.params;
+		const updateData = ctx.data;
 
-		if (!doc) {
-			throw new Error(`Path with slug "${slug}" not found`);
+		// Filtrar campos undefined
+		const cleanData: Record<string, any> = {};
+		for (const [key, value] of Object.entries(updateData || {})) {
+			if (value !== undefined) cleanData[key] = value;
 		}
 
-		return { path: doc };
+		const doc = await PathEndpoints.model.findOneAndUpdate({ slug }, cleanData, { new: true }).lean();
+
+		if (!doc) {
+			throw new HttpError(404, "PATH_NOT_FOUND", `Path with slug "${slug}" not found`);
+		}
+
+		return { path: doc as LearningPath };
 	}
 
-	static async delete(slug: string) {
+	@RegisterEndpoint({
+		method: "DELETE",
+		url: "/api/learning/paths/:slug",
+		permissions: ["content.delete"],
+	})
+	static async delete(ctx: EndpointCtx<SlugParams>): Promise<{ success: boolean }> {
+		const { slug } = ctx.params;
 		const result = await PathEndpoints.model.deleteOne({ slug });
-		return { success: result.deletedCount > 0 };
+
+		if (result.deletedCount === 0) {
+			throw new HttpError(404, "PATH_NOT_FOUND", `Path with slug "${slug}" not found`);
+		}
+
+		return { success: true };
 	}
 }

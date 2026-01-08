@@ -2,16 +2,19 @@
 
 Autenticación OAuth 2.0 con Access/Refresh Tokens y rotación de secretos.
 
-## Endpoints
+## Endpoints (via @RegisterEndpoint)
 
-| Método | Ruta                           | Descripción                                                         |
-| ------ | ------------------------------ | ------------------------------------------------------------------- |
-| GET    | `/api/auth/login/:provider`    | Inicia login OAuth                                                  |
-| GET    | `/api/auth/callback/:provider` | Callback OAuth                                                      |
-| POST   | `/api/auth/login`              | Login nativo (username/password)                                    |
-| GET    | `/api/auth/session`            | Verifica sesión (header `X-Refresh-Required` si necesita refresh)   |
-| POST   | `/api/auth/refresh`            | Renueva tokens (cookie `refresh_token` en path `/api/auth/refresh`) |
-| POST   | `/api/auth/logout`             | Cierra sesión                                                       |
+| Método | Ruta                           | Permisos | Descripción                      |
+| ------ | ------------------------------ | -------- | -------------------------------- |
+| GET    | `/api/auth/login/:provider`    | público  | Inicia login OAuth               |
+| GET    | `/api/auth/callback/:provider` | público  | Callback OAuth                   |
+| POST   | `/api/auth/login`              | público  | Login nativo (username/password) |
+| POST   | `/api/auth/register`           | público  | Registro de nuevo usuario        |
+| GET    | `/api/auth/session`            | público  | Verifica sesión                  |
+| POST   | `/api/auth/refresh`            | público  | Renueva tokens                   |
+| POST   | `/api/auth/logout`             | público  | Cierra sesión                    |
+
+Usa `@EnableEndpoints()` y `@DisableEndpoints()` para registro automático via EndpointManagerService.
 
 ## Providers soportados
 
