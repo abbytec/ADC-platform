@@ -4,11 +4,7 @@
  */
 export function OnlyKernel() {
 	// Detectar si estamos en Stage 3 (descriptor es undefined, context es el segundo arg)
-	return function (
-		targetOrMethod: any,
-		propertyKeyOrContext: string | ClassMethodDecoratorContext,
-		descriptor?: PropertyDescriptor
-	): any {
+	return function (targetOrMethod: any, propertyKeyOrContext: string | ClassMethodDecoratorContext, descriptor?: PropertyDescriptor): any {
 		// Stage 3 decorators: targetOrMethod es el método, propertyKeyOrContext es el context
 		if (typeof propertyKeyOrContext === "object" && propertyKeyOrContext.kind === "method") {
 			const methodName = String(propertyKeyOrContext.name);

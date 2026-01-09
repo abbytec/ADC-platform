@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { authApi, type AuthError } from "../utils/auth.ts";
 
+const IS_DEV = process.env.NODE_ENV === "development";
 interface RegisterProps {
 	onNavigateToLogin: () => void;
 	originPath: string;
@@ -60,7 +61,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 	 * Construye URL de OAuth preservando originPath para el callback
 	 */
 	const getOAuthUrl = (provider: string): string => {
-		const base = `/api/auth/login/${provider}`;
+		const base = `${IS_DEV ? "http://localhost:3000" : ""}/api/auth/login/${provider}`;
 		if (originPath && originPath !== "/") {
 			return `${base}?originPath=${encodeURIComponent(originPath)}`;
 		}
@@ -73,7 +74,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 				<h1 className="font-heading text-2xl font-bold text-center mb-6 text-text">Crear Cuenta</h1>
 
 				{error && (
-					<adc-callout variant="error" class="mb-4">
+					<adc-callout tone="error" class="mb-4">
 						{error}
 					</adc-callout>
 				)}
@@ -84,12 +85,11 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 							Nombre de Usuario
 						</label>
 						<adc-input
-							id="username"
+							inputId="username"
 							type="text"
 							value={username}
 							placeholder="tu_usuario"
-							required
-							onAdcInput={(e: CustomEvent) => setUsername(e.detail)}
+							onInput={(e) => setUsername((e.target as HTMLInputElement).value)}
 						/>
 					</div>
 
@@ -98,12 +98,11 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 							Email
 						</label>
 						<adc-input
-							id="email"
+							inputId="email"
 							type="email"
 							value={email}
 							placeholder="tu@email.com"
-							required
-							onAdcInput={(e: CustomEvent) => setEmail(e.detail)}
+							onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
 						/>
 					</div>
 
@@ -112,12 +111,11 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 							Contraseña
 						</label>
 						<adc-input
-							id="password"
+							inputId="password"
 							type="password"
 							value={password}
 							placeholder="••••••••"
-							required
-							onAdcInput={(e: CustomEvent) => setPassword(e.detail)}
+							onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
 						/>
 					</div>
 
@@ -126,12 +124,11 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 							Confirmar Contraseña
 						</label>
 						<adc-input
-							id="confirmPassword"
+							inputId="confirmPassword"
 							type="password"
 							value={confirmPassword}
 							placeholder="••••••••"
-							required
-							onAdcInput={(e: CustomEvent) => setConfirmPassword(e.detail)}
+							onInput={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
 						/>
 					</div>
 

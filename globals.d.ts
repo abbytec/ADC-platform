@@ -1,6 +1,9 @@
 // Declaraciones globales para TypeScript
 // Esto hace que cualquier módulo que coincida con estos patrones sea válido
 
+// Build-time constants (inyectadas por DefinePlugin)
+declare const __DEV__: boolean;
+
 // Module Federation - apps remotas
 declare module "home/App" {
 	const App: React.ComponentType;

@@ -17,11 +17,24 @@ type WebComponentProps<T = Record<string, unknown>> = T & {
 
 interface AdcIntrinsicElements {
 	"adc-blocks-renderer": WebComponentProps<{ blocks?: unknown[] }>;
-	"adc-button": WebComponentProps<{ ariaLabel?: string; href?: string; type?: "button" | "submit" | "reset" }>;
+	"adc-button": WebComponentProps<{
+		ariaLabel?: string;
+		href?: string;
+		type?: "button" | "submit" | "reset";
+		disabled?: boolean;
+		variant?: "primary" | "accent";
+	}>;
 	"adc-button-rounded": WebComponentProps<{ ariaLabel?: string; href?: string; type?: "button" | "submit" | "reset" }>;
 	"adc-callout": WebComponentProps<{ role?: "note" | "status" | "alert"; tone?: "info" | "warning" | "success" | "error" }>;
 	"adc-code-block": WebComponentProps<{ ariaLabel?: string; content?: string; language?: string }>;
-	"adc-content-card": WebComponentProps<{ bannerAlt?: string; bannerUrl?: string; compact?: boolean; description?: string; href?: string; title?: string }>;
+	"adc-content-card": WebComponentProps<{
+		bannerAlt?: string;
+		bannerUrl?: string;
+		compact?: boolean;
+		description?: string;
+		href?: string;
+		title?: string;
+	}>;
 	"adc-divider": WebComponentProps;
 	"adc-dropdown-menu": WebComponentProps<{ items?: unknown[]; alignState?: "left" | "right"; openOnHover?: boolean }>;
 	"adc-feature-card": WebComponentProps<{ staticRender?: boolean; title?: string }>;
@@ -34,17 +47,53 @@ interface AdcIntrinsicElements {
 	"adc-icon-pencil": WebComponentProps<{ size?: string }>;
 	"adc-icon-vip": WebComponentProps<{ size?: string }>;
 	"adc-inline-tokens": WebComponentProps<{ tokens?: unknown[]; fallback?: string }>;
-	"adc-input": WebComponentProps<{ ariaLabel?: string; autocomplete?: string; inputId?: string; name?: string; placeholder?: string; type?: string; value?: string }>;
+	"adc-input": WebComponentProps<{
+		ariaLabel?: string;
+		autocomplete?: string;
+		inputId?: string;
+		name?: string;
+		placeholder?: string;
+		type?: string;
+		value?: string;
+	}>;
 	"adc-list-block": WebComponentProps<{ ariaLabel?: string; items?: string[]; ordered?: boolean; start?: number }>;
 	"adc-lp-badge": WebComponentProps<{ as?: "button" | "span"; color?: string; slug?: string; title?: string }>;
 	"adc-quote": WebComponentProps<{ staticRender?: boolean }>;
-	"adc-search-input": WebComponentProps<{ ariaLabel?: string; autocomplete?: string; debounce?: number; inputId?: string; name?: string; placeholder?: string; type?: string; value?: string }>;
+	"adc-search-input": WebComponentProps<{
+		ariaLabel?: string;
+		autocomplete?: string;
+		debounce?: number;
+		inputId?: string;
+		name?: string;
+		placeholder?: string;
+		type?: string;
+		value?: string;
+	}>;
 	"adc-select": WebComponentProps<{ options?: unknown[]; placeholder?: string; value?: string }>;
 	"adc-share-buttons": WebComponentProps<{ description?: string; title?: string; url?: string }>;
-	"adc-site-footer": WebComponentProps<{ brandName?: string; brandSlogan?: string; creatorHref?: string; creatorName?: string; lowerSign?: boolean; registered?: boolean }>;
+	"adc-site-footer": WebComponentProps<{
+		brandName?: string;
+		brandSlogan?: string;
+		creatorHref?: string;
+		creatorName?: string;
+		lowerSign?: boolean;
+		registered?: boolean;
+	}>;
 	"adc-site-header": WebComponentProps<{ homeHref?: string; logoAlt?: string; logoSrc?: string }>;
-	"adc-star-rating": WebComponentProps<{ average?: number | null; canRate?: boolean; count?: number | null; myRating?: number | null; pending?: boolean }>;
-	"adc-table-block": WebComponentProps<{ caption?: string; columnAlign?: Array<"left" | "center" | "right">; header?: string[]; rowHeaders?: boolean; rows?: string[][] }>;
+	"adc-star-rating": WebComponentProps<{
+		average?: number | null;
+		canRate?: boolean;
+		count?: number | null;
+		myRating?: number | null;
+		pending?: boolean;
+	}>;
+	"adc-table-block": WebComponentProps<{
+		caption?: string;
+		columnAlign?: Array<"left" | "center" | "right">;
+		header?: string[];
+		rowHeaders?: boolean;
+		rows?: string[][];
+	}>;
 	"adc-testimonial-card": WebComponentProps<{ author?: string; staticRender?: boolean }>;
 	"adc-text": WebComponentProps<{ contain?: boolean; staticRender?: boolean }>;
 	"adc-youtube-facade": WebComponentProps<{ height?: string; src: string; title?: string; width?: string }>;

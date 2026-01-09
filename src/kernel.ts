@@ -208,7 +208,7 @@ export class Kernel {
 			try {
 				this.#logger.logDebug(`Deteniendo App ${name}`);
 				if (instance.stop) {
-					await withTimeout(instance.stop(), 3000, `App ${name}`);
+					await withTimeout(instance.stop(Kernel.#kernelKey), 3000, `App ${name}`);
 				}
 
 				const appBaseName = name.split(":")[0];

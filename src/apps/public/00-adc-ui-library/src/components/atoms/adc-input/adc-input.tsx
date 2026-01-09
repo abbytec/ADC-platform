@@ -1,4 +1,4 @@
-import { Component, Prop, h, Event, EventEmitter } from "@stencil/core";
+import { Component, Prop, h } from "@stencil/core";
 
 @Component({
 	tag: "adc-input",
@@ -13,13 +13,6 @@ export class AdcInput {
 	@Prop() autocomplete?: string = "off";
 	@Prop() ariaLabel?: string = "";
 
-	@Event() onAdcInput!: EventEmitter<string>;
-
-	private handleInput = (event: Event) => {
-		const target = event.target as HTMLInputElement;
-		this.onAdcInput.emit(target.value);
-	};
-
 	render() {
 		return (
 			<input
@@ -30,8 +23,7 @@ export class AdcInput {
 				type={this.type}
 				autocomplete={this.autocomplete}
 				aria-label={this.ariaLabel || this.placeholder || this.name}
-				class="w-full px-3 py-2 rounded-xxl border border-surface bg-white font-text text-[12px] text-text"
-				onInput={this.handleInput}
+				class="w-full px-3 py-2 rounded-xxl border border-surface bg-white font-text text-[12px] text-black"
 			/>
 		);
 	}

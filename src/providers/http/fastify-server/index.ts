@@ -169,9 +169,17 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 	}
 
 	private async setupMiddleware(): Promise<void> {
-		// CORS
+		// CORS - En desarrollo permitir credenciales desde cualquier localhost
+		const isDev = process.env.NODE_ENV === "development";
 		await this.app.register(fastifyCors, {
-			origin: true,
+			origin: isDev
+				? (origin, cb) => {
+						// En desarrollo, permitir cualquier localhost con cualquier puerto
+						if (!origin || origin.startsWith("http://localhost")) cb(null, true);
+						else cb(null, false);
+				  }
+				: true,
+			credentials: true,
 			methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 			allowedHeaders: ["Content-Type", "Authorization"],
 		});

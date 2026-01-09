@@ -295,13 +295,15 @@ El proyecto incluye una librería de componentes UI (`00-web-ui-library`) constr
 // En cualquier app React/Vue/etc:
 import "@ui-library";
 
-// Uso en JSX/TSX:
-<adc-button onAdcClick={handleClick}>
-  Click me
-</adc-button>
+// Los eventos nativos del DOM funcionan directo (click, input, change, etc.):
+<adc-button onClick={handleClick}>Click me</adc-button>
 
-// Uso en HTML:
-<adc-button>Click me</adc-button>
+<adc-input
+  value={value}
+  onInput={(e) => setValue(e.target.value)}
+/>
+
+// Los componentes usan shadow: false, así que los eventos burbujean normalmente
 ```
 
 ### UIFederationService

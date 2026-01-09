@@ -1,7 +1,19 @@
+import { useRef, useEffect } from "react";
+
 export default function App() {
+	const createButtonRef = useRef<HTMLElement>(null);
+
 	const handleCreateUser = () => {
 		console.log("Crear usuario");
 	};
+
+	useEffect(() => {
+		const btn = createButtonRef.current;
+		if (btn) {
+			btn.addEventListener("adcClick", handleCreateUser);
+			return () => btn.removeEventListener("adcClick", handleCreateUser);
+		}
+	}, []);
 
 	return (
 		<div style={{ padding: "20px" }}>
@@ -25,7 +37,7 @@ export default function App() {
 					<p>Lista de usuarios...</p>
 
 					<div style={{ marginTop: "20px" }}>
-						<adc-button onAdcClick={handleCreateUser}>Crear Nuevo Usuario</adc-button>
+						<adc-button ref={createButtonRef}>Crear Nuevo Usuario</adc-button>
 					</div>
 				</div>
 			</adc-container>

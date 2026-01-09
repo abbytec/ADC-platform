@@ -94,6 +94,7 @@ export namespace Components {
     }
     interface AdcButton {
         "ariaLabel"?: string;
+        "disabled"?: boolean;
         "href"?: string;
         /**
           * @default "button"
@@ -499,10 +500,6 @@ export interface AdcDropdownMenuCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcDropdownMenuElement;
 }
-export interface AdcInputCustomEvent<T> extends CustomEvent<T> {
-    detail: T;
-    target: HTMLAdcInputElement;
-}
 export interface AdcLpBadgeCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcLpBadgeElement;
@@ -705,18 +702,7 @@ declare global {
         prototype: HTMLAdcInlineTokensElement;
         new (): HTMLAdcInlineTokensElement;
     };
-    interface HTMLAdcInputElementEventMap {
-        "onAdcInput": string;
-    }
     interface HTMLAdcInputElement extends Components.AdcInput, HTMLStencilElement {
-        addEventListener<K extends keyof HTMLAdcInputElementEventMap>(type: K, listener: (this: HTMLAdcInputElement, ev: AdcInputCustomEvent<HTMLAdcInputElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
-        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
-        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
-        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-        removeEventListener<K extends keyof HTMLAdcInputElementEventMap>(type: K, listener: (this: HTMLAdcInputElement, ev: AdcInputCustomEvent<HTMLAdcInputElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
-        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
-        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
-        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
     }
     var HTMLAdcInputElement: {
         prototype: HTMLAdcInputElement;
@@ -971,6 +957,7 @@ declare namespace LocalJSX {
     }
     interface AdcButton {
         "ariaLabel"?: string;
+        "disabled"?: boolean;
         "href"?: string;
         "onAdcClick"?: (event: AdcButtonCustomEvent<MouseEvent>) => void;
         /**
@@ -1126,7 +1113,6 @@ declare namespace LocalJSX {
           * @default ""
          */
         "name"?: string;
-        "onOnAdcInput"?: (event: AdcInputCustomEvent<string>) => void;
         /**
           * @default ""
          */

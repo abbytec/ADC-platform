@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { authApi, type AuthError } from "../utils/auth.ts";
 
+const IS_DEV = process.env.NODE_ENV === "development";
 interface LoginProps {
 	onNavigateToRegister: () => void;
 	originPath: string;
 }
 
 export function Login({ onNavigateToRegister, originPath }: LoginProps) {
+	console.log("DEV MODE:", IS_DEV);
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
@@ -47,10 +49,12 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 	 * Construye URL de OAuth preservando originPath para el callback
 	 */
 	const getOAuthUrl = (provider: string): string => {
-		const base = `/api/auth/login/${provider}`;
+		const base = `${IS_DEV ? "http://localhost:3000" : ""}/api/auth/login/${provider}`;
 		if (originPath && originPath !== "/") {
 			return `${base}?originPath=${encodeURIComponent(originPath)}`;
 		}
+		console.log("OAuth base URL:", base);
+		console.log("Origin Path:", originPath);
 		return base;
 	};
 
@@ -60,7 +64,7 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 				<h1 className="font-heading text-2xl font-bold text-center mb-6 text-text">Iniciar Sesión</h1>
 
 				{error && (
-					<adc-callout variant="error" class="mb-4">
+					<adc-callout tone="error" class="mb-4">
 						{error}
 					</adc-callout>
 				)}
@@ -71,12 +75,11 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 							Usuario o Email
 						</label>
 						<adc-input
-							id="username"
+							inputId="username"
 							type="text"
 							value={username}
 							placeholder="tu@email.com"
-							required
-							onAdcInput={(e: CustomEvent) => setUsername(e.detail)}
+							onInput={(e) => setUsername((e.target as HTMLInputElement).value)}
 						/>
 					</div>
 
@@ -85,12 +88,11 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 							Contraseña
 						</label>
 						<adc-input
-							id="password"
+							inputId="password"
 							type="password"
 							value={password}
 							placeholder="••••••••"
-							required
-							onAdcInput={(e: CustomEvent) => setPassword(e.detail)}
+							onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
 						/>
 					</div>
 

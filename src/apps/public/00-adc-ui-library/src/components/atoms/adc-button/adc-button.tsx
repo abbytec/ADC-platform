@@ -6,6 +6,7 @@ import { Component, Prop, h, Event, EventEmitter } from "@stencil/core";
 export class AdcButton {
 	@Prop() type: "button" | "submit" | "reset" = "button";
 	@Prop() variant: "primary" | "accent" = "primary";
+	@Prop() disabled?: boolean;
 	@Prop() href?: string;
 	@Prop() ariaLabel?: string;
 
@@ -27,7 +28,8 @@ export class AdcButton {
 					rel="noopener noreferrer"
 					class={this.baseClass}
 					aria-label={this.ariaLabel}
-					onClick={this.handleClick}
+					aria-disabled={this.disabled}
+					onClick={this.disabled ? undefined : this.handleClick}
 				>
 					<slot></slot>
 				</a>
@@ -35,7 +37,7 @@ export class AdcButton {
 		}
 
 		return (
-			<button type={this.type} class={this.baseClass} aria-label={this.ariaLabel} onClick={this.handleClick}>
+			<button type={this.type} class={this.baseClass} aria-label={this.ariaLabel} disabled={this.disabled} onClick={this.handleClick}>
 				<slot></slot>
 			</button>
 		);

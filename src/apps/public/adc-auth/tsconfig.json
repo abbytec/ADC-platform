@@ -1,11 +1,15 @@
 {
 	"extends": "../../../../tsconfig.base.json",
 	"compilerOptions": {
-		"outDir": "./dist",
-		"rootDir": "./src",
+		"module": "esnext",
+		"moduleResolution": "bundler",
 		"jsx": "react-jsx",
-		"lib": ["DOM", "DOM.Iterable", "ES2022"],
-		"types": ["vite/client"]
+		"paths": {
+			"@adc/utils/*": ["./../../../utils/*"],
+			"@ui-library/utils/*": ["./../00-adc-ui-library/utils/*"],
+			"@ui-library/*": ["./../00-adc-ui-library/src/*"],
+			"@common/*": ["./../../../common/*"]
+		}
 	},
-	"include": ["src/**/*", "src/**/*.d.ts", "*.d.ts", "../../../../globals.d.ts"]
+	"include": ["src/**/*", "*.ts", "../../../../globals.d.ts", "./../00-adc-ui-library/utils/react-jsx.d.ts"]
 }

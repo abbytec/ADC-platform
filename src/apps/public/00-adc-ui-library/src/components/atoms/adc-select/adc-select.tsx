@@ -43,7 +43,7 @@ export class AdcSelect {
 			<div class="w-full">
 				<button
 					type="button"
-					class="w-full px-3 py-2 rounded-xxl border border-surface bg-white text-text text-[12px] font-text flex justify-between items-center"
+					class="w-full px-3 py-2 rounded-xxl border border-surface bg-white text-black text-[12px] font-text flex justify-between items-center"
 					aria-haspopup="menu"
 					aria-expanded={this.isOpen ? "true" : "false"}
 					onClick={this.handleToggle}

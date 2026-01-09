@@ -1,4 +1,5 @@
-const API_BASE = "/api/auth";
+const IS_DEV = process.env.NODE_ENV === "development";
+const API_BASE = `${IS_DEV ? "http://localhost:3000" : ""}/api/auth`;
 
 export interface AuthUser {
 	id: string;
