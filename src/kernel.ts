@@ -12,6 +12,7 @@ import { IModuleConfig } from "./interfaces/modules/IModule.js";
 import type { BaseProvider, IProvider } from "./providers/BaseProvider.ts";
 import type { IUtility } from "./utilities/BaseUtility.ts";
 import type { BaseService, IService } from "./services/BaseService.ts";
+import { DockerManager } from "./utils/system/DockerManager.ts";
 
 type ModuleType = "provider" | "utility" | "service";
 type Module = IProvider | IUtility | IService;
@@ -19,15 +20,15 @@ type Module = IProvider | IUtility | IService;
 export class Kernel {
 	static #kernelKey: symbol = Symbol(crypto.randomUUID());
 	#isStartingUp = true;
+	#isShuttingDown = false;
 	readonly #logger: ILogger = Logger.getLogger("Kernel");
 
 	public readonly registry = new ModuleRegistry(Kernel.#kernelKey);
+	readonly #dockerManager = new DockerManager();
 
 	readonly #appFilePaths = new Map<string, string>();
 	readonly #appConfigFilePaths = new Map<string, string>();
 
-	readonly #appDockerComposeMap = new Map<string, string>();
-	readonly #serviceDockerComposeMap = new Map<string, string>();
 	#statusInterval: NodeJS.Timeout | null = null;
 
 	public static readonly moduleLoader = new ModuleLoader(Kernel.#kernelKey);
@@ -49,11 +50,15 @@ export class Kernel {
 		this.#logger.logInfo(`Cargando ${kernelServices.length} servicio(s) en modo kernel...`);
 
 		for (const { path: servicePath, name: serviceName, configPath } of kernelServices) {
+			if (this.#isShuttingDown) {
+				this.#logger.logInfo("Cierre en progreso, abortando carga de servicios kernel...");
+				return;
+			}
 			try {
 				const serviceDir = path.dirname(servicePath);
 
 				try {
-					await this.#runDockerCompose(serviceDir, serviceName, this.#serviceDockerComposeMap);
+					await this.#dockerManager.startServiceDockerCompose(serviceDir, serviceName);
 				} catch {
 					this.#logger.logDebug(`docker-compose no disponible para ${serviceName}`);
 				}
@@ -180,6 +185,7 @@ export class Kernel {
 	}
 
 	public async stop(): Promise<void> {
+		this.#isShuttingDown = true;
 		this.#logger.logInfo("\nIniciando cierre ordenado...");
 		if (this.#statusInterval) clearInterval(this.#statusInterval);
 
@@ -203,11 +209,11 @@ export class Kernel {
 
 				const appBaseName = name.split(":")[0];
 
-				if (this.#appDockerComposeMap.has(appBaseName)) {
-					const appDir = this.#appDockerComposeMap.get(appBaseName)!;
+				if (this.#dockerManager.hasAppDockerCompose(appBaseName)) {
+					const appDir = this.#dockerManager.getAppDockerComposeDir(appBaseName)!;
 					try {
-						await withTimeout(this.#stopDockerCompose(appDir), 5000, `Docker ${appBaseName}`);
-						this.#appDockerComposeMap.delete(appBaseName);
+						await withTimeout(this.#dockerManager.stopDockerCompose(appDir), 5000, `Docker ${appBaseName}`);
+						this.#dockerManager.deleteAppDockerCompose(appBaseName);
 					} catch (e) {
 						this.#logger.logWarn(`Error deteniendo Docker para App ${appBaseName}: ${e}`);
 					}
@@ -222,6 +228,7 @@ export class Kernel {
 	}
 
 	async #loadLayerRecursive(dir: string, loader: (entryPath: string) => Promise<void>, exclude: string[] = []): Promise<void> {
+		if (this.#isShuttingDown) return;
 		try {
 			const indexPath = path.join(dir, `index${this.#fileExtension}`);
 			try {
@@ -237,6 +244,7 @@ export class Kernel {
 			const loadLevels = await this.#buildAppLoadLevels(dir, entries, exclude);
 
 			for (const level of loadLevels) {
+				if (this.#isShuttingDown) return;
 				if (level.length === 1) {
 					await this.#loadLayerRecursive(level[0], loader, exclude);
 				} else if (level.length > 1) {
@@ -420,6 +428,10 @@ export class Kernel {
 	}
 
 	async #loadAndRegisterModule(moduleType: ModuleType, filePath: string): Promise<void> {
+		if (this.#isShuttingDown) {
+			this.#logger.logDebug(`Cierre en progreso, ignorando carga de ${moduleType}: ${filePath}`);
+			return;
+		}
 		try {
 			const modulePath = path.dirname(filePath);
 			let config = Kernel.moduleLoader.getConfigByPath(modulePath);
@@ -449,6 +461,10 @@ export class Kernel {
 	}
 
 	async #initializeAndRunApp(app: IApp, filePath: string, instanceName: string, configPath?: string): Promise<void> {
+		if (this.#isShuttingDown) {
+			this.#logger.logDebug(`Cierre en progreso, no se inicializa app: ${instanceName}`);
+			return;
+		}
 		this.#logger.logInfo(`Inicializando App: ${instanceName} desde ${path.basename(filePath)}`);
 		this.registry.registerApp(instanceName, app);
 		this.#logger.logDebug(`Inicializando App ${app.name}`);
@@ -461,12 +477,18 @@ export class Kernel {
 			this.registry.setLoadingContext(null);
 		}
 
+		if (this.#isShuttingDown) {
+			this.#logger.logDebug(`Cierre en progreso, no se ejecuta run() para: ${instanceName}`);
+			return;
+		}
+
 		this.#appFilePaths.set(`${filePath}:${instanceName}`, instanceName);
 		if (configPath) {
 			this.#appConfigFilePaths.set(configPath, instanceName);
 		}
 		this.#logger.logDebug(`Ejecutando App ${app.name}`);
 		app.run().catch((e) => {
+			if (this.#isShuttingDown) return;
 			this.#logger.logError(`Error ejecutando App ${app.name}: {}\nSe intentará ejecutarla de nuevo en 30 segundos...`, e.message);
 			setTimeout(() => this.#initializeAndRunApp(app, filePath, instanceName, configPath), 30_000);
 		});
@@ -520,88 +542,11 @@ export class Kernel {
 		}
 	}
 
-	async #runDockerCompose(dir: string, name: string, map: Map<string, string>): Promise<void> {
-		const dockerComposeFile = path.join(dir, "docker-compose.yml");
-		await fs.stat(dockerComposeFile);
-
-		this.#logger.logInfo(`Iniciando servicios Docker para ${name}...`);
-
-		const { spawn } = await import("node:child_process");
-		const docker = spawn("docker", ["compose", "-f", dockerComposeFile, "up", "-d"], {
-			cwd: dir,
-			stdio: "pipe",
-		});
-
-		return new Promise((resolve, reject) => {
-			let output = "";
-			docker.stdout?.on("data", (data) => {
-				output += data.toString();
-			});
-			docker.stderr?.on("data", (data) => {
-				output += data.toString();
-			});
-			docker.on("close", (code) => {
-				if (code === 0) {
-					this.#logger.logOk(`Servicios Docker iniciados para ${name}`);
-					map.set(name, dir);
-					setTimeout(() => resolve(), 3000);
-				} else {
-					this.#logger.logWarn(`docker-compose falló con código ${code}`);
-					reject(new Error(`docker-compose exit code: ${code}`));
-				}
-			});
-		});
-	}
-
-	async #startDockerCompose(appDir: string, appName: string): Promise<void> {
-		try {
-			await this.#runDockerCompose(appDir, appName, this.#appDockerComposeMap);
-		} catch (error: any) {
-			if (error.code !== "ENOENT") {
-				this.#logger.logWarn(`No se pudo ejecutar docker-compose: ${error.message}`);
-			}
-		}
-	}
-
-	async #stopDockerCompose(appDir: string): Promise<void> {
-		const dockerComposeFile = path.join(appDir, "docker-compose.yml");
-		try {
-			await fs.stat(dockerComposeFile);
-
-			this.#logger.logInfo(`Deteniendo servicios Docker para app en ${appDir}...`);
-
-			const { spawn } = await import("node:child_process");
-			const docker = spawn("docker", ["compose", "-f", dockerComposeFile, "down"], {
-				cwd: appDir,
-				stdio: "pipe",
-			});
-
-			return new Promise((resolve, reject) => {
-				let output = "";
-				docker.stdout?.on("data", (data) => {
-					output += data.toString();
-				});
-				docker.stderr?.on("data", (data) => {
-					output += data.toString();
-				});
-				docker.on("close", (code) => {
-					if (code === 0) {
-						this.#logger.logOk("Servicios Docker detenidos");
-						resolve();
-					} else {
-						this.#logger.logWarn(`docker-compose down falló con código ${code}`);
-						reject(new Error(`docker-compose exit code: ${code}`));
-					}
-				});
-			});
-		} catch (error: any) {
-			if (error.code !== "ENOENT") {
-				this.#logger.logWarn(`No se pudo detener docker-compose: ${error.message}`);
-			}
-		}
-	}
-
 	async #loadApp(filePath: string): Promise<void> {
+		if (this.#isShuttingDown) {
+			this.#logger.logInfo("Cierre en progreso, abortando carga de app...");
+			return;
+		}
 		try {
 			const module = await import(`${filePath}?v=${Date.now()}`);
 			const AppClass = module.default;
@@ -637,7 +582,7 @@ export class Kernel {
 			}
 
 			try {
-				await this.#startDockerCompose(appDir, appName);
+				await this.#dockerManager.startDockerCompose(appDir, appName);
 			} catch {
 				this.#logger.logDebug(`docker-compose no disponible para ${appName}`);
 			}

@@ -6,19 +6,6 @@ import killAllChildProcesses from "./utils/system/KillChildProcesses.ts";
 
 async function main() {
 	const kernel = new Kernel();
-	await kernel.start();
-
-	// Reinyectar import maps ahora que todos los módulos UI están cargados
-	try {
-		const uiFederation = kernel.registry.getService<UIFederationService>("UIFederationService");
-		if (uiFederation) {
-			await uiFederation.refreshAllImportMaps();
-		} else {
-			Logger.warn("UIFederationService no encontrado");
-		}
-	} catch (error: any) {
-		Logger.error(`Error reinyectando import maps: ${error.message}`);
-	}
 
 	// --- Manejador de señales para cierre ordenado ---
 	let isShuttingDown = false;
@@ -92,6 +79,21 @@ async function main() {
 			await shutdownHandler("UNHANDLED_REJECTION");
 		}
 	});
+
+	// Ahora sí iniciar el kernel (las señales ya están registradas)
+	await kernel.start();
+
+	// Reinyectar import maps ahora que todos los módulos UI están cargados
+	try {
+		const uiFederation = kernel.registry.getService<UIFederationService>("UIFederationService");
+		if (uiFederation) {
+			await uiFederation.refreshAllImportMaps();
+		} else {
+			Logger.warn("UIFederationService no encontrado");
+		}
+	} catch (error: any) {
+		Logger.error(`Error reinyectando import maps: ${error.message}`);
+	}
 
 	Logger.ok("---------------------------------------");
 	Logger.ok("Kernel en funcionamiento.");
