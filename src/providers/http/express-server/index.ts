@@ -7,9 +7,7 @@ import { IHttpServerProvider } from "../../../interfaces/modules/providers/IHttp
 import { expressConnectMiddleware } from "@connectrpc/connect-express";
 import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
 
-/**
- * Implementación del servidor HTTP con Express
- */
+/** Implementación del servidor HTTP con Express */
 export default class ExpressServerProvider extends BaseProvider implements IHttpServerProvider {
 	public readonly name = "express-server";
 	public readonly type = ProviderType.HTTP_SERVER_PROVIDER;
@@ -27,24 +25,20 @@ export default class ExpressServerProvider extends BaseProvider implements IHttp
 		await super.start(kernelKey);
 	}
 
-	/**
-	 * Configura el middleware común de Express
-	 */
+	/** Configura el middleware común de Express */
 	#setupMiddleware(): void {
-		// CORS para permitir peticiones cross-origin
-		this.app.use(cors());
+		this.app.use(cors()); // CORS para permitir peticiones cross-origin
 
 		// Body parser para JSON y URL encoded
 		this.app.use(bodyParser.json());
 		this.app.use(bodyParser.urlencoded({ extended: true }));
 
 		// Log de peticiones en desarrollo
-		if (process.env.NODE_ENV === "development") {
+		if (process.env.NODE_ENV === "development")
 			this.app.use((req: any, _res: any, next: any) => {
 				this.logger.logDebug(`${req.method} ${req.path}`);
 				next();
 			});
-		}
 	}
 
 	registerRoute(method: string, path: string, handler: RequestHandler): void {
@@ -52,9 +46,7 @@ export default class ExpressServerProvider extends BaseProvider implements IHttp
 		if (typeof this.app[methodLower] === "function") {
 			(this.app[methodLower] as any)(path, handler);
 			this.logger.logDebug(`Ruta registrada: ${method.toUpperCase()} ${path}`);
-		} else {
-			this.logger.logError(`Método HTTP inválido: ${method}`);
-		}
+		} else this.logger.logError(`Método HTTP inválido: ${method}`);
 	}
 
 	serveStatic(path: string, directory: string): void {
@@ -91,10 +83,7 @@ export default class ExpressServerProvider extends BaseProvider implements IHttp
 	}
 
 	async listen(port: number): Promise<void> {
-		if (this.isListening) {
-			this.logger.logWarn("El servidor ya está escuchando");
-			return;
-		}
+		if (this.isListening) return this.logger.logWarn("El servidor ya está escuchando");
 
 		return new Promise((resolve, reject) => {
 			try {
@@ -105,11 +94,9 @@ export default class ExpressServerProvider extends BaseProvider implements IHttp
 				});
 
 				this.server?.on("error", (error: any) => {
-					if (error.code === "EADDRINUSE") {
-						this.logger.logError(`Puerto ${port} ya está en uso`);
-					} else {
-						this.logger.logError(`Error en el servidor: ${error.message}`);
-					}
+					if (error.code === "EADDRINUSE") this.logger.logError(`Puerto ${port} ya está en uso`);
+					else this.logger.logError(`Error en el servidor: ${error.message}`);
+
 					reject(error);
 				});
 			} catch (error) {

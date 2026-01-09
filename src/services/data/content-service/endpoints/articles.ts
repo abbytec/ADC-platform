@@ -45,11 +45,7 @@ export class ArticleEndpoints {
 		ArticleEndpoints.pathModel ??= pathModel;
 	}
 
-	@RegisterEndpoint({
-		method: "GET",
-		url: "/api/learning/articles",
-		permissions: [],
-	})
+	@RegisterEndpoint({ method: "GET", url: "/api/learning/articles" })
 	static async list(ctx: EndpointCtx<Record<string, string>, never>): Promise<{ articles: Article[] }> {
 		const query = ctx.query as ListArticlesQuery;
 		const where: Record<string, any> = {};
@@ -81,9 +77,7 @@ export class ArticleEndpoints {
 				}
 
 				where.slug = { $in: [...new Set(targetArticleSlugs)] };
-			} else {
-				return { articles: [] };
-			}
+			} else return { articles: [] };
 		}
 
 		if (query.listed !== undefined) where.listed = query.listed === "true";
@@ -136,33 +130,21 @@ export class ArticleEndpoints {
 		return { articles: docs };
 	}
 
-	@RegisterEndpoint({
-		method: "GET",
-		url: "/api/learning/articles/:slug",
-		permissions: [],
-	})
+	@RegisterEndpoint({ method: "GET", url: "/api/learning/articles/:slug" })
 	static async getBySlug(ctx: EndpointCtx<SlugParams>): Promise<{ article: Article }> {
 		const { slug } = ctx.params;
 		const doc = await ArticleEndpoints.model.findOne({ slug }).lean();
 
-		if (!doc) {
-			throw new HttpError(404, "ARTICLE_NOT_FOUND", "Article not found");
-		}
+		if (!doc) throw new HttpError(404, "ARTICLE_NOT_FOUND", "Article not found");
 
 		return { article: doc as Article };
 	}
 
-	@RegisterEndpoint({
-		method: "POST",
-		url: "/api/learning/articles",
-		permissions: ["content.write"],
-	})
+	@RegisterEndpoint({ method: "POST", url: "/api/learning/articles", permissions: ["content.write"] })
 	static async create(ctx: EndpointCtx<Record<string, string>, CreateArticleBody>): Promise<{ article: Article }> {
 		const data = ctx.data;
 
-		if (!data.slug || !data.title || !data.authorId) {
-			throw new HttpError(400, "MISSING_FIELDS", "slug, title and authorId are required");
-		}
+		if (!data.slug || !data.title || !data.authorId) throw new HttpError(400, "MISSING_FIELDS", "slug, title and authorId are required");
 
 		const doc = await ArticleEndpoints.model.create({
 			...data,
@@ -172,11 +154,7 @@ export class ArticleEndpoints {
 		return { article: doc.toObject() as Article };
 	}
 
-	@RegisterEndpoint({
-		method: "PUT",
-		url: "/api/learning/articles/:slug",
-		permissions: ["content.write"],
-	})
+	@RegisterEndpoint({ method: "PUT", url: "/api/learning/articles/:slug", permissions: ["content.write"] })
 	static async update(ctx: EndpointCtx<SlugParams, UpdateArticleBody>): Promise<{ article: Article }> {
 		const { slug } = ctx.params;
 		const updateData = ctx.data;
@@ -189,25 +167,17 @@ export class ArticleEndpoints {
 
 		const doc = await ArticleEndpoints.model.findOneAndUpdate({ slug }, cleanData, { new: true }).lean();
 
-		if (!doc) {
-			throw new HttpError(404, "ARTICLE_NOT_FOUND", `Article with slug "${slug}" not found`);
-		}
+		if (!doc) throw new HttpError(404, "ARTICLE_NOT_FOUND", `Article with slug "${slug}" not found`);
 
 		return { article: doc as Article };
 	}
 
-	@RegisterEndpoint({
-		method: "DELETE",
-		url: "/api/learning/articles/:slug",
-		permissions: ["content.delete"],
-	})
+	@RegisterEndpoint({ method: "DELETE", url: "/api/learning/articles/:slug", permissions: ["content.delete"] })
 	static async delete(ctx: EndpointCtx<SlugParams>): Promise<{ success: boolean }> {
 		const { slug } = ctx.params;
 		const result = await ArticleEndpoints.model.deleteOne({ slug });
 
-		if (result.deletedCount === 0) {
-			throw new HttpError(404, "ARTICLE_NOT_FOUND", `Article with slug "${slug}" not found`);
-		}
+		if (result.deletedCount === 0) throw new HttpError(404, "ARTICLE_NOT_FOUND", `Article with slug "${slug}" not found`);
 
 		return { success: true };
 	}

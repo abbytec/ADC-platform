@@ -32,3 +32,40 @@ class MyService extends BaseService {
 	}
 }
 ```
+
+## Respuestas HTTP
+
+### HttpError
+
+```typescript
+// Error 404
+throw new HttpError(404, "NOT_FOUND", "User does not exist");
+
+// Error de validación con datos adicionales
+throw new HttpError(400, "VALIDATION_ERROR", "Invalid email", { field: "email" });
+```
+
+### UncommonResponse
+
+```typescript
+// Redirect con cookies (OAuth callback)
+throw UncommonResponse.redirect("/dashboard", {
+	cookies: [{ name: "token", value: jwt, options: { httpOnly: true } }],
+});
+
+// JSON con cookies (login)
+throw UncommonResponse.json(
+	{ success: true, user },
+	{
+		cookies: [{ name: "access_token", value: token }],
+	}
+);
+
+// Limpiar cookies (logout)
+throw UncommonResponse.json(
+	{ success: true },
+	{
+		clearCookies: [{ name: "access_token", options: { path: "/" } }],
+	}
+);
+```

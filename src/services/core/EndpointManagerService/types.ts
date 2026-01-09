@@ -8,7 +8,7 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | 
 export interface EndpointConfig {
 	method: HttpMethod;
 	url: string;
-	permissions: string[];
+	permissions?: string[];
 	options?: EndpointOptions;
 }
 

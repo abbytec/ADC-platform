@@ -7,9 +7,7 @@ import type { Organization } from "../domain/organization.ts";
 export class OrgManager {
 	constructor(private readonly orgModel: Model<any>, private readonly regionManager: RegionManager, private readonly logger: ILogger) {}
 
-	/**
-	 * Crea una nueva organización
-	 */
+	/** Crea una nueva organización */
 	async createOrganization(slug: string, region?: string, metadata?: Record<string, any>): Promise<Organization> {
 		const regionPath = region || "default/default";
 
@@ -56,9 +54,7 @@ export class OrgManager {
 		return org ? this.#toOrganization(org) : null;
 	}
 
-	/**
-	 * Actualiza una organización
-	 */
+	/** Actualiza una organización */
 	async updateOrganization(orgId: string, updates: Partial<Organization>): Promise<Organization> {
 		// No permitir cambiar orgId
 		delete (updates as any).orgId;
@@ -66,9 +62,7 @@ export class OrgManager {
 		// Si se cambia la región, validar que existe
 		if (updates.region) {
 			const regionInfo = await this.regionManager.getRegion(updates.region);
-			if (!regionInfo) {
-				throw new Error(`Región no existe: ${updates.region}`);
-			}
+			if (!regionInfo) throw new Error(`Región no existe: ${updates.region}`);
 		}
 
 		const org = await this.orgModel.findOneAndUpdate({ orgId }, { ...updates, updatedAt: new Date() }, { new: true });
@@ -79,29 +73,21 @@ export class OrgManager {
 		return this.#toOrganization(org);
 	}
 
-	/**
-	 * Elimina una organización
-	 */
+	/** Elimina una organización */
 	async deleteOrganization(orgId: string): Promise<void> {
 		const result = await this.orgModel.deleteOne({ orgId });
-		if (result.deletedCount === 0) {
-			throw new Error(`Organización no encontrada: ${orgId}`);
-		}
+		if (result.deletedCount === 0) throw new Error(`Organización no encontrada: ${orgId}`);
 
 		this.logger.logDebug(`[OrgManager] Organización eliminada: ${orgId}`);
 	}
 
-	/**
-	 * Obtiene todas las organizaciones
-	 */
+	/** Obtiene todas las organizaciones */
 	async getAllOrganizations(): Promise<Organization[]> {
 		const orgs = await this.orgModel.find({});
 		return orgs.map((org: any) => this.#toOrganization(org));
 	}
 
-	/**
-	 * Obtiene organizaciones por región
-	 */
+	/** Obtiene organizaciones por región */
 	async getOrganizationsByRegion(region: string): Promise<Organization[]> {
 		const orgs = await this.orgModel.find({ region });
 		return orgs.map((org: any) => this.#toOrganization(org));

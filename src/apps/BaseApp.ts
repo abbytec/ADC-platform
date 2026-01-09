@@ -1,8 +1,8 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { IApp } from "../interfaces/modules/IApp.js";
+import type { IApp } from "../interfaces/modules/IApp.js";
 import { Kernel } from "../kernel.js";
-import { IModuleConfig } from "../interfaces/modules/IModule.js";
+import type { IModuleConfig } from "../interfaces/modules/IModule.js";
 import type { UIModuleConfig } from "../interfaces/modules/IUIModule.js";
 import UIFederationService from "../services/core/UIFederationService/index.ts";
 import { BaseModule } from "../common/BaseModule.js";
@@ -36,22 +36,20 @@ export abstract class BaseApp extends BaseModule implements IApp {
 	/**
 	 * Lógica de inicialización.
 	 */
+	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	// @ts-ignore - Falso positivo del IDE con decorador legacy (experimentalDecorators: true)
+	@OnlyKernel()
 	public async start(_kernelKey: symbol): Promise<void> {
-		if (!this.config?.uiModule) {
-			return; // No es una app UI
-		}
+		if (!this.config?.uiModule) return; // No es una app UI
 
 		try {
 			const uiFederationService = this.#kernel.registry.getService<UIFederationService>("UIFederationService");
-
 			const uiConfig: UIModuleConfig = this.config.uiModule;
 
-			// Extraer el nombre limpio (sin prefijo "web-")
 			// Si el nombre de la app es "web-ui-library", el nombre del módulo UI debería ser "ui-library"
 			const appBaseName = this.name.split(":")[0]; // Remover sufijo de instancia
 			const cleanModuleName = uiConfig.name || (appBaseName.startsWith("web-") ? appBaseName.substring(4) : appBaseName);
 
-			// Actualizar el nombre en la config
 			uiConfig.name = cleanModuleName;
 
 			this.logger.logInfo(`Registrando módulo UI: ${cleanModuleName}`);
@@ -61,18 +59,16 @@ export abstract class BaseApp extends BaseModule implements IApp {
 			this.logger.logOk(`Módulo UI ${cleanModuleName} registrado exitosamente`);
 		} catch (error: any) {
 			this.logger.logWarn(`No se pudo registrar como módulo UI: ${error.message}`);
-			// No lanzar error - la app puede funcionar sin UIFederationService
 		}
 	}
 
-	/**
-	 * La lógica de negocio de la app.
-	 */
+	/** La lógica de negocio de la app. */
 	abstract run(): Promise<void>;
 
-	/**
-	 * Lógica de detención.
-	 */
+	/** Lógica de detención. */
+	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	// @ts-ignore - Falso positivo del IDE con decorador legacy (experimentalDecorators: true)
+	@OnlyKernel()
 	public async stop() {
 		// Desregistrar módulo UI si estaba registrado
 		this.logger.logDebug(`Deteniendo app ${this.name}`);
@@ -95,7 +91,7 @@ export abstract class BaseApp extends BaseModule implements IApp {
 			const content = await fs.readFile(defaultConfigPath, "utf-8");
 			baseConfig = JSON.parse(content);
 		} catch {
-			// No hay archivo default.json, lo cual es aceptable.
+			// NOOP
 		}
 
 		const instanceConfig: Partial<IModuleConfig> = this.config || {};
@@ -136,9 +132,7 @@ export abstract class BaseApp extends BaseModule implements IApp {
 		Object.freeze(this.config); // Freezes config from modifications
 	}
 
-	/**
-	 * Carga los módulos de la app después de combinar las configuraciones.
-	 */
+	/** Carga los módulos de la app después de combinar las configuraciones. */
 	public async loadModulesFromConfig(): Promise<void> {
 		try {
 			await this.#mergeModuleConfigs();

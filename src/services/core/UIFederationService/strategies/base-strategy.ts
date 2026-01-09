@@ -37,16 +37,12 @@ export abstract class BaseFrameworkStrategy implements IFrameworkStrategy {
 		return !!(context.module.uiConfig.devPort && context.isDevelopment);
 	}
 
-	/**
-	 * Hooks abstractos que deben implementar las subclases
-	 */
+	/** Hooks abstractos que deben implementar las subclases */
 	abstract generateConfig(context: IBuildContext): Promise<string>;
 	abstract startDevServer(context: IBuildContext): Promise<IBuildResult>;
 	abstract buildStatic(context: IBuildContext): Promise<IBuildResult>;
 
-	/**
-	 * Validación por defecto: verifica devPort si es requerido
-	 */
+	/** Validación por defecto: verifica devPort si es requerido */
 	validateConfig(config: UIModuleConfig): void {
 		if (this.requiresDevPort() && !config.devPort) {
 			throw new Error(
@@ -55,47 +51,33 @@ export abstract class BaseFrameworkStrategy implements IFrameworkStrategy {
 		}
 	}
 
-	/**
-	 * Por defecto, frameworks con bundler requieren devPort
-	 */
+	/** Por defecto, frameworks con bundler requieren devPort */
 	requiresDevPort(): boolean {
 		return this.bundler === "rspack" || this.bundler === "vite";
 	}
 
-	/**
-	 * Obtiene el nombre safe para Module Federation (sin guiones)
-	 */
+	/** Obtiene el nombre safe para Module Federation (sin guiones) */
 	protected getSafeName(name: string): string {
 		return name.replace(/-/g, "_");
 	}
 
-	/**
-	 * Verifica si el módulo es un layout (shell app que carga remotes)
-	 */
+	/** Verifica si el módulo es un layout (shell app que carga remotes) */
 	protected isLayout(context: IBuildContext): boolean {
 		return context.module.uiConfig.name.includes("layout");
 	}
 
-	/**
-	 * Verifica si el módulo es un host (tiene index.html standalone)
-	 */
+	/** Verifica si el módulo es un host (tiene index.html standalone) */
 	protected isHost(context: IBuildContext): boolean {
 		return context.module.uiConfig.isHost ?? false;
 	}
 
-	/**
-	 * Obtiene la extensión de archivo para el framework
-	 */
+	/** Obtiene la extensión de archivo para el framework */
 	protected abstract getFileExtension(): string;
 
-	/**
-	 * Obtiene las extensiones de resolución para el framework
-	 */
+	/** Obtiene las extensiones de resolución para el framework */
 	protected abstract getResolveExtensions(): string[];
 
-	/**
-	 * Log helper
-	 */
+	/** Log helper */
 	protected log(context: IBuildContext, level: "info" | "debug" | "warn" | "error", message: string): void {
 		const prefix = `[${this.name}] [${context.namespace}/${context.module.name}]`;
 		const fullMessage = `${prefix} ${message}`;
@@ -117,15 +99,11 @@ export abstract class BaseFrameworkStrategy implements IFrameworkStrategy {
 	}
 }
 
-/**
- * Clase base para estrategias CLI (Astro, Stencil)
- */
+/** Clase base para estrategias CLI (Astro, Stencil) */
 export abstract class BaseCLIStrategy extends BaseFrameworkStrategy {
 	readonly bundler: BundlerType = "cli";
 
-	/**
-	 * Las estrategias CLI pueden tener watch mode pero no dev server HTTP
-	 */
+	/** Las estrategias CLI pueden tener watch mode pero no dev server HTTP */
 	protected shouldStartDevServer(_context: IBuildContext): boolean {
 		return false;
 	}

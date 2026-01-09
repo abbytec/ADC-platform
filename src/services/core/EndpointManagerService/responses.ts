@@ -1,9 +1,5 @@
 /**
  * HTTP Error class for throwing business errors with HTTP semantics
- *
- * @example
- * throw new HttpError(404, "NOT_FOUND", "User does not exist");
- * throw new HttpError(400, "VALIDATION_ERROR", "Invalid email", { field: "email" });
  */
 export class HttpError extends Error {
 	public readonly status: number;
@@ -51,22 +47,6 @@ export interface ClearCookie {
 /**
  * UncommonResponse - For endpoints that need cookies, redirects, or custom headers
  * Throw this instead of returning data when you need HTTP-level control
- *
- * @example
- * // Redirect with cookies (OAuth callback)
- * throw UncommonResponse.redirect("/dashboard", {
- *   cookies: [{ name: "token", value: jwt, options: { httpOnly: true } }]
- * });
- *
- * // JSON response with cookies (login)
- * throw UncommonResponse.json({ success: true, user }, {
- *   cookies: [{ name: "access_token", value: token }]
- * });
- *
- * // Clear cookies (logout)
- * throw UncommonResponse.json({ success: true }, {
- *   clearCookies: [{ name: "access_token", options: { path: "/" } }]
- * });
  */
 export class UncommonResponse {
 	public readonly type: "json" | "redirect";

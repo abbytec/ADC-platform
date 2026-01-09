@@ -371,5 +371,4 @@ function getEndpointManagerService(instance: any): any {
 }
 
 // Re-exportar tipos para conveniencia
-export type { EndpointConfig, EndpointHandler, EnableEndpointsConfig, EndpointCtx, HttpMethod } from "./types.js";
 export { HttpError } from "./types.js";
