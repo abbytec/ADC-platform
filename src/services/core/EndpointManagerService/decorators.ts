@@ -70,15 +70,6 @@ export function readEnableEndpointsConfig(target: object | (new (...args: any[])
 }
 
 /**
- * Verifica si un método tiene DisableEndpoints
- */
-export function hasDisableEndpoints(target: object, methodName: string): boolean {
-	const constructor = target.constructor;
-	const disableConfig = (constructor as any)[DISABLE_ENDPOINTS_META];
-	return disableConfig?.methods?.includes(methodName) || false;
-}
-
-/**
  * Establece el validador de permisos para una instancia
  * Llamado por EndpointManagerService al registrar endpoints
  */
@@ -156,20 +147,18 @@ export function RegisterEndpoint(config: Omit<EndpointConfig, "handler">): Metho
 				if (validator) {
 					const result = await validator(ctx.token, permissions);
 
-					if (!result.valid) {
+					if (!result.valid)
 						throw new HttpError(
 							ctx.token ? 403 : 401,
 							ctx.token ? "FORBIDDEN" : "UNAUTHORIZED",
 							result.error || (ctx.token ? "Insufficient permissions" : "Authentication required")
 						);
-					}
 
 					// Actualizar user en ctx con el resultado de la validación
 					(ctx as any).user = result.user;
-				} else {
-					// Sin validador configurado - si hay permisos requeridos, fallar
-					throw new HttpError(503, "AUTH_UNAVAILABLE", "Authentication service not available");
 				}
+				// Sin validador configurado - si hay permisos requeridos, fallar
+				else throw new HttpError(503, "AUTH_UNAVAILABLE", "Authentication service not available");
 			}
 
 			// Ejecutar método original
@@ -204,16 +193,12 @@ export function EnableEndpoints(config?: EnableEndpointsConfig): MethodDecorator
 		descriptor.value = async function (this: any, ...args: any[]) {
 			const result = await originalMethod.apply(this, args);
 
-			if (this.logger) {
-				this.logger.logDebug(`[EnableEndpoints] Intentando registrar endpoints para ${this.name || this.constructor.name}`);
-			}
+			this.logger?.logDebug(`[EnableEndpoints] Intentando registrar endpoints para ${this.name || this.constructor.name}`);
 
 			try {
 				await registerEndpointsForInstance(this, config?.managers);
 			} catch (error) {
-				if (this.logger) {
-					this.logger.logWarn(`Error registrando endpoints: ${error}`);
-				}
+				this.logger?.logWarn(`Error registrando endpoints: ${error}`);
 			}
 
 			return result;
@@ -249,9 +234,7 @@ export function DisableEndpoints(): MethodDecorator {
 			try {
 				await unregisterEndpointsForInstance(this);
 			} catch (error) {
-				if (this.logger) {
-					this.logger.logWarn(`Error desregistrando endpoints: ${error}`);
-				}
+				this.logger?.logWarn(`Error desregistrando endpoints: ${error}`);
 			}
 
 			return originalMethod.apply(this, args);
@@ -267,9 +250,7 @@ export function DisableEndpoints(): MethodDecorator {
 async function registerEndpointsForInstance(instance: any, managersGetter?: () => object[]): Promise<void> {
 	const endpointManager = getEndpointManagerService(instance);
 	if (!endpointManager) {
-		if (instance.logger) {
-			instance.logger.logWarn(`[EnableEndpoints] EndpointManagerService NO encontrado para ${instance.name}`);
-		}
+		instance.logger?.logWarn(`[EnableEndpoints] EndpointManagerService NO encontrado para ${instance.name}`);
 		return;
 	}
 
@@ -277,9 +258,8 @@ async function registerEndpointsForInstance(instance: any, managersGetter?: () =
 
 	// 1. Registrar endpoints de la propia instancia
 	const ownEndpoints = readEndpointMetadata(instance);
-	if (instance.logger) {
-		instance.logger.logDebug(`[EnableEndpoints] ${ownerName} tiene ${ownEndpoints.length} endpoints propios`);
-	}
+	instance.logger?.logDebug(`[EnableEndpoints] ${ownerName} tiene ${ownEndpoints.length} endpoints propios`);
+
 	for (const ep of ownEndpoints) {
 		await endpointManager.registerEndpoint({
 			method: ep.method,
@@ -298,18 +278,15 @@ async function registerEndpointsForInstance(instance: any, managersGetter?: () =
 	if (managersGetter) {
 		try {
 			const managers = managersGetter.call(instance);
-			if (instance.logger) {
-				instance.logger.logDebug(`[EnableEndpoints] ${ownerName} tiene ${managers?.length || 0} managers`);
-			}
+			instance.logger?.logDebug(`[EnableEndpoints] ${ownerName} tiene ${managers?.length || 0} managers`);
+
 			for (const managerInstance of managers) {
 				if (!managerInstance) continue;
 
 				const managerEndpoints = readEndpointMetadata(managerInstance);
 				const managerName = managerInstance.constructor.name;
 
-				if (instance.logger) {
-					instance.logger.logDebug(`[EnableEndpoints] Manager ${managerName} tiene ${managerEndpoints.length} endpoints`);
-				}
+				instance.logger?.logDebug(`[EnableEndpoints] Manager ${managerName} tiene ${managerEndpoints.length} endpoints`);
 
 				for (const ep of managerEndpoints) {
 					await endpointManager.registerEndpoint({
@@ -325,9 +302,7 @@ async function registerEndpointsForInstance(instance: any, managersGetter?: () =
 				}
 			}
 		} catch (error) {
-			if (instance.logger) {
-				instance.logger.logWarn(`Error obteniendo managers: ${error}`);
-			}
+			instance.logger?.logWarn(`Error obteniendo managers: ${error}`);
 		}
 	}
 }
@@ -337,9 +312,7 @@ async function registerEndpointsForInstance(instance: any, managersGetter?: () =
  */
 async function unregisterEndpointsForInstance(instance: any): Promise<void> {
 	const endpointManager = getEndpointManagerService(instance);
-	if (!endpointManager) {
-		return;
-	}
+	if (!endpointManager) return;
 
 	const ownerName = instance.name || instance.constructor.name;
 	await endpointManager.unregisterEndpointsByOwner(ownerName);
@@ -350,25 +323,16 @@ async function unregisterEndpointsForInstance(instance: any): Promise<void> {
  */
 function getEndpointManagerService(instance: any): any {
 	try {
-		if (typeof instance.getMyService === "function") {
-			return instance.getMyService("EndpointManagerService");
-		}
+		if (typeof instance.getMyService === "function") return instance.getMyService("EndpointManagerService");
 
-		if (instance.kernel?.registry) {
-			return instance.kernel.registry.getService("EndpointManagerService");
-		}
+		if (instance.kernel?.registry) return instance.kernel.registry.getService("EndpointManagerService");
 
 		if (instance.config?.services) {
 			const hasEndpointManager = instance.config.services.some((s: any) => s.name === "EndpointManagerService");
-			if (hasEndpointManager && typeof instance.getMyService === "function") {
-				return instance.getMyService("EndpointManagerService");
-			}
+			if (hasEndpointManager && typeof instance.getMyService === "function") return instance.getMyService("EndpointManagerService");
 		}
 	} catch {
 		// EndpointManagerService no disponible
 	}
 	return null;
 }
-
-// Re-exportar tipos para conveniencia
-export { HttpError } from "./types.js";

@@ -35,10 +35,3 @@ export type Scope = (typeof Scope)[keyof typeof Scope];
 export function hasFlags(value: number, required: number): boolean {
 	return (value & required) === required;
 }
-
-/**
- * Verifica si un bitfield contiene al menos uno de los flags
- */
-export function hasAnyFlag(value: number, flags: number): boolean {
-	return (value & flags) !== 0;
-}
