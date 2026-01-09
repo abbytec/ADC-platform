@@ -16,6 +16,7 @@ import { OnlyKernel } from "../utils/decorators/OnlyKernel.ts";
 export abstract class BaseApp extends BaseModule implements IApp {
 	protected readonly appDir: string;
 	private uiModuleRegistered = false;
+	private kernelKey?: symbol;
 	#kernel: Kernel;
 
 	constructor(kernel: Kernel, public readonly name: string = "", config?: IModuleConfig, _appFilePath?: string) {
@@ -32,6 +33,13 @@ export abstract class BaseApp extends BaseModule implements IApp {
 				: path.resolve(process.cwd(), "dist", "apps", appDirName);
 		}
 	}
+
+	public readonly setKernelKey = (key: symbol): void => {
+		if (this.kernelKey) {
+			throw new Error("Kernel key ya está establecida");
+		}
+		this.kernelKey = key;
+	};
 
 	/**
 	 * Lógica de inicialización.

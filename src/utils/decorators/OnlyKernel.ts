@@ -1,12 +1,35 @@
 /**
  * Decorador que restringe el acceso a métodos solo cuando se proporciona la kernelKey correcta.
- * Usa la sintaxis legacy de decoradores (experimentalDecorators: true).
+ * Soporta tanto la sintaxis legacy (experimentalDecorators) como Stage 3 decorators.
  */
 export function OnlyKernel() {
-	return function (_target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-		const originalMethod = descriptor.value;
+	// Detectar si estamos en Stage 3 (descriptor es undefined, context es el segundo arg)
+	return function (
+		targetOrMethod: any,
+		propertyKeyOrContext: string | ClassMethodDecoratorContext,
+		descriptor?: PropertyDescriptor
+	): any {
+		// Stage 3 decorators: targetOrMethod es el método, propertyKeyOrContext es el context
+		if (typeof propertyKeyOrContext === "object" && propertyKeyOrContext.kind === "method") {
+			const methodName = String(propertyKeyOrContext.name);
+			return function (this: any, ...args: any[]) {
+				const kernelKeyToVerify = args[0];
+				if ("kernelKey" in this && this.kernelKey) {
+					if (this.kernelKey !== kernelKeyToVerify) {
+						throw new Error(`Acceso no autorizado a ${methodName}`);
+					}
+					return targetOrMethod.apply(this, args);
+				} else {
+					throw new Error(`Kernel key no establecida`);
+				}
+			};
+		}
 
-		descriptor.value = function (this: any, ...args: any[]) {
+		// Legacy decorators: propertyKeyOrContext es string, descriptor existe
+		const propertyKey = propertyKeyOrContext as string;
+		const originalMethod = descriptor!.value;
+
+		descriptor!.value = function (this: any, ...args: any[]) {
 			const kernelKeyToVerify = args[0];
 			if ("kernelKey" in this && this.kernelKey) {
 				if (this.kernelKey !== kernelKeyToVerify) {

@@ -481,6 +481,7 @@ export class Kernel {
 		this.registry.setLoadingContext(instanceName);
 		try {
 			await app.loadModulesFromConfig();
+			app.setKernelKey(Kernel.#kernelKey);
 			await app.start?.(Kernel.#kernelKey);
 		} finally {
 			this.registry.setLoadingContext(null);
