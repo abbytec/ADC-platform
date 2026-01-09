@@ -141,7 +141,7 @@ export default class UIFederationService extends BaseService {
 	}
 
 	/**
-	 * Busca un módulo por nombre en todos los namespaces (legacy, para retrocompatibilidad)
+	 * Busca un módulo por nombre en todos los namespaces (legacy)
 	 */
 	#findModuleByName(name: string): { namespace: string; module: RegisteredUIModule } | null {
 		for (const [namespace, modules] of this.registeredModules.entries()) {
@@ -377,27 +377,6 @@ export default class UIFederationService extends BaseService {
 	getImportMap(namespace?: string): ImportMap {
 		const ns = namespace || DEFAULT_NAMESPACE;
 		return this.importMaps.get(ns) || { imports: {} };
-	}
-
-	/**
-	 * Build público (para retrocompatibilidad)
-	 */
-	async buildUIModule(name: string, namespace?: string): Promise<void> {
-		let module: RegisteredUIModule | null = null;
-		let ns = namespace || DEFAULT_NAMESPACE;
-
-		if (namespace) module = this.#getModule(namespace, name);
-		else {
-			const found = this.#findModuleByName(name);
-			if (found) {
-				module = found.module;
-				ns = found.namespace;
-			}
-		}
-
-		if (!module) throw new Error(`Módulo UI ${name} no encontrado`);
-
-		await this.#buildUIModuleInternal(module, ns);
 	}
 
 	/**

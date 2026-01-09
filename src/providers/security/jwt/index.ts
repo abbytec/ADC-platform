@@ -43,7 +43,7 @@ export interface TokenVerificationResult {
 }
 
 /**
- * Interface del JWT Provider (básica - retrocompatible)
+ * Interface del JWT Provider (básica)
  */
 export interface IJWTProvider {
 	/**
@@ -84,7 +84,7 @@ export interface IJWTProviderMultiKey extends IJWTProvider {
  * Los tokens son firmados y cifrados para máxima seguridad.
  *
  * Soporta:
- * - Operaciones con clave por defecto (retrocompatible)
+ * - Operaciones con clave por defecto (básica)
  * - Operaciones con clave específica (para rotación de secretos)
  */
 export default class JWTProvider extends BaseProvider implements IJWTProviderMultiKey {
