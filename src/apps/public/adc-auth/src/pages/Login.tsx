@@ -8,7 +8,6 @@ interface LoginProps {
 }
 
 export function Login({ onNavigateToRegister, originPath }: LoginProps) {
-	console.log("DEV MODE:", IS_DEV);
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
