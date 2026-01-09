@@ -8,7 +8,7 @@
 			"version": "latest",
 			"language": "typescript",
 			"custom": {
-				"uri": "mongodb://admin:password@localhost:27017/adc-identity?authSource=admin",
+				"uri": "mongodb://admin:password@localhost:27017/adc-core?authSource=admin",
 				"maxRetries": 5,
 				"retryDelay": 5000
 			}

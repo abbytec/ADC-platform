@@ -4,17 +4,18 @@ import { Logger } from "../logger/Logger.ts";
 import { ILogger } from "../../interfaces/utils/ILogger.js";
 
 /**
- * Gestiona las operaciones de Docker Compose para apps y servicios del Kernel.
+ * Gestiona las operaciones de Docker Compose para apps, servicios y contenedores comunes del Kernel.
  */
 export class DockerManager {
 	readonly #logger: ILogger = Logger.getLogger("DockerManager");
 	readonly #appDockerComposeMap = new Map<string, string>();
 	readonly #serviceDockerComposeMap = new Map<string, string>();
+	readonly #commonDockerComposeMap = new Map<string, string>();
 
 	/**
 	 * Ejecuta docker-compose up -d en el directorio especificado.
 	 */
-	async runDockerCompose(dir: string, name: string, type: "app" | "service"): Promise<void> {
+	async runDockerCompose(dir: string, name: string, type: "app" | "service" | "common"): Promise<void> {
 		const dockerComposeFile = path.join(dir, "docker-compose.yml");
 		await fs.stat(dockerComposeFile);
 
@@ -37,11 +38,19 @@ export class DockerManager {
 			docker.on("close", (code) => {
 				if (code === 0) {
 					this.#logger.logOk(`Servicios Docker iniciados para ${name}`);
-					const map = type === "app" ? this.#appDockerComposeMap : this.#serviceDockerComposeMap;
+					const map =
+						type === "app"
+							? this.#appDockerComposeMap
+							: type === "service"
+							? this.#serviceDockerComposeMap
+							: this.#commonDockerComposeMap;
 					map.set(name, dir);
 					setTimeout(() => resolve(), 3000);
 				} else {
 					this.#logger.logWarn(`docker-compose falló con código ${code}`);
+					if (output.trim()) {
+						this.#logger.logWarn(`Output: ${output.trim()}`);
+					}
 					reject(new Error(`docker-compose exit code: ${code}`));
 				}
 			});
@@ -155,5 +164,73 @@ export class DockerManager {
 	 */
 	deleteServiceDockerCompose(serviceName: string): void {
 		this.#serviceDockerComposeMap.delete(serviceName);
+	}
+
+	/**
+	 * Carga y ejecuta todos los docker-compose comunes desde un directorio.
+	 * Lee las subcarpetas y ejecuta docker-compose.yml en cada una.
+	 */
+	async loadCommonDockerCompose(dockerDir: string): Promise<void> {
+		try {
+			const entries = await fs.readdir(dockerDir, { withFileTypes: true });
+			const folders = entries.filter((e) => e.isDirectory());
+
+			if (folders.length === 0) {
+				this.#logger.logDebug("No hay contenedores comunes para cargar");
+				return;
+			}
+
+			this.#logger.logInfo(`Cargando ${folders.length} contenedor(es) común(es)...`);
+
+			for (const folder of folders) {
+				const folderPath = path.join(dockerDir, folder.name);
+				const composePath = path.join(folderPath, "docker-compose.yml");
+
+				try {
+					await fs.stat(composePath);
+					await this.runDockerCompose(folderPath, folder.name, "common");
+				} catch (error: any) {
+					if (error.code === "ENOENT") {
+						this.#logger.logDebug(`No hay docker-compose.yml en ${folder.name}`);
+					} else {
+						this.#logger.logWarn(`Error cargando contenedor común ${folder.name}: ${error.message}`);
+					}
+				}
+			}
+		} catch (error: any) {
+			if (error.code === "ENOENT") {
+				this.#logger.logDebug(`Directorio de docker común no existe: ${dockerDir}`);
+			} else {
+				this.#logger.logWarn(`Error leyendo directorio docker común: ${error.message}`);
+			}
+		}
+	}
+
+	/**
+	 * Detiene todos los contenedores comunes.
+	 */
+	async stopAllCommonDockerCompose(): Promise<void> {
+		for (const [name, dir] of this.#commonDockerComposeMap) {
+			try {
+				await this.stopDockerCompose(dir);
+				this.#commonDockerComposeMap.delete(name);
+			} catch (error: any) {
+				this.#logger.logWarn(`Error deteniendo contenedor común ${name}: ${error.message}`);
+			}
+		}
+	}
+
+	/**
+	 * Verifica si un contenedor común tiene docker-compose configurado.
+	 */
+	hasCommonDockerCompose(name: string): boolean {
+		return this.#commonDockerComposeMap.has(name);
+	}
+
+	/**
+	 * Obtiene el directorio de docker-compose de un contenedor común.
+	 */
+	getCommonDockerComposeDir(name: string): string | undefined {
+		return this.#commonDockerComposeMap.get(name);
 	}
 }

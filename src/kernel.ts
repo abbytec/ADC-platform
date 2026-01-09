@@ -128,6 +128,10 @@ export class Kernel {
 		this.#logger.logInfo(`Modo: ${this.#isDevelopment ? "DESARROLLO" : "PRODUCCIÓN"}`);
 		this.#logger.logDebug(`Base path: ${this.#basePath}`);
 
+		// Cargar contenedores Docker comunes antes de los servicios kernel
+		const commonDockerPath = path.resolve(this.#basePath, "common", "docker");
+		await this.#dockerManager.loadCommonDockerCompose(commonDockerPath);
+
 		await this.#loadKernelServices();
 
 		const excludeTests = process.env.ENABLE_TESTS !== "true" && !this.#isDevelopment;
@@ -224,6 +228,11 @@ export class Kernel {
 		}
 
 		await this.registry.stopAllModules(Kernel.#kernelKey, withTimeout);
+
+		// Detener contenedores Docker comunes al final
+		this.#logger.logInfo("Deteniendo contenedores Docker comunes...");
+		await withTimeout(this.#dockerManager.stopAllCommonDockerCompose(), 10000, "Docker comunes");
+
 		this.#logger.logOk("Cierre completado.");
 	}
 
