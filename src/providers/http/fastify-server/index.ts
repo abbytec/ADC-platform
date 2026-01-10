@@ -1,5 +1,6 @@
 import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import fastifyCors from "@fastify/cors";
+import fastifyCookie from "@fastify/cookie";
 import fastifyFormbody from "@fastify/formbody";
 import * as path from "node:path";
 import * as fs from "node:fs";
@@ -183,6 +184,9 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 			methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 			allowedHeaders: ["Content-Type", "Authorization"],
 		});
+
+		// Cookie parser - Necesario para setCookie/clearCookie en endpoints
+		await this.app.register(fastifyCookie);
 
 		// Body parser para formularios
 		await this.app.register(fastifyFormbody);

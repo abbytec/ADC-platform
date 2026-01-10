@@ -583,9 +583,17 @@ export default class UIFederationService extends BaseService {
 		const { baseFramework } = parseFramework(config.framework || "astro");
 
 		if (baseFramework === "react" || baseFramework === "vue") {
-			const indexHtmlContent = generateIndexHtml(config.name, baseFramework);
-			await fs.writeFile(path.join(appDir, "index.html"), indexHtmlContent, "utf-8");
-			this.logger.logDebug(`index.html generado para ${config.name}`);
+			const indexHtmlPath = path.join(appDir, "index.html");
+			
+			// Solo generar index.html si no existe (preservar modificaciones custom)
+			try {
+				await fs.access(indexHtmlPath);
+				this.logger.logDebug(`index.html existente preservado para ${config.name}`);
+			} catch {
+				const indexHtmlContent = generateIndexHtml(config.name, baseFramework);
+				await fs.writeFile(indexHtmlPath, indexHtmlContent, "utf-8");
+				this.logger.logDebug(`index.html generado para ${config.name}`);
+			}
 
 			const mainExt = baseFramework === "react" ? ".tsx" : ".ts";
 			const mainPath = path.join(appDir, "src", `main${mainExt}`);
