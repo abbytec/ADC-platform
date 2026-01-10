@@ -20,6 +20,7 @@ export default {
 				text: "var(--c-text)",
 				negativeText: "var(--c-negative-text)",
 				surface: "var(--c-surface)",
+				tsurface: "var(--c-tsurface)",
 				primary: "var(--c-primary)",
 				accent: "var(--c-accent)",
 				button: "var(--c-button)",

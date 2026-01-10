@@ -584,7 +584,7 @@ export default class UIFederationService extends BaseService {
 
 		if (baseFramework === "react" || baseFramework === "vue") {
 			const indexHtmlPath = path.join(appDir, "index.html");
-			
+
 			// Solo generar index.html si no existe (preservar modificaciones custom)
 			try {
 				await fs.access(indexHtmlPath);

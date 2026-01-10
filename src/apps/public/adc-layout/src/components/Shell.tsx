@@ -7,11 +7,12 @@ interface ShellProps {
 
 const IS_DEV = process.env.NODE_ENV === "development";
 const AUTH_URL = IS_DEV ? "http://localhost:3012" : "https://auth.adigitalcafe.com";
+const API_BASE_URL = IS_DEV ? "http://localhost:3000" : "";
 
 export const Shell = memo(function Shell({ children, headerSlot }: ShellProps) {
 	return (
 		<div className="flex flex-col px-8 min-h-screen text-text" style={{ paddingBottom: "var(--consent-h, 0px)" }}>
-			<adc-site-header logo-src="/mini-logo.webp" logo-alt="ADC" home-href="/" auth-url={AUTH_URL}>
+			<adc-site-header logo-src="/mini-logo.webp" logo-alt="ADC" home-href="/" auth-url={AUTH_URL} api-base-url={API_BASE_URL}>
 				{headerSlot}
 			</adc-site-header>
 

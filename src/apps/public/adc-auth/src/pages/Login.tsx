@@ -2,6 +2,10 @@ import React, { useState } from "react";
 import { authApi, type AuthError } from "../utils/auth.ts";
 
 const IS_DEV = process.env.NODE_ENV === "development";
+
+/** URL base del sitio principal según entorno */
+const BASE_URL = IS_DEV ? "http://localhost:3011" : "https://adigitalcafe.com";
+
 interface LoginProps {
 	onNavigateToRegister: () => void;
 	originPath: string;
@@ -17,11 +21,10 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 	 * Construye la URL de redirección tras login exitoso
 	 */
 	const getRedirectUrl = (): string => {
-		const baseUrl = "https://adigitalcafe.com";
 		if (originPath && originPath !== "/") {
-			return `${baseUrl}${originPath}`;
+			return `${BASE_URL}${originPath}`;
 		}
-		return baseUrl;
+		return BASE_URL;
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {

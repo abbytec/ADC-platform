@@ -25,6 +25,11 @@ export namespace Components {
      */
     interface AdcAccessButton {
         /**
+          * URL base de la API (en dev: http://localhost:3000, en prod: vacío para usar relativo)
+          * @default ""
+         */
+        "apiBaseUrl": string;
+        /**
           * URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com)
           * @default "https://auth.adigitalcafe.com"
          */
@@ -378,6 +383,11 @@ export namespace Components {
         "registered": boolean;
     }
     interface AdcSiteHeader {
+        /**
+          * URL base de la API (en dev: http://localhost:3000, en prod: vacío)
+          * @default ""
+         */
+        "apiBaseUrl": string;
         /**
           * URL base para auth (dev vs prod)
           * @default "https://auth.adigitalcafe.com"
@@ -880,6 +890,11 @@ declare namespace LocalJSX {
      */
     interface AdcAccessButton {
         /**
+          * URL base de la API (en dev: http://localhost:3000, en prod: vacío para usar relativo)
+          * @default ""
+         */
+        "apiBaseUrl"?: string;
+        /**
           * URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com)
           * @default "https://auth.adigitalcafe.com"
          */
@@ -1248,6 +1263,11 @@ declare namespace LocalJSX {
         "registered"?: boolean;
     }
     interface AdcSiteHeader {
+        /**
+          * URL base de la API (en dev: http://localhost:3000, en prod: vacío)
+          * @default ""
+         */
+        "apiBaseUrl"?: string;
         /**
           * URL base para auth (dev vs prod)
           * @default "https://auth.adigitalcafe.com"

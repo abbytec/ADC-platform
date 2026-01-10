@@ -35,6 +35,7 @@ interface SessionManagerConfig {
 
 /** Nombre de las cookies */
 const ACCESS_COOKIE_NAME = "access_token";
+const IS_DEV = process.env.NODE_ENV !== "production";
 
 /**
  * SessionManagerService - Orquestador de autenticación y sesiones
@@ -66,8 +67,8 @@ export default class SessionManagerService extends BaseService {
 	#oauthRegistry: OAuthProviderRegistry | null = null;
 
 	// Configuración
-	#defaultRedirectUrl = "https://adigitalcafe.com";
-	#cookieDomain = ".adigitalcafe.com";
+	#defaultRedirectUrl = IS_DEV ? "http://localhost:3000" : "https://adigitalcafe.com";
+	#cookieDomain = IS_DEV ? "localhost" : ".adigitalcafe.com";
 
 	#kernelKey?: symbol;
 

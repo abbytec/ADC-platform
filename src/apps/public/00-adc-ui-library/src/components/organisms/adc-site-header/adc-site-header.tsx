@@ -18,6 +18,9 @@ export class AdcSiteHeader {
 	/** URL base para auth (dev vs prod) */
 	@Prop() authUrl: string = "https://auth.adigitalcafe.com";
 
+	/** URL base de la API (en dev: http://localhost:3000, en prod: vacío) */
+	@Prop() apiBaseUrl: string = "";
+
 	/** Mostrar botón de acceso/perfil */
 	@Prop() showAccessButton: boolean = true;
 
@@ -37,7 +40,11 @@ export class AdcSiteHeader {
 					<slot></slot>
 
 					{this.showAccessButton && (
-						<adc-access-button auth-url={this.authUrl} menuItems={this.userMenuItems}></adc-access-button>
+						<adc-access-button
+							auth-url={this.authUrl}
+							api-base-url={this.apiBaseUrl}
+							menuItems={this.userMenuItems}
+						></adc-access-button>
 					)}
 				</nav>
 			</header>

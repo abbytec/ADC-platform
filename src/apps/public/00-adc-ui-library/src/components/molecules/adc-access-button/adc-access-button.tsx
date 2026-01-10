@@ -31,6 +31,9 @@ export class AdcAccessButton {
 	/** URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com) */
 	@Prop() authUrl: string = "https://auth.adigitalcafe.com";
 
+	/** URL base de la API (en dev: http://localhost:3000, en prod: vacío para usar relativo) */
+	@Prop() apiBaseUrl: string = "";
+
 	/** URL de la API de sesión */
 	@Prop() sessionApiUrl: string = "/api/auth/session";
 
@@ -74,12 +77,24 @@ export class AdcAccessButton {
 		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
 	}
 
+	/** Construye URL completa para la API */
+	private getApiUrl(path: string): string {
+		return `${this.apiBaseUrl}${path}`;
+	}
+
 	private async checkSession() {
 		try {
-			const response = await fetch(this.sessionApiUrl, {
+			const response = await fetch(this.getApiUrl(this.sessionApiUrl), {
 				method: "GET",
 				credentials: "include",
 			});
+
+			// Si no hay sesión (401) o hay error, marcar como no autenticado
+			if (!response.ok) {
+				this.isAuthenticated = false;
+				this.user = null;
+				return;
+			}
 
 			const data: SessionResponse = await response.json();
 
@@ -103,7 +118,7 @@ export class AdcAccessButton {
 
 	private handleLogout = async () => {
 		try {
-			await fetch(this.logoutApiUrl, {
+			await fetch(this.getApiUrl(this.logoutApiUrl), {
 				method: "POST",
 				credentials: "include",
 			});
@@ -193,6 +208,10 @@ export class AdcAccessButton {
 					onClick={this.handleToggle}
 					onKeyDown={this.handleKeyDown}
 				>
+					{/* Header del dropdown con info del usuario */}
+					<div class="pl-4 pr-2">
+						<p class="font-semibold truncate">{this.user?.username}</p>
+					</div>
 					<img
 						src={this.getAvatarUrl()}
 						alt={`Avatar de ${this.user?.username || "usuario"}`}
@@ -213,23 +232,17 @@ export class AdcAccessButton {
 
 				{this.dropdownOpen && (
 					<div
-						class="absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg z-50 bg-primary text-tprimary overflow-hidden"
+						class="absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg z-50 bg-surface text-tsurface overflow-hidden"
 						role="menu"
 						aria-orientation="vertical"
 					>
-						{/* Header del dropdown con info del usuario */}
-						<div class="px-4 py-3 border-b border-divider">
-							<p class="font-semibold truncate">{this.user?.username}</p>
-							<p class="text-sm text-muted truncate">{this.user?.email}</p>
-						</div>
-
 						{/* Items del menú */}
 						{this.menuItems.length > 0 && (
 							<div class="py-1">
 								{this.menuItems.map((item) => (
 									<a
 										href={item.href}
-										class="flex items-center gap-2 px-4 py-2 hover:bg-accent/10 transition-colors"
+										class="flex items-center gap-2 px-4 py-2 hover:bg-accent text-tprimary transition-colors"
 										role="menuitem"
 									>
 										{item.icon && <span class="w-5 h-5 flex items-center justify-center" innerHTML={item.icon}></span>}
@@ -243,7 +256,7 @@ export class AdcAccessButton {
 						<div class="border-t border-divider">
 							<button
 								type="button"
-								class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/10 text-error transition-colors"
+								class="flex w-full items-center gap-2 px-4 py-3 text-left bg-neutral-900 hover:bg-primary hover:text-tprimary hover:cursor-pointer text-red-600 transition-colors"
 								role="menuitem"
 								onClick={this.handleLogout}
 							>
