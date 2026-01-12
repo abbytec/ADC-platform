@@ -150,6 +150,49 @@ export namespace Components {
          */
         "title": string;
     }
+    /**
+     * Global error display component with callout and toast variants.
+     * Use multiple instances to separate error handling:
+     * - One global toast handler for unhandled errors
+     * - Specific callout handlers for expected errors in forms
+     * @example ```html
+     * <!-- Global toast handler -->
+     * <adc-custom-error variant="toast" global handle-unhandled></adc-custom-error>
+     * <!-- Form-specific callout handler -->
+     * <adc-custom-error variant="callout" keys='[{"key": "INVALID_CREDENTIALS", "severity": "error"}]'></adc-custom-error>
+     * ```
+     */
+    interface AdcCustomError {
+        /**
+          * Auto-dismiss timeout in ms (only for toast variant). 0 = no auto-dismiss
+          * @default 3000
+         */
+        "dismissTimeout": number;
+        /**
+          * If true, catches all errors not handled by specific key handlers
+          * @default false
+         */
+        "global": boolean;
+        /**
+          * If true, listens for unhandled promise rejections
+          * @default false
+         */
+        "handleUnhandled": boolean;
+        /**
+          * JSON array of error keys to handle. If empty and not global, shows warning.
+         */
+        "keys"?: string;
+        /**
+          * Maximum number of stacked toasts
+          * @default 5
+         */
+        "maxStack": number;
+        /**
+          * Display variant: callout (inline) or toast (floating notification)
+          * @default "toast"
+         */
+        "variant": "callout" | "toast";
+    }
     interface AdcDivider {
     }
     interface AdcDropdownMenu {
@@ -416,6 +459,43 @@ export namespace Components {
          */
         "userMenuItems": AccessMenuItem1[];
     }
+    /**
+     * Skeleton loader component for placeholder content while loading
+     * @example <adc-skeleton variant="text" />
+     * <adc-skeleton variant="circular" width="48px" height="48px" />
+     * <adc-skeleton variant="rectangular" height="200px" />
+     * <adc-skeleton variant="button" />
+     * <adc-skeleton variant="input" />
+     */
+    interface AdcSkeleton {
+        /**
+          * Animation type
+          * @default "pulse"
+         */
+        "animation": "pulse" | "wave" | "none";
+        /**
+          * Custom height (CSS value). Defaults vary by variant
+         */
+        "height"?: string;
+        /**
+          * Number of lines for text variant
+          * @default 1
+         */
+        "lines": number;
+        /**
+          * Border radius override
+         */
+        "rounded"?: string;
+        /**
+          * Variant determines the shape of the skeleton
+          * @default "text"
+         */
+        "variant": "text" | "circular" | "rectangular" | "button" | "input";
+        /**
+          * Custom width (CSS value). Defaults vary by variant
+         */
+        "width"?: string;
+    }
     interface AdcStarRating {
         "average"?: number | null;
         /**
@@ -629,6 +709,24 @@ declare global {
         prototype: HTMLAdcContentCardElement;
         new (): HTMLAdcContentCardElement;
     };
+    /**
+     * Global error display component with callout and toast variants.
+     * Use multiple instances to separate error handling:
+     * - One global toast handler for unhandled errors
+     * - Specific callout handlers for expected errors in forms
+     * @example ```html
+     * <!-- Global toast handler -->
+     * <adc-custom-error variant="toast" global handle-unhandled></adc-custom-error>
+     * <!-- Form-specific callout handler -->
+     * <adc-custom-error variant="callout" keys='[{"key": "INVALID_CREDENTIALS", "severity": "error"}]'></adc-custom-error>
+     * ```
+     */
+    interface HTMLAdcCustomErrorElement extends Components.AdcCustomError, HTMLStencilElement {
+    }
+    var HTMLAdcCustomErrorElement: {
+        prototype: HTMLAdcCustomErrorElement;
+        new (): HTMLAdcCustomErrorElement;
+    };
     interface HTMLAdcDividerElement extends Components.AdcDivider, HTMLStencilElement {
     }
     var HTMLAdcDividerElement: {
@@ -799,6 +897,20 @@ declare global {
         prototype: HTMLAdcSiteHeaderElement;
         new (): HTMLAdcSiteHeaderElement;
     };
+    /**
+     * Skeleton loader component for placeholder content while loading
+     * @example <adc-skeleton variant="text" />
+     * <adc-skeleton variant="circular" width="48px" height="48px" />
+     * <adc-skeleton variant="rectangular" height="200px" />
+     * <adc-skeleton variant="button" />
+     * <adc-skeleton variant="input" />
+     */
+    interface HTMLAdcSkeletonElement extends Components.AdcSkeleton, HTMLStencilElement {
+    }
+    var HTMLAdcSkeletonElement: {
+        prototype: HTMLAdcSkeletonElement;
+        new (): HTMLAdcSkeletonElement;
+    };
     interface HTMLAdcStarRatingElementEventMap {
         "adcRate": number;
     }
@@ -854,6 +966,7 @@ declare global {
         "adc-callout": HTMLAdcCalloutElement;
         "adc-code-block": HTMLAdcCodeBlockElement;
         "adc-content-card": HTMLAdcContentCardElement;
+        "adc-custom-error": HTMLAdcCustomErrorElement;
         "adc-divider": HTMLAdcDividerElement;
         "adc-dropdown-menu": HTMLAdcDropdownMenuElement;
         "adc-feature-card": HTMLAdcFeatureCardElement;
@@ -875,6 +988,7 @@ declare global {
         "adc-share-buttons": HTMLAdcShareButtonsElement;
         "adc-site-footer": HTMLAdcSiteFooterElement;
         "adc-site-header": HTMLAdcSiteHeaderElement;
+        "adc-skeleton": HTMLAdcSkeletonElement;
         "adc-star-rating": HTMLAdcStarRatingElement;
         "adc-table-block": HTMLAdcTableBlockElement;
         "adc-testimonial-card": HTMLAdcTestimonialCardElement;
@@ -1025,6 +1139,49 @@ declare namespace LocalJSX {
           * @default ""
          */
         "title"?: string;
+    }
+    /**
+     * Global error display component with callout and toast variants.
+     * Use multiple instances to separate error handling:
+     * - One global toast handler for unhandled errors
+     * - Specific callout handlers for expected errors in forms
+     * @example ```html
+     * <!-- Global toast handler -->
+     * <adc-custom-error variant="toast" global handle-unhandled></adc-custom-error>
+     * <!-- Form-specific callout handler -->
+     * <adc-custom-error variant="callout" keys='[{"key": "INVALID_CREDENTIALS", "severity": "error"}]'></adc-custom-error>
+     * ```
+     */
+    interface AdcCustomError {
+        /**
+          * Auto-dismiss timeout in ms (only for toast variant). 0 = no auto-dismiss
+          * @default 3000
+         */
+        "dismissTimeout"?: number;
+        /**
+          * If true, catches all errors not handled by specific key handlers
+          * @default false
+         */
+        "global"?: boolean;
+        /**
+          * If true, listens for unhandled promise rejections
+          * @default false
+         */
+        "handleUnhandled"?: boolean;
+        /**
+          * JSON array of error keys to handle. If empty and not global, shows warning.
+         */
+        "keys"?: string;
+        /**
+          * Maximum number of stacked toasts
+          * @default 5
+         */
+        "maxStack"?: number;
+        /**
+          * Display variant: callout (inline) or toast (floating notification)
+          * @default "toast"
+         */
+        "variant"?: "callout" | "toast";
     }
     interface AdcDivider {
     }
@@ -1296,6 +1453,43 @@ declare namespace LocalJSX {
          */
         "userMenuItems"?: AccessMenuItem1[];
     }
+    /**
+     * Skeleton loader component for placeholder content while loading
+     * @example <adc-skeleton variant="text" />
+     * <adc-skeleton variant="circular" width="48px" height="48px" />
+     * <adc-skeleton variant="rectangular" height="200px" />
+     * <adc-skeleton variant="button" />
+     * <adc-skeleton variant="input" />
+     */
+    interface AdcSkeleton {
+        /**
+          * Animation type
+          * @default "pulse"
+         */
+        "animation"?: "pulse" | "wave" | "none";
+        /**
+          * Custom height (CSS value). Defaults vary by variant
+         */
+        "height"?: string;
+        /**
+          * Number of lines for text variant
+          * @default 1
+         */
+        "lines"?: number;
+        /**
+          * Border radius override
+         */
+        "rounded"?: string;
+        /**
+          * Variant determines the shape of the skeleton
+          * @default "text"
+         */
+        "variant"?: "text" | "circular" | "rectangular" | "button" | "input";
+        /**
+          * Custom width (CSS value). Defaults vary by variant
+         */
+        "width"?: string;
+    }
     interface AdcStarRating {
         "average"?: number | null;
         /**
@@ -1379,6 +1573,7 @@ declare namespace LocalJSX {
         "adc-callout": AdcCallout;
         "adc-code-block": AdcCodeBlock;
         "adc-content-card": AdcContentCard;
+        "adc-custom-error": AdcCustomError;
         "adc-divider": AdcDivider;
         "adc-dropdown-menu": AdcDropdownMenu;
         "adc-feature-card": AdcFeatureCard;
@@ -1400,6 +1595,7 @@ declare namespace LocalJSX {
         "adc-share-buttons": AdcShareButtons;
         "adc-site-footer": AdcSiteFooter;
         "adc-site-header": AdcSiteHeader;
+        "adc-skeleton": AdcSkeleton;
         "adc-star-rating": AdcStarRating;
         "adc-table-block": AdcTableBlock;
         "adc-testimonial-card": AdcTestimonialCard;
@@ -1428,6 +1624,19 @@ declare module "@stencil/core" {
             "adc-callout": LocalJSX.AdcCallout & JSXBase.HTMLAttributes<HTMLAdcCalloutElement>;
             "adc-code-block": LocalJSX.AdcCodeBlock & JSXBase.HTMLAttributes<HTMLAdcCodeBlockElement>;
             "adc-content-card": LocalJSX.AdcContentCard & JSXBase.HTMLAttributes<HTMLAdcContentCardElement>;
+            /**
+             * Global error display component with callout and toast variants.
+             * Use multiple instances to separate error handling:
+             * - One global toast handler for unhandled errors
+             * - Specific callout handlers for expected errors in forms
+             * @example ```html
+             * <!-- Global toast handler -->
+             * <adc-custom-error variant="toast" global handle-unhandled></adc-custom-error>
+             * <!-- Form-specific callout handler -->
+             * <adc-custom-error variant="callout" keys='[{"key": "INVALID_CREDENTIALS", "severity": "error"}]'></adc-custom-error>
+             * ```
+             */
+            "adc-custom-error": LocalJSX.AdcCustomError & JSXBase.HTMLAttributes<HTMLAdcCustomErrorElement>;
             "adc-divider": LocalJSX.AdcDivider & JSXBase.HTMLAttributes<HTMLAdcDividerElement>;
             "adc-dropdown-menu": LocalJSX.AdcDropdownMenu & JSXBase.HTMLAttributes<HTMLAdcDropdownMenuElement>;
             "adc-feature-card": LocalJSX.AdcFeatureCard & JSXBase.HTMLAttributes<HTMLAdcFeatureCardElement>;
@@ -1449,6 +1658,15 @@ declare module "@stencil/core" {
             "adc-share-buttons": LocalJSX.AdcShareButtons & JSXBase.HTMLAttributes<HTMLAdcShareButtonsElement>;
             "adc-site-footer": LocalJSX.AdcSiteFooter & JSXBase.HTMLAttributes<HTMLAdcSiteFooterElement>;
             "adc-site-header": LocalJSX.AdcSiteHeader & JSXBase.HTMLAttributes<HTMLAdcSiteHeaderElement>;
+            /**
+             * Skeleton loader component for placeholder content while loading
+             * @example <adc-skeleton variant="text" />
+             * <adc-skeleton variant="circular" width="48px" height="48px" />
+             * <adc-skeleton variant="rectangular" height="200px" />
+             * <adc-skeleton variant="button" />
+             * <adc-skeleton variant="input" />
+             */
+            "adc-skeleton": LocalJSX.AdcSkeleton & JSXBase.HTMLAttributes<HTMLAdcSkeletonElement>;
             "adc-star-rating": LocalJSX.AdcStarRating & JSXBase.HTMLAttributes<HTMLAdcStarRatingElement>;
             "adc-table-block": LocalJSX.AdcTableBlock & JSXBase.HTMLAttributes<HTMLAdcTableBlockElement>;
             "adc-testimonial-card": LocalJSX.AdcTestimonialCard & JSXBase.HTMLAttributes<HTMLAdcTestimonialCardElement>;

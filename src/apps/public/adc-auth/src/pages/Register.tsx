@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { authApi, type AuthError } from "../utils/auth.ts";
+import { useTranslation } from "@ui-library/utils/i18n-react";
+import { showError, clearErrors } from "@ui-library/utils/error-handler";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -12,11 +14,11 @@ interface RegisterProps {
 }
 
 export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
+	const { t, ready } = useTranslation({ namespace: "adc-auth", autoLoad: true });
 	const [username, setUsername] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
-	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 
 	/**
@@ -31,15 +33,15 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		setError(null);
+		clearErrors();
 
 		if (password !== confirmPassword) {
-			setError("Las contraseñas no coinciden");
+			showError({ errorKey: "PASSWORDS_MISMATCH", message: t("register.passwordsMismatch"), severity: "error" });
 			return;
 		}
 
 		if (password.length < 8) {
-			setError("La contraseña debe tener al menos 8 caracteres");
+			showError({ errorKey: "PASSWORD_TOO_SHORT", message: t("register.passwordTooShort"), severity: "error" });
 			return;
 		}
 
@@ -54,7 +56,11 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 			}
 		} catch (err) {
 			const authErr = err as AuthError;
-			setError(authErr.message || "Error al crear la cuenta");
+			// Usar traducción de error si existe
+			const errorKey = authErr.errorKey || "REGISTER_ERROR";
+			const translated = t(`errors.${errorKey}`);
+			const message = translated !== `errors.${errorKey}` ? translated : authErr.message || t("errors.REGISTER_ERROR");
+			showError({ errorKey, message, severity: "error" });
 		} finally {
 			setLoading(false);
 		}
@@ -70,35 +76,41 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 		}
 		return base;
 	};
+	// Skeleton mientras cargan las traducciones
+	if (!ready) {
+		return (
+			<div className="w-full max-w-md">
+				<adc-blur-panel variant="elevated" glow class="w-full bg-surface">
+					<adc-skeleton variant="rectangular" height="364px" />
+				</adc-blur-panel>
+			</div>
+		);
+	}
 
 	return (
 		<div className="w-full max-w-md">
 			<adc-blur-panel variant="elevated" glow class="w-full bg-surface">
-				<h1 className="font-heading text-2xl font-bold text-center mb-6 text-text">Crear Cuenta</h1>
+				<h1 className="font-heading text-2xl font-bold text-center mb-6 text-text">{t("register.title") || "Crear Cuenta"}</h1>
 
-				{error && (
-					<adc-callout tone="error" class="mb-4">
-						{error}
-					</adc-callout>
-				)}
+				<adc-custom-error variant="callout" global class="mb-4" />
 
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
 						<label htmlFor="username" className="block text-sm font-medium mb-1 text-text">
-							Nombre de Usuario
+							{t("register.username") || "Nombre de Usuario"}
 						</label>
 						<adc-input
 							inputId="username"
 							type="text"
 							value={username}
-							placeholder="tu_usuario"
+							placeholder={t("register.usernamePlaceholder") || "tu_usuario"}
 							onInput={(e) => setUsername((e.target as HTMLInputElement).value)}
 						/>
 					</div>
 
 					<div>
 						<label htmlFor="email" className="block text-sm font-medium mb-1 text-text">
-							Email
+							{t("register.email") || "Email"}
 						</label>
 						<adc-input
 							inputId="email"
@@ -111,7 +123,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 
 					<div>
 						<label htmlFor="password" className="block text-sm font-medium mb-1 text-text">
-							Contraseña
+							{t("register.password") || "Contraseña"}
 						</label>
 						<adc-input
 							inputId="password"
@@ -124,7 +136,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 
 					<div>
 						<label htmlFor="confirmPassword" className="block text-sm font-medium mb-1 text-text">
-							Confirmar Contraseña
+							{t("register.confirmPassword") || "Confirmar Contraseña"}
 						</label>
 						<adc-input
 							inputId="confirmPassword"
@@ -135,22 +147,22 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 						/>
 					</div>
 
-					<adc-button type="submit" class="w-full flex justify-end mt-8" disabled={loading}>
-						{loading ? "Creando cuenta..." : "Crear Cuenta"}
+					<adc-button type="submit" class="w-full flex justify-end mt-8" disabled={loading ? true : undefined} variant="primary">
+						{loading ? t("register.submitting") || "Creando cuenta..." : t("register.submit") || "Crear Cuenta"}
 					</adc-button>
 				</form>
 
 				<div className="mt-6 text-center">
 					<p className="text-sm text-muted">
-						¿Ya tienes cuenta?{" "}
+						{t("register.hasAccount") || "¿Ya tienes cuenta?"}{" "}
 						<button type="button" onClick={onNavigateToLogin} className="text-accent hover:underline font-medium">
-							Inicia sesión
+							{t("register.login") || "Inicia sesión"}
 						</button>
 					</p>
 				</div>
 
 				<div className="mt-6 pt-6 border-t border-divider">
-					<p className="text-sm text-center text-muted mb-4">O regístrate con</p>
+					<p className="text-sm text-center text-muted mb-4">{t("register.orRegisterWith") || "O regístrate con"}</p>
 					<div className="flex gap-3 justify-center">
 						<a
 							href={getOAuthUrl("discord")}

@@ -1,0 +1,51 @@
+export default {
+	login: {
+		title: "Iniciar Sesión",
+		username: "Usuario o Email",
+		password: "Contraseña",
+		submit: "Ingresar",
+		submitting: "Ingresando...",
+		noAccount: "¿No tienes cuenta?",
+		register: "Regístrate",
+		orContinueWith: "O continúa con"
+	},
+	register: {
+		title: "Crear Cuenta",
+		username: "Nombre de Usuario",
+		usernamePlaceholder: "tu_usuario",
+		email: "Email",
+		password: "Contraseña",
+		confirmPassword: "Confirmar Contraseña",
+		submit: "Crear Cuenta",
+		submitting: "Creando cuenta...",
+		hasAccount: "¿Ya tienes cuenta?",
+		login: "Inicia sesión",
+		orRegisterWith: "O regístrate con",
+		passwordsMismatch: "Las contraseñas no coinciden",
+		passwordTooShort: "La contraseña debe tener al menos 8 caracteres"
+	},
+	errors: {
+		MISSING_CREDENTIALS: "Usuario y contraseña son requeridos",
+		INVALID_CREDENTIALS: "Credenciales inválidas",
+		ACCOUNT_BLOCKED: "Cuenta bloqueada temporalmente",
+		MISSING_FIELDS: "Usuario, email y contraseña son requeridos",
+		INVALID_USERNAME: "El nombre de usuario debe tener entre 3 y 30 caracteres",
+		WEAK_PASSWORD: "La contraseña debe tener al menos 8 caracteres",
+		INVALID_EMAIL: "El email no es válido",
+		USERNAME_EXISTS: "El nombre de usuario ya está en uso",
+		EMAIL_EXISTS: "El email ya está registrado",
+		USERNAME_TAKEN: "El nombre de usuario ya está en uso",
+		EMAIL_TAKEN: "El email ya está registrado",
+		PASSWORDS_MISMATCH: "Las contraseñas no coinciden",
+		PASSWORD_TOO_SHORT: "La contraseña debe tener al menos 8 caracteres",
+		REGISTER_ERROR: "Error al crear la cuenta",
+		NO_SESSION: "No hay sesión activa",
+		INVALID_SESSION: "Sesión inválida",
+		NO_REFRESH_TOKEN: "No hay token de refresco",
+		INVALID_REFRESH_TOKEN: "Token de refresco inválido",
+		LOCATION_CHANGE: "Sesión invalidada por cambio de ubicación",
+		REFRESH_FAILED: "Error al refrescar tokens",
+		AUTH_ERROR: "Error durante la autenticación",
+		SERVICE_UNAVAILABLE: "Servicio de identidad no disponible"
+	}
+};

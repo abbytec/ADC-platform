@@ -24,9 +24,10 @@ export interface SessionResponse {
 
 export interface AuthError {
 	message: string;
-	code?: string;
+	errorKey?: string;
 	blockedUntil?: number;
 	permanent?: boolean;
+	data?: Record<string, unknown>;
 }
 
 class AuthAPI {
@@ -45,9 +46,11 @@ class AuthAPI {
 
 		if (!response.ok) {
 			const error: AuthError = {
-				message: data.error || "Error de autenticación",
-				blockedUntil: data.blockedUntil,
-				permanent: data.permanent,
+				message: data.message || data.error || "Error de autenticación",
+				errorKey: data.errorKey,
+				blockedUntil: data.data?.blockedUntil,
+				permanent: data.data?.permanent,
+				data: data.data,
 			};
 			throw error;
 		}
@@ -73,7 +76,9 @@ class AuthAPI {
 
 		if (!response.ok) {
 			const error: AuthError = {
-				message: data.error || "Error al crear la cuenta",
+				message: data.message || data.error || "Error al crear la cuenta",
+				errorKey: data.errorKey,
+				data: data.data,
 			};
 			throw error;
 		}

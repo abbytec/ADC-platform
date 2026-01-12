@@ -27,7 +27,7 @@ export default class LangManagerService extends BaseService implements ILangMana
 		this.logger.logOk("LangManagerService detenido");
 	}
 
-	async registerNamespace(namespace: string, appDir: string): Promise<void> {
+	async registerNamespace(namespace: string, appDir: string, dependencies?: string[]): Promise<void> {
 		const i18nDir = path.join(appDir, "i18n");
 
 		try {
@@ -84,9 +84,10 @@ export default class LangManagerService extends BaseService implements ILangMana
 			appDir,
 			locales,
 			translations,
+			dependencies,
 		});
 
-		this.logger.logOk(`[i18n] ${namespace}: ${locales.join(", ")}`);
+		this.logger.logOk(`[i18n] ${namespace}: ${locales.join(", ")}${dependencies?.length ? ` (deps: ${dependencies.join(", ")})` : ""}`);
 	}
 
 	async unregisterNamespace(namespace: string): Promise<void> {
@@ -140,19 +141,62 @@ export default class LangManagerService extends BaseService implements ILangMana
 			return {};
 		}
 
+		// Obtener traducciones base de dependencias (deep merge)
+		let result: TranslationDict = {};
+		if (ns.dependencies?.length) {
+			for (const depName of ns.dependencies) {
+				const depTranslations = this.#getRawTranslations(depName, targetLocale);
+				result = this.#deepMerge(result, depTranslations);
+			}
+		}
+
+		// Obtener traducciones propias del namespace
+		const ownTranslations = this.#getRawTranslations(namespace, targetLocale);
+
+		// Merge: las propias sobreescriben las de dependencias
+		return this.#deepMerge(result, ownTranslations);
+	}
+
+	/**
+	 * Obtiene traducciones sin resolver dependencias (para uso interno)
+	 */
+	#getRawTranslations(namespace: string, locale: string): TranslationDict {
+		const ns = this.namespaces.get(namespace);
+		if (!ns) return {};
+
 		// Intentar con el locale exacto
-		if (ns.translations[targetLocale]) {
-			return ns.translations[targetLocale];
+		if (ns.translations[locale]) {
+			return ns.translations[locale];
 		}
 
 		// Intentar con locale base
-		const baseLocale = targetLocale.split("-")[0];
+		const baseLocale = locale.split("-")[0];
 		if (ns.translations[baseLocale]) {
 			return ns.translations[baseLocale];
 		}
 
 		// Fallback
 		return ns.translations[this.fallbackLocale] || {};
+	}
+
+	/**
+	 * Deep merge de dos objetos de traducciones
+	 */
+	#deepMerge(target: TranslationDict, source: TranslationDict): TranslationDict {
+		const result: TranslationDict = { ...target };
+
+		for (const key of Object.keys(source)) {
+			const sourceVal = source[key];
+			const targetVal = result[key];
+
+			if (typeof sourceVal === "object" && sourceVal !== null && typeof targetVal === "object" && targetVal !== null) {
+				result[key] = this.#deepMerge(targetVal as TranslationDict, sourceVal as TranslationDict);
+			} else {
+				result[key] = sourceVal;
+			}
+		}
+
+		return result;
 	}
 
 	getBundledTranslations(namespaces: string[], locale?: string): Record<string, TranslationDict> {

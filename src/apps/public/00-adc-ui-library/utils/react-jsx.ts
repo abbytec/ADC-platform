@@ -35,6 +35,14 @@ interface AdcIntrinsicElements {
 		href?: string;
 		title?: string;
 	}>;
+	"adc-custom-error": WebComponentProps<{
+		variant?: "callout" | "toast";
+		global?: boolean;
+		handleUnhandled?: boolean;
+		keys?: string;
+		dismissTimeout?: number;
+		maxStack?: number;
+	}>;
 	"adc-divider": WebComponentProps;
 	"adc-dropdown-menu": WebComponentProps<{ items?: unknown[]; alignState?: "left" | "right"; openOnHover?: boolean }>;
 	"adc-feature-card": WebComponentProps<{ staticRender?: boolean; title?: string }>;

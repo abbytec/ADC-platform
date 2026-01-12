@@ -5,6 +5,7 @@
 		"framework": "stencil",
 		"outputDir": "dist-ui",
 		"serviceWorker": true,
+		"i18n": true,
 		"exports": {
 			"loader": "./loader",
 			"utils": "./utils",

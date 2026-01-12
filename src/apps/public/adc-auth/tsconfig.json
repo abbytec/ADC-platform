@@ -11,5 +11,12 @@
 			"@common/*": ["./../../../common/*"]
 		}
 	},
-	"include": ["src/**/*", "*.ts", "../../../../globals.d.ts", "./../00-adc-ui-library/utils/react-jsx.d.ts"]
+	"include": [
+		"src/**/*",
+		"*.ts",
+		"../../../../globals.d.ts",
+		"./../00-adc-ui-library/utils/react-jsx.d.ts",
+		"./../00-adc-ui-library/utils/i18n-react.ts",
+		"./../00-adc-ui-library/utils/error-handler.ts"
+	]
 }

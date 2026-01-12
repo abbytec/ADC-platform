@@ -459,7 +459,7 @@ export default class EndpointManagerService extends BaseService {
 				}
 
 				// Capturar HttpError para errores de negocio
-				if (error instanceof HttpError) {
+				else if (error instanceof HttpError) {
 					reply.status(error.status).send({
 						error: error.errorKey,
 						message: error.message,

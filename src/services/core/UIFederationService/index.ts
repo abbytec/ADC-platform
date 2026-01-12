@@ -3,7 +3,6 @@ import * as path from "node:path";
 import { BaseService } from "../../BaseService.js";
 import type { RegisteredUIModule } from "./types.js";
 import type { ImportMap, UIModuleConfig } from "../../../interfaces/modules/IUIModule.js";
-import type { IHttpServerProvider, IHostBasedHttpProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
 import type { ILangManagerService } from "../LangManagerService/types.js";
 
 // Utilidades
@@ -15,6 +14,7 @@ import { generateServiceWorker } from "./utils/service-worker-generator.js";
 import { getStrategy, isFrameworkSupported, getSupportedFrameworks, parseFramework } from "./strategies/index.js";
 import type { IBuildContext } from "./strategies/types.js";
 import { generateI18nClientCode } from "./utils/i18n-generator.ts";
+import FastifyServerProvider from "../../../providers/http/fastify-server/index.ts";
 
 const DEFAULT_NAMESPACE = "default";
 
@@ -34,7 +34,7 @@ export default class UIFederationService extends BaseService {
 	private readonly hostRegistry = new Map<string, { namespace: string; moduleName: string; directory: string }>();
 
 	// Expuesto para IUIFederationService
-	#httpProvider: IHttpServerProvider | IHostBasedHttpProvider | null = null;
+	#httpProvider: FastifyServerProvider | null = null;
 
 	constructor(kernel: any, options?: any) {
 		super(kernel, options);
@@ -54,7 +54,7 @@ export default class UIFederationService extends BaseService {
 
 		try {
 			// Usamos Fastify con host-based routing en todos los entornos
-			this.#httpProvider = this.getMyProvider<any>("fastify-server");
+			this.#httpProvider = this.getMyProvider<FastifyServerProvider>("fastify-server");
 		} catch (error: any) {
 			this.logger.logError(`Error cargando HttpServerProvider: ${error.message}`);
 			throw error;
@@ -202,7 +202,15 @@ export default class UIFederationService extends BaseService {
 			await this.#serveModule(module, namespace, isDevelopment);
 
 			// Registrar traducciones i18n si está habilitado
-			if (uiConfig.i18n && this.langManager) await this.langManager.registerNamespace(name, appDir);
+			// Pasar uiDependencies como dependencias de i18n para deep merge
+			if (uiConfig.i18n && this.langManager) {
+				const i18nDependencies = uiConfig.uiDependencies?.filter((dep) => {
+					// Solo incluir dependencias que tengan i18n habilitado
+					const depModule = namespaceModules.get(dep);
+					return depModule?.uiConfig.i18n;
+				});
+				await this.langManager.registerNamespace(name, appDir, i18nDependencies);
+			}
 
 			// Generar y registrar i18n client si está habilitado (solo para layouts/hosts)
 			if (uiConfig.i18n && isHost) await this.#registerI18nClientEndpoint(namespace);
@@ -300,12 +308,11 @@ export default class UIFederationService extends BaseService {
 		// En producción: usar host-based routing con Fastify
 		if (!this.#httpProvider || !module.outputPath) return;
 
-		const hostProvider = this.#httpProvider as IHostBasedHttpProvider;
 		const hosting = module.uiConfig.hosting;
 
 		// Si el módulo tiene configuración de hosting, registrar hosts virtuales
-		if (hosting && hostProvider.supportsHostRouting?.()) {
-			await this.#registerHostsForModule(module, namespace, hostProvider);
+		if (hosting && this.#httpProvider.supportsHostRouting()) {
+			await this.#registerHostsForModule(module, namespace, this.#httpProvider);
 		} else {
 			// Fallback: servir estáticamente por path (como en desarrollo pero sin dev server)
 			const urlPath = `/${namespace}/${module.name}`;
@@ -317,7 +324,7 @@ export default class UIFederationService extends BaseService {
 	/**
 	 * Registra hosts virtuales para un módulo en producción
 	 */
-	async #registerHostsForModule(module: RegisteredUIModule, namespace: string, hostProvider: IHostBasedHttpProvider): Promise<void> {
+	async #registerHostsForModule(module: RegisteredUIModule, namespace: string, hostProvider: FastifyServerProvider): Promise<void> {
 		const hosting = module.uiConfig.hosting;
 		if (!hosting || !module.outputPath) return;
 
@@ -611,76 +618,77 @@ export default class UIFederationService extends BaseService {
 		if (!this.#httpProvider) return;
 
 		// Endpoint para import map por namespace
-		this.#httpProvider.registerRoute("GET", "/:namespace/importmap.json", (req: any, res: any) => {
+		this.#httpProvider.registerRoute("GET", "/:namespace/importmap.json", (req: any, reply: any) => {
 			const namespace = req.params?.namespace || DEFAULT_NAMESPACE;
 			const importMap = this.importMaps.get(namespace) || { imports: {} };
-			res.setHeader("Content-Type", "application/json");
-			res.json(importMap);
+			reply.header("Content-Type", "application/json");
+			reply.send(importMap);
 		});
 
 		// Endpoint legacy para import map (namespace default)
-		this.#httpProvider.registerRoute("GET", "/importmap.json", (_req: any, res: any) => {
+		this.#httpProvider.registerRoute("GET", "/importmap.json", (_req: any, reply: any) => {
 			const importMap = this.importMaps.get(DEFAULT_NAMESPACE) || { imports: {} };
-			res.setHeader("Content-Type", "application/json");
-			res.json(importMap);
+			reply.header("Content-Type", "application/json");
+			reply.send(importMap);
 		});
 
 		// Endpoint para listar namespaces disponibles
-		this.#httpProvider.registerRoute("GET", "/api/ui/namespaces", (_req: any, res: any) => {
-			res.json({
+		this.#httpProvider.registerRoute("GET", "/api/ui/namespaces", (_req: any, reply: any) => {
+			reply.send({
 				namespaces: Array.from(this.registeredModules.keys()),
 				default: DEFAULT_NAMESPACE,
 			});
 		});
 
 		// Endpoints i18n
-		this.#httpProvider.registerRoute("GET", "/api/i18n/:namespace", (req: any, res: any) => {
+		this.#httpProvider.registerRoute("GET", "/api/i18n/:namespace", (req: any, reply: any) => {
 			const namespace = req.params?.namespace;
 			const locale = req.query?.locale;
 
 			if (!this.langManager) {
-				res.status(503).json({ error: "LangManagerService no disponible" });
+				reply.code(503).send({ error: "LangManagerService no disponible" });
 				return;
 			}
 
 			const translations = this.langManager.getTranslations(namespace, locale);
-			res.setHeader("Content-Type", "application/json");
-			res.json(translations);
+			reply.header("Content-Type", "application/json");
+			reply.send(translations);
 		});
 
-		this.#httpProvider.registerRoute("GET", "/api/i18n", (req: any, res: any) => {
+		this.#httpProvider.registerRoute("GET", "/api/i18n", (req: any, reply: any) => {
 			const namespaces = (req.query?.namespaces || "").split(",").filter(Boolean);
 			const locale = req.query?.locale;
 
 			if (!this.langManager) {
-				res.status(503).json({ error: "LangManagerService no disponible" });
+				reply.code(503).send({ error: "LangManagerService no disponible" });
 				return;
 			}
 
 			if (namespaces.length === 0) {
-				res.json(this.langManager.getStats());
+				reply.send(this.langManager.getStats());
 				return;
 			}
 
 			const translations = this.langManager.getBundledTranslations(namespaces, locale);
-			res.setHeader("Content-Type", "application/json");
-			res.json(translations);
+			reply.header("Content-Type", "application/json");
+			reply.send(translations);
 		});
 
 		// Ruta raíz: solo registrar en desarrollo (en producción, Fastify maneja "/" por host)
 		if (this.isDevelopment) {
-			this.#httpProvider.registerRoute("GET", "/", (_req: any, res: any) => {
+			this.#httpProvider.registerRoute("GET", "/", (_req: any, reply: any) => {
 				const layoutModule = this.#getHostModule(DEFAULT_NAMESPACE);
 
 				// En desarrollo: redirigir al dev server de Vite
 				if (layoutModule?.uiConfig.devPort) {
-					res.redirect(`http://localhost:${layoutModule.uiConfig.devPort}/`);
+					reply.redirect(`http://localhost:${layoutModule.uiConfig.devPort}/`);
 					return;
 				}
 
 				// Sin devPort: mostrar lista de namespaces
 				const namespaces = Array.from(this.registeredModules.keys());
-				res.send(`
+				reply.header("Content-Type", "text/html");
+				reply.send(`
 					<!DOCTYPE html>
 					<html>
 					<head><title>UI Namespaces</title></head>
@@ -736,9 +744,9 @@ export default class UIFederationService extends BaseService {
 		try {
 			const i18nClientContent = generateI18nClientCode(layoutModule, namespaceModules, this.port);
 			const i18nPath = layoutModule.uiConfig.devPort ? "/adc-i18n.js" : `/${namespace}/adc-i18n.js`;
-			this.#httpProvider.registerRoute("GET", i18nPath, (_req: any, res: any) => {
-				res.setHeader("Content-Type", "application/javascript");
-				res.send(i18nClientContent);
+			this.#httpProvider.registerRoute("GET", i18nPath, (_req: any, reply: any) => {
+				reply.header("Content-Type", "application/javascript");
+				reply.send(i18nClientContent);
 			});
 			this.logger.logDebug(`i18n Client [${namespace}] registrado en ${i18nPath}`);
 		} catch (error: any) {
@@ -757,10 +765,10 @@ export default class UIFederationService extends BaseService {
 		try {
 			const swContent = generateServiceWorker(layoutModule, namespaceModules, this.port);
 			const swPath = layoutModule.uiConfig.devPort ? "/adc-sw.js" : `/${namespace}/adc-sw.js`;
-			this.#httpProvider.registerRoute("GET", swPath, (_req: any, res: any) => {
-				res.setHeader("Content-Type", "application/javascript");
-				res.setHeader("Service-Worker-Allowed", "/");
-				res.send(swContent);
+			this.#httpProvider.registerRoute("GET", swPath, (_req: any, reply: any) => {
+				reply.header("Content-Type", "application/javascript");
+				reply.header("Service-Worker-Allowed", "/");
+				reply.send(swContent);
 			});
 			this.logger.logDebug(`Service Worker [${namespace}] registrado en ${swPath}`);
 		} catch (error: any) {

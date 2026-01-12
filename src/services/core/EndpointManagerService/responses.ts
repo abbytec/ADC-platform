@@ -1,22 +1,13 @@
+import ADCCustomError from "../../../common/types/ADCCustomError.js";
+
 /**
  * HTTP Error class for throwing business errors with HTTP semantics
  */
-export class HttpError extends Error {
-	public readonly status: number;
-	public readonly errorKey: string;
-	public readonly data?: Record<string, unknown>;
+export class HttpError extends ADCCustomError {
+	public readonly name = "HttpError";
 
 	constructor(status: number, errorKey: string, message: string, data?: Record<string, unknown>) {
-		super(message);
-		this.name = "HttpError";
-		this.status = status;
-		this.errorKey = errorKey;
-		this.data = data;
-		if (Error.captureStackTrace) Error.captureStackTrace(this, HttpError);
-	}
-
-	toJSON() {
-		return { status: this.status, errorKey: this.errorKey, message: this.message, data: this.data };
+		super(status, errorKey, message, data);
 	}
 }
 

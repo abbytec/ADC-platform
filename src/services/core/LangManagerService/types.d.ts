@@ -18,6 +18,8 @@ export interface RegisteredNamespace {
 	appDir: string;
 	locales: string[];
 	translations: NamespaceTranslations;
+	/** Dependencias de i18n (namespaces cuyos translations se heredan) */
+	dependencies?: string[];
 }
 
 /**
@@ -26,8 +28,9 @@ export interface RegisteredNamespace {
 export interface ILangManagerService {
 	/**
 	 * Registra las traducciones de una app
+	 * @param dependencies - Namespaces cuyas traducciones se heredarán (deep merge)
 	 */
-	registerNamespace(namespace: string, appDir: string): Promise<void>;
+	registerNamespace(namespace: string, appDir: string, dependencies?: string[]): Promise<void>;
 
 	/**
 	 * Desregistra las traducciones de una app
@@ -41,6 +44,7 @@ export interface ILangManagerService {
 
 	/**
 	 * Obtiene todas las traducciones de un namespace para un locale
+	 * (incluye traducciones de dependencias con deep merge)
 	 */
 	getTranslations(namespace: string, locale?: string): TranslationDict;
 
@@ -74,4 +78,3 @@ export interface ILangManagerService {
 		registeredNamespaces: string[];
 	};
 }
-

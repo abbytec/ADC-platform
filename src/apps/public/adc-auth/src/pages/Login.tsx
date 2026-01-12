@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { authApi, type AuthError } from "../utils/auth.ts";
+import { useTranslation } from "@ui-library/utils/i18n-react";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -12,6 +13,7 @@ interface LoginProps {
 }
 
 export function Login({ onNavigateToRegister, originPath }: LoginProps) {
+	const { t, ready } = useTranslation({ namespace: "adc-auth", autoLoad: true });
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,10 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 			}
 		} catch (err) {
 			const authErr = err as AuthError;
-			setError(authErr.message || "Error al iniciar sesión");
+			// Usar traducción de error si existe
+			const errorKey = authErr.errorKey || "AUTH_ERROR";
+			const translated = t(`errors.${errorKey}`);
+			setError(translated !== `errors.${errorKey}` ? translated : authErr.message || t("errors.AUTH_ERROR"));
 		} finally {
 			setLoading(false);
 		}
@@ -60,10 +65,21 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 		return base;
 	};
 
+	// Skeleton mientras cargan las traducciones
+	if (!ready) {
+		return (
+			<div className="w-full max-w-md">
+				<adc-blur-panel variant="elevated" glow class="w-full bg-surface">
+					<adc-skeleton variant="rectangular" height="364px" />
+				</adc-blur-panel>
+			</div>
+		);
+	}
+
 	return (
 		<div className="w-full max-w-md">
 			<adc-blur-panel variant="elevated" glow class="w-full bg-surface">
-				<h1 className="font-heading text-2xl font-bold text-center mb-6 text-text">Iniciar Sesión</h1>
+				<h1 className="font-heading text-2xl font-bold text-center mb-6 text-text">{t("login.title")}</h1>
 
 				{error && (
 					<adc-callout tone="error" class="mb-4">
@@ -74,7 +90,7 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
 						<label htmlFor="username" className="block text-sm font-medium mb-1 text-text">
-							Usuario o Email
+							{t("login.username")}
 						</label>
 						<adc-input
 							inputId="username"
@@ -87,7 +103,7 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 
 					<div>
 						<label htmlFor="password" className="block text-sm font-medium mb-1 text-text">
-							Contraseña
+							{t("login.password")}
 						</label>
 						<adc-input
 							inputId="password"
@@ -99,21 +115,21 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 					</div>
 
 					<adc-button type="submit" class="w-full flex justify-end mt-8" disabled={loading} variant="primary">
-						{loading ? "Ingresando..." : "Ingresar"}
+						{loading ? t("login.submitting") : t("login.submit")}
 					</adc-button>
 				</form>
 
 				<div className="mt-6 text-center">
 					<p className="text-sm text-muted">
-						¿No tienes cuenta?{" "}
+						{t("login.noAccount")}{" "}
 						<button type="button" onClick={onNavigateToRegister} className="text-accent hover:underline font-medium">
-							Regístrate
+							{t("login.register")}
 						</button>
 					</p>
 				</div>
 
 				<div className="mt-6 pt-6 border-t border-divider">
-					<p className="text-sm text-center text-muted mb-4">O continúa con</p>
+					<p className="text-sm text-center text-muted mb-4">{t("login.orContinueWith")}</p>
 					<div className="flex gap-3 justify-center">
 						<a
 							href={getOAuthUrl("discord")}
