@@ -1,19 +1,14 @@
-import { Redis } from "ioredis";
+import { RedisClient } from "bun";
 import { BaseProvider, ProviderType } from "../../BaseProvider.js";
 
 /**
  * Configuración del RedisProvider
  */
 export interface RedisProviderConfig {
-	/** Host del servidor Redis (default: localhost) */
 	host?: string;
-	/** Puerto del servidor Redis (default: 6379) */
 	port?: number;
-	/** Password de Redis (opcional) */
 	password?: string;
-	/** Base de datos a usar (default: 0) */
 	db?: number;
-	/** Prefijo para las claves (default: "adc:") */
 	keyPrefix?: string;
 }
 
@@ -21,66 +16,59 @@ export interface RedisProviderConfig {
  * Interface del Redis Provider
  */
 export interface IRedisProvider {
-	/** Cliente Redis para operaciones directas */
-	readonly client: Redis;
-
+	/** Cliente Redis nativo de Bun */
+	readonly client: RedisClient;
 	// Operaciones básicas
 	get(key: string): Promise<string | null>;
 	set(key: string, value: string, ttlSeconds?: number): Promise<void>;
 	del(key: string): Promise<void>;
 	exists(key: string): Promise<boolean>;
-
 	// Operaciones con TTL
 	setex(key: string, ttlSeconds: number, value: string): Promise<void>;
 	ttl(key: string): Promise<number>;
 	expire(key: string, ttlSeconds: number): Promise<boolean>;
-
 	// Operaciones con hash
 	hget(key: string, field: string): Promise<string | null>;
 	hset(key: string, field: string, value: string): Promise<void>;
 	hdel(key: string, field: string): Promise<void>;
 	hgetall(key: string): Promise<Record<string, string>>;
-
 	// Operaciones con sets
 	sadd(key: string, ...members: string[]): Promise<number>;
 	srem(key: string, ...members: string[]): Promise<number>;
 	smembers(key: string): Promise<string[]>;
 	sismember(key: string, member: string): Promise<boolean>;
-
 	// Operaciones de incremento
 	incr(key: string): Promise<number>;
 	incrby(key: string, increment: number): Promise<number>;
-
 	// Operaciones de patrón
 	keys(pattern: string): Promise<string[]>;
 	scan(cursor: number, pattern: string, count?: number): Promise<[string, string[]]>;
 }
 
 /**
- * RedisProvider - Cliente Redis para caché y colas
- *
- * Usa ioredis para conexión a Redis.
- * Soporta operaciones básicas, hashes, sets y TTL.
+ * RedisProvider - Cliente Redis nativo para Bun
+ * * Usa el cliente nativo de Bun (bun:redis).
  */
 export default class RedisProvider extends BaseProvider implements IRedisProvider {
 	public readonly name = "redis";
 	public readonly type = ProviderType.QUEUE_PROVIDER;
 
-	#client: Redis | null = null;
+	#client: RedisClient | null = null;
 	#config: RedisProviderConfig;
 
 	constructor(config?: RedisProviderConfig) {
 		super();
+		// Usamos Bun.env para acceso nativo y rápido a variables de entorno
 		this.#config = {
-			host: config?.host || process.env.REDIS_HOST || "localhost",
-			port: config?.port || parseInt(process.env.REDIS_PORT || "6379", 10),
-			password: config?.password || process.env.REDIS_PASSWORD || undefined,
-			db: config?.db || parseInt(process.env.REDIS_DB || "0", 10),
+			host: config?.host || Bun.env.REDIS_HOST || "localhost",
+			port: config?.port || parseInt(Bun.env.REDIS_PORT || "6379", 10),
+			password: config?.password || Bun.env.REDIS_PASSWORD || undefined,
+			db: config?.db || parseInt(Bun.env.REDIS_DB || "0", 10),
 			keyPrefix: config?.keyPrefix || "adc:",
 		};
 	}
 
-	get client(): Redis {
+	get client(): RedisClient {
 		if (!this.#client) {
 			throw new Error("RedisProvider no está inicializado");
 		}
@@ -90,32 +78,30 @@ export default class RedisProvider extends BaseProvider implements IRedisProvide
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
 
-		this.#client = new Redis({
-			host: this.#config.host,
-			port: this.#config.port,
-			password: this.#config.password,
-			db: this.#config.db,
-			keyPrefix: this.#config.keyPrefix,
-			retryStrategy: (times) => {
-				if (times > 3) {
-					this.logger.logError("Redis: máximo de reintentos alcanzado");
-					return null; // Stop retrying
-				}
-				return Math.min(times * 200, 2000);
-			},
-			maxRetriesPerRequest: 3,
+		// Construcción de la URL de conexión para Bun RedisClient
+		const { host, port, password, db } = this.#config;
+		let url = `redis://${host}:${port}`;
+		if (password) {
+			url = `redis://:${password}@${host}:${port}`;
+		}
+		if (db) {
+			url += `/${db}`;
+		}
+
+		// Inicialización del cliente nativo
+		this.#client = new RedisClient(url, {
+			// Opciones adicionales si fueran necesarias
 		});
 
-		// Manejar eventos
-		this.#client.on("error", (err) => {
-			this.logger.logError(`Redis error: ${err.message}`);
-		});
-
-		this.#client.on("connect", () => {
+		// Manejo de eventos (Bun RedisClient soporta una API similar a EventEmitter)
+		this.#client.onclose =(msg) => {
+			this.logger.logDebug(`${msg.message}`);
+		};
+		
+		this.#client.onconnect = () => {
 			this.logger.logDebug("Redis conectado");
-		});
+		};
 
-		// Verificar conexión
 		try {
 			await this.#client.ping();
 			this.logger.logOk(`RedisProvider iniciado (${this.#config.host}:${this.#config.port})`);
@@ -127,105 +113,111 @@ export default class RedisProvider extends BaseProvider implements IRedisProvide
 
 	async stop(kernelKey: symbol): Promise<void> {
 		await super.stop(kernelKey);
-
 		if (this.#client) {
-			await this.#client.quit();
+			// El cliente nativo usa quit() o close()
+			this.#client.close();
 			this.#client = null;
 		}
 	}
 
 	// === Operaciones básicas ===
-
 	async get(key: string): Promise<string | null> {
 		return this.client.get(key);
 	}
 
 	async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
+		const finalKey = this._k(key);
 		if (ttlSeconds) {
-			await this.client.setex(key, ttlSeconds, value);
+			// Bun soporta argumentos estándar de Redis
+			await this.client.set(finalKey, value, "EX", ttlSeconds);
 		} else {
-			await this.client.set(key, value);
+			await this.client.set(finalKey, value);
 		}
 	}
 
 	async del(key: string): Promise<void> {
-		await this.client.del(key);
+		await this.client.del(this._k(key));
 	}
 
 	async exists(key: string): Promise<boolean> {
-		const result = await this.client.exists(key);
-		return result === 1;
+		const result = await this.client.exists(this._k(key));
+		return result;
 	}
 
 	// === Operaciones con TTL ===
-
 	async setex(key: string, ttlSeconds: number, value: string): Promise<void> {
-		await this.client.setex(key, ttlSeconds, value);
+		await this.client.setex(this._k(key), ttlSeconds, value);
 	}
 
 	async ttl(key: string): Promise<number> {
-		return this.client.ttl(key);
+		return this.client.ttl(this._k(key));
 	}
 
 	async expire(key: string, ttlSeconds: number): Promise<boolean> {
-		const result = await this.client.expire(key, ttlSeconds);
+		const result = await this.client.expire(this._k(key), ttlSeconds);
 		return result === 1;
 	}
 
 	// === Operaciones con hash ===
-
 	async hget(key: string, field: string): Promise<string | null> {
-		return this.client.hget(key, field);
+		return this.client.hget(this._k(key), field);
 	}
 
 	async hset(key: string, field: string, value: string): Promise<void> {
-		await this.client.hset(key, field, value);
+		// hset devuelve el número de campos añadidos, pero la interfaz pide void
+		await this.client.hset(this._k(key), field, value);
 	}
 
 	async hdel(key: string, field: string): Promise<void> {
-		await this.client.hdel(key, field);
+		await this.client.hdel(this._k(key), field);
 	}
 
 	async hgetall(key: string): Promise<Record<string, string>> {
-		return this.client.hgetall(key);
+		return this.client.hgetall(this._k(key));
 	}
 
 	// === Operaciones con sets ===
-
 	async sadd(key: string, ...members: string[]): Promise<number> {
-		return this.client.sadd(key, ...members);
+		return this.client.sadd(this._k(key), ...members);
 	}
 
 	async srem(key: string, ...members: string[]): Promise<number> {
-		return this.client.srem(key, ...members);
+		return this.client.srem(this._k(key), ...members);
 	}
 
 	async smembers(key: string): Promise<string[]> {
-		return this.client.smembers(key);
+		return this.client.smembers(this._k(key));
 	}
 
 	async sismember(key: string, member: string): Promise<boolean> {
-		const result = await this.client.sismember(key, member);
-		return result === 1;
+		return await this.client.sismember(this._k(key), member);
 	}
 
 	// === Operaciones de incremento ===
-
 	async incr(key: string): Promise<number> {
-		return this.client.incr(key);
+		return this.client.incr(this._k(key));
 	}
 
 	async incrby(key: string, increment: number): Promise<number> {
-		return this.client.incrby(key, increment);
+		return this.client.incrby(this._k(key), increment);
 	}
 
 	// === Operaciones de patrón ===
-
 	async keys(pattern: string): Promise<string[]> {
-		return this.client.keys(pattern);
+		// Nota: keys usa el prefijo si se lo aplicamos
+		return this.client.keys(this._k(pattern));
 	}
 
 	async scan(cursor: number, pattern: string, count: number = 100): Promise<[string, string[]]> {
-		return this.client.scan(cursor, "MATCH", pattern, "COUNT", count);
+		return await this.client.scan(cursor.toString(), "MATCH", this._k(pattern), "COUNT", count);
+	}
+
+	/**
+	 * Helper privado para aplicar el prefijo manualmente,
+	 * ya que el cliente nativo de Bun podría no soportarlo transparentemente en config todavía.
+	 */
+	private _k(key: string): string {
+		if (!this.#config.keyPrefix) return key;
+		return `${this.#config.keyPrefix}${key}`;
 	}
 }
