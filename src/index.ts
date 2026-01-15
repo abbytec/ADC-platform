@@ -9,25 +9,32 @@ async function main() {
 
 	// --- Manejador de señales para cierre ordenado ---
 	let isShuttingDown = false;
-	let forceExitCount = 0;
+	let shutdownStartedAt = 0;
+
+	const FORCE_EXIT_WINDOW_MS = 1200; // humano, no ruido de hijos
 
 	const shutdownHandler = async (signal: string) => {
+		const now = Date.now();
+
+		// Segunda señal DURANTE shutdown
 		if (isShuttingDown) {
-			forceExitCount++;
-			if (forceExitCount >= 2) {
-				Logger.error(`Forzando salida inmediata (${signal})...`);
-				await killAllChildProcesses();
-				process.exit(1);
-			} else {
-				Logger.warn(`Cierre en progreso. Presiona ${signal} nuevamente para forzar la salida.`);
+			// Si llega muy rápido → es ruido de hijos
+			if (now - shutdownStartedAt < FORCE_EXIT_WINDOW_MS) {
+				Logger.warn(`Señal ${signal} ignorada (rebote de proceso hijo)`);
+				return;
 			}
-			return;
+
+			Logger.error(`Forzando salida inmediata (${signal})...`);
+			await killAllChildProcesses();
+			process.exit(1);
 		}
+
+		// Primer SIGINT real
 		isShuttingDown = true;
+		shutdownStartedAt = now;
 
 		Logger.info(`\nSeñal ${signal} recibida. Iniciando cierre ordenado...`);
 
-		// Timeout de 15 segundos para el cierre
 		const shutdownTimeout = setTimeout(async () => {
 			Logger.error("Timeout en el cierre. Matando todos los procesos hijos...");
 			await killAllChildProcesses();
@@ -35,16 +42,10 @@ async function main() {
 		}, 15000);
 
 		try {
-			// 1. Intentar detener el kernel de forma ordenada
-			try {
-				Logger.info("Deteniendo el kernel...");
-				await kernel.stop();
-				Logger.ok("Kernel detenido correctamente.");
-			} catch (kernelError: any) {
-				Logger.error(`Error durante el stop del kernel (la limpieza forzosa continuará): ${kernelError.message}`);
-			}
+			Logger.info("Deteniendo el kernel...");
+			await kernel.stop();
+			Logger.ok("Kernel detenido correctamente.");
 
-			// 2. Asegurar que todos los procesos hijos restantes mueran
 			Logger.info("Ejecutando limpieza forzosa final...");
 			await killAllChildProcesses();
 

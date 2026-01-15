@@ -29,6 +29,11 @@ pkill -9 -f "start-broker.js" 2>/dev/null && echo "✓ Brokers de Module Federat
 echo "Buscando procesos de ADC-platform..."
 pkill -9 -f "ADC-platform" 2>/dev/null && echo "✓ Procesos de ADC-platform terminados" || echo "✗ No se encontraron procesos de ADC-platform"
 
+# Matar procesos de Rspack (webpack-dev-server / rspack-dev-server)
+echo "Buscando procesos de Rspack..."
+pkill -9 -f "rspack" 2>/dev/null && echo "✓ Procesos de Rspack terminados" || echo "✗ No se encontraron procesos de Rspack"
+
+
 # Limpiar procesos zombies (intentar que el padre los limpie primero)
 echo "Limpiando procesos zombies..."
 zombie_count=$(ps aux | grep -E '\[.*\] <defunct>' | grep -v grep | wc -l)
