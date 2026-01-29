@@ -379,16 +379,17 @@ export abstract class RspackBaseStrategy extends BaseFrameworkStrategy {
 			publicPath = "'auto'";
 		}
 
+		// Generar configuración de static directories para devServer
+		// Incluye la carpeta public/ del módulo y las de sus uiDependencies
+		const staticDirs = this.buildStaticDirectories(context);
+
 		const devServerConfig = `
     devServer: {
         port: ${module.uiConfig.devPort},
         hot: ${hotReload},
         historyApiFallback: true,
         allowedHosts: 'all',
-        static: {
-            directory: '${normalizeForConfig(path.join(module.appDir, "public"))}',
-            publicPath: '/',
-        },
+        static: ${staticDirs},
         headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
@@ -542,6 +543,41 @@ ${exposesEntries}
   </body>
 </html>
 \`,`;
+	}
+
+	/**
+	 * Genera la configuración de directorios estáticos para devServer.
+	 * Incluye:
+	 * - /pub/ para la carpeta public/ del propio módulo
+	 * - /ui/ para las carpetas public/ de uiDependencies que sean UI libraries (stencil)
+	 */
+	protected buildStaticDirectories(context: IBuildContext): string {
+		const { module, registeredModules } = context;
+		const staticConfigs: string[] = [];
+
+		// 1. Carpeta public/ del propio módulo -> /pub/
+		const ownPublicDir = normalizeForConfig(path.join(module.appDir, "public"));
+		staticConfigs.push(`{
+            directory: '${ownPublicDir}',
+            publicPath: '/pub/',
+        }`);
+
+		// 2. Carpetas public/ de uiDependencies que sean UI libraries -> /ui/
+		const uiDependencies = module.uiConfig.uiDependencies || [];
+		for (const depName of uiDependencies) {
+			const depModule = registeredModules.get(depName);
+			if (depModule && depModule.uiConfig.framework === "stencil") {
+				const depPublicDir = normalizeForConfig(path.join(depModule.appDir, "public"));
+				staticConfigs.push(`{
+            directory: '${depPublicDir}',
+            publicPath: '/ui/',
+        }`);
+			}
+		}
+
+		return `[
+            ${staticConfigs.join(",\n            ")}
+        ]`;
 	}
 
 	/**

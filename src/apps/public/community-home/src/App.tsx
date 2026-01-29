@@ -59,5 +59,11 @@ export default function App() {
 		return <HomePage />;
 	}
 
-	return <div>{renderPage()}</div>;
+	return (
+		<div>
+			{/* Toast handler global para errores no manejados */}
+			<adc-custom-error variant="toast" global handle-unhandled />
+			{renderPage()}
+		</div>
+	);
 }

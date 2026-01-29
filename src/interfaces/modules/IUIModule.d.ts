@@ -20,6 +20,12 @@ interface UIHostingConfig {
 
 /**
  * Configuración de un módulo UI en config.json
+ *
+ * Si el módulo tiene una carpeta `public/`, su contenido se servirá automáticamente:
+ * - UI libraries (stencil): `/ui/`
+ * - Otros módulos: `/pub/`
+ *
+ * Si tiene `uiDependencies`, también se sirven los assets públicos de esas dependencias.
  */
 export interface UIModuleConfig {
 	/** Nombre del módulo en el import map (sin prefijo "web-") */

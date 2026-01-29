@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import * as fs from "node:fs";
 import { build, type InlineConfig } from "vite";
 import { BaseFrameworkStrategy } from "../base-strategy.js";
 import type { BundlerType, IBuildContext, IBuildResult } from "../types.js";
@@ -77,10 +78,17 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 			};
 		}
 
+		// Plugin para servir assets estáticos adicionales (uiDependencies)
+		const staticAssetsPlugin = this.createStaticAssetsPlugin(context);
+		if (staticAssetsPlugin) {
+			plugins.push(staticAssetsPlugin);
+		}
+
 		return {
 			configFile: false,
 			root: module.appDir,
 			base,
+			publicDir: path.join(module.appDir, "public"), // /pub/ para el propio módulo
 			plugins,
 			resolve: {
 				alias: dynamicAliases,
@@ -107,6 +115,74 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 				"process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "production"),
 			},
 			build: buildConfig,
+		};
+	}
+
+	/**
+	 * Crea un plugin para servir assets estáticos de uiDependencies (UI libraries) en /ui/
+	 */
+	protected createStaticAssetsPlugin(context: IBuildContext): any {
+		const { module, registeredModules } = context;
+		const uiDependencies = module.uiConfig.uiDependencies || [];
+
+		// Buscar UI libraries en las dependencias
+		const uiLibraryDirs: string[] = [];
+		for (const depName of uiDependencies) {
+			const depModule = registeredModules.get(depName);
+			if (depModule && depModule.uiConfig.framework === "stencil") {
+				const publicDir = path.join(depModule.appDir, "public");
+				if (fs.existsSync(publicDir)) {
+					uiLibraryDirs.push(publicDir);
+				}
+			}
+		}
+
+		if (uiLibraryDirs.length === 0) return null;
+
+		return {
+			name: "serve-ui-library-assets",
+			configureServer(server: any) {
+				server.middlewares.use((req: any, res: any, next: any) => {
+					// Solo interceptar rutas que empiecen con /ui/
+					if (!req.url?.startsWith("/ui/")) {
+						return next();
+					}
+
+					const relativePath = req.url.slice(4); // Quitar "/ui/"
+
+					// Buscar el archivo en los directorios de UI libraries
+					for (const dir of uiLibraryDirs) {
+						const filePath = path.join(dir, relativePath);
+						if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+							// Determinar content-type básico
+							const ext = path.extname(filePath).toLowerCase();
+							const contentTypes: Record<string, string> = {
+								".webp": "image/webp",
+								".png": "image/png",
+								".jpg": "image/jpeg",
+								".jpeg": "image/jpeg",
+								".gif": "image/gif",
+								".svg": "image/svg+xml",
+								".ico": "image/x-icon",
+								".woff": "font/woff",
+								".woff2": "font/woff2",
+								".ttf": "font/ttf",
+								".css": "text/css",
+								".js": "application/javascript",
+								".json": "application/json",
+							};
+							const contentType = contentTypes[ext] || "application/octet-stream";
+
+							res.setHeader("Content-Type", contentType);
+							res.setHeader("Cache-Control", "public, max-age=31536000");
+							fs.createReadStream(filePath).pipe(res);
+							return;
+						}
+					}
+
+					next();
+				});
+			},
 		};
 	}
 

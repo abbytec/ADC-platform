@@ -9,6 +9,7 @@ import type { ILangManagerService } from "../LangManagerService/types.js";
 import { generateCompleteImportMap, createImportMapObject } from "./utils/import-map.js";
 import { injectImportMapsInHTMLs, generateIndexHtml, generateMainEntryPoint } from "./utils/html-processor.js";
 import { generateServiceWorker } from "./utils/service-worker-generator.js";
+import { registerPublicAssets } from "./utils/public-assets.js";
 
 // Strategy Pattern
 import { getStrategy, isFrameworkSupported, getSupportedFrameworks, parseFramework } from "./strategies/index.js";
@@ -200,6 +201,16 @@ export default class UIFederationService extends BaseService {
 
 			// Servir módulo según su configuración
 			await this.#serveModule(module, namespace, isDevelopment);
+
+			// Registrar assets públicos (del módulo y sus uiDependencies)
+			if (this.#httpProvider) {
+				await registerPublicAssets({
+					module,
+					namespaceModules,
+					logger: this.logger,
+					serveStatic: (urlPath, dir) => this.#httpProvider!.serveStatic(urlPath, dir),
+				});
+			}
 
 			// Registrar traducciones i18n si está habilitado
 			// Pasar uiDependencies como dependencias de i18n para deep merge
@@ -772,7 +783,7 @@ export default class UIFederationService extends BaseService {
 			});
 			this.logger.logDebug(`Service Worker [${namespace}] registrado en ${swPath}`);
 		} catch (error: any) {
-			this.logger.logDebug(`Endpoint SW ya registrado para ${namespace}`);
+			this.logger.logDebug(`Endpoint SW ya registrado para ${namespace}`);;
 		}
 	}
 }
