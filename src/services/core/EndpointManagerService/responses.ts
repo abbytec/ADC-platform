@@ -1,16 +1,3 @@
-import ADCCustomError from "../../../common/types/ADCCustomError.js";
-
-/**
- * HTTP Error class for throwing business errors with HTTP semantics
- */
-export class HttpError extends ADCCustomError {
-	public readonly name = "HttpError";
-
-	constructor(status: number, errorKey: string, message: string, data?: Record<string, unknown>) {
-		super(status, errorKey, message, data);
-	}
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // UncommonResponse - For responses requiring cookies, redirects, or custom headers
 // ─────────────────────────────────────────────────────────────────────────────

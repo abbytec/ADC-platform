@@ -6,12 +6,12 @@ import type { GeoIPValidator } from "../domain/security/GeoIPValidator.js";
 import type IdentityManagerService from "../../../core/IdentityManagerService/index.js";
 import {
 	RegisterEndpoint,
-	HttpError,
 	UncommonResponse,
 	type EndpointCtx,
 	type SetCookie,
 	type ClearCookie,
 } from "../../../core/EndpointManagerService/index.js";
+import { AuthError } from "@common/types/ADCCustomError.ts";
 import type { AuthenticatedUser } from "../types.js";
 
 /** Nombre de las cookies */
@@ -69,7 +69,7 @@ export class AuthEndpoints {
 		const { username, password } = ctx.data || {};
 
 		if (!username || !password) {
-			throw new HttpError(400, "MISSING_CREDENTIALS", "Username y password son requeridos");
+			throw new AuthError(400, "MISSING_CREDENTIALS", "Username y password son requeridos");
 		}
 
 		try {
@@ -80,13 +80,13 @@ export class AuthEndpoints {
 				const blockStatus = await AuthEndpoints.deps.loginTracker.recordLoginAttempt(tempUserId, false, ctx.ip);
 
 				if (blockStatus.blocked) {
-					throw new HttpError(403, "ACCOUNT_BLOCKED", "Cuenta bloqueada temporalmente", {
-						blockedUntil: blockStatus.blockedUntil,
+					throw new AuthError(403, "ACCOUNT_BLOCKED", "Cuenta bloqueada temporalmente", {
+						blockedUntil: blockStatus.blockedUntil ?? undefined,
 						permanent: blockStatus.permanent,
 					});
 				}
 
-				throw new HttpError(401, "INVALID_CREDENTIALS", "Credenciales inválidas");
+				throw new AuthError(401, "INVALID_CREDENTIALS", "Credenciales inválidas");
 			}
 
 			const user = await AuthEndpoints.getOrCreateUser("platform", {
@@ -97,8 +97,8 @@ export class AuthEndpoints {
 
 			const blockStatus = await AuthEndpoints.deps.loginTracker.isBlocked(user.id);
 			if (blockStatus.blocked) {
-				throw new HttpError(403, "ACCOUNT_BLOCKED", blockStatus.permanent ? "Cuenta bloqueada" : "Cuenta bloqueada temporalmente", {
-					blockedUntil: blockStatus.blockedUntil,
+				throw new AuthError(403, "ACCOUNT_BLOCKED", blockStatus.permanent ? "Cuenta bloqueada" : "Cuenta bloqueada temporalmente", {
+					blockedUntil: blockStatus.blockedUntil ?? undefined,
 					permanent: blockStatus.permanent,
 				});
 			}
@@ -119,9 +119,9 @@ export class AuthEndpoints {
 				{ cookies }
 			);
 		} catch (err: any) {
-			if (err instanceof HttpError || err instanceof UncommonResponse) throw err;
+			if (err instanceof AuthError || err instanceof UncommonResponse) throw err;
 			AuthEndpoints.deps.logger.logError(`Error en login nativo: ${err.message}`);
-			throw new HttpError(500, "AUTH_ERROR", "Error durante la autenticación");
+			throw new AuthError(500, "AUTH_ERROR", "Error durante la autenticación");
 		}
 	}
 
@@ -137,25 +137,25 @@ export class AuthEndpoints {
 		const { username, email, password } = ctx.data || {};
 
 		if (!username || !email || !password) {
-			throw new HttpError(400, "MISSING_FIELDS", "Username, email y password son requeridos");
+			throw new AuthError(400, "MISSING_FIELDS", "Username, email y password son requeridos");
 		}
 
 		// Validaciones básicas
 		if (username.length < 3 || username.length > 30) {
-			throw new HttpError(400, "INVALID_USERNAME", "El nombre de usuario debe tener entre 3 y 30 caracteres");
+			throw new AuthError(400, "INVALID_USERNAME", "El nombre de usuario debe tener entre 3 y 30 caracteres");
 		}
 
 		if (password.length < 8) {
-			throw new HttpError(400, "WEAK_PASSWORD", "La contraseña debe tener al menos 8 caracteres");
+			throw new AuthError(400, "WEAK_PASSWORD", "La contraseña debe tener al menos 8 caracteres");
 		}
 
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 		if (!emailRegex.test(email)) {
-			throw new HttpError(400, "INVALID_EMAIL", "El email no es válido");
+			throw new AuthError(400, "INVALID_EMAIL", "El email no es válido");
 		}
 
 		if (!AuthEndpoints.deps.identityService) {
-			throw new HttpError(500, "SERVICE_UNAVAILABLE", "Servicio de identidad no disponible");
+			throw new AuthError(500, "SERVICE_UNAVAILABLE", "Servicio de identidad no disponible");
 		}
 
 		try {
@@ -166,11 +166,11 @@ export class AuthEndpoints {
 			const existingEmail = allUsers.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
 
 			if (existingUsername) {
-				throw new HttpError(409, "USERNAME_EXISTS", "El nombre de usuario ya está en uso");
+				throw new AuthError(409, "USERNAME_EXISTS", "El nombre de usuario ya está en uso");
 			}
 
 			if (existingEmail) {
-				throw new HttpError(409, "EMAIL_EXISTS", "El email ya está registrado");
+				throw new AuthError(409, "EMAIL_EXISTS", "El email ya está registrado");
 			}
 
 			// Crear usuario
@@ -208,9 +208,9 @@ export class AuthEndpoints {
 				{ cookies }
 			);
 		} catch (err: any) {
-			if (err instanceof HttpError || err instanceof UncommonResponse) throw err;
+			if (err instanceof AuthError || err instanceof UncommonResponse) throw err;
 			AuthEndpoints.deps.logger.logError(`Error en registro: ${err.message}`);
-			throw new HttpError(500, "REGISTER_ERROR", "Error al crear la cuenta");
+			throw new AuthError(500, "REGISTER_ERROR", "Error al crear la cuenta");
 		}
 	}
 
@@ -226,13 +226,13 @@ export class AuthEndpoints {
 		const token = ctx.cookies?.[ACCESS_COOKIE_NAME];
 
 		if (!token) {
-			throw new HttpError(401, "NO_SESSION", "No hay sesión activa");
+			throw new AuthError(401, "NO_SESSION", "No hay sesión activa");
 		}
 
 		const result = await AuthEndpoints.deps.tokenService.verifyAccessToken(token);
 
 		if (!result.valid || !result.session) {
-			throw new HttpError(401, "INVALID_SESSION", result.error || "Sesión inválida");
+			throw new AuthError(401, "INVALID_SESSION", result.error || "Sesión inválida");
 		}
 
 		const headers: Record<string, string> = {};
@@ -285,13 +285,13 @@ export class AuthEndpoints {
 		const refreshToken = ctx.cookies?.[REFRESH_COOKIE_NAME];
 
 		if (!refreshToken) {
-			throw new HttpError(401, "NO_REFRESH_TOKEN", "No hay refresh token");
+			throw new AuthError(401, "NO_REFRESH_TOKEN", "No hay refresh token");
 		}
 
 		const storedToken = await AuthEndpoints.deps.refreshTokenRepo.findByToken(refreshToken);
 
 		if (!storedToken) {
-			throw new HttpError(401, "INVALID_REFRESH_TOKEN", "Refresh token inválido");
+			throw new AuthError(401, "INVALID_REFRESH_TOKEN", "Refresh token inválido");
 		}
 
 		// Validar cambio de país usando Cloudflare headers
@@ -302,7 +302,7 @@ export class AuthEndpoints {
 			await AuthEndpoints.deps.tokenService.revokeAllUserTokens(storedToken.userId);
 			AuthEndpoints.deps.logger.logWarn(`Cambio de país detectado para usuario ${storedToken.userId}: ${geoValidation.reason}`);
 
-			throw new HttpError(401, "LOCATION_CHANGE", "Sesión invalidada por cambio de ubicación", {
+			throw new AuthError(401, "LOCATION_CHANGE", "Sesión invalidada por cambio de ubicación", {
 				requireRelogin: true,
 			});
 		}
@@ -314,7 +314,7 @@ export class AuthEndpoints {
 				await AuthEndpoints.deps.tokenService.deleteAllUserTokens(storedToken.userId);
 			}
 
-			throw new HttpError(403, "ACCOUNT_BLOCKED", "Cuenta bloqueada por actividad sospechosa", {
+			throw new AuthError(403, "ACCOUNT_BLOCKED", "Cuenta bloqueada por actividad sospechosa", {
 				permanent: refreshAttempt.status.permanent,
 			});
 		}
@@ -335,7 +335,7 @@ export class AuthEndpoints {
 				await AuthEndpoints.deps.tokenService.deleteAllUserTokens(storedToken.userId);
 			}
 
-			throw new HttpError(401, "REFRESH_FAILED", result.error || "Error al refrescar tokens");
+			throw new AuthError(401, "REFRESH_FAILED", result.error || "Error al refrescar tokens");
 		}
 
 		const cookies = AuthEndpoints.buildTokenCookies(result.tokens.accessToken, result.tokens.refreshToken.token);

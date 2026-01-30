@@ -5,12 +5,12 @@ import type { OAuthProviderRegistry } from "../domain/oauth/index.js";
 import type IdentityManagerService from "../../../core/IdentityManagerService/index.js";
 import {
 	RegisterEndpoint,
-	HttpError,
 	UncommonResponse,
 	type EndpointCtx,
 	type SetCookie,
 	type ClearCookie,
 } from "../../../core/EndpointManagerService/index.js";
+import { AuthError } from "@common/types/ADCCustomError.js";
 import type { AuthenticatedUser, OAuthProviderConfig } from "../types.js";
 
 /** Nombre de las cookies */
@@ -58,14 +58,14 @@ export class OAuthEndpoints {
 		const provider = ctx.params.provider || "platform";
 
 		if (!OAuthEndpoints.deps.oauthRegistry.has(provider)) {
-			throw new HttpError(400, "PROVIDER_NOT_SUPPORTED", `Proveedor '${provider}' no soportado`);
+			throw new AuthError(400, "PROVIDER_NOT_SUPPORTED", `Proveedor '${provider}' no soportado`);
 		}
 
 		const oauthProvider = OAuthEndpoints.deps.oauthRegistry.get(provider)!;
 		const config = OAuthEndpoints.deps.getProviderConfig(provider);
 
 		if (!config) {
-			throw new HttpError(500, "CONFIG_NOT_FOUND", `Configuración del proveedor '${provider}' no encontrada`);
+			throw new AuthError(500, "PROVIDER_CONFIG_NOT_FOUND", `Configuración del proveedor '${provider}' no encontrada`);
 		}
 
 		// Capturar originPath de query params para redirect post-auth
@@ -171,7 +171,7 @@ export class OAuthEndpoints {
 
 		const config = OAuthEndpoints.deps.getProviderConfig(provider);
 		if (!config) {
-			throw new HttpError(500, "CONFIG_NOT_FOUND", "Configuración del proveedor no encontrada");
+			throw new AuthError(500, "PROVIDER_CONFIG_NOT_FOUND", "Configuración del proveedor no encontrada");
 		}
 
 		try {
@@ -189,8 +189,8 @@ export class OAuthEndpoints {
 				clearCookies,
 			});
 		} catch (err: any) {
-			// Si ya es un UncommonResponse o HttpError, re-lanzar
-			if (err instanceof UncommonResponse || err instanceof HttpError) throw err;
+			// Si ya es un UncommonResponse o AuthError, re-lanzar
+			if (err instanceof UncommonResponse || err instanceof AuthError) throw err;
 
 			OAuthEndpoints.deps.logger.logError(`Error en callback de ${provider}: ${err.message}`);
 			throw UncommonResponse.redirect(`/auth/error?error=${encodeURIComponent("Error durante la autenticación")}`, {

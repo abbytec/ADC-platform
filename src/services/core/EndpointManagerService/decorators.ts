@@ -1,5 +1,5 @@
+import { AuthError, HttpError } from "@common/types/ADCCustomError.ts";
 import type { EndpointConfig, EnableEndpointsConfig, HttpMethod, EndpointCtx } from "./types.js";
-import { HttpError } from "./types.js";
 
 /**
  * Símbolos para metadata
@@ -158,7 +158,7 @@ export function RegisterEndpoint(config: Omit<EndpointConfig, "handler">): Metho
 					(ctx as any).user = result.user;
 				}
 				// Sin validador configurado - si hay permisos requeridos, fallar
-				else throw new HttpError(503, "AUTH_UNAVAILABLE", "Authentication service not available");
+				else throw new AuthError(503, "AUTH_UNAVAILABLE", "Authentication service not available");
 			}
 
 			// Ejecutar método original

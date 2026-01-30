@@ -1,3 +1,8 @@
+import { type ADCAuthErrorJSON, AuthError } from "@common/types/ADCCustomError.js";
+
+// Re-export AuthError for use in components
+export { AuthError };
+
 const IS_DEV = process.env.NODE_ENV === "development";
 const API_BASE = `${IS_DEV ? "http://localhost:3000" : ""}/api/auth`;
 
@@ -22,12 +27,17 @@ export interface SessionResponse {
 	error?: string;
 }
 
-export interface AuthError {
-	message: string;
-	errorKey?: string;
-	blockedUntil?: number;
-	permanent?: boolean;
-	data?: Record<string, unknown>;
+/**
+ * Parsea la respuesta de error del backend y lanza un AuthError
+ */
+async function throwAuthError(response: Response): Promise<never> {
+	const errorData: ADCAuthErrorJSON = await response.json();
+	throw new AuthError(
+		errorData.status || response.status,
+		errorData.errorKey || "UNKNOWN_ERROR",
+		errorData.message || "Error desconocido",
+		errorData.data as AuthError["data"]
+	);
 }
 
 class AuthAPI {
@@ -42,29 +52,17 @@ class AuthAPI {
 			body: JSON.stringify({ username, password }),
 		});
 
-		const data = await response.json();
-
 		if (!response.ok) {
-			const error: AuthError = {
-				message: data.message || data.error || "Error de autenticación",
-				errorKey: data.errorKey,
-				blockedUntil: data.data?.blockedUntil,
-				permanent: data.data?.permanent,
-				data: data.data,
-			};
-			throw error;
+			await throwAuthError(response);
 		}
 
-		return data;
+		return response.json();
 	}
 
 	/**
 	 * Registro de nuevo usuario
-	 * Nota: Esto requiere un endpoint adicional en SessionManagerService
 	 */
 	async register(username: string, email: string, password: string): Promise<AuthResponse> {
-		// Por ahora, llamamos al endpoint de login tras el registro
-		// En una implementación completa, habría un endpoint /api/auth/register
 		const response = await fetch(`${API_BASE}/register`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
@@ -72,18 +70,11 @@ class AuthAPI {
 			body: JSON.stringify({ username, email, password }),
 		});
 
-		const data = await response.json();
-
 		if (!response.ok) {
-			const error: AuthError = {
-				message: data.message || data.error || "Error al crear la cuenta",
-				errorKey: data.errorKey,
-				data: data.data,
-			};
-			throw error;
+			await throwAuthError(response);
 		}
 
-		return data;
+		return response.json();
 	}
 
 	/**

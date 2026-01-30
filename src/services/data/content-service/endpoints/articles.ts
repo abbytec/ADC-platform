@@ -1,6 +1,7 @@
 import type { Model, PipelineStage } from "mongoose";
 import type { Article, LearningPath, PathItem, Block } from "../../../../common/ADC/types/learning.js";
-import { RegisterEndpoint, HttpError, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
+import { RegisterEndpoint, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
+import { HttpError } from "@common/types/ADCCustomError.ts";
 
 interface ListArticlesQuery {
 	pathSlug?: string;

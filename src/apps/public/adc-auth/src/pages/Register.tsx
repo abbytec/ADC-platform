@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { authApi, type AuthError } from "../utils/auth.ts";
+import { authApi, AuthError } from "../utils/auth.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { showError, clearErrors } from "@ui-library/utils/error-handler";
 
@@ -55,11 +55,21 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 				window.location.href = getRedirectUrl();
 			}
 		} catch (err) {
-			const authErr = err as AuthError;
-			// Usar traducción de error si existe
-			const errorKey = authErr.errorKey || "REGISTER_ERROR";
-			const translated = t(`errors.${errorKey}`);
-			const message = translated !== `errors.${errorKey}` ? translated : authErr.message || t("errors.REGISTER_ERROR");
+			let message: string;
+			let errorKey: string;
+
+			if (err instanceof AuthError) {
+				errorKey = err.errorKey || "REGISTER_ERROR";
+				const translated = t(`errors.${errorKey}`);
+				// Si la traducción existe (no devuelve la key), usarla; sino, usar mensaje del backend
+				message = translated !== `errors.${errorKey}` ? translated : err.message;
+			} else {
+				// Error no tipado
+				errorKey = "REGISTER_ERROR";
+				const fallback = t("errors.REGISTER_ERROR");
+				message = fallback !== "errors.REGISTER_ERROR" ? fallback : "Error al crear la cuenta";
+			}
+
 			showError({ errorKey, message, severity: "error" });
 		} finally {
 			setLoading(false);

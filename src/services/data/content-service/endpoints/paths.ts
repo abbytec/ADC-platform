@@ -1,6 +1,7 @@
 import type { Model } from "mongoose";
 import type { LearningPath, Article, PathItem } from "../../../../common/ADC/types/learning.js";
-import { RegisterEndpoint, HttpError, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
+import { RegisterEndpoint, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
+import { HttpError } from "@common/types/ADCCustomError.ts";
 
 interface ListPathsQuery {
 	public?: string;

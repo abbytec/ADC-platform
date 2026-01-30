@@ -14,7 +14,9 @@
 		"target": "ES2022",
 		"lib": ["es2022", "dom", "dom.iterable"],
 		"noEmit": true,
-		"paths": {},
+		"paths": {
+			"@common/*": ["./src/common/*"]
+		},
 		"declaration": false,
 		"experimentalDecorators": true,
 		"noUnusedLocals": true,

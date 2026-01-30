@@ -1,5 +1,5 @@
 // Re-export response classes
-export { HttpError, UncommonResponse, type CookieOptions, type SetCookie, type ClearCookie } from "./responses.js";
+export { UncommonResponse, type CookieOptions, type SetCookie, type ClearCookie } from "./responses.js";
 
 /** HTTP methods supported */
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";

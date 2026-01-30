@@ -1,7 +1,6 @@
 import { BaseService } from "../../BaseService.js";
 import type { IHostBasedHttpProvider, FastifyRequest, FastifyReply } from "../../../interfaces/modules/providers/IHttpServer.js";
 import {
-	HttpError,
 	UncommonResponse,
 	type RegisteredEndpoint,
 	type EndpointCtx,
@@ -13,13 +12,13 @@ import {
 	type ServiceCallResponse,
 	type EndpointHandler,
 } from "./types.js";
+import ADCCustomError from "@common/types/ADCCustomError.js";
 import { setPermissionValidator } from "./decorators.js";
 // Re-exportar decoradores para uso externo
 export { RegisterEndpoint, EnableEndpoints, DisableEndpoints, readEndpointMetadata, readEnableEndpointsConfig } from "./decorators.js";
 
 // Re-exportar tipos, HttpError y UncommonResponse
 export {
-	HttpError,
 	UncommonResponse,
 	type EndpointConfig,
 	type EndpointCtx,
@@ -458,13 +457,9 @@ export default class EndpointManagerService extends BaseService {
 					return;
 				}
 
-				// Capturar HttpError para errores de negocio
-				else if (error instanceof HttpError) {
-					reply.status(error.status).send({
-						error: error.errorKey,
-						message: error.message,
-						data: error.data,
-					});
+				// Capturar ADCCustomError (HttpError y otros) para errores de negocio
+				else if (error instanceof ADCCustomError) {
+					reply.status(error.status).send(error.toJSON());
 					return;
 				}
 
