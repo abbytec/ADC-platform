@@ -157,7 +157,13 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 						/>
 					</div>
 
-					<adc-button type="submit" class="w-full flex justify-end mt-8" disabled={loading ? true : undefined} variant="primary">
+					<adc-button
+						key={loading ? "loading" : "idle"}
+						type="submit"
+						class="w-full flex justify-end mt-8"
+						disabled={loading ? true : undefined}
+						variant="primary"
+					>
 						{loading ? t("register.submitting") || "Creando cuenta..." : t("register.submit") || "Crear Cuenta"}
 					</adc-button>
 				</form>

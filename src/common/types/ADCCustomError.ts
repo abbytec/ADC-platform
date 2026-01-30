@@ -35,9 +35,10 @@ export default abstract class ADCCustomError<T = Record<string, unknown>, M exte
 	}
 }
 
-/** Data específica para errores de autenticación */
-export { type AuthErrorTypes, AuthError, type ADCAuthErrorJSON } from "./custom-errors/AuthError.js";
-
-export class HttpError extends ADCCustomError {
+export class HttpError extends ADCCustomError<Record<string, unknown>, string> {
 	public readonly name = "HttpError";
+
+	constructor(status: number, errorKey: string, message: string, data?: Record<string, unknown>) {
+		super(status, errorKey, message, data);
+	}
 }

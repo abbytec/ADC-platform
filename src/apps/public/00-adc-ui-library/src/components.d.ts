@@ -102,6 +102,10 @@ export namespace Components {
         "disabled"?: boolean;
         "href"?: string;
         /**
+          * Label text - when provided, takes precedence over slot content for dynamic updates
+         */
+        "label"?: string;
+        /**
           * @default "button"
          */
         "type": "button" | "submit" | "reset";
@@ -1088,6 +1092,10 @@ declare namespace LocalJSX {
         "ariaLabel"?: string;
         "disabled"?: boolean;
         "href"?: string;
+        /**
+          * Label text - when provided, takes precedence over slot content for dynamic updates
+         */
+        "label"?: string;
         "onAdcClick"?: (event: AdcButtonCustomEvent<MouseEvent>) => void;
         /**
           * @default "button"

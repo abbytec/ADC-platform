@@ -11,7 +11,7 @@ import {
 	type SetCookie,
 	type ClearCookie,
 } from "../../../core/EndpointManagerService/index.js";
-import { AuthError } from "@common/types/ADCCustomError.ts";
+import { AuthError } from "@common/types/custom-errors/AuthError.ts";
 import type { AuthenticatedUser } from "../types.js";
 
 /** Nombre de las cookies */

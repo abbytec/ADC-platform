@@ -165,7 +165,13 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 						/>
 					</div>
 
-					<adc-button type="submit" class="w-full flex justify-end mt-8" disabled={loading} variant="primary">
+					<adc-button
+						key={loading ? "loading" : "idle"}
+						type="submit"
+						class="w-full flex justify-end mt-8"
+						disabled={loading}
+						variant="primary"
+					>
 						{loading ? t("login.submitting") : t("login.submit")}
 					</adc-button>
 				</form>

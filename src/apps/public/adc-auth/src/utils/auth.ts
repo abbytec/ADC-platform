@@ -1,4 +1,4 @@
-import { type ADCAuthErrorJSON, AuthError } from "@common/types/ADCCustomError.js";
+import { type ADCAuthErrorJSON, AuthError } from "@common/types/custom-errors/AuthError.js";
 
 // Re-export AuthError for use in components
 export { AuthError };
