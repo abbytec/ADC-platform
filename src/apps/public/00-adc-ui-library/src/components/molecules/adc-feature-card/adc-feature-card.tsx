@@ -14,7 +14,7 @@ export class AdcFeatureCard {
 				<div class="mt-2" aria-hidden="true">
 					<slot name="icon"></slot>
 				</div>
-				<h3>{this.title}</h3>
+				<h3 style={{ marginTop: "0.5rem" }}>{this.title}</h3>
 				<adc-text>
 					<slot></slot>
 				</adc-text>
