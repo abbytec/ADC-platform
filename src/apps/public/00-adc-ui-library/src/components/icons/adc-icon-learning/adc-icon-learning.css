@@ -2,7 +2,7 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	color: rgb(93, 58, 47);
+	color: var(--c-primary);
 }
 
 .adc-icon {
