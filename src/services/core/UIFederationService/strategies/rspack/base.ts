@@ -435,8 +435,16 @@ export default {
 	}
     module: {
         rules: [
-            ${moduleRules}
+            ${moduleRules},
+            {
+                scheme: 'data',
+                mimetype: 'text/javascript',
+                type: 'javascript/auto',
+            },
         ],
+    },
+    experiments: {
+        css: true,
     },
     plugins: [
         new rspack.DefinePlugin({
