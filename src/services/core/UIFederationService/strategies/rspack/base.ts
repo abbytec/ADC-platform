@@ -447,6 +447,7 @@ export default {
             name: '${safeName}',
             ${federationConfig}
             shared: ${shared},
+            dts: false,
         }),
     ],${devServerConfig}
     ignoreWarnings: [
