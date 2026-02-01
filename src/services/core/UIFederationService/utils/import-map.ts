@@ -29,25 +29,17 @@ export function generateCompleteImportMap(
 		const framework = module.uiConfig.framework || "astro";
 		const nsPrefix = `/${namespace}`;
 		// Para módulos con devPort propio, construir URL con el host dinámico
-		const getDevPortUrl = (devPort: number) => host ? `http://${host}:${devPort}` : `http://localhost:${devPort}`;
+		const getDevPortUrl = (devPort: number) => (host ? `http://${host}:${devPort}` : `http://localhost:${devPort}`);
 
 		if (framework === "stencil") {
-			imports[`@${name}/loader`] = isDevelopment
-				? `${baseUrl}${nsPrefix}/${name}/loader/index.js`
-				: `${nsPrefix}/${name}/loader/index.js`;
-			imports[`@${name}/dist`] = isDevelopment 
-				? `${baseUrl}${nsPrefix}/${name}/dist/` 
-				: `${nsPrefix}/${name}/dist/`;
-			imports[`@${name}/`] = isDevelopment 
-				? `${baseUrl}${nsPrefix}/${name}/` 
-				: `${nsPrefix}/${name}/`;
+			imports[`@${name}/loader`] = isDevelopment ? `${baseUrl}${nsPrefix}/${name}/loader/index.js` : `${nsPrefix}/${name}/loader/index.js`;
+			imports[`@${name}/dist`] = isDevelopment ? `${baseUrl}${nsPrefix}/${name}/dist/` : `${nsPrefix}/${name}/dist/`;
+			imports[`@${name}/`] = isDevelopment ? `${baseUrl}${nsPrefix}/${name}/` : `${nsPrefix}/${name}/`;
 		} else if (isDevelopment && module.uiConfig.devPort && (framework === "react" || framework === "vue")) {
 			imports[`@${name}`] = `${getDevPortUrl(module.uiConfig.devPort)}/src/App.tsx`;
 			imports[`@${name}/`] = `${getDevPortUrl(module.uiConfig.devPort)}/`;
 		} else if (framework === "vite") {
-			imports[`@${name}/`] = isDevelopment 
-				? `${baseUrl}${nsPrefix}/${name}/` 
-				: `${nsPrefix}/${name}/`;
+			imports[`@${name}/`] = isDevelopment ? `${baseUrl}${nsPrefix}/${name}/` : `${nsPrefix}/${name}/`;
 		} else if (framework === "react" || framework === "vue") {
 			imports[`@${name}`] = `${nsPrefix}/${name}/App.js`;
 			imports[`@${name}/`] = `${nsPrefix}/${name}/`;

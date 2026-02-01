@@ -795,7 +795,7 @@ export default class UIFederationService extends BaseService {
 			});
 			this.logger.logDebug(`Service Worker [${namespace}] registrado en ${swPath}`);
 		} catch (error: any) {
-			this.logger.logDebug(`Endpoint SW ya registrado para ${namespace}`);;
+			this.logger.logDebug(`Endpoint SW ya registrado para ${namespace}`);
 		}
 	}
 }
