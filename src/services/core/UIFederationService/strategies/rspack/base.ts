@@ -453,6 +453,7 @@ export default {
         ${plugins}
         new ModuleFederationPlugin({
             name: '${safeName}',
+            runtime: false,
             ${federationConfig}
             shared: ${shared},
         }),
