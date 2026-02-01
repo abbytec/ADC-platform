@@ -1,5 +1,5 @@
 {
-	"kernelMode": true,
+	"kernelMode": 100,
 	"global": true,
 	"custom": {
 		"port": 3000,

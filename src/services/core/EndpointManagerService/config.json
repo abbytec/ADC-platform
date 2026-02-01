@@ -1,7 +1,7 @@
 {
 	"name": "EndpointManagerService",
 	"version": "1.0.0",
-	"kernelMode": 1,
+	"kernelMode": 50,
 	"providers": [
 		{
 			"name": "fastify-server",

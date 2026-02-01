@@ -1,5 +1,5 @@
 {
-	"kernelMode": true,
+	"kernelMode": 60,
 	"name": "IdentityManagerService",
 	"version": "1.0.0",
 	"providers": [

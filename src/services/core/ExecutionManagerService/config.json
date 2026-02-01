@@ -1,6 +1,6 @@
 {
 	"global": true,
-	"kernelMode": true,
+	"kernelMode": 20,
 	"failOnError": true,
 	"custom": {
 		"minWorkers": 2,
