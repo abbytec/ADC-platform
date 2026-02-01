@@ -6,6 +6,7 @@ import type { BundlerType, IBuildContext, IBuildResult } from "../types.js";
 import aliasGenerator from "../../utils/alias-generator.js";
 import { generateCompleteImportMap } from "../../utils/import-map.js";
 import { copyPublicFiles } from "../../utils/file-operations.js";
+import { getServerHost } from "../../utils/path-resolver.js";
 
 /**
  * Clase base para estrategias Vite
@@ -321,6 +322,7 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 	protected createFederationResolverPlugin(context: IBuildContext): any {
 		const { registeredModules } = context;
 		const port = 3000;
+		const serverHost = getServerHost();
 
 		return {
 			name: "federation-dev-resolver",
@@ -330,9 +332,9 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 
 				for (const [moduleName, module] of registeredModules.entries()) {
 					if (module.uiConfig.devPort) {
-						federatedHosts[`@${moduleName}/`] = `http://localhost:${module.uiConfig.devPort}/`;
+						federatedHosts[`@${moduleName}/`] = `http://${serverHost}:${module.uiConfig.devPort}/`;
 					} else {
-						federatedHosts[`@${moduleName}/`] = `http://localhost:${port}/${moduleName}/`;
+						federatedHosts[`@${moduleName}/`] = `http://${serverHost}:${port}/${moduleName}/`;
 					}
 				}
 
