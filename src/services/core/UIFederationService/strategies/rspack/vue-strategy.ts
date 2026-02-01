@@ -24,8 +24,8 @@ export class VueRspackStrategy extends RspackBaseStrategy {
 		return `
 import * as path from 'node:path';
 import { rspack } from '@rspack/core';
-import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack';
 import { VueLoaderPlugin } from 'vue-loader';
+const { ModuleFederationPlugin } = rspack.container;
 `;
 	}
 

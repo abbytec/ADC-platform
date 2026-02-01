@@ -24,7 +24,7 @@ export class VanillaRspackStrategy extends RspackBaseStrategy {
 		return `
 import * as path from 'node:path';
 import { rspack } from '@rspack/core';
-import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack';
+const { ModuleFederationPlugin } = rspack.container;
 `;
 	}
 
