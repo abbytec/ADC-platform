@@ -14,30 +14,24 @@ interface RemoteModuleConfig {
 	scope: string;
 }
 
-const IS_DEV = process.env.NODE_ENV === 'development';
+const IS_DEV = process.env.NODE_ENV === "development";
 
 const moduleDefinitions: Record<string, RemoteModuleConfig> = {
 	home: {
 		framework: "vanilla",
-		remoteEntryUrl: IS_DEV
-			? "http://localhost:3002/remoteEntry.js"
-			: "http://s-home.local.com:3000/remoteEntry.js",
+		remoteEntryUrl: IS_DEV ? `http://${window.location.hostname}:3002/remoteEntry.js` : "http://s-home.local.com:3000/remoteEntry.js",
 		remoteName: "home",
 		scope: "./App",
 	},
 	"users-management": {
 		framework: "react",
-		remoteEntryUrl: IS_DEV
-			? "http://localhost:3001/remoteEntry.js"
-			: "http://s-users.local.com:3000/remoteEntry.js",
+		remoteEntryUrl: IS_DEV ? `http://${window.location.hostname}:3001/remoteEntry.js` : "http://s-users.local.com:3000/remoteEntry.js",
 		remoteName: "users_management",
 		scope: "./App",
 	},
 	config: {
 		framework: "vue",
-		remoteEntryUrl: IS_DEV
-			? "http://localhost:3003/remoteEntry.js"
-			: "http://s-config.local.com:3000/remoteEntry.js",
+		remoteEntryUrl: IS_DEV ? `http://${window.location.hostname}:3003/remoteEntry.js` : "http://s-config.local.com:3000/remoteEntry.js",
 		remoteName: "config",
 		scope: "./App",
 	},

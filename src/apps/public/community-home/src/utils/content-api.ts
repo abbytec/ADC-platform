@@ -19,7 +19,7 @@ interface ListArticlesOptions {
 }
 
 const IS_DEV = process.env.NODE_ENV === "development";
-const API_BASE = IS_DEV ? "http://localhost:3000/api/learning" : "/api/learning";
+const API_BASE = IS_DEV ? `http://${window.location.hostname}:3000/api/learning` : "/api/learning";
 
 /**
  * Construye query string desde objeto de opciones

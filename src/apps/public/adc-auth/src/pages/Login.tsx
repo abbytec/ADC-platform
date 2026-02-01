@@ -5,7 +5,7 @@ import { useTranslation } from "@ui-library/utils/i18n-react";
 const IS_DEV = process.env.NODE_ENV === "development";
 
 /** URL base del sitio principal según entorno */
-const BASE_URL = IS_DEV ? "http://localhost:3011" : "https://adigitalcafe.com";
+const BASE_URL = IS_DEV ? `http://${window.location.hostname}:3011` : "https://adigitalcafe.com";
 
 interface LoginProps {
 	onNavigateToRegister: () => void;
@@ -107,7 +107,7 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 	 * Construye URL de OAuth preservando originPath para el callback
 	 */
 	const getOAuthUrl = (provider: string): string => {
-		const base = `${IS_DEV ? "http://localhost:3000" : ""}/api/auth/login/${provider}`;
+		const base = `${IS_DEV ? `http://${window.location.hostname}:3000` : ""}/api/auth/login/${provider}`;
 		if (originPath && originPath !== "/") {
 			return `${base}?originPath=${encodeURIComponent(originPath)}`;
 		}

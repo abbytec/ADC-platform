@@ -6,8 +6,8 @@ interface ShellProps {
 }
 
 const IS_DEV = process.env.NODE_ENV === "development";
-const AUTH_URL = IS_DEV ? "http://localhost:3012" : "https://auth.adigitalcafe.com";
-const API_BASE_URL = IS_DEV ? "http://localhost:3000" : "";
+const AUTH_URL = IS_DEV ? `http://${window.location.hostname}:3012` : "https://auth.adigitalcafe.com";
+const API_BASE_URL = IS_DEV ? `http://${window.location.hostname}:3000` : "";
 
 export const Shell = memo(function Shell({ children, headerSlot }: ShellProps) {
 	return (
