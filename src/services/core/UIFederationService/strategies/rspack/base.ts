@@ -385,6 +385,7 @@ export abstract class RspackBaseStrategy extends BaseFrameworkStrategy {
 
 		const devServerConfig = `
     devServer: {
+        host: '0.0.0.0',
         port: ${module.uiConfig.devPort},
         hot: ${hotReload},
         historyApiFallback: true,
