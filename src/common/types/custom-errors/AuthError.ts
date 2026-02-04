@@ -1,23 +1,21 @@
 import ADCCustomError, { type ADCCustomErrorJSON } from "../ADCCustomError.ts";
 type AuthErrorData = { blockedUntil?: number; permanent?: boolean; requireRelogin?: boolean };
 
+type AuthGenericErrors = "NO_SESSION" | "INVALID_SESSION" | "NO_REFRESH_TOKEN" | "INVALID_REFRESH_TOKEN" | "LOCATION_CHANGE" | "REFRESH_FAILED";
+
 type ExcpectedAuthErrorTypes =
 	// AUTH FLOW
+	| "MISSING_CREDENTIALS"
+	| "INVALID_CREDENTIALS"
 	| "ACCOUNT_BLOCKED"
+	| "ACCOUNT_BLOCKED_TEMP"
+	| "ACCOUNT_BLOCKED_PERMANENT"
 	| "MISSING_FIELDS"
 	| "INVALID_USERNAME"
 	| "WEAK_PASSWORD"
 	| "INVALID_EMAIL"
 	| "USERNAME_EXISTS"
-	| "EMAIL_EXISTS"
-	// GENERIC
-	| "MISSING_CREDENTIALS"
-	| "INVALID_CREDENTIALS"
-	| "NO_SESSION"
-	| "INVALID_SESSION"
-	| "NO_REFRESH_TOKEN"
-	| "INVALID_REFRESH_TOKEN"
-	| "LOCATION_CHANGE";
+	| "EMAIL_EXISTS";
 
 type UnexpectedAuthErrorTypes =
 	// AUTH FLOW
@@ -27,10 +25,10 @@ type UnexpectedAuthErrorTypes =
 	| "PROVIDER_NOT_SUPPORTED"
 	| "PROVIDER_CONFIG_NOT_FOUND"
 	| "AUTH_ERROR"
-	// GENERIC
-	| "REFRESH_FAILED";
+	| "FORBIDDEN"
+	| "UNAUTHORIZED";
 
-export type AuthErrorTypes = UnexpectedAuthErrorTypes | ExcpectedAuthErrorTypes;
+export type AuthErrorTypes = UnexpectedAuthErrorTypes | ExcpectedAuthErrorTypes | AuthGenericErrors;
 
 export class AuthError extends ADCCustomError<AuthErrorData, AuthErrorTypes> {
 	public readonly name = "AuthError";

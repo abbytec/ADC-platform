@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { authApi, AuthError } from "../utils/auth.ts";
+import { authApi } from "../utils/auth.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
+import { adcFetch, clearErrors } from "@ui-library/utils/adc-fetch";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -28,12 +29,19 @@ function formatBlockedTime(blockedUntil: number): string {
 	return `${hours} hora${hours === 1 ? "" : "s"}`;
 }
 
+/** Errores específicos de formulario login (se muestran inline como callout) */
+const LOGIN_SPECIFIC_ERROR_KEYS = [
+	{ key: "MISSING_CREDENTIALS", severity: "warning" },
+	{ key: "INVALID_CREDENTIALS", severity: "error" },
+	{ key: "ACCOUNT_BLOCKED", severity: "warning" },
+	{ key: "ACCOUNT_BLOCKED_TEMP", severity: "warning" },
+	{ key: "ACCOUNT_BLOCKED_PERMANENT", severity: "error" },
+];
+
 export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 	const { t, ready } = useTranslation({ namespace: "adc-auth", autoLoad: true });
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
-	const [error, setError] = useState<string | null>(null);
-	const [blockedInfo, setBlockedInfo] = useState<{ until?: number; permanent?: boolean } | null>(null);
 	const [loading, setLoading] = useState(false);
 
 	/**
@@ -48,59 +56,20 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		setError(null);
-		setBlockedInfo(null);
+		clearErrors();
 		setLoading(true);
 
-		try {
-			const result = await authApi.login(username, password);
+		const result = await adcFetch<unknown, { blockedUntil?: number }>(authApi.login(username, password), {
+			translateParams: (data) => ({
+				time: data.blockedUntil ? formatBlockedTime(data.blockedUntil) : "",
+			}),
+		});
 
-			if (result.success) {
-				// Redirigir al originPath tras login exitoso
-				window.location.href = getRedirectUrl();
-			}
-		} catch (err) {
-			if (err instanceof AuthError) {
-				const errorKey = err.errorKey || "AUTH_ERROR";
-				let message: string;
-
-				// Manejar bloqueo de cuenta con mensaje especial
-				if (err.data?.blockedUntil || err.data?.permanent) {
-					setBlockedInfo({ until: err.data.blockedUntil, permanent: err.data.permanent });
-
-					if (err.data.permanent) {
-						const translatedPerm = t("errors.ACCOUNT_BLOCKED_PERMANENT");
-						message =
-							translatedPerm !== "errors.ACCOUNT_BLOCKED_PERMANENT"
-								? translatedPerm
-								: "Tu cuenta ha sido bloqueada permanentemente. Contacta soporte.";
-					} else if (err.data.blockedUntil) {
-						const timeRemaining = formatBlockedTime(err.data.blockedUntil);
-						const translatedTemp = t("errors.ACCOUNT_BLOCKED_TEMP", { time: timeRemaining });
-						message =
-							translatedTemp !== "errors.ACCOUNT_BLOCKED_TEMP"
-								? translatedTemp
-								: `Cuenta bloqueada temporalmente. Intenta de nuevo en ${timeRemaining}.`;
-					} else {
-						// Bloqueo sin tiempo específico
-						const translated = t(`errors.${errorKey}`);
-						message = translated !== `errors.${errorKey}` ? translated : err.message;
-					}
-				} else {
-					// Error normal: intentar traducción, fallback al mensaje del backend
-					const translated = t(`errors.${errorKey}`);
-					message = translated !== `errors.${errorKey}` ? translated : err.message;
-				}
-
-				setError(message);
-			} else {
-				// Error no tipado: fallback genérico
-				const fallback = t("errors.AUTH_ERROR");
-				setError(fallback !== "errors.AUTH_ERROR" ? fallback : "Error de autenticación");
-			}
-		} finally {
-			setLoading(false);
+		if (result.success) {
+			window.location.href = getRedirectUrl();
 		}
+
+		setLoading(false);
 	};
 
 	/**
@@ -132,11 +101,8 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 			<adc-blur-panel variant="elevated" glow class="w-full bg-surface">
 				<h1 className="font-heading text-2xl font-bold text-center mb-6 text-text">{t("login.title")}</h1>
 
-				{error && (
-					<adc-callout tone={blockedInfo ? "warning" : "error"} class="mb-4">
-						{error}
-					</adc-callout>
-				)}
+				{/* Handler de errores específicos del formulario (bloqueo de cuenta) */}
+				<adc-custom-error variant="callout" keys={JSON.stringify(LOGIN_SPECIFIC_ERROR_KEYS)} class="mb-4" />
 
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>

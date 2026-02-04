@@ -1,7 +1,20 @@
 import React, { useState } from "react";
-import { authApi, AuthError } from "../utils/auth.ts";
+import { authApi } from "../utils/auth.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { showError, clearErrors } from "@ui-library/utils/error-handler";
+import { adcFetch, clearErrors } from "@ui-library/utils/adc-fetch";
+import { showError } from "@ui-library/utils/error-handler";
+
+/** Errores específicos de formulario registro (se muestran inline como callout) */
+const REGISTER_SPECIFIC_ERROR_KEYS = [
+	{ key: "PASSWORDS_MISMATCH", severity: "error" },
+	{ key: "PASSWORD_TOO_SHORT", severity: "error" },
+	{ key: "MISSING_FIELDS", severity: "error" },
+	{ key: "INVALID_USERNAME", severity: "error" },
+	{ key: "WEAK_PASSWORD", severity: "error" },
+	{ key: "INVALID_EMAIL", severity: "error" },
+	{ key: "USERNAME_EXISTS", severity: "warning" },
+	{ key: "EMAIL_EXISTS", severity: "warning" },
+];
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -36,44 +49,24 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 		clearErrors();
 
 		if (password !== confirmPassword) {
-			showError({ errorKey: "PASSWORDS_MISMATCH", message: t("register.passwordsMismatch"), severity: "error" });
+			showError({ errorKey: "PASSWORDS_MISMATCH", message: t("errors.PASSWORDS_MISMATCH") });
 			return;
 		}
 
 		if (password.length < 8) {
-			showError({ errorKey: "PASSWORD_TOO_SHORT", message: t("register.passwordTooShort"), severity: "error" });
+			showError({ errorKey: "PASSWORD_TOO_SHORT", message: t("errors.PASSWORD_TOO_SHORT") });
 			return;
 		}
 
 		setLoading(true);
 
-		try {
-			const result = await authApi.register(username, email, password);
+		const result = await adcFetch(authApi.register(username, email, password));
 
-			if (result.success) {
-				// Tras registro exitoso, redirigir al originPath
-				window.location.href = getRedirectUrl();
-			}
-		} catch (err) {
-			let message: string;
-			let errorKey: string;
-
-			if (err instanceof AuthError) {
-				errorKey = err.errorKey || "REGISTER_ERROR";
-				const translated = t(`errors.${errorKey}`);
-				// Si la traducción existe (no devuelve la key), usarla; sino, usar mensaje del backend
-				message = translated !== `errors.${errorKey}` ? translated : err.message;
-			} else {
-				// Error no tipado
-				errorKey = "REGISTER_ERROR";
-				const fallback = t("errors.REGISTER_ERROR");
-				message = fallback !== "errors.REGISTER_ERROR" ? fallback : "Error al crear la cuenta";
-			}
-
-			showError({ errorKey, message, severity: "error" });
-		} finally {
-			setLoading(false);
+		if (result.success) {
+			window.location.href = getRedirectUrl();
 		}
+
+		setLoading(false);
 	};
 
 	/**
@@ -102,7 +95,8 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 			<adc-blur-panel variant="elevated" glow class="w-full bg-surface">
 				<h1 className="font-heading text-2xl font-bold text-center mb-6 text-text">{t("register.title") || "Crear Cuenta"}</h1>
 
-				<adc-custom-error variant="callout" global class="mb-4" />
+				{/* Handler de errores específicos del formulario (validación, duplicados) */}
+				<adc-custom-error variant="callout" keys={JSON.stringify(REGISTER_SPECIFIC_ERROR_KEYS)} class="mb-4" />
 
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
