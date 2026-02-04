@@ -1,5 +1,4 @@
 import { AuthError } from "@common/types/custom-errors/AuthError.ts";
-import { HttpError } from "@common/types/ADCCustomError.ts";
 import type { EndpointConfig, EnableEndpointsConfig, HttpMethod, EndpointCtx } from "./types.js";
 
 /**

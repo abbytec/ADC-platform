@@ -12,6 +12,7 @@ const WORKER_INSTANCE = Symbol("workerInstance");
 const IS_DISTRIBUTED = Symbol("isDistributed");
 
 /**
+ * @public
  * Decorador @Distributed para clases que soportan ejecución distribuida.
  *
  * Este decorador permite que los métodos de una clase se ejecuten en workers

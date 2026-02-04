@@ -63,13 +63,6 @@ export interface RegisteredEndpoint {
 	ownerName: string;
 }
 
-/** Token verification result */
-export interface TokenVerificationResult {
-	valid: boolean;
-	session?: { user: AuthenticatedUserInfo };
-	error?: string;
-}
-
 /** EnableEndpoints configuration */
 export interface EnableEndpointsConfig {
 	managers?: () => object[];

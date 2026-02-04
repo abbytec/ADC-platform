@@ -28,6 +28,7 @@ export default {
 		// Errores específicos de formulario (se muestran como callout inline)
 		MISSING_CREDENTIALS: "Usuario y contraseña son requeridos",
 		INVALID_CREDENTIALS: "Credenciales inválidas",
+		ACCOUNT_DISABLED: "Cuenta desactivada",
 		ACCOUNT_BLOCKED: "Cuenta bloqueada",
 		ACCOUNT_BLOCKED_TEMP: "Cuenta bloqueada temporalmente. Intenta de nuevo en {{time}}.",
 		ACCOUNT_BLOCKED_PERMANENT: "Tu cuenta ha sido bloqueada permanentemente. Contacta soporte.",

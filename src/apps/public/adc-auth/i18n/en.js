@@ -28,6 +28,7 @@ export default {
 		// Form-specific errors (shown as inline callout)
 		MISSING_CREDENTIALS: "Username and password are required",
 		INVALID_CREDENTIALS: "Invalid credentials",
+		ACCOUNT_DISABLED: "Account disabled",
 		ACCOUNT_BLOCKED: "Account blocked",
 		ACCOUNT_BLOCKED_TEMP: "Account temporarily blocked. Try again in {{time}}.",
 		ACCOUNT_BLOCKED_PERMANENT: "Your account has been permanently blocked. Contact support.",

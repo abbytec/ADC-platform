@@ -7,6 +7,7 @@ type ExcpectedAuthErrorTypes =
 	// AUTH FLOW
 	| "MISSING_CREDENTIALS"
 	| "INVALID_CREDENTIALS"
+	| "ACCOUNT_DISABLED"
 	| "ACCOUNT_BLOCKED"
 	| "ACCOUNT_BLOCKED_TEMP"
 	| "ACCOUNT_BLOCKED_PERMANENT"
@@ -28,10 +29,13 @@ type UnexpectedAuthErrorTypes =
 	| "FORBIDDEN"
 	| "UNAUTHORIZED";
 
-export type AuthErrorTypes = UnexpectedAuthErrorTypes | ExcpectedAuthErrorTypes | AuthGenericErrors;
+type AuthErrorTypes = UnexpectedAuthErrorTypes | ExcpectedAuthErrorTypes | AuthGenericErrors;
 
 export class AuthError extends ADCCustomError<AuthErrorData, AuthErrorTypes> {
 	public readonly name = "AuthError";
 }
 
+/**
+ * @public
+ */
 export type ADCAuthErrorJSON = ADCCustomErrorJSON<AuthErrorData, AuthErrorTypes>;

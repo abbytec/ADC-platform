@@ -33,6 +33,7 @@ function formatBlockedTime(blockedUntil: number): string {
 const LOGIN_SPECIFIC_ERROR_KEYS = [
 	{ key: "MISSING_CREDENTIALS", severity: "warning" },
 	{ key: "INVALID_CREDENTIALS", severity: "error" },
+	{ key: "ACCOUNT_DISABLED", severity: "warning" },
 	{ key: "ACCOUNT_BLOCKED", severity: "warning" },
 	{ key: "ACCOUNT_BLOCKED_TEMP", severity: "warning" },
 	{ key: "ACCOUNT_BLOCKED_PERMANENT", severity: "error" },

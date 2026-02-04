@@ -1,5 +1,5 @@
+import { UserAuthenticationResult } from "../../../../core/IdentityManagerService/dao/users.ts";
 import { BaseOAuthProvider } from "./base.js";
-import type { ProviderUserProfile } from "../../types.js";
 
 /**
  * Proveedor OAuth para Discord
@@ -17,7 +17,7 @@ export class DiscordOAuthProvider extends BaseOAuthProvider {
 		};
 	}
 
-	protected parseUserProfile(data: any): ProviderUserProfile {
+	protected parseUserProfile(data: Record<string, any>): UserAuthenticationResult {
 		// Discord avatar URL format
 		let avatar: string | undefined;
 		if (data.avatar) {
@@ -30,7 +30,7 @@ export class DiscordOAuthProvider extends BaseOAuthProvider {
 			username: data.username,
 			email: data.email,
 			avatar,
-			raw: data,
+			metadata: data,
 		};
 	}
 }

@@ -17,6 +17,7 @@ export interface User {
 	username: string;
 	passwordHash: string;
 	email?: string;
+	avatar?: string;
 	roleIds: string[];
 	groupIds: string[];
 	permissions?: Permission[];

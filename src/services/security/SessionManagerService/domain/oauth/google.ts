@@ -1,5 +1,5 @@
+import { UserAuthenticationResult } from "../../../../core/IdentityManagerService/dao/users.ts";
 import { BaseOAuthProvider } from "./base.js";
-import type { ProviderUserProfile } from "../../types.js";
 
 /**
  * Proveedor OAuth para Google
@@ -18,13 +18,13 @@ export class GoogleOAuthProvider extends BaseOAuthProvider {
 		};
 	}
 
-	protected parseUserProfile(data: any): ProviderUserProfile {
+	protected parseUserProfile(data: Record<string, any>): UserAuthenticationResult {
 		return {
 			id: data.id,
 			username: data.name || data.email?.split("@")[0] || "user",
 			email: data.email,
 			avatar: data.picture,
-			raw: data,
+			metadata: data,
 		};
 	}
 }

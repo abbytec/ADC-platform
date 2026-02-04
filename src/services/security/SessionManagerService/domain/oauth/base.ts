@@ -1,4 +1,5 @@
-import type { IOAuthProvider, OAuthProviderConfig, TokenExchangeResult, ProviderUserProfile } from "../../types.js";
+import { UserAuthenticationResult } from "../../../../core/IdentityManagerService/dao/users.ts";
+import type { IOAuthProvider, OAuthProviderConfig, TokenExchangeResult } from "../../types.js";
 
 /**
  * Clase base abstracta para proveedores OAuth
@@ -68,7 +69,7 @@ export abstract class BaseOAuthProvider implements IOAuthProvider {
 	/**
 	 * Obtiene el perfil del usuario usando el access token
 	 */
-	async getUserProfile(accessToken: string): Promise<ProviderUserProfile> {
+	async getUserProfile(accessToken: string): Promise<UserAuthenticationResult> {
 		const response = await fetch(this.userInfoEndpoint, {
 			headers: {
 				Authorization: `Bearer ${accessToken}`,
@@ -107,5 +108,5 @@ export abstract class BaseOAuthProvider implements IOAuthProvider {
 	/**
 	 * Parsea el perfil del usuario - debe ser implementado por cada provider
 	 */
-	protected abstract parseUserProfile(data: any): ProviderUserProfile;
+	protected abstract parseUserProfile(data: any): UserAuthenticationResult;
 }
