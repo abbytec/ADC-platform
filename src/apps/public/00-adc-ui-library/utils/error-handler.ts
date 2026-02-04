@@ -52,53 +52,6 @@ export function showError(options: ShowErrorOptions): void {
 }
 
 /**
- * Convenience function to show error from an ADCCustomError-like object.
- * Useful for catching errors from API calls.
- *
- * @example
- * ```ts
- * try {
- *   await authApi.login(username, password);
- * } catch (err) {
- *   showErrorFromResponse(err);
- * }
- * ```
- */
-export function showErrorFromResponse(error: unknown, fallbackMessage = "An unexpected error occurred"): void {
-	if (error && typeof error === "object") {
-		const err = error as Record<string, unknown>;
-
-		// Check if it's an ADCCustomError-like object
-		if ("errorKey" in err && typeof err.errorKey === "string") {
-			showError({
-				errorKey: err.errorKey,
-				message: (err.message as string) || fallbackMessage,
-				severity: "error",
-				data: err.data as Record<string, unknown>,
-			});
-			return;
-		}
-
-		// Check if it's a standard Error
-		if ("message" in err && typeof err.message === "string") {
-			showError({
-				errorKey: "UNKNOWN_ERROR",
-				message: err.message,
-				severity: "error",
-			});
-			return;
-		}
-	}
-
-	// Fallback for unknown error types
-	showError({
-		errorKey: "UNKNOWN_ERROR",
-		message: fallbackMessage,
-		severity: "error",
-	});
-}
-
-/**
  * Clear all displayed errors by dispatching a clear event.
  * Useful when navigating away or resetting forms.
  */

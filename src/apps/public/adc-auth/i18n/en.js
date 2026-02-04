@@ -25,8 +25,10 @@ export default {
 		passwordTooShort: "Password must be at least 8 characters"
 	},
 	errors: {
+		// Form-specific errors (shown as inline callout)
 		MISSING_CREDENTIALS: "Username and password are required",
 		INVALID_CREDENTIALS: "Invalid credentials",
+		ACCOUNT_DISABLED: "Account disabled",
 		ACCOUNT_BLOCKED: "Account blocked",
 		ACCOUNT_BLOCKED_TEMP: "Account temporarily blocked. Try again in {{time}}.",
 		ACCOUNT_BLOCKED_PERMANENT: "Your account has been permanently blocked. Contact support.",
@@ -38,18 +40,12 @@ export default {
 		EMAIL_EXISTS: "Email is already registered",
 		PASSWORDS_MISMATCH: "Passwords don't match",
 		PASSWORD_TOO_SHORT: "Password must be at least 8 characters",
-		REGISTER_ERROR: "Error creating account",
-		NO_SESSION: "No active session",
-		INVALID_SESSION: "Invalid session",
-		NO_REFRESH_TOKEN: "No refresh token",
-		INVALID_REFRESH_TOKEN: "Invalid refresh token",
-		LOCATION_CHANGE: "Session invalidated due to location change",
-		REFRESH_FAILED: "Error refreshing tokens",
+		// Unexpected auth errors (domain)
 		AUTH_ERROR: "Authentication error",
-		SERVICE_UNAVAILABLE: "Identity service unavailable",
-		UNKNOWN_ERROR: "Unknown error",
 		AUTH_UNAVAILABLE: "Authentication service unavailable",
+		SERVICE_UNAVAILABLE: "Identity service unavailable",
 		PROVIDER_NOT_SUPPORTED: "Provider not supported",
-		PROVIDER_CONFIG_NOT_FOUND: "Provider not configured"
+		PROVIDER_CONFIG_NOT_FOUND: "Provider not configured",
+		REGISTER_ERROR: "Error creating account"
 	}
 };

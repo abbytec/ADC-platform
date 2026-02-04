@@ -1,3 +1,4 @@
+import { TokenVerificationResult } from "../../../../../providers/security/jwt/index.ts";
 import type { AuthenticatedUser, SessionData } from "../../types.js";
 import type { KeyStore } from "../keys/KeyStore.js";
 import type { RefreshTokenRepository, StoredRefreshToken } from "./RefreshTokenRepository.js";
@@ -28,11 +29,8 @@ export interface TokenPair {
 /**
  * Resultado de verificación de Access Token
  */
-export interface AccessTokenVerificationResult {
-	valid: boolean;
-	payload?: AccessTokenPayload;
+export interface AccessTokenVerificationResult extends TokenVerificationResult<AccessTokenPayload> {
 	session?: SessionData;
-	error?: string;
 	/** True si el token fue verificado con la clave anterior (requiere refresh) */
 	usedPreviousKey?: boolean;
 }

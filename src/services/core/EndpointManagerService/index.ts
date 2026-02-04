@@ -5,7 +5,6 @@ import {
 	type RegisteredEndpoint,
 	type EndpointCtx,
 	type AuthenticatedUserInfo,
-	type TokenVerificationResult,
 	type HttpMethod,
 	type EndpointConfig,
 	type ServiceCallRequest,
@@ -14,6 +13,7 @@ import {
 } from "./types.js";
 import ADCCustomError from "@common/types/ADCCustomError.js";
 import { setPermissionValidator } from "./decorators.js";
+import SessionManagerService from "../../security/SessionManagerService/index.ts";
 // Re-exportar decoradores para uso externo
 export { RegisterEndpoint, EnableEndpoints, DisableEndpoints, readEndpointMetadata, readEnableEndpointsConfig } from "./decorators.js";
 
@@ -31,14 +31,6 @@ export {
 	type SetCookie,
 	type ClearCookie,
 } from "./types.js";
-
-/**
- * SessionManagerService interface (para evitar import circular)
- */
-interface ISessionManagerService {
-	verifyToken(token: string): Promise<TokenVerificationResult>;
-	extractSessionToken(req: { cookies?: Record<string, string> }): string | null;
-}
 
 /**
  * EndpointManagerService - Gestión centralizada de endpoints HTTP
@@ -81,7 +73,7 @@ export default class EndpointManagerService extends BaseService {
 	public readonly name = "EndpointManagerService";
 
 	#httpProvider: IHostBasedHttpProvider | null = null;
-	#sessionManager: ISessionManagerService | null = null;
+	#sessionManager: SessionManagerService | null = null;
 
 	/** Endpoints registrados indexados por ID */
 	#endpoints: Map<string, RegisteredEndpoint> = new Map();
@@ -107,10 +99,10 @@ export default class EndpointManagerService extends BaseService {
 	 * Lazy-load singleton getter para SessionManagerService
 	 * Intenta obtener el servicio solo si no está cargado
 	 */
-	#getSessionManager(): ISessionManagerService | null {
+	#getSessionManager(): SessionManagerService | null {
 		if (!this.#sessionManager) {
 			try {
-				this.#sessionManager = this.getMyService<ISessionManagerService>("SessionManagerService");
+				this.#sessionManager = this.getMyService<SessionManagerService>("SessionManagerService");
 			} catch {
 				// SessionManagerService no disponible todavía
 			}

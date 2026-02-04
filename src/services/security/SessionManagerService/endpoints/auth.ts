@@ -13,6 +13,8 @@ import {
 } from "../../../core/EndpointManagerService/index.js";
 import { AuthError } from "@common/types/custom-errors/AuthError.ts";
 import type { AuthenticatedUser } from "../types.js";
+import { UserAuthenticationResult } from "../../../core/IdentityManagerService/dao/users.ts";
+import { User } from "../../../core/IdentityManagerService/index.js";
 
 /** Nombre de las cookies */
 const ACCESS_COOKIE_NAME = "access_token";
@@ -47,12 +49,9 @@ interface RegisterBody {
  */
 export class AuthEndpoints {
 	private static deps: AuthEndpointsDeps;
-	private static validateCredentials: (username: string, password: string) => Promise<{ id: string; username: string; email?: string } | null>;
+	private static validateCredentials: (username: string, password: string) => Promise<UserAuthenticationResult>;
 
-	static init(
-		deps: AuthEndpointsDeps,
-		validateCredentials: (username: string, password: string) => Promise<{ id: string; username: string; email?: string } | null>
-	): void {
+	static init(deps: AuthEndpointsDeps, validateCredentials: (username: string, password: string) => Promise<UserAuthenticationResult>): void {
 		AuthEndpoints.deps ??= deps;
 		AuthEndpoints.validateCredentials ??= validateCredentials;
 	}
@@ -74,36 +73,28 @@ export class AuthEndpoints {
 
 		try {
 			const profile = await AuthEndpoints.validateCredentials(username, password);
-
-			if (!profile) {
-				const tempUserId = `login_attempt_${username}`;
-				const blockStatus = await AuthEndpoints.deps.loginTracker.recordLoginAttempt(tempUserId, false, ctx.ip);
+			if (!profile) throw new AuthError(401, "INVALID_CREDENTIALS", "Credenciales inválidas");
+			if ("isActive" in profile && profile.isActive === false) {
+				throw new AuthError(403, "ACCOUNT_DISABLED", "Cuenta desactivada");
+			}
+			if ("wrongPassword" in profile && profile.wrongPassword) {
+				const blockStatus = await AuthEndpoints.deps.loginTracker.recordLoginAttempt(profile.id, false, ctx.ip);
 
 				if (blockStatus.blocked) {
-					throw new AuthError(403, "ACCOUNT_BLOCKED", "Cuenta bloqueada temporalmente", {
+					if (blockStatus.permanent) {
+						throw new AuthError(403, "ACCOUNT_BLOCKED_PERMANENT", "Cuenta bloqueada");
+					}
+
+					throw new AuthError(403, "ACCOUNT_BLOCKED_TEMP", "Cuenta bloqueada temporalmente", {
 						blockedUntil: blockStatus.blockedUntil ?? undefined,
-						permanent: blockStatus.permanent,
 					});
 				}
 
 				throw new AuthError(401, "INVALID_CREDENTIALS", "Credenciales inválidas");
 			}
 
-			const user = await AuthEndpoints.getOrCreateUser("platform", {
-				id: profile.id,
-				username: profile.username,
-				email: profile.email,
-			});
-
-			const blockStatus = await AuthEndpoints.deps.loginTracker.isBlocked(user.id);
-			if (blockStatus.blocked) {
-				throw new AuthError(403, "ACCOUNT_BLOCKED", blockStatus.permanent ? "Cuenta bloqueada" : "Cuenta bloqueada temporalmente", {
-					blockedUntil: blockStatus.blockedUntil ?? undefined,
-					permanent: blockStatus.permanent,
-				});
-			}
-
-			await AuthEndpoints.deps.loginTracker.recordLoginAttempt(user.id, true, ctx.ip);
+			// Construir usuario directamente desde profile (ya validado por authenticate)
+			const user = await AuthEndpoints.buildAuthenticatedUser("platform", profile as User);
 			const cookies = await AuthEndpoints.getTokenCookies(ctx, user);
 
 			throw UncommonResponse.json(
@@ -159,17 +150,14 @@ export class AuthEndpoints {
 		}
 
 		try {
-			// Verificar si el usuario o email ya existe
+			// Verificar si el usuario o email ya existe (una sola query)
 			const users = AuthEndpoints.deps.identityService.users;
-			const allUsers = await users.getAllUsers();
-			const existingUsername = allUsers.find((u: any) => u.username.toLowerCase() === username.toLowerCase());
-			const existingEmail = allUsers.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+			const existing = await users.existsByUsernameOrEmail(username, email);
 
-			if (existingUsername) {
-				throw new AuthError(409, "USERNAME_EXISTS", "El nombre de usuario ya está en uso");
-			}
-
-			if (existingEmail) {
+			if (existing.exists) {
+				if (existing.field === "username") {
+					throw new AuthError(409, "USERNAME_EXISTS", "El nombre de usuario ya está en uso");
+				}
 				throw new AuthError(409, "EMAIL_EXISTS", "El email ya está registrado");
 			}
 
@@ -185,8 +173,8 @@ export class AuthEndpoints {
 				},
 			});
 
-			// Obtener usuario completo para login automático
-			const user = await AuthEndpoints.getOrCreateUser("platform", {
+			// Construir usuario directamente (ya tenemos todos los datos)
+			const user = await AuthEndpoints.buildAuthenticatedUser("platform", {
 				id: newUser.id,
 				username,
 				email,
@@ -424,74 +412,6 @@ export class AuthEndpoints {
 		return `device_${Math.abs(hash).toString(36)}`;
 	}
 
-	private static async getOrCreateUser(
-		provider: string,
-		profile: { id: string; username: string; email?: string; avatar?: string }
-	): Promise<AuthenticatedUser> {
-		if (!AuthEndpoints.deps.identityService) {
-			return {
-				id: `temp_${profile.id}`,
-				providerId: profile.id,
-				provider,
-				username: profile.username,
-				email: profile.email,
-				avatar: profile.avatar,
-				permissions: ["public.read"],
-			};
-		}
-
-		const providerIdField = `${provider}Id`;
-		const users = AuthEndpoints.deps.identityService.users;
-		const allUsers = await users.getAllUsers();
-		let existingUser = allUsers.find(
-			(u: any) => u.metadata?.[providerIdField] === profile.id || (profile.email && u.email === profile.email)
-		);
-
-		if (existingUser) {
-			if (!existingUser.metadata?.[providerIdField]) {
-				const updatedMetadata = { ...existingUser.metadata, [providerIdField]: profile.id };
-				await users.updateUser(existingUser.id, { metadata: updatedMetadata });
-				existingUser = { ...existingUser, metadata: updatedMetadata };
-			}
-
-			const permissions = await AuthEndpoints.getUserPermissions(existingUser.id);
-			return {
-				id: existingUser.id,
-				providerId: profile.id,
-				provider,
-				username: existingUser.username,
-				email: existingUser.email,
-				avatar: profile.avatar || existingUser.metadata?.avatar,
-				permissions,
-				metadata: existingUser.metadata,
-			};
-		}
-
-		const { randomBytes } = await import("node:crypto");
-		const randomPassword = randomBytes(16).toString("base64");
-		const newUser = await users.createUser(profile.username, randomPassword, []);
-
-		await users.updateUser(newUser.id, {
-			email: profile.email,
-			metadata: {
-				[providerIdField]: profile.id,
-				avatar: profile.avatar,
-				createdVia: provider,
-			},
-		});
-
-		const defaultPermissions = await AuthEndpoints.getDefaultPermissions();
-		return {
-			id: newUser.id,
-			providerId: profile.id,
-			provider,
-			username: newUser.username,
-			email: profile.email,
-			avatar: profile.avatar,
-			permissions: defaultPermissions,
-		};
-	}
-
 	private static async getUserById(userId: string): Promise<AuthenticatedUser | null> {
 		if (!AuthEndpoints.deps.identityService) return null;
 
@@ -515,6 +435,26 @@ export class AuthEndpoints {
 		}
 	}
 
+	/**
+	 * Construye AuthenticatedUser a partir de un perfil ya validado (sin buscar en DB)
+	 * Usado cuando el usuario ya fue autenticado por validateCredentials
+	 */
+	private static async buildAuthenticatedUser(
+		provider: string,
+		profile: { id: string; username: string; email?: string; avatar?: string }
+	): Promise<AuthenticatedUser> {
+		const permissions = await AuthEndpoints.getUserPermissions(profile.id);
+		return {
+			id: profile.id,
+			providerId: profile.id,
+			provider,
+			username: profile.username,
+			email: profile.email,
+			avatar: profile.avatar,
+			permissions,
+		};
+	}
+
 	private static async getUserPermissions(userId: string): Promise<string[]> {
 		if (!AuthEndpoints.deps.identityService) return ["public.read"];
 
@@ -525,9 +465,5 @@ export class AuthEndpoints {
 		} catch {
 			return ["public.read"];
 		}
-	}
-
-	private static async getDefaultPermissions(): Promise<string[]> {
-		return ["public.read", "profile.self.read", "profile.self.write"];
 	}
 }

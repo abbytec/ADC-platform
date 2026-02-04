@@ -1,4 +1,5 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
+import type { TokenVerificationResult as JWTTokenVerificationResult } from "../../../providers/security/jwt/index.ts";
 
 /**
  * Información del usuario autenticado
@@ -46,22 +47,6 @@ export interface TokenExchangeResult {
 	refreshToken?: string;
 	expiresIn?: number;
 	tokenType: string;
-}
-
-/**
- * Perfil del usuario obtenido del provider
- */
-export interface ProviderUserProfile {
-	/** ID del usuario en el provider */
-	id: string;
-	/** Username o nombre */
-	username: string;
-	/** Email */
-	email?: string;
-	/** Avatar URL */
-	avatar?: string;
-	/** Datos raw del provider */
-	raw?: Record<string, unknown>;
 }
 
 /**
@@ -149,10 +134,8 @@ export interface AuthReply extends FastifyReply {
 /**
  * Resultado de verificación de token
  */
-export interface TokenVerificationResult {
-	valid: boolean;
+export interface TokenVerificationResult extends JWTTokenVerificationResult<undefined> {
 	session?: SessionData;
-	error?: string;
 	/** Si se verificó con clave anterior (requiere refresh) */
 	usedPreviousKey?: boolean;
 }

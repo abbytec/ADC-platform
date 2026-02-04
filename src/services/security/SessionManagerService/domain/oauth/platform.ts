@@ -1,4 +1,5 @@
-import type { IOAuthProvider, OAuthProviderConfig, TokenExchangeResult, ProviderUserProfile } from "../../types.js";
+import { UserAuthenticationResult } from "../../../../core/IdentityManagerService/dao/users.ts";
+import type { IOAuthProvider, OAuthProviderConfig, TokenExchangeResult } from "../../types.js";
 
 /**
  * Proveedor de autenticación nativo de la plataforma
@@ -7,9 +8,9 @@ import type { IOAuthProvider, OAuthProviderConfig, TokenExchangeResult, Provider
 export class PlatformAuthProvider implements IOAuthProvider {
 	readonly name = "platform";
 
-	#validateCredentials: (username: string, password: string) => Promise<ProviderUserProfile | null>;
+	#validateCredentials: (username: string, password: string) => Promise<UserAuthenticationResult | null>;
 
-	constructor(validateFn: (username: string, password: string) => Promise<ProviderUserProfile | null>) {
+	constructor(validateFn: (username: string, password: string) => Promise<UserAuthenticationResult | null>) {
 		this.#validateCredentials = validateFn;
 	}
 
@@ -34,14 +35,14 @@ export class PlatformAuthProvider implements IOAuthProvider {
 	/**
 	 * Valida credenciales y retorna el perfil del usuario
 	 */
-	async getUserProfile(_accessToken: string): Promise<ProviderUserProfile> {
+	async getUserProfile(_accessToken: string): Promise<UserAuthenticationResult> {
 		throw new Error("PlatformAuthProvider requiere validación de credenciales");
 	}
 
 	/**
 	 * Valida las credenciales del usuario contra la base de datos
 	 */
-	async validateCredentials(username: string, password: string): Promise<ProviderUserProfile | null> {
+	async validateCredentials(username: string, password: string): Promise<UserAuthenticationResult | null> {
 		return this.#validateCredentials(username, password);
 	}
 }

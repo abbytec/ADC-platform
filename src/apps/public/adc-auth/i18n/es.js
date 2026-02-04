@@ -25,8 +25,10 @@ export default {
 		passwordTooShort: "La contraseña debe tener al menos 8 caracteres"
 	},
 	errors: {
+		// Errores específicos de formulario (se muestran como callout inline)
 		MISSING_CREDENTIALS: "Usuario y contraseña son requeridos",
 		INVALID_CREDENTIALS: "Credenciales inválidas",
+		ACCOUNT_DISABLED: "Cuenta desactivada",
 		ACCOUNT_BLOCKED: "Cuenta bloqueada",
 		ACCOUNT_BLOCKED_TEMP: "Cuenta bloqueada temporalmente. Intenta de nuevo en {{time}}.",
 		ACCOUNT_BLOCKED_PERMANENT: "Tu cuenta ha sido bloqueada permanentemente. Contacta soporte.",
@@ -38,18 +40,12 @@ export default {
 		EMAIL_EXISTS: "El email ya está registrado",
 		PASSWORDS_MISMATCH: "Las contraseñas no coinciden",
 		PASSWORD_TOO_SHORT: "La contraseña debe tener al menos 8 caracteres",
-		REGISTER_ERROR: "Error al crear la cuenta",
-		NO_SESSION: "No hay sesión activa",
-		INVALID_SESSION: "Sesión inválida",
-		NO_REFRESH_TOKEN: "No hay token de refresco",
-		INVALID_REFRESH_TOKEN: "Token de refresco inválido",
-		LOCATION_CHANGE: "Sesión invalidada por cambio de ubicación",
-		REFRESH_FAILED: "Error al refrescar tokens",
+		// Errores inesperados de auth (dominio)
 		AUTH_ERROR: "Error durante la autenticación",
-		SERVICE_UNAVAILABLE: "Servicio de identidad no disponible",
-		UNKNOWN_ERROR: "Error desconocido",
 		AUTH_UNAVAILABLE: "Servicio de autenticación no disponible",
+		SERVICE_UNAVAILABLE: "Servicio de identidad no disponible",
 		PROVIDER_NOT_SUPPORTED: "Proveedor no soportado",
-		PROVIDER_CONFIG_NOT_FOUND: "Proveedor no configurado"
+		PROVIDER_CONFIG_NOT_FOUND: "Proveedor no configurado",
+		REGISTER_ERROR: "Error al crear la cuenta"
 	}
 };

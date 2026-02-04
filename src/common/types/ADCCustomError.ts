@@ -21,7 +21,12 @@ export default abstract class ADCCustomError<T = Record<string, unknown>, M exte
 		this.status = status;
 		this.errorKey = errorKey;
 		this.data = data;
-		if (Error.captureStackTrace) Error.captureStackTrace(this, this.constructor);
+		if ((Error as ErrorConstructor & { captureStackTrace?: (err: Error, constructor: unknown) => void }).captureStackTrace) {
+			(Error as ErrorConstructor & { captureStackTrace: (err: Error, constructor: unknown) => void }).captureStackTrace(
+				this,
+				this.constructor
+			);
+		}
 	}
 
 	toJSON(): ADCCustomErrorJSON<T, M> {

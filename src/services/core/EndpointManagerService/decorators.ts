@@ -1,5 +1,4 @@
 import { AuthError } from "@common/types/custom-errors/AuthError.ts";
-import { HttpError } from "@common/types/ADCCustomError.ts";
 import type { EndpointConfig, EnableEndpointsConfig, HttpMethod, EndpointCtx } from "./types.js";
 
 /**
@@ -149,7 +148,7 @@ export function RegisterEndpoint(config: Omit<EndpointConfig, "handler">): Metho
 					const result = await validator(ctx.token, permissions);
 
 					if (!result.valid)
-						throw new HttpError(
+						throw new AuthError(
 							ctx.token ? 403 : 401,
 							ctx.token ? "FORBIDDEN" : "UNAUTHORIZED",
 							result.error || (ctx.token ? "Insufficient permissions" : "Authentication required")

@@ -36,9 +36,9 @@ export interface JWTProviderConfig {
 /**
  * Resultado de verificación de token
  */
-export interface TokenVerificationResult {
+export interface TokenVerificationResult<T> {
 	valid: boolean;
-	payload?: SessionPayload;
+	payload?: T;
 	error?: string;
 }
 
@@ -54,7 +54,7 @@ export interface IJWTProvider {
 	/**
 	 * Descifra y verifica un JWT
 	 */
-	decrypt(token: string): Promise<TokenVerificationResult>;
+	decrypt(token: string): Promise<TokenVerificationResult<SessionPayload>>;
 
 	/**
 	 * Verifica si un token es válido sin descifrar el payload completo
@@ -74,7 +74,7 @@ export interface IJWTProviderMultiKey extends IJWTProvider {
 	/**
 	 * Descifra un JWT con una clave específica
 	 */
-	decryptWithKey(token: string, key: Uint8Array): Promise<TokenVerificationResult>;
+	decryptWithKey(token: string, key: Uint8Array): Promise<TokenVerificationResult<SessionPayload>>;
 }
 
 /**
@@ -160,7 +160,7 @@ export default class JWTProvider extends BaseProvider implements IJWTProviderMul
 	/**
 	 * Descifra y verifica un JWT usando la clave por defecto
 	 */
-	async decrypt(token: string): Promise<TokenVerificationResult> {
+	async decrypt(token: string): Promise<TokenVerificationResult<SessionPayload>> {
 		if (!this.#secretKey) {
 			return { valid: false, error: "JWTProvider no está inicializado" };
 		}
@@ -172,7 +172,7 @@ export default class JWTProvider extends BaseProvider implements IJWTProviderMul
 	 * Descifra y verifica un JWT usando una clave específica
 	 * Permite verificar con claves del KeyStore (current o previous)
 	 */
-	async decryptWithKey(token: string, key: Uint8Array): Promise<TokenVerificationResult> {
+	async decryptWithKey(token: string, key: Uint8Array): Promise<TokenVerificationResult<SessionPayload>> {
 		try {
 			const { payload } = await jose.jwtDecrypt(token, key, {
 				issuer: this.#config.issuer,

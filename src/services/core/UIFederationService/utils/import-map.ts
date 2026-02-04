@@ -3,13 +3,20 @@ import type { ImportMap } from "../../../../interfaces/modules/IUIModule.js";
 
 /**
  * Genera el import map completo con todos los módulos registrados de un namespace
+ * @param registeredModules - Módulos registrados
+ * @param port - Puerto del servidor principal
+ * @param namespace - Namespace del UI
+ * @param host - Host del request (ej: "192.168.1.100" o "localhost"). Si no se provee, usa rutas relativas.
  */
 export function generateCompleteImportMap(
 	registeredModules: Map<string, RegisteredUIModule>,
 	port: number,
-	namespace: string = "default"
+	namespace: string = "default",
+	host?: string
 ): Record<string, string> {
 	const isDevelopment = process.env.NODE_ENV === "development";
+	// Construir base URL dinámica: si hay host, usar http://{host}:{port}, si no, ruta relativa
+	const baseUrl = isDevelopment && host ? `http://${host}:${port}` : "";
 	const imports: Record<string, string> = {
 		react: "https://esm.sh/react@18.3.1",
 		"react-dom": "https://esm.sh/react-dom@18.3.1",
@@ -21,24 +28,18 @@ export function generateCompleteImportMap(
 	for (const [name, module] of registeredModules.entries()) {
 		const framework = module.uiConfig.framework || "astro";
 		const nsPrefix = `/${namespace}`;
+		// Para módulos con devPort propio, construir URL con el host dinámico
+		const getDevPortUrl = (devPort: number) => (host ? `http://${host}:${devPort}` : `http://localhost:${devPort}`);
 
 		if (framework === "stencil") {
-			imports[`@${name}/loader`] = isDevelopment
-				? `http://localhost:${port}${nsPrefix}/${name}/loader/index.js`
-				: `${nsPrefix}/${name}/loader/index.js`;
-			imports[`@${name}/dist`] = isDevelopment 
-				? `http://localhost:${port}${nsPrefix}/${name}/dist/` 
-				: `${nsPrefix}/${name}/dist/`;
-			imports[`@${name}/`] = isDevelopment 
-				? `http://localhost:${port}${nsPrefix}/${name}/` 
-				: `${nsPrefix}/${name}/`;
+			imports[`@${name}/loader`] = isDevelopment ? `${baseUrl}${nsPrefix}/${name}/loader/index.js` : `${nsPrefix}/${name}/loader/index.js`;
+			imports[`@${name}/dist`] = isDevelopment ? `${baseUrl}${nsPrefix}/${name}/dist/` : `${nsPrefix}/${name}/dist/`;
+			imports[`@${name}/`] = isDevelopment ? `${baseUrl}${nsPrefix}/${name}/` : `${nsPrefix}/${name}/`;
 		} else if (isDevelopment && module.uiConfig.devPort && (framework === "react" || framework === "vue")) {
-			imports[`@${name}`] = `http://localhost:${module.uiConfig.devPort}/src/App.tsx`;
-			imports[`@${name}/`] = `http://localhost:${module.uiConfig.devPort}/`;
+			imports[`@${name}`] = `${getDevPortUrl(module.uiConfig.devPort)}/src/App.tsx`;
+			imports[`@${name}/`] = `${getDevPortUrl(module.uiConfig.devPort)}/`;
 		} else if (framework === "vite") {
-			imports[`@${name}/`] = isDevelopment 
-				? `http://localhost:${port}${nsPrefix}/${name}/` 
-				: `${nsPrefix}/${name}/`;
+			imports[`@${name}/`] = isDevelopment ? `${baseUrl}${nsPrefix}/${name}/` : `${nsPrefix}/${name}/`;
 		} else if (framework === "react" || framework === "vue") {
 			imports[`@${name}`] = `${nsPrefix}/${name}/App.js`;
 			imports[`@${name}/`] = `${nsPrefix}/${name}/`;

@@ -19,7 +19,7 @@ const IS_DEV = process.env.NODE_ENV === "development";
 const moduleDefinitions: Record<string, RemoteModuleConfig> = {
 	home: {
 		framework: "vanilla",
-		remoteEntryUrl: IS_DEV ? "http://localhost:3006/remoteEntry.js" : "http://m-home.local.com:3000/remoteEntry.js",
+		remoteEntryUrl: IS_DEV ? `http://${window.location.hostname}:3006/remoteEntry.js` : "http://m-home.local.com:3000/remoteEntry.js",
 		remoteName: "home",
 		scope: "./App",
 	},

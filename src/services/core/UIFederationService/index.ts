@@ -628,19 +628,30 @@ export default class UIFederationService extends BaseService {
 	async #setupImportMapEndpoints(): Promise<void> {
 		if (!this.#httpProvider) return;
 
-		// Endpoint para import map por namespace
+		// Helper para extraer el hostname del request (sin puerto)
+		const getRequestHost = (req: any): string => {
+			const hostHeader = req.headers?.host || req.hostname || "localhost";
+			// Extraer solo el hostname, sin el puerto
+			return hostHeader.split(":")[0];
+		};
+
+		// Endpoint para import map por namespace (generado dinámicamente)
 		this.#httpProvider.registerRoute("GET", "/:namespace/importmap.json", (req: any, reply: any) => {
 			const namespace = req.params?.namespace || DEFAULT_NAMESPACE;
-			const importMap = this.importMaps.get(namespace) || { imports: {} };
+			const host = getRequestHost(req);
+			const namespaceModules = this.#getNamespaceModules(namespace);
+			const imports = generateCompleteImportMap(namespaceModules, this.port, namespace, host);
 			reply.header("Content-Type", "application/json");
-			reply.send(importMap);
+			reply.send(createImportMapObject(imports));
 		});
 
-		// Endpoint legacy para import map (namespace default)
-		this.#httpProvider.registerRoute("GET", "/importmap.json", (_req: any, reply: any) => {
-			const importMap = this.importMaps.get(DEFAULT_NAMESPACE) || { imports: {} };
+		// Endpoint legacy para import map (namespace default, generado dinámicamente)
+		this.#httpProvider.registerRoute("GET", "/importmap.json", (req: any, reply: any) => {
+			const host = getRequestHost(req);
+			const namespaceModules = this.#getNamespaceModules(DEFAULT_NAMESPACE);
+			const imports = generateCompleteImportMap(namespaceModules, this.port, DEFAULT_NAMESPACE, host);
 			reply.header("Content-Type", "application/json");
-			reply.send(importMap);
+			reply.send(createImportMapObject(imports));
 		});
 
 		// Endpoint para listar namespaces disponibles
@@ -687,12 +698,13 @@ export default class UIFederationService extends BaseService {
 
 		// Ruta raíz: solo registrar en desarrollo (en producción, Fastify maneja "/" por host)
 		if (this.isDevelopment) {
-			this.#httpProvider.registerRoute("GET", "/", (_req: any, reply: any) => {
+			this.#httpProvider.registerRoute("GET", "/", (req: any, reply: any) => {
 				const layoutModule = this.#getHostModule(DEFAULT_NAMESPACE);
+				const host = getRequestHost(req);
 
 				// En desarrollo: redirigir al dev server de Vite
 				if (layoutModule?.uiConfig.devPort) {
-					reply.redirect(`http://localhost:${layoutModule.uiConfig.devPort}/`);
+					reply.redirect(`http://${host}:${layoutModule.uiConfig.devPort}/`);
 					return;
 				}
 
@@ -710,7 +722,7 @@ export default class UIFederationService extends BaseService {
 								.map((ns) => {
 									const nsLayout = this.#getHostModule(ns);
 									if (nsLayout?.uiConfig.devPort) {
-										return `<li><a href="http://localhost:${nsLayout.uiConfig.devPort}/">${ns}</a></li>`;
+										return `<li><a href="http://${host}:${nsLayout.uiConfig.devPort}/">${ns}</a></li>`;
 									}
 									return `<li><a href="/${ns}/${nsLayout?.name || "layout"}/">${ns}</a></li>`;
 								})
@@ -783,7 +795,7 @@ export default class UIFederationService extends BaseService {
 			});
 			this.logger.logDebug(`Service Worker [${namespace}] registrado en ${swPath}`);
 		} catch (error: any) {
-			this.logger.logDebug(`Endpoint SW ya registrado para ${namespace}`);;
+			this.logger.logDebug(`Endpoint SW ya registrado para ${namespace}`);
 		}
 	}
 }

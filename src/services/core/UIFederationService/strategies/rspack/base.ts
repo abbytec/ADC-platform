@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { spawn } from "node:child_process";
 import { BaseFrameworkStrategy } from "../base-strategy.js";
 import type { BundlerType, IBuildContext, IBuildResult } from "../types.js";
-import { getConfigDir, getBinPath, getLogsDir, normalizeForConfig } from "../../utils/path-resolver.js";
+import { getConfigDir, getBinPath, getLogsDir, normalizeForConfig, getServerHost } from "../../utils/path-resolver.js";
 import aliasGenerator from "../../utils/alias-generator.js";
 import { generateTailwindConfig, generatePostCSSConfig, hasTailwindEnabled } from "../../config-generators/tailwind.js";
 
@@ -262,6 +262,7 @@ export abstract class RspackBaseStrategy extends BaseFrameworkStrategy {
 	protected async detectRemotes(context: IBuildContext): Promise<Record<string, string>> {
 		const { namespace, registeredModules, module: currentModule, logger } = context;
 		const remotes: Record<string, string> = {};
+		const serverHost = getServerHost();
 
 		logger?.logDebug(
 			`[detectRemotes] ${currentModule.uiConfig.name} - namespace: ${namespace}, registered: ${Array.from(registeredModules.keys()).join(
@@ -281,7 +282,7 @@ export abstract class RspackBaseStrategy extends BaseFrameworkStrategy {
 				// Solo incluir frameworks soportados por rspack
 				if (["react", "vue", "vanilla"].includes(framework)) {
 					const safeRemoteName = this.getSafeName(moduleName);
-					remotes[moduleName] = `${safeRemoteName}@http://localhost:${mod.uiConfig.devPort}/mf-manifest.json`;
+					remotes[moduleName] = `${safeRemoteName}@http://${serverHost}:${mod.uiConfig.devPort}/mf-manifest.json`;
 					logger?.logDebug(`[detectRemotes] Added remote: ${moduleName}`);
 				}
 			}
@@ -367,11 +368,12 @@ export abstract class RspackBaseStrategy extends BaseFrameworkStrategy {
 		const isRemote = module.uiConfig.isRemote ?? false;
 		const devPort = module.uiConfig.devPort;
 		let publicPath: string;
+		const serverHost = getServerHost();
 
 		if (isRemote && devPort && !isProduction) {
 			// Para módulos remotos en desarrollo, usar URL completa del dev server
 			// Esto aplica incluso si también son isHost (pueden ejecutarse standalone)
-			publicPath = `'http://localhost:${devPort}/'`;
+			publicPath = `'http://${serverHost}:${devPort}/'`;
 		} else if (isLayout) {
 			// Los layouts (shell principal) usan '/' porque son el punto de entrada
 			publicPath = "'/'";
@@ -435,8 +437,16 @@ export default {
 	}
     module: {
         rules: [
-            ${moduleRules}
+            ${moduleRules},
+            {
+                scheme: 'data',
+                mimetype: 'text/javascript',
+                type: 'javascript/auto',
+            },
         ],
+    },
+    experiments: {
+        css: true,
     },
     plugins: [
         new rspack.DefinePlugin({
@@ -445,6 +455,7 @@ export default {
         ${plugins}
         new ModuleFederationPlugin({
             name: '${safeName}',
+            runtime: false,
             ${federationConfig}
             shared: ${shared},
         }),

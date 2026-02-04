@@ -4,7 +4,7 @@ import { type ADCAuthErrorJSON, AuthError } from "@common/types/custom-errors/Au
 export { AuthError };
 
 const IS_DEV = process.env.NODE_ENV === "development";
-const API_BASE = `${IS_DEV ? "http://localhost:3000" : ""}/api/auth`;
+const API_BASE = `${IS_DEV ? `http://${window.location.hostname}:3000` : ""}/api/auth`;
 
 export interface AuthUser {
 	id: string;

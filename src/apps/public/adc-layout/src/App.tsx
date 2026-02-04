@@ -15,7 +15,9 @@ const IS_DEV = process.env.NODE_ENV === "development";
 // Configuración de módulos remotos con sus scopes
 const remoteModules: Record<string, RemoteModuleBase> = {
 	"community-home": {
-		remoteEntryUrl: IS_DEV ? "http://localhost:3010/remoteEntry.js" : "http://s-community.adigitalcafe.com:3000/remoteEntry.js",
+		remoteEntryUrl: IS_DEV
+			? `http://${window.location.hostname}:3010/remoteEntry.js`
+			: "http://s-community.adigitalcafe.com:3000/remoteEntry.js",
 		remoteName: "community_home",
 		scopes: {
 			App: { framework: "react", scope: "./App" },

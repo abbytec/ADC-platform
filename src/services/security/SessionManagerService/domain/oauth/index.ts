@@ -1,6 +1,3 @@
-export { BaseOAuthProvider } from "./base.js";
-export { DiscordOAuthProvider } from "./discord.js";
-export { GoogleOAuthProvider } from "./google.js";
 export { PlatformAuthProvider } from "./platform.js";
 
 import type { IOAuthProvider } from "../../types.js";

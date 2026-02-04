@@ -284,10 +284,7 @@ export class OAuthEndpoints {
 
 		const providerIdField = `${provider}Id`;
 		const users = OAuthEndpoints.deps.identityService.users;
-		const allUsers = await users.getAllUsers();
-		let existingUser = allUsers.find(
-			(u: any) => u.metadata?.[providerIdField] === profile.id || (profile.email && u.email === profile.email)
-		);
+		let existingUser = await users.findByProviderIdOrEmail(providerIdField, profile.id, profile.email);
 
 		if (existingUser) {
 			if (!existingUser.metadata?.[providerIdField]) {

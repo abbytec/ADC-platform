@@ -236,12 +236,12 @@ export default class SessionManagerService extends BaseService {
 
 		// Validar credenciales
 		const profile = await this.#validatePlatformCredentials(username, password);
-		if (!profile) {
+		if (!profile || ("wrongPassword" in profile && profile.wrongPassword) || ("isActive" in profile && !profile.isActive)) {
 			return null;
 		}
 
 		// Obtener usuario existente con permisos (si las credenciales son válidas, el usuario ya existe)
-		const user = await this.#getUserById(profile.id);
+		const user = await this.#getUserById(profile.id as string);
 		if (!user) {
 			return null;
 		}
@@ -331,19 +331,9 @@ export default class SessionManagerService extends BaseService {
 		}
 	}
 
-	async #validatePlatformCredentials(username: string, password: string): Promise<{ id: string; username: string; email?: string } | null> {
+	async #validatePlatformCredentials(username: string, password: string) {
 		if (!this.#identityService) return null;
-
-		try {
-			const users = this.#identityService.users;
-			const user = await users.authenticate(username, password);
-			if (user) {
-				return { id: user.id, username: user.username, email: user.email };
-			}
-			return null;
-		} catch {
-			return null;
-		}
+		return this.#identityService.users.authenticate(username, password);
 	}
 
 	@DisableEndpoints()

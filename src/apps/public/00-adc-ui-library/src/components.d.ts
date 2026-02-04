@@ -154,22 +154,10 @@ export namespace Components {
          */
         "title": string;
     }
-    /**
-     * Global error display component with callout and toast variants.
-     * Use multiple instances to separate error handling:
-     * - One global toast handler for unhandled errors
-     * - Specific callout handlers for expected errors in forms
-     * @example ```html
-     * <!-- Global toast handler -->
-     * <adc-custom-error variant="toast" global handle-unhandled></adc-custom-error>
-     * <!-- Form-specific callout handler -->
-     * <adc-custom-error variant="callout" keys='[{"key": "INVALID_CREDENTIALS", "severity": "error"}]'></adc-custom-error>
-     * ```
-     */
     interface AdcCustomError {
         /**
           * Auto-dismiss timeout in ms (only for toast variant). 0 = no auto-dismiss
-          * @default 3000
+          * @default 5000
          */
         "dismissTimeout": number;
         /**
@@ -713,18 +701,6 @@ declare global {
         prototype: HTMLAdcContentCardElement;
         new (): HTMLAdcContentCardElement;
     };
-    /**
-     * Global error display component with callout and toast variants.
-     * Use multiple instances to separate error handling:
-     * - One global toast handler for unhandled errors
-     * - Specific callout handlers for expected errors in forms
-     * @example ```html
-     * <!-- Global toast handler -->
-     * <adc-custom-error variant="toast" global handle-unhandled></adc-custom-error>
-     * <!-- Form-specific callout handler -->
-     * <adc-custom-error variant="callout" keys='[{"key": "INVALID_CREDENTIALS", "severity": "error"}]'></adc-custom-error>
-     * ```
-     */
     interface HTMLAdcCustomErrorElement extends Components.AdcCustomError, HTMLStencilElement {
     }
     var HTMLAdcCustomErrorElement: {
@@ -1148,22 +1124,10 @@ declare namespace LocalJSX {
          */
         "title"?: string;
     }
-    /**
-     * Global error display component with callout and toast variants.
-     * Use multiple instances to separate error handling:
-     * - One global toast handler for unhandled errors
-     * - Specific callout handlers for expected errors in forms
-     * @example ```html
-     * <!-- Global toast handler -->
-     * <adc-custom-error variant="toast" global handle-unhandled></adc-custom-error>
-     * <!-- Form-specific callout handler -->
-     * <adc-custom-error variant="callout" keys='[{"key": "INVALID_CREDENTIALS", "severity": "error"}]'></adc-custom-error>
-     * ```
-     */
     interface AdcCustomError {
         /**
           * Auto-dismiss timeout in ms (only for toast variant). 0 = no auto-dismiss
-          * @default 3000
+          * @default 5000
          */
         "dismissTimeout"?: number;
         /**
@@ -1632,18 +1596,6 @@ declare module "@stencil/core" {
             "adc-callout": LocalJSX.AdcCallout & JSXBase.HTMLAttributes<HTMLAdcCalloutElement>;
             "adc-code-block": LocalJSX.AdcCodeBlock & JSXBase.HTMLAttributes<HTMLAdcCodeBlockElement>;
             "adc-content-card": LocalJSX.AdcContentCard & JSXBase.HTMLAttributes<HTMLAdcContentCardElement>;
-            /**
-             * Global error display component with callout and toast variants.
-             * Use multiple instances to separate error handling:
-             * - One global toast handler for unhandled errors
-             * - Specific callout handlers for expected errors in forms
-             * @example ```html
-             * <!-- Global toast handler -->
-             * <adc-custom-error variant="toast" global handle-unhandled></adc-custom-error>
-             * <!-- Form-specific callout handler -->
-             * <adc-custom-error variant="callout" keys='[{"key": "INVALID_CREDENTIALS", "severity": "error"}]'></adc-custom-error>
-             * ```
-             */
             "adc-custom-error": LocalJSX.AdcCustomError & JSXBase.HTMLAttributes<HTMLAdcCustomErrorElement>;
             "adc-divider": LocalJSX.AdcDivider & JSXBase.HTMLAttributes<HTMLAdcDividerElement>;
             "adc-dropdown-menu": LocalJSX.AdcDropdownMenu & JSXBase.HTMLAttributes<HTMLAdcDropdownMenuElement>;
