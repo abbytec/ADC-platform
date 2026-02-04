@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { router } from "@ui-library/utils/router";
 import { contentAPI, type LearningPath } from "../utils/content-api";
 
 export function PathsPage() {
@@ -61,6 +62,10 @@ export function PathsPage() {
 							banner-url={path.banner?.url}
 							banner-alt={path.banner?.alt}
 							href={`/paths/${path.slug}`}
+							onClick={(e: Event) => {
+								e.preventDefault();
+								router.navigate(`/paths/${path.slug}`);
+							}}
 						/>
 					))}
 				</div>

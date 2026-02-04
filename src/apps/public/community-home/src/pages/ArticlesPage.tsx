@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { router } from "@ui-library/utils/router";
 import { contentAPI, type Article, type LearningPath } from "../utils/content-api";
 
 export function ArticlesPage() {
@@ -97,6 +98,10 @@ export function ArticlesPage() {
 							banner-url={article.image?.url}
 							banner-alt={article.image?.alt}
 							href={`/articles/${article.slug}`}
+							onClick={(e: Event) => {
+								e.preventDefault();
+								router.navigate(`/articles/${article.slug}`);
+							}}
 							compact
 						/>
 					))}
