@@ -1,10 +1,8 @@
-import { type ADCAuthErrorJSON, AuthError } from "@common/types/custom-errors/AuthError.js";
+import { AuthError } from "@common/types/custom-errors/AuthError.js";
+import { createAdcApi, type AdcFetchResult, type RequestOptions } from "@ui-library/utils/adc-fetch";
 
 // Re-export AuthError for use in components
 export { AuthError };
-
-const IS_DEV = process.env.NODE_ENV === "development";
-const API_BASE = `${IS_DEV ? `http://${window.location.hostname}:3000` : ""}/api/auth`;
 
 export interface AuthUser {
 	id: string;
@@ -27,95 +25,55 @@ export interface SessionResponse {
 	error?: string;
 }
 
-/**
- * Parsea la respuesta de error del backend y lanza un AuthError
- */
-async function throwAuthError(response: Response): Promise<never> {
-	const errorData: ADCAuthErrorJSON = await response.json();
-	throw new AuthError(
-		errorData.status || response.status,
-		errorData.errorKey || "UNKNOWN_ERROR",
-		errorData.message || "Error desconocido",
-		errorData.data as AuthError["data"]
-	);
+/** Error data returned when account is blocked */
+export interface BlockedErrorData {
+	blockedUntil?: number;
 }
 
-class AuthAPI {
+/**
+ * Auth API client using createAdcApi
+ * - same-origin credentials (cookies sent only to same domain)
+ * - Automatic error handling via adc-custom-error
+ */
+const api = createAdcApi({
+	basePath: "/api/auth",
+	devPort: 3000,
+	credentials: "same-origin",
+});
+
+export const authApi = {
 	/**
 	 * Login nativo con username/password
+	 * @param options - Request options (e.g., translateParams for blocked time formatting)
 	 */
-	async login(username: string, password: string): Promise<AuthResponse> {
-		const response = await fetch(`${API_BASE}/login`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			credentials: "include",
-			body: JSON.stringify({ username, password }),
-		});
-
-		if (!response.ok) {
-			await throwAuthError(response);
-		}
-
-		return response.json();
-	}
+	login: (
+		username: string,
+		password: string,
+		options?: Pick<RequestOptions<BlockedErrorData>, "translateParams">
+	): Promise<AdcFetchResult<AuthResponse>> =>
+		api.post<AuthResponse, BlockedErrorData>("/login", {
+			body: { username, password },
+			...options,
+		}),
 
 	/**
 	 * Registro de nuevo usuario
 	 */
-	async register(username: string, email: string, password: string): Promise<AuthResponse> {
-		const response = await fetch(`${API_BASE}/register`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			credentials: "include",
-			body: JSON.stringify({ username, email, password }),
-		});
-
-		if (!response.ok) {
-			await throwAuthError(response);
-		}
-
-		return response.json();
-	}
+	register: (username: string, email: string, password: string): Promise<AdcFetchResult<AuthResponse>> =>
+		api.post<AuthResponse>("/register", { body: { username, email, password } }),
 
 	/**
 	 * Obtener sesión actual
 	 */
-	async getSession(): Promise<SessionResponse> {
-		const response = await fetch(`${API_BASE}/session`, {
-			method: "GET",
-			credentials: "include",
-		});
-
-		return response.json();
-	}
+	getSession: (): Promise<AdcFetchResult<SessionResponse>> => api.get<SessionResponse>("/session"),
 
 	/**
 	 * Cerrar sesión
 	 */
-	async logout(): Promise<{ success: boolean }> {
-		const response = await fetch(`${API_BASE}/logout`, {
-			method: "POST",
-			credentials: "include",
-		});
-
-		return response.json();
-	}
+	logout: (): Promise<AdcFetchResult<{ success: boolean }>> => api.post<{ success: boolean }>("/logout"),
 
 	/**
 	 * Refrescar tokens
 	 */
-	async refresh(): Promise<{ success: boolean }> {
-		const response = await fetch(`${API_BASE}/refresh`, {
-			method: "POST",
-			credentials: "include",
-		});
-
-		if (!response.ok) {
-			throw new Error("No se pudo refrescar la sesión");
-		}
-
-		return response.json();
-	}
-}
-
-export const authApi = new AuthAPI();
+	refresh: (): Promise<AdcFetchResult<{ success: boolean }>> => api.post<{ success: boolean }>("/refresh"),
+};

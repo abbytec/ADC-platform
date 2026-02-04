@@ -1,4 +1,5 @@
 import type { LearningPath, Article } from "@ui-library/utils/connect-rpc";
+import { createAdcApi } from "@ui-library/utils/adc-fetch";
 
 // Re-exportar tipos para uso en componentes
 export type { LearningPath, Article, Block, PathItemLevel } from "@ui-library/utils/connect-rpc";
@@ -18,54 +19,52 @@ interface ListArticlesOptions {
 	skip?: number;
 }
 
-const IS_DEV = process.env.NODE_ENV === "development";
-const API_BASE = IS_DEV ? `http://${window.location.hostname}:3000/api/learning` : "/api/learning";
+interface ListPathsResponse {
+	paths: LearningPath[];
+}
 
-/**
- * Construye query string desde objeto de opciones
- */
-function buildQueryString(options: Record<string, any>): string {
-	const params = new URLSearchParams();
-	for (const [key, value] of Object.entries(options)) {
-		if (value !== undefined && value !== null) {
-			params.append(key, String(value));
-		}
-	}
-	const str = params.toString();
-	return str ? `?${str}` : "";
+interface GetPathResponse {
+	path: LearningPath;
+}
+
+interface ListArticlesResponse {
+	articles: Article[];
+}
+
+interface GetArticleResponse {
+	article: Article;
 }
 
 /**
- * API de contenido usando REST
+ * Content API client using createAdcApi
+ * - No credentials needed for public content
+ * - Automatic error handling via adc-custom-error
  */
-export class ContentAPI {
-	async listPaths(options?: ListPathsOptions): Promise<LearningPath[]> {
-		const query = buildQueryString(options ?? {});
-		const response = await fetch(`${API_BASE}/paths${query}`);
-		const data = await response.json();
-		return data.paths ?? [];
-	}
+const api = createAdcApi({
+	basePath: "/api/learning",
+	devPort: 3000,
+});
 
-	async getPath(slug: string): Promise<LearningPath | undefined> {
-		const response = await fetch(`${API_BASE}/paths/${slug}`);
-		if (!response.ok) return undefined;
-		const data = await response.json();
-		return data.path;
-	}
+export const contentAPI = {
+	listPaths: async (options?: ListPathsOptions): Promise<LearningPath[]> => {
+		const result = await api.get<ListPathsResponse>("/paths", { params: options as Record<string, string | number | boolean | undefined> });
+		return result.data?.paths ?? [];
+	},
 
-	async listArticles(options?: ListArticlesOptions): Promise<Article[]> {
-		const query = buildQueryString(options ?? {});
-		const response = await fetch(`${API_BASE}/articles${query}`);
-		const data = await response.json();
-		return data.articles ?? [];
-	}
+	getPath: async (slug: string): Promise<LearningPath | undefined> => {
+		const result = await api.get<GetPathResponse>(`/paths/${slug}`);
+		return result.data?.path;
+	},
 
-	async getArticle(slug: string): Promise<Article | undefined> {
-		const response = await fetch(`${API_BASE}/articles/${slug}`);
-		if (!response.ok) return undefined;
-		const data = await response.json();
-		return data.article;
-	}
-}
+	listArticles: async (options?: ListArticlesOptions): Promise<Article[]> => {
+		const result = await api.get<ListArticlesResponse>("/articles", {
+			params: options as Record<string, string | number | boolean | undefined>,
+		});
+		return result.data?.articles ?? [];
+	},
 
-export const contentAPI = new ContentAPI();
+	getArticle: async (slug: string): Promise<Article | undefined> => {
+		const result = await api.get<GetArticleResponse>(`/articles/${slug}`);
+		return result.data?.article;
+	},
+};

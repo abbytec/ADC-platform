@@ -24,9 +24,9 @@ export class AdcTableBlock {
 					{this.caption && <caption class="text-left text-sm text-text opacity-80 mb-1">{this.caption}</caption>}
 					<thead>
 						<tr>
-							{this.header.map((h, i) => (
+							{this.header.map((headerCell, i) => (
 								<th key={i} class={`border-b border-surface px-2 py-1 text-left ${this.getAlignClass(this.columnAlign?.[i])}`}>
-									<adc-inline-tokens tokens={[]} fallback={h}></adc-inline-tokens>
+									<adc-inline-tokens tokens={[]} fallback={headerCell}></adc-inline-tokens>
 								</th>
 							))}
 						</tr>

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { authApi } from "../utils/auth.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { adcFetch, clearErrors } from "@ui-library/utils/adc-fetch";
+import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { showError } from "@ui-library/utils/error-handler";
 
 /** Errores específicos de formulario registro (se muestran inline como callout) */
@@ -16,10 +16,14 @@ const REGISTER_SPECIFIC_ERROR_KEYS = [
 	{ key: "EMAIL_EXISTS", severity: "warning" },
 ];
 
-const IS_DEV = process.env.NODE_ENV === "development";
+// Detect dev mode: check for localhost hostname
+const IS_DEV = ["localhost", "127.0.0.1"].includes(window.location?.hostname);
 
 /** URL base del sitio principal según entorno */
 const BASE_URL = IS_DEV ? `http://${window.location.hostname}:3011` : "https://adigitalcafe.com";
+
+/** Base URL for API calls */
+const API_BASE = IS_DEV ? `http://${window.location.hostname}:3000` : "";
 
 interface RegisterProps {
 	onNavigateToLogin: () => void;
@@ -60,7 +64,8 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 
 		setLoading(true);
 
-		const result = await adcFetch(authApi.register(username, email, password));
+		// authApi.register now handles errors internally via createAdcApi
+		const result = await authApi.register(username, email, password);
 
 		if (result.success) {
 			window.location.href = getRedirectUrl();
@@ -73,7 +78,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 	 * Construye URL de OAuth preservando originPath para el callback
 	 */
 	const getOAuthUrl = (provider: string): string => {
-		const base = `${IS_DEV ? `http://${window.location.hostname}:3000` : ""}/api/auth/login/${provider}`;
+		const base = `${API_BASE}/api/auth/login/${provider}`;
 		if (originPath && originPath !== "/") {
 			return `${base}?originPath=${encodeURIComponent(originPath)}`;
 		}
