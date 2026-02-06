@@ -178,14 +178,14 @@ export class KeyStore {
 	/**
 	 * Obtiene la clave actual como bytes
 	 */
-	getCurrentKey(): Uint8Array {
+	getCurrentKeyBytes(): Uint8Array {
 		return this.#currentKeyBytes;
 	}
 
 	/**
 	 * Obtiene la clave anterior como bytes (si existe)
 	 */
-	getPreviousKey(): Uint8Array | null {
+	getPreviousKeyBytes(): Uint8Array | null {
 		return this.#previousKeyBytes;
 	}
 

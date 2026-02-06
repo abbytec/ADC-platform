@@ -37,20 +37,20 @@ pkill -9 -f "rspack" 2>/dev/null && echo "✓ Procesos de Rspack terminados" || 
 # Limpiar procesos zombies (intentar que el padre los limpie primero)
 echo "Limpiando procesos zombies..."
 zombie_count=$(ps aux | grep -E '\[.*\] <defunct>' | grep -v grep | wc -l)
-if [ $zombie_count -gt 0 ]; then
+if [[ $zombie_count -gt 0 ]]; then
     echo "⚠ Se encontraron $zombie_count procesos zombies"
     # Los procesos zombies no se pueden matar directamente, pero podemos matar sus padres
     # y esperar a que el sistema los limpie
     ps aux | grep -E '\[.*\] <defunct>' | grep -v grep | awk '{print $2}' | while read zpid; do
         ppid=$(ps -o ppid= -p $zpid 2>/dev/null | tr -d ' ')
-        if [ ! -z "$ppid" ] && [ "$ppid" != "1" ]; then
+        if [[ -n "$ppid" ]] && [[ "$ppid" != "1" ]]; then
             echo "  Matando proceso padre $ppid del zombie $zpid"
             kill -9 $ppid 2>/dev/null || true
         fi
     done
     sleep 2
     zombie_count=$(ps aux | grep -E '\[.*\] <defunct>' | grep -v grep | wc -l)
-    if [ $zombie_count -gt 0 ]; then
+    if [[ $zombie_count -gt 0 ]]; then
         echo "⚠ Todavía quedan $zombie_count procesos zombies (se limpiarán automáticamente)"
     else
         echo "✓ Procesos zombies limpiados"
@@ -68,7 +68,7 @@ zombie_final=$(ps aux | grep -E '\[.*\] <defunct>' | grep -v grep | wc -l)
 echo "  - Procesos Node activos: $node_count"
 echo "  - Procesos zombies restantes: $zombie_final"
 
-if [ $node_count -gt 10 ]; then
+if [[ $node_count -gt 10 ]]; then
     echo ""
     echo "⚠ Advertencia: Hay más de 10 procesos Node activos"
     echo "  Si no deberían estar ejecutándose, considera reiniciar el sistema"

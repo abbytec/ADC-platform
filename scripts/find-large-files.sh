@@ -21,7 +21,7 @@ find . -type f -regextype posix-extended -regex ".*\.($EXTENSIONS)$" 2>/dev/null
   grep -vE "^\./($EXCLUDE_DIRS)/" > "$TEMP_FILES"
 
 # Verificar si hay archivos
-if [ ! -s "$TEMP_FILES" ]; then
+if [[ ! -s "$TEMP_FILES" ]]; then
     echo "No se encontraron archivos con las extensiones especificadas."
     rm -f "$TEMP_FILES" "$TEMP_FILTERED"
     exit 0
@@ -36,9 +36,9 @@ else
 fi | \
   # Procesar archivos y contar líneas (excluir components.d.ts)
   while read -r file; do
-    if [ -f "$file" ] && [[ ! "$file" =~ components\.d\.ts$ ]]; then
+    if [[ -f "$file" ]] && [[ ! "$file" =~ components\.d\.ts$ ]]; then
         lines=$(wc -l < "$file" 2>/dev/null)
-        if [ "$lines" -gt "$MIN_LINES" ]; then
+        if [[ "$lines" -gt "$MIN_LINES" ]]; then
             printf "%6d lines: %s\n" "$lines" "${file#./}"
         fi
     fi
@@ -46,14 +46,14 @@ fi | \
 
 # Contar estadísticas
 TOTAL_FILES=$(cat "$TEMP_FILES" | while read -r file; do
-    if [ -f "$file" ] && [[ ! "$file" =~ components\.d\.ts$ ]]; then
+    if [[ -f "$file" ]] && [[ ! "$file" =~ components\.d\.ts$ ]]; then
         echo "1"
     fi
 done | wc -l)
 
 LARGE_FILES=$(wc -l < "$TEMP_RESULTS")
 
-if [ "$TOTAL_FILES" -gt 0 ]; then
+if [[ "$TOTAL_FILES" -gt 0 ]]; then
     PERCENTAGE=$(awk "BEGIN {printf \"%.2f\", ($LARGE_FILES / $TOTAL_FILES) * 100}")
     echo "----------------------------------------"
     echo "Total de archivos analizados: $TOTAL_FILES"

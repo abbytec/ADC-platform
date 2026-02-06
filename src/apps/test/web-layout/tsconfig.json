@@ -7,7 +7,8 @@
 		"paths": {
 			"@adc/utils/*": ["./../../../utils/*"],
 			"@ui-library/utils/*": ["./../00-web-ui-library/utils/*"],
-			"@ui-library/*": ["./../00-web-ui-library/src/*"]
+			"@ui-library/*": ["./../00-web-ui-library/src/*"],
+			"@common/*": ["./../../../common/*"]
 		}
 	},
 	"include": ["src/**/*", "*.ts", "./../00-web-ui-library/utils/react-jsx.d.ts"]

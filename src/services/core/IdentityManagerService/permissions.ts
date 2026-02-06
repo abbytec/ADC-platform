@@ -13,14 +13,14 @@ export const RESOURCE_NAME = "identity" as const;
  */
 export const Scope = {
 	NONE: 0,
-	SELF: 1 << 0, // 1
+	SELF: 1, // 1
 	USERS: 1 << 1, // 2
 	ROLES: 1 << 2, // 4
 	GROUPS: 1 << 3, // 8
 	ORGANIZATIONS: 1 << 4, // 16
 	REGIONS: 1 << 5, // 32
 	STATS: 1 << 6, // 64
-	ALL: (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6), // 127
+	ALL: 1 | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6), // 127
 } as const;
 
 export type Scope = (typeof Scope)[keyof typeof Scope];

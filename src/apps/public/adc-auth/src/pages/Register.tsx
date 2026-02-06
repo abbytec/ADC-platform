@@ -3,6 +3,7 @@ import { authApi } from "../utils/auth.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { showError } from "@ui-library/utils/error-handler";
+import { getUrl, getBaseUrl } from "@common/types/url-utils.js";
 
 /** Errores específicos de formulario registro (se muestran inline como callout) */
 const REGISTER_SPECIFIC_ERROR_KEYS = [
@@ -16,14 +17,11 @@ const REGISTER_SPECIFIC_ERROR_KEYS = [
 	{ key: "EMAIL_EXISTS", severity: "warning" },
 ];
 
-// Detect dev mode: check for localhost hostname
-const IS_DEV = ["localhost", "127.0.0.1"].includes(window.location?.hostname);
-
 /** URL base del sitio principal según entorno */
-const BASE_URL = IS_DEV ? `http://${window.location.hostname}:3011` : "https://adigitalcafe.com";
+const BASE_URL = getUrl(3011, "adigitalcafe.com");
 
 /** Base URL for API calls */
-const API_BASE = IS_DEV ? `http://${window.location.hostname}:3000` : "";
+const API_BASE = getBaseUrl(3000);
 
 interface RegisterProps {
 	onNavigateToLogin: () => void;

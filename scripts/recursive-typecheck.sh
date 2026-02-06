@@ -5,7 +5,7 @@ echo "🔎 Buscando tsconfig.json en repositorio..."
 # Lista todos los archivos NO ignorados por git y filtra tsconfig.json
 configs=$(git ls-files -co --exclude-standard | grep "tsconfig.json")
 
-if [ -z "$configs" ]; then
+if [[ -z "$configs" ]]; then
   echo "❌ No se encontraron tsconfig.json"
   exit 1
 fi
@@ -19,7 +19,7 @@ for cfg in $configs; do
   echo "➡ tsc -p $cfg"
   
   npx tsc -p "$cfg" --noEmit
-  if [ $? -ne 0 ]; then
+  if [[ $? -ne 0 ]]; then
     echo "❌ Error en $cfg"
     fail=1
   else
@@ -29,7 +29,7 @@ for cfg in $configs; do
   echo
 done
 
-if [ $fail -ne 0 ]; then
+if [[ $fail -ne 0 ]]; then
   echo "❌ Al menos un proyecto falló"
   exit 1
 fi

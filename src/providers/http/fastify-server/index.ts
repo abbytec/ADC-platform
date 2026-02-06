@@ -121,7 +121,6 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 	private globalRoutes: GlobalRoute[] = [];
 	private globalStaticPaths = new Map<string, string>();
 	private defaultHost: RegisteredHost | null = null;
-	private middlewareReady: Promise<void>;
 
 	constructor() {
 		super();
@@ -166,7 +165,9 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 		}
 
 		this.app = Fastify(fastifyOptions);
-		this.middlewareReady = this.setupMiddleware();
+	}
+	public async start(_kernelKey: symbol): Promise<void> {
+		await this.setupMiddleware();
 	}
 
 	private async setupMiddleware(): Promise<void> {
@@ -178,7 +179,7 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 						// En desarrollo, permitir cualquier localhost con cualquier puerto
 						if (!origin || origin.startsWith("http://localhost")) cb(null, true);
 						else cb(null, false);
-				  }
+					}
 				: true,
 			credentials: true,
 			methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -495,7 +496,6 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 
 		try {
 			// Esperar a que el middleware esté listo antes de iniciar
-			await this.middlewareReady;
 			await this.app.listen({ port, host: "0.0.0.0" });
 			this.isListening = true;
 			this.logger.logOk(`Servidor Fastify escuchando en puerto ${port}`);

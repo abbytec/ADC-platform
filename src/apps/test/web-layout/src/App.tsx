@@ -3,6 +3,7 @@ import { createElement, useState, useEffect, useRef } from "react";
 import { Shell } from "./components/Shell.tsx";
 import { router, type RouteDefinition } from "@ui-library/utils/router";
 import { lazyLoadRemoteComponent, type Framework } from "@adc/utils/react/loadRemoteComponent";
+import { getRemoteEntryUrl } from "@common/types/url-utils.js";
 
 // Las funciones t(), setLocale(), getLocale() están disponibles globalmente
 // desde adc-i18n.js (cargado en index.html)
@@ -14,24 +15,22 @@ interface RemoteModuleConfig {
 	scope: string;
 }
 
-const IS_DEV = process.env.NODE_ENV === "development";
-
 const moduleDefinitions: Record<string, RemoteModuleConfig> = {
 	home: {
 		framework: "vanilla",
-		remoteEntryUrl: IS_DEV ? `http://${window.location.hostname}:3002/remoteEntry.js` : "http://s-home.local.com:3000/remoteEntry.js",
+		remoteEntryUrl: getRemoteEntryUrl(3002, "s-home.local.com"),
 		remoteName: "home",
 		scope: "./App",
 	},
 	"users-management": {
 		framework: "react",
-		remoteEntryUrl: IS_DEV ? `http://${window.location.hostname}:3001/remoteEntry.js` : "http://s-users.local.com:3000/remoteEntry.js",
+		remoteEntryUrl: getRemoteEntryUrl(3001, "s-users.local.com"),
 		remoteName: "users_management",
 		scope: "./App",
 	},
 	config: {
 		framework: "vue",
-		remoteEntryUrl: IS_DEV ? `http://${window.location.hostname}:3003/remoteEntry.js` : "http://s-config.local.com:3000/remoteEntry.js",
+		remoteEntryUrl: getRemoteEntryUrl(3003, "s-config.local.com"),
 		remoteName: "config",
 		scope: "./App",
 	},

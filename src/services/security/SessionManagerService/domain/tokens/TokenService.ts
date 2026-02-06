@@ -113,7 +113,7 @@ export class TokenService {
 			},
 		};
 
-		const currentKey = this.#keyStore.getCurrentKey();
+		const currentKey = this.#keyStore.getCurrentKeyBytes();
 		const accessToken = await this.#jwtProvider.encryptWithKey(accessPayload, currentKey, this.#config.accessTokenTtl);
 
 		// Crear Refresh Token
@@ -139,8 +139,8 @@ export class TokenService {
 	 * Si verifica con la anterior, indica que se necesita refresh.
 	 */
 	async verifyAccessToken(token: string): Promise<AccessTokenVerificationResult> {
-		const currentKey = this.#keyStore.getCurrentKey();
-		const previousKey = this.#keyStore.getPreviousKey();
+		const currentKey = this.#keyStore.getCurrentKeyBytes();
+		const previousKey = this.#keyStore.getPreviousKeyBytes();
 
 		// Intentar con clave actual
 		let result = await this.#jwtProvider.decryptWithKey(token, currentKey);
@@ -226,7 +226,7 @@ export class TokenService {
 			},
 		};
 
-		const currentKey = this.#keyStore.getCurrentKey();
+		const currentKey = this.#keyStore.getCurrentKeyBytes();
 		const accessToken = await this.#jwtProvider.encryptWithKey(accessPayload, currentKey, this.#config.accessTokenTtl);
 
 		return {

@@ -31,7 +31,7 @@ export namespace Components {
         "apiBaseUrl": string;
         /**
           * URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com)
-          * @default "https://auth.adigitalcafe.com"
+          * @default `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`
          */
         "authUrl": string;
         /**
@@ -425,7 +425,7 @@ export namespace Components {
         "apiBaseUrl": string;
         /**
           * URL base para auth (dev vs prod)
-          * @default "https://auth.adigitalcafe.com"
+          * @default `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`
          */
         "authUrl": string;
         /**
@@ -990,7 +990,7 @@ declare namespace LocalJSX {
         "apiBaseUrl"?: string;
         /**
           * URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com)
-          * @default "https://auth.adigitalcafe.com"
+          * @default `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`
          */
         "authUrl"?: string;
         /**
@@ -1399,7 +1399,7 @@ declare namespace LocalJSX {
         "apiBaseUrl"?: string;
         /**
           * URL base para auth (dev vs prod)
-          * @default "https://auth.adigitalcafe.com"
+          * @default `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`
          */
         "authUrl"?: string;
         /**

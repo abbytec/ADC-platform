@@ -29,7 +29,7 @@ export interface AccessMenuItem {
 })
 export class AdcAccessButton {
 	/** URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com) */
-	@Prop() authUrl: string = "https://auth.adigitalcafe.com";
+	@Prop() authUrl: string = `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`;
 
 	/** URL base de la API (en dev: http://localhost:3000, en prod: vacío para usar relativo) */
 	@Prop() apiBaseUrl: string = "";

@@ -10,6 +10,7 @@
 
 import { showError, clearErrors } from "./error-handler.js";
 import ADCCustomError, { HttpError } from "@common/types/ADCCustomError.js";
+import { IS_DEV, getDevUrl } from "@common/types/url-utils.js";
 
 export { clearErrors };
 
@@ -46,9 +47,6 @@ export interface RequestOptions<TData = Record<string, unknown>> {
 	/** Translation params generator for error handling */
 	translateParams?: (data: TData) => Record<string, string>;
 }
-
-// Detect dev mode: check for localhost hostname
-const IS_DEV = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location?.hostname);
 
 /**
  * Builds a query string from an object, filtering out undefined/null values
@@ -111,7 +109,7 @@ export function createAdcApi(config: AdcApiConfig) {
 	const { basePath, devPort, credentials = "same-origin", headers: defaultHeaders } = config;
 
 	// Build base URL based on environment
-	const baseUrl = IS_DEV && devPort ? `http://${window.location.hostname}:${devPort}${basePath}` : basePath;
+	const baseUrl = IS_DEV && devPort ? getDevUrl(devPort, basePath) : basePath;
 
 	async function request<T, TData = Record<string, unknown>>(
 		method: HttpMethod,

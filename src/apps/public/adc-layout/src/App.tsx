@@ -3,6 +3,7 @@ import { createElement, useState, useEffect, useRef } from "react";
 import { Shell } from "./components/Shell.tsx";
 import { router, type RouteDefinition } from "@ui-library/utils/router";
 import { lazyLoadRemoteComponent, type Framework } from "@adc/utils/react/loadRemoteComponent";
+import { getRemoteEntryUrl } from "@common/types/url-utils.js";
 
 interface RemoteModuleBase {
 	remoteEntryUrl: string;
@@ -10,14 +11,10 @@ interface RemoteModuleBase {
 	scopes: Record<string, { framework: Framework; scope: string }>;
 }
 
-const IS_DEV = process.env.NODE_ENV === "development";
-
 // Configuración de módulos remotos con sus scopes
 const remoteModules: Record<string, RemoteModuleBase> = {
 	"community-home": {
-		remoteEntryUrl: IS_DEV
-			? `http://${window.location.hostname}:3010/remoteEntry.js`
-			: "http://s-community.adigitalcafe.com:3000/remoteEntry.js",
+		remoteEntryUrl: getRemoteEntryUrl(3010, "s-community.adigitalcafe.com"),
 		remoteName: "community_home",
 		scopes: {
 			App: { framework: "react", scope: "./App" },

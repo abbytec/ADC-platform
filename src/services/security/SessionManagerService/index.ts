@@ -247,7 +247,7 @@ export default class SessionManagerService extends BaseService {
 		}
 
 		// Crear token
-		const currentKey = this.#keyStore.getCurrentKey();
+		const currentKey = this.#keyStore.getCurrentKeyBytes();
 		const payload = {
 			userId: user.id,
 			permissions: user.permissions,
