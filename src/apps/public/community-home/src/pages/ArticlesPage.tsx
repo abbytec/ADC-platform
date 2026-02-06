@@ -98,7 +98,7 @@ export function ArticlesPage() {
 							banner-url={article.image?.url}
 							banner-alt={article.image?.alt}
 							href={`/articles/${article.slug}`}
-							onClick={(e: Event) => {
+							onClick={(e: React.MouseEvent) => {
 								e.preventDefault();
 								router.navigate(`/articles/${article.slug}`);
 							}}

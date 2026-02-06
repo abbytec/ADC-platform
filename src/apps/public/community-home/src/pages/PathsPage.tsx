@@ -62,7 +62,7 @@ export function PathsPage() {
 							banner-url={path.banner?.url}
 							banner-alt={path.banner?.alt}
 							href={`/paths/${path.slug}`}
-							onClick={(e: Event) => {
+							onClick={(e: React.MouseEvent) => {
 								e.preventDefault();
 								router.navigate(`/paths/${path.slug}`);
 							}}
