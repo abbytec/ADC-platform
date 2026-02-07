@@ -524,37 +524,17 @@ ${exposesEntries}
 	}
 
 	/**
-	 * Template para i18n
+	 * Template para i18n: lee el index.html del módulo e inyecta el script de i18n antes de </head>
 	 */
-	protected getI18nTemplate(moduleName: string): string {
+	protected getI18nTemplate(context: IBuildContext): string {
+		const indexHtmlPath = normalizeForConfig(path.join(context.module.appDir, "index.html"));
 		return `
             scriptLoading: 'blocking',
             inject: 'body',
-            templateContent: ({ htmlWebpackPlugin }) => \`
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${moduleName}</title>
-    <script>
-      (function () {
-        const savedTheme = localStorage.getItem('theme');
-		console.log('Saved theme:', savedTheme);
-        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.setAttribute('dark-mode', '');
-		} else {
-		  document.documentElement.removeAttribute('dark-mode');
-		}
-      })();
-    </script>
-    <script src="/adc-i18n.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
-\`,`;
+            templateContent: () => {
+                const html = fs.readFileSync('${indexHtmlPath}', 'utf-8');
+                return html.replace('</head>', '    <script src="/adc-i18n.js"></script>\\n  </head>');
+            },`;
 	}
 
 	/**

@@ -22,6 +22,7 @@ export class VueRspackStrategy extends RspackBaseStrategy {
 
 	protected getImports(): string {
 		return `
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { rspack } from '@rspack/core';
 import { VueLoaderPlugin } from 'vue-loader';
@@ -87,11 +88,10 @@ const { ModuleFederationPlugin } = rspack.container;
 
 	protected getPlugins(context: IBuildContext, isHost: boolean, _usedFrameworks: Set<string>): string {
 		const hasI18n = context.module.uiConfig.i18n;
-		const moduleName = context.module.uiConfig.name;
 
 		const i18nScript =
 			isHost && hasI18n
-				? this.getI18nTemplate(moduleName)
+				? this.getI18nTemplate(context)
 				: `
             template: './index.html',`;
 

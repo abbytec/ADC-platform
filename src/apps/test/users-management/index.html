@@ -7,11 +7,12 @@
     <script>
       (function () {
         const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-		  document.documentElement.setAttribute('dark-mode', '');
-		} else {
-		  document.documentElement.removeAttribute('dark-mode');
-		}
+        if ((!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          || savedTheme?.includes("dark")) {
+          document.documentElement.setAttribute('dark-mode', '');
+        } else {
+          document.documentElement.removeAttribute('dark-mode');
+        }
       })();
     </script>
   </head>

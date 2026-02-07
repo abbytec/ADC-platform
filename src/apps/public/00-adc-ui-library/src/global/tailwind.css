@@ -12,7 +12,7 @@
         inherits: true;
         initial-value: 50;
     }
-    :root {
+    :root[coffee-theme] {
         --palette-tone-1: var(--custom-tone-1);
         --palette-tone-2: var(--custom-tone-2);
 
@@ -41,7 +41,7 @@
         --c-tdanger: oklch(0.47 0.12 10);
     }
 
-    :root[dark-mode] {
+    :root[coffee-theme][dark-mode] {
         background-color: black;
         --c-header: oklch(45% 0.1 var(--palette-tone-1));
         --c-theader: oklch(97% 0.046 var(--palette-tone-2));

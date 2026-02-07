@@ -2,6 +2,24 @@ import * as fs from "node:fs/promises";
 import { processHTMLFiles } from "./file-operations.js";
 
 /**
+ * Script inline para detección de dark mode basado en preferencias del usuario.
+ * Compartido entre templates HTML generados por rspack y archivos standalone.
+ */
+export function getDarkModeScript(): string {
+	return `<script>
+      (function () {
+        const savedTheme = localStorage.getItem('theme');
+        if ((!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+         || savedTheme?.includes("dark")) {
+          document.documentElement.setAttribute('dark-mode', '');
+        } else {
+          document.documentElement.removeAttribute('dark-mode');
+        }
+      })();
+    </script>`;
+}
+
+/**
  * Inyecta import maps en todos los archivos HTML de un módulo
  */
 export async function injectImportMapsInHTMLs(outputPath: string, importMap: Record<string, string>, logger?: any): Promise<void> {
@@ -29,22 +47,15 @@ export function generateIndexHtml(name: string, framework: string): string {
 	const title = name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, " ");
 	const mainExt = framework === "react" ? ".tsx" : ".ts";
 
+	const darkModeScript = getDarkModeScript();
+
 	return `<!DOCTYPE html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
-    <script>
-      (function () {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-		  document.documentElement.setAttribute('dark-mode', '');
-		} else {
-		  document.documentElement.removeAttribute('dark-mode');
-		}
-      })();
-    </script>
+    ${darkModeScript}
   </head>
   <body>
     <div id="root"></div>

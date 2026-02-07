@@ -5,13 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Adc layout</title>
     <script>
+      if(window.location.port === "3011" || window.location.hostname.startsWith("community")) {
+        document.documentElement.removeAttribute('crystal-theme');
+        document.documentElement.setAttribute('coffee-theme', '');
+      } else {
+        document.documentElement.setAttribute('crystal-theme', '');
+        document.documentElement.removeAttribute('coffee-theme');
+      }
       (function () {
         const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-		  document.documentElement.setAttribute('dark-mode', '');
-		} else {
-		  document.documentElement.removeAttribute('dark-mode');
-		}
+        if ((!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          || savedTheme?.includes("dark")) {
+          document.documentElement.setAttribute('dark-mode', '');
+        } else {
+          document.documentElement.removeAttribute('dark-mode');
+        }
       })();
     </script>
   </head>
