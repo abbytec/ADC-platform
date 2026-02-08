@@ -93,7 +93,7 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 	if (!ready) {
 		return (
 			<div className="w-full max-w-md">
-				<adc-blur-panel variant="elevated" glow class="w-full bg-surface">
+				<adc-blur-panel variant="elevated" glow class="w-full">
 					<adc-skeleton variant="rectangular" height="364px" />
 				</adc-blur-panel>
 			</div>
@@ -102,7 +102,7 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 
 	return (
 		<div className="w-full max-w-md">
-			<adc-blur-panel variant="elevated" glow class="w-full bg-surface">
+			<adc-blur-panel variant="elevated" glow class="w-full">
 				<h1 className="font-heading text-2xl font-bold text-center mb-6 text-text">{t("login.title")}</h1>
 
 				{/* Handler de errores específicos del formulario (bloqueo de cuenta) */}
@@ -110,7 +110,7 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
-						<label htmlFor="username" className="block text-sm font-medium mb-1 text-text">
+						<label htmlFor="username" className="block text-base font-medium mb-1 text-text">
 							{t("login.username")}
 						</label>
 						<adc-input
@@ -123,7 +123,7 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 					</div>
 
 					<div>
-						<label htmlFor="password" className="block text-sm font-medium mb-1 text-text">
+						<label htmlFor="password" className="block text-base font-medium mb-1 text-text">
 							{t("login.password")}
 						</label>
 						<adc-input

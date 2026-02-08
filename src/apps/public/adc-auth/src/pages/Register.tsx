@@ -86,7 +86,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 	if (!ready) {
 		return (
 			<div className="w-full max-w-md">
-				<adc-blur-panel variant="elevated" glow class="w-full bg-surface">
+				<adc-blur-panel variant="elevated" glow class="w-full">
 					<adc-skeleton variant="rectangular" height="364px" />
 				</adc-blur-panel>
 			</div>
@@ -95,7 +95,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 
 	return (
 		<div className="w-full max-w-md">
-			<adc-blur-panel variant="elevated" glow class="w-full bg-surface">
+			<adc-blur-panel variant="elevated" glow class="w-full">
 				<h1 className="font-heading text-2xl font-bold text-center mb-6 text-text">{t("register.title") || "Crear Cuenta"}</h1>
 
 				{/* Handler de errores específicos del formulario (validación, duplicados) */}
@@ -103,7 +103,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
-						<label htmlFor="username" className="block text-sm font-medium mb-1 text-text">
+						<label htmlFor="username" className="block text-base font-medium mb-1 text-text">
 							{t("register.username") || "Nombre de Usuario"}
 						</label>
 						<adc-input
@@ -116,7 +116,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 					</div>
 
 					<div>
-						<label htmlFor="email" className="block text-sm font-medium mb-1 text-text">
+						<label htmlFor="email" className="block text-base font-medium mb-1 text-text">
 							{t("register.email") || "Email"}
 						</label>
 						<adc-input
@@ -129,7 +129,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 					</div>
 
 					<div>
-						<label htmlFor="password" className="block text-sm font-medium mb-1 text-text">
+						<label htmlFor="password" className="block text-base font-medium mb-1 text-text">
 							{t("register.password") || "Contraseña"}
 						</label>
 						<adc-input
@@ -142,7 +142,7 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 					</div>
 
 					<div>
-						<label htmlFor="confirmPassword" className="block text-sm font-medium mb-1 text-text">
+						<label htmlFor="confirmPassword" className="block text-base font-medium mb-1 text-text">
 							{t("register.confirmPassword") || "Confirmar Contraseña"}
 						</label>
 						<adc-input

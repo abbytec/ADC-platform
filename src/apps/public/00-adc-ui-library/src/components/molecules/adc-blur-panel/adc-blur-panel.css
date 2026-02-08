@@ -72,37 +72,37 @@
 
 /* Variant: default */
 :host(.variant-default) {
-    background: color-mix(in srgb, var(--color-surface, #1a1a2e) 70%, transparent);
+    background: color-mix(in srgb, var(--c-surface, #1a1a2e) 70%, transparent);
     border: 1px solid color-mix(in srgb, var(--color-divider, #ffffff) 10%, transparent);
     box-shadow:
         0 4px 6px -1px rgb(0 0 0 / 0.1),
         0 2px 4px -2px rgb(0 0 0 / 0.1),
-        inset 0 1px 0 0 color-mix(in srgb, var(--color-text-primary, #ffffff) 5%, transparent);
+        inset 0 1px 0 0 color-mix(in srgb, var(--c-tprimary, #ffffff) 5%, transparent);
 }
 
 /* Variant: elevated */
 :host(.variant-elevated) {
-    background: color-mix(in srgb, var(--color-surface, #1a1a2e) 85%, transparent);
+    background: color-mix(in srgb, var(--c-surface, #1a1a2e) 85%, transparent);
     border: 1px solid color-mix(in srgb, var(--color-divider, #ffffff) 15%, transparent);
     box-shadow:
         var(--shadow-cozy, 0 8px 32px -4px rgb(0 0 0 / 0.3)),
-        0 0 0 1px color-mix(in srgb, var(--color-accent, #6366f1) 10%, transparent),
-        inset 0 1px 0 0 color-mix(in srgb, var(--color-text-primary, #ffffff) 8%, transparent);
+        0 0 0 1px color-mix(in srgb, var(--c-accent, #6366f1) 10%, transparent),
+        inset 0 1px 0 0 color-mix(in srgb, var(--c-tprimary, #ffffff) 8%, transparent);
 }
 
 /* Variant: subtle */
 :host(.variant-subtle) {
-    background: color-mix(in srgb, var(--color-surface, #1a1a2e) 40%, transparent);
+    background: color-mix(in srgb, var(--c-surface, #1a1a2e) 40%, transparent);
     border: 1px solid color-mix(in srgb, var(--color-divider, #ffffff) 5%, transparent);
-    box-shadow: inset 0 1px 0 0 color-mix(in srgb, var(--color-text-primary, #ffffff) 3%, transparent);
+    box-shadow: inset 0 1px 0 0 color-mix(in srgb, var(--c-tprimary, #ffffff) 3%, transparent);
 }
 
 /* Glow effect */
 :host(.has-glow) {
     box-shadow:
         var(--shadow-cozy, 0 8px 32px -4px rgb(0 0 0 / 0.3)),
-        0 0 40px -10px color-mix(in srgb, var(--color-accent, #6366f1) 30%, transparent),
-        inset 0 1px 0 0 color-mix(in srgb, var(--color-text-primary, #ffffff) 10%, transparent);
+        0 0 40px -10px color-mix(in srgb, var(--c-accent, #6366f1) 30%, transparent),
+        inset 0 1px 0 0 color-mix(in srgb, var(--c-tprimary, #ffffff) 10%, transparent);
 }
 
 :host(.has-glow)::before {
@@ -113,9 +113,9 @@
     padding: 1px;
     background: linear-gradient(
         135deg,
-        color-mix(in srgb, var(--color-accent, #6366f1) 40%, transparent),
+        color-mix(in srgb, var(--c-accent, #6366f1) 40%, transparent),
         transparent 50%,
-        color-mix(in srgb, var(--color-accent, #6366f1) 20%, transparent)
+        color-mix(in srgb, var(--c-accent, #6366f1) 20%, transparent)
     );
     -webkit-mask:
         linear-gradient(#fff 0 0) content-box,
@@ -137,17 +137,17 @@
 /* Light theme adjustments */
 @media (prefers-color-scheme: light) {
     :host(.variant-default) {
-        background: color-mix(in srgb, var(--color-surface, #ffffff) 80%, transparent);
+        background: color-mix(in srgb, var(--c-surface, #ffffff) 80%, transparent);
         border-color: color-mix(in srgb, var(--color-divider, #000000) 8%, transparent);
     }
 
     :host(.variant-elevated) {
-        background: color-mix(in srgb, var(--color-surface, #ffffff) 90%, transparent);
+        background: color-mix(in srgb, var(--c-surface, #ffffff) 90%, transparent);
         border-color: color-mix(in srgb, var(--color-divider, #000000) 12%, transparent);
     }
 
     :host(.variant-subtle) {
-        background: color-mix(in srgb, var(--color-surface, #ffffff) 60%, transparent);
+        background: color-mix(in srgb, var(--c-surface, #ffffff) 60%, transparent);
         border-color: color-mix(in srgb, var(--color-divider, #000000) 5%, transparent);
     }
 }

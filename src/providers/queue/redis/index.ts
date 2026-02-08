@@ -61,7 +61,7 @@ export default class RedisProvider extends BaseProvider implements IRedisProvide
 		// Usamos Bun.env para acceso nativo y rápido a variables de entorno
 		this.#config = {
 			host: config?.host || Bun.env.REDIS_HOST || "localhost",
-			port: config?.port || parseInt(Bun.env.REDIS_PORT || "6379", 10),
+			port: config?.port || parseInt(Bun.env.REDIS_PORT || "6380", 10),
 			password: config?.password || Bun.env.REDIS_PASSWORD || undefined,
 			db: config?.db || parseInt(Bun.env.REDIS_DB || "0", 10),
 			keyPrefix: config?.keyPrefix || "adc:",
@@ -94,10 +94,10 @@ export default class RedisProvider extends BaseProvider implements IRedisProvide
 		});
 
 		// Manejo de eventos (Bun RedisClient soporta una API similar a EventEmitter)
-		this.#client.onclose =(msg) => {
+		this.#client.onclose = (msg) => {
 			this.logger.logDebug(`${msg.message}`);
 		};
-		
+
 		this.#client.onconnect = () => {
 			this.logger.logDebug("Redis conectado");
 		};

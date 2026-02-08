@@ -66,6 +66,63 @@
         --c-tdanger: oklch(0.88 0.06 10);
     }
 
+    :root[crystal-theme] {
+        --palette-tone-1: var(--custom-tone-1);
+        --palette-tone-2: var(--custom-tone-2);
+
+        --c-text: #111111;
+        --c-negative-text: #fefefe;
+
+        --c-header: oklch(94% 0.04 var(--palette-tone-2) / 55%);
+        --c-theader: oklch(25% 0.08 var(--palette-tone-2));
+        --c-background: oklch(96% 0.025 var(--palette-tone-1));
+        --c-surface: oklch(98.39% 0.03 var(--palette-tone-1) / 75%);
+        --c-tsurface: oklch(25% 0.05 var(--palette-tone-2));
+
+        --c-primary: oklch(38% 0.15 var(--palette-tone-2));
+        --c-tprimary: oklch(97% 0.015 var(--palette-tone-1));
+        --c-accent: oklch(58% 0.22 var(--palette-tone-2));
+
+        --r-xxl: 6px;
+        --shadow: 0 4px 32px rgba(100, 110, 160, 0.12), 0 1px 3px rgba(100, 110, 160, 0.08);
+
+        --c-warn: oklch(0.96 0.025 90);
+        --c-success: oklch(0.96 0.025 155);
+        --c-info: oklch(0.96 0.025 245);
+        --c-danger: oklch(0.96 0.025 15);
+        --c-twarn: oklch(0.42 0.1 75);
+        --c-tsuccess: oklch(0.42 0.1 155);
+        --c-tinfo: oklch(0.42 0.1 245);
+        --c-tdanger: oklch(0.42 0.1 15);
+    }
+
+    :root[crystal-theme][dark-mode] {
+        background-color: oklch(12% 0.04 var(--palette-tone-1));
+        --c-header: oklch(24% 0.09 var(--palette-tone-2) / 65%);
+        --c-theader: oklch(92% 0.04 var(--palette-tone-1));
+        --c-background: oklch(15% 0.045 var(--palette-tone-1));
+        --c-surface: oklch(27% 0.085 var(--palette-tone-1) / 68%);
+        --c-tsurface: oklch(90% 0.03 var(--palette-tone-2));
+        --c-primary: oklch(72% 0.22 var(--palette-tone-2));
+        --c-tprimary: oklch(14% 0.03 var(--palette-tone-2));
+        --c-accent: oklch(76% 0.22 var(--palette-tone-2));
+
+        --c-text: oklch(93% 0.03 var(--palette-tone-1));
+        --c-negative-text: oklch(16% 0.04 var(--palette-tone-2));
+
+        --shadow: 0 4px 32px rgba(0, 0, 0, 0.35), 0 0 1px rgba(140, 160, 255, 0.2);
+
+        --c-warn: oklch(0.2 0.04 90);
+        --c-success: oklch(0.2 0.04 155);
+        --c-info: oklch(0.2 0.04 245);
+        --c-danger: oklch(0.2 0.04 15);
+
+        --c-twarn: oklch(0.85 0.06 95);
+        --c-tsuccess: oklch(0.85 0.06 155);
+        --c-tinfo: oklch(0.85 0.06 250);
+        --c-tdanger: oklch(0.85 0.06 15);
+    }
+
     :root[rainbow-mode] {
         animation: cycle-hue 10s infinite linear;
     }
