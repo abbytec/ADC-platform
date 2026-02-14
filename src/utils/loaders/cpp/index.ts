@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
-import { spawn, ChildProcess, exec } from "node:child_process";
+import { spawn, ChildProcess, exec, ExecException } from "node:child_process";
 import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
 import { IModuleConfig } from "../../../interfaces/modules/IModule.js";
 import { IProvider } from "../../../providers/BaseProvider.js";
@@ -149,10 +149,13 @@ export default class CppLoader implements IModuleLoader {
 		Logger.debug(`[CppLoader] Iniciando proceso C++: ${indexFile}`);
 		Logger.debug(`[CppLoader] CPPPATH: ${cppPath}`);
 
-		exec(`cmake ${modulePath} -B ../../../../temp/builds/${moduleType}/${moduleName}`, (error, stdout, _stderr) => {
-			if (error) return Logger.error("Error:", error);
-			Logger.debug("Salida:", stdout);
-		});
+		exec(
+			`/usr/bin/cmake ${modulePath} -B ../../../../temp/builds/${moduleType}/${moduleName}`,
+			(error: ExecException | null, stdout: string, _stderr: string) => {
+				if (error) return Logger.error("Error:", error);
+				Logger.debug("Salida:", stdout);
+			}
+		);
 
 		const cppProcess = spawn(`../../../../temp/builds/${moduleType}/${moduleName}/index`, [], {
 			env,

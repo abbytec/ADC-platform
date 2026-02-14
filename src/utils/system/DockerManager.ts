@@ -22,7 +22,7 @@ export class DockerManager {
 		this.#logger.logInfo(`Iniciando servicios Docker para ${name}...`);
 
 		const { spawn } = await import("node:child_process");
-		const docker = spawn("docker", ["compose", "-f", dockerComposeFile, "up", "-d"], {
+		const docker = spawn("/usr/local/bin/docker", ["compose", "-f", dockerComposeFile, "up", "-d"], {
 			cwd: dir,
 			stdio: "pipe",
 		});
@@ -42,8 +42,8 @@ export class DockerManager {
 						type === "app"
 							? this.#appDockerComposeMap
 							: type === "service"
-							? this.#serviceDockerComposeMap
-							: this.#commonDockerComposeMap;
+								? this.#serviceDockerComposeMap
+								: this.#commonDockerComposeMap;
 					map.set(name, dir);
 					setTimeout(() => resolve(), 3000);
 				} else {
@@ -94,7 +94,7 @@ export class DockerManager {
 			this.#logger.logInfo(`Deteniendo servicios Docker para app en ${appDir}...`);
 
 			const { spawn } = await import("node:child_process");
-			const docker = spawn("docker", ["compose", "-f", dockerComposeFile, "down"], {
+			const docker = spawn("/usr/local/bin/docker", ["compose", "-f", dockerComposeFile, "down"], {
 				cwd: appDir,
 				stdio: "pipe",
 			});

@@ -178,7 +178,7 @@ export default class PythonLoader implements IModuleLoader {
 			PYTHONPATH: pythonPath,
 		};
 
-		const pythonProcess = spawn("python3", [indexFile], {
+		const pythonProcess = spawn("/usr/bin/python3", [indexFile], {
 			env,
 			stdio: ["pipe", "pipe", "pipe"],
 		});
