@@ -86,9 +86,6 @@ export function useTranslation(options: UseTranslationOptions = {}): UseTranslat
 	// Translation function
 	const t = useCallback(
 		(key: string, params?: Record<string, string>): string => {
-			// translationsVersion se usa como dependencia para invalidar cache
-			void translationsVersion;
-
 			// Use global t() if available
 			if (window.t) {
 				const ns = namespaces[0];
