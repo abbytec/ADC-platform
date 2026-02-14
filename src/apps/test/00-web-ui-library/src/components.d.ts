@@ -45,7 +45,7 @@ export namespace Components {
     interface AdcError {
         /**
           * Color del icono y borde (por defecto #ef4444 - rojo)
-          * @default '#ef4444'
+          * @default "#ef4444"
          */
         "color": string;
         /**
@@ -188,7 +188,7 @@ declare namespace LocalJSX {
     interface AdcError {
         /**
           * Color del icono y borde (por defecto #ef4444 - rojo)
-          * @default '#ef4444'
+          * @default "#ef4444"
          */
         "color"?: string;
         /**

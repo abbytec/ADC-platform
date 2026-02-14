@@ -36,25 +36,44 @@ export class AdcStarRating {
 		const disabled = this.isDisabled();
 		const displayRating = this.getDisplayRating();
 
-		return (
-			<div class="flex items-center gap-1" role={disabled ? undefined : "radiogroup"}>
+		const clasification = (
+			<span class="ml-2 text-sm" aria-label="Calificación promedio">
+				{typeof this.average === "number" ? this.average.toFixed(1) : "0.0"} ({this.count ?? 0})
+			</span>
+		);
+
+		return disabled ? (
+			<div class="flex items-center gap-1">
 				{[1, 2, 3, 4, 5].map((i) => (
 					<button
 						key={`star-${i}`}
 						type="button"
-						class={`text-4xl leading-none focus:outline-none ${disabled ? "cursor-default" : "cursor-pointer"}`}
-						aria-label={disabled ? undefined : `Calificar con ${i} estrellas`}
-						aria-hidden={disabled ? "true" : undefined}
-						disabled={disabled}
-						role={disabled ? undefined : "radio"}
+						class={`text-4xl leading-none focus:outline-none cursor-default`}
+						aria-hidden
+						disabled
 						onClick={() => this.handleClick(i)}
 					>
 						<span class={displayRating >= i ? "text-yellow-400" : "text-gray-300"}>★</span>
 					</button>
 				))}
-				<span class="ml-2 text-sm text-black" aria-label="Calificación promedio">
-					{typeof this.average === "number" ? this.average.toFixed(1) : "0.0"} ({this.count ?? 0})
-				</span>
+				{clasification}
+			</div>
+		) : (
+			<div class="flex items-center gap-1" role={"radiogroup"}>
+				{[1, 2, 3, 4, 5].map((i) => (
+					<button
+						key={`star-${i}`}
+						type="button"
+						class={`text-4xl leading-none focus:outline-none cursor-pointer`}
+						aria-label={`Calificar con ${i} estrellas`}
+						role={"radio"}
+						aria-checked={this.myRating === i ? "true" : "false"}
+						onClick={() => this.handleClick(i)}
+					>
+						<span class={displayRating >= i ? "text-yellow-400" : "text-gray-300"}>★</span>
+					</button>
+				))}
+				{clasification}
 			</div>
 		);
 	}

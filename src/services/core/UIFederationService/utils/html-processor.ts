@@ -5,7 +5,7 @@ import { processHTMLFiles } from "./file-operations.js";
  * Script inline para detección de dark mode basado en preferencias del usuario.
  * Compartido entre templates HTML generados por rspack y archivos standalone.
  */
-export function getDarkModeScript(): string {
+function getDarkModeScript(): string {
 	return `<script>
       (function () {
         const savedTheme = localStorage.getItem('theme');

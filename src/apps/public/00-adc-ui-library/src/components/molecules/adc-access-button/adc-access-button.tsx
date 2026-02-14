@@ -143,6 +143,20 @@ export class AdcAccessButton {
 		}, 150);
 	};
 
+	private handleFocusIn = () => {
+		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+		this.dropdownOpen = true;
+	};
+
+	private handleFocusOut = (event: FocusEvent) => {
+		const relatedTarget = event.relatedTarget as HTMLElement | null;
+		// Cerrar solo si el foco sale completamente del contenedor
+		if (relatedTarget && (event.currentTarget as HTMLElement)?.contains(relatedTarget)) return;
+		this.hoverTimeout = setTimeout(() => {
+			this.dropdownOpen = false;
+		}, 150);
+	};
+
 	private handleToggle = () => {
 		this.dropdownOpen = !this.dropdownOpen;
 	};
@@ -199,7 +213,13 @@ export class AdcAccessButton {
 
 		// Autenticado - mostrar avatar con dropdown
 		return (
-			<div class="relative inline-block" onMouseEnter={this.handleMouseEnter} onMouseLeave={this.handleMouseLeave}>
+			<div
+				class="relative inline-block"
+				onMouseEnter={this.handleMouseEnter}
+				onMouseLeave={this.handleMouseLeave}
+				onFocusin={this.handleFocusIn}
+				onFocusout={this.handleFocusOut}
+			>
 				<button
 					type="button"
 					class="flex items-center gap-2 p-1 rounded-full hover:bg-accent/10 transition-all cursor-pointer"

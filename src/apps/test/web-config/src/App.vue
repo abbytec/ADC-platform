@@ -10,27 +10,33 @@
       <adc-container>
         <h3 class="text-xl">General</h3>
         <div class="form-group">
-          <label>Nombre del Sitio</label>
-          <input type="text" v-model="config.siteName" />
+          <label>
+            Nombre del Sitio
+            <input aria-label="Nombre del sitio" type="text" v-model="config.siteName" />
+          </label>
         </div>
         <div class="form-group">
-          <label>Idioma</label>
-          <select v-model="config.language">
-            <option value="es">Español</option>
-            <option value="en">English</option>
-          </select>
+          <label>
+            Idioma
+            <select aria-label="Idioma" v-model="config.language">
+              <option value="es">Español</option>
+              <option value="en">English</option>
+            </select>
+        </label>
         </div>
       </adc-container>
 
       <adc-container>
         <h3>Apariencia</h3>
         <div class="form-group">
-          <label>Tema</label>
-          <select v-model="config.theme">
-            <option value="light">Claro</option>
-            <option value="dark">Oscuro</option>
-            <option value="system">Sistema</option>
-          </select>
+          <label>
+            Tema
+            <select aria-label="Tema" v-model="config.theme">
+              <option value="light">Claro</option>
+              <option value="dark">Oscuro</option>
+              <option value="system">Sistema</option>
+            </select>
+          </label>
         </div>
       </adc-container>
     </div>

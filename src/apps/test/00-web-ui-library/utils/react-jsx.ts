@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-namespace */
 /**
  * Declaraciones JSX para web components de @ui-library (test) en apps React
  * Compatible con React 17+ (jsx: react-jsx)
@@ -16,20 +18,24 @@ type WebComponentProps<T = Record<string, unknown>> = T & {
 } & React.DOMAttributes<HTMLElement>;
 
 interface AdcTestIntrinsicElements {
-	"adc-button": WebComponentProps<{ buttonType?: "button" | "submit" | "reset"; disabled?: boolean; size?: "sm" | "md" | "lg"; variant?: "primary" | "secondary" | "success" | "warning" | "danger" }>;
+	"adc-button": WebComponentProps<{
+		buttonType?: "button" | "submit" | "reset";
+		disabled?: boolean;
+		size?: "sm" | "md" | "lg";
+		variant?: "primary" | "secondary" | "success" | "warning" | "danger";
+	}>;
 	"adc-container": WebComponentProps<{ maxWidth?: string; padding?: string }>;
 	"adc-error": WebComponentProps<{ color?: string; errorDescription?: string; errorTitle?: string; httpError?: number }>;
 	"adc-header": WebComponentProps<{ "header-title": string; subtitle?: string }>;
-	"adc-stat-card": WebComponentProps<{ cardTitle: string; color?: "primary" | "success" | "warning" | "danger" | "default"; description?: string; value: string | number }>;
+	"adc-stat-card": WebComponentProps<{
+		cardTitle: string;
+		color?: "primary" | "success" | "warning" | "danger" | "default";
+		description?: string;
+		value: string | number;
+	}>;
 }
 
 declare module "react" {
-	namespace JSX {
-		interface IntrinsicElements extends AdcTestIntrinsicElements {}
-	}
-}
-
-declare global {
 	namespace JSX {
 		interface IntrinsicElements extends AdcTestIntrinsicElements {}
 	}

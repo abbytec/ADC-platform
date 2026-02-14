@@ -18,6 +18,13 @@ export class AdcContentCard {
 		this.cardClick.emit(event);
 	};
 
+	private handleKeyDown = (event: KeyboardEvent) => {
+		if (event.key === "Enter" || event.key === " ") {
+			event.preventDefault();
+			this.handleClick(event as unknown as MouseEvent);
+		}
+	};
+
 	render() {
 		const rootClass = "relative block h-full rounded-xxl cursor-pointer no-underline group max-w-lg";
 		const surfaceClass =
@@ -49,7 +56,7 @@ export class AdcContentCard {
 		}
 
 		return (
-			<div class={rootClass} onClick={this.handleClick}>
+			<div class={rootClass} role="button" tabIndex={0} onClick={this.handleClick} onKeyDown={this.handleKeyDown}>
 				<div class={surfaceClass}></div>
 				{content}
 			</div>

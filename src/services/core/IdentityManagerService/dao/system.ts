@@ -15,6 +15,7 @@ export class SystemManager {
 		private readonly roleModel: Model<any>,
 		private readonly groupModel: Model<any>,
 		private readonly logger: ILogger,
+		// @ts-expect-error unused
 		private readonly kernelKey: symbol
 	) {}
 
@@ -60,7 +61,6 @@ export class SystemManager {
 	 */
 	@OnlyKernel()
 	async getSystemUser(_kernelKey: symbol): Promise<User> {
-		void this.kernelKey; // Para evitar el error de typescript (no ts-lint) unused variable
 		if (!this.#systemUser) {
 			throw new Error("Usuario SYSTEM no está disponible");
 		}
@@ -75,7 +75,6 @@ export class SystemManager {
 	 */
 	@OnlyKernel()
 	getSystemCredentials(_kernelKey: symbol): { username: string; password: string } {
-		void this.kernelKey;
 		if (!this.#systemCredentials) {
 			throw new Error("Credenciales SYSTEM no disponibles");
 		}

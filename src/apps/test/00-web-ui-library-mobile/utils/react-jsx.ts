@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-namespace */
 /**
  * Declaraciones JSX para web components de @ui-library (mobile) en apps React
  * Compatible con React 17+ (jsx: react-jsx)
@@ -23,12 +25,6 @@ interface AdcMobileIntrinsicElements {
 }
 
 declare module "react" {
-	namespace JSX {
-		interface IntrinsicElements extends AdcMobileIntrinsicElements {}
-	}
-}
-
-declare global {
 	namespace JSX {
 		interface IntrinsicElements extends AdcMobileIntrinsicElements {}
 	}

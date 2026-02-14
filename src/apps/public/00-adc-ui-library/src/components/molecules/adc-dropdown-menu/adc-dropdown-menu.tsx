@@ -44,6 +44,19 @@ export class AdcDropdownMenu {
 		}, 150);
 	};
 
+	private handleFocusIn = () => {
+		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+		this.isOpen = true;
+	};
+
+	private handleFocusOut = (event: FocusEvent) => {
+		const relatedTarget = event.relatedTarget as HTMLElement | null;
+		if (relatedTarget && (event.currentTarget as HTMLElement)?.contains(relatedTarget)) return;
+		this.hoverTimeout = setTimeout(() => {
+			this.isOpen = false;
+		}, 150);
+	};
+
 	private handleKeyDown = (event: KeyboardEvent) => {
 		if (event.key === "Escape") {
 			this.isOpen = false;
@@ -58,7 +71,13 @@ export class AdcDropdownMenu {
 		const alignClass = this.alignState === "right" ? "right-0" : "left-0";
 
 		return (
-			<div class="relative inline-block" onMouseEnter={this.handleMouseEnter} onMouseLeave={this.handleMouseLeave}>
+			<div
+				class="relative inline-block"
+				onMouseEnter={this.handleMouseEnter}
+				onMouseLeave={this.handleMouseLeave}
+				onFocusin={this.handleFocusIn}
+				onFocusout={this.handleFocusOut}
+			>
 				<button
 					type="button"
 					class="group inline-flex items-center !bg-transparent"
