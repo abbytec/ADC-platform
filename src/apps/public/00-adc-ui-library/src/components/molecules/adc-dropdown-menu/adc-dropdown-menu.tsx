@@ -73,10 +73,12 @@ export class AdcDropdownMenu {
 		return (
 			<div
 				class="relative inline-block"
+				role="group"
 				onMouseEnter={this.handleMouseEnter}
 				onMouseLeave={this.handleMouseLeave}
 				onFocusin={this.handleFocusIn}
 				onFocusout={this.handleFocusOut}
+				onKeyDown={this.handleKeyDown}
 			>
 				<button
 					type="button"

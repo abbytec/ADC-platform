@@ -1,13 +1,13 @@
 /**
  * Utilidad para cargar componentes remotos en layouts React.
  * Soporta wrapping de componentes React, Vue y Vanilla JS.
- * 
+ *
  * NOTA: Este archivo solo debe usarse en layouts que tengan React como sharedLib.
  */
-import React from 'react';
-import { createApp } from 'vue';
+import React from "react";
+import { createApp } from "vue";
 
-export type Framework = 'react' | 'vue' | 'vanilla';
+export type Framework = "react" | "vue" | "vanilla";
 
 export interface RemoteComponentResult {
 	Component: React.ComponentType<any>;
@@ -44,11 +44,7 @@ export interface LazyLoadRemoteComponentOptions {
 /**
  * Crea un wrapper de React para un componente Vue
  */
-function createVueWrapper(
-	RemoteComponent: any,
-	moduleName: string,
-	timestamp: number
-): React.FC<any> {
+function createVueWrapper(RemoteComponent: any, moduleName: string, timestamp: number): React.FC<any> {
 	return (props: any) => {
 		const containerRef = React.useRef<HTMLDivElement>(null);
 		const vueAppRef = React.useRef<any>(null);
@@ -71,14 +67,14 @@ function createVueWrapper(
 		}, []);
 
 		return React.createElement(
-			'div',
+			"div",
 			{
-				'data-module': moduleName,
-				'data-framework': 'vue',
-				'data-timestamp': timestamp,
-				style: { display: 'contents' },
+				"data-module": moduleName,
+				"data-framework": "vue",
+				"data-timestamp": timestamp,
+				style: { display: "contents" },
 			},
-			React.createElement('div', { ref: containerRef })
+			React.createElement("div", { ref: containerRef })
 		);
 	};
 }
@@ -86,11 +82,7 @@ function createVueWrapper(
 /**
  * Crea un wrapper de React para un componente Vanilla JS (clase con mount/unmount)
  */
-function createVanillaWrapper(
-	RemoteComponent: any,
-	moduleName: string,
-	timestamp: number
-): React.FC {
+function createVanillaWrapper(RemoteComponent: any, moduleName: string, timestamp: number): React.FC {
 	return () => {
 		const containerRef = React.useRef<HTMLDivElement>(null);
 		const appInstanceRef = React.useRef<any>(null);
@@ -112,14 +104,14 @@ function createVanillaWrapper(
 		}, []);
 
 		return React.createElement(
-			'div',
+			"div",
 			{
-				'data-module': moduleName,
-				'data-framework': 'vanilla',
-				'data-timestamp': timestamp,
-				style: { display: 'contents' },
+				"data-module": moduleName,
+				"data-framework": "vanilla",
+				"data-timestamp": timestamp,
+				style: { display: "contents" },
 			},
-			React.createElement('div', { ref: containerRef })
+			React.createElement("div", { ref: containerRef })
 		);
 	};
 }
@@ -127,19 +119,15 @@ function createVanillaWrapper(
 /**
  * Crea un wrapper de React para un componente React remoto
  */
-function createReactWrapper(
-	RemoteComponent: any,
-	moduleName: string,
-	timestamp: number
-): React.FC<any> {
+function createReactWrapper(RemoteComponent: any, moduleName: string, timestamp: number): React.FC<any> {
 	return (props: any) => {
 		return React.createElement(
-			'div',
+			"div",
 			{
-				'data-module': moduleName,
-				'data-framework': 'react',
-				'data-timestamp': timestamp,
-				style: { display: 'contents' },
+				"data-module": moduleName,
+				"data-framework": "react",
+				"data-timestamp": timestamp,
+				style: { display: "contents" },
 			},
 			React.createElement(RemoteComponent, props)
 		);
@@ -153,25 +141,25 @@ function DefaultErrorComponent(error: Error, moduleName: string): React.ReactEle
 	let httpError: number | undefined;
 	const errorMessage = error.message;
 
-	if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CONNECTION_REFUSED')) {
+	if (errorMessage.includes("Failed to fetch") || errorMessage.includes("CONNECTION_REFUSED")) {
 		httpError = 503;
-	} else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+	} else if (errorMessage.includes("404") || errorMessage.includes("not found")) {
 		httpError = 404;
 	}
 
 	return React.createElement(
-		'div',
+		"div",
 		{
-			'data-module': moduleName,
-			'data-framework': 'error',
-			'data-timestamp': Date.now(),
-			style: { display: 'contents' },
+			"data-module": moduleName,
+			"data-framework": "error",
+			"data-timestamp": Date.now(),
+			style: { display: "contents" },
 		},
-		React.createElement('adc-error', {
-			'http-error': httpError,
-			'error-title': httpError ? undefined : 'Aplicación no disponible',
-			'error-description': httpError ? undefined : `En estos momentos, ${moduleName} no está disponible`,
-			color: '#ef4444',
+		React.createElement("adc-error", {
+			"http-error": httpError,
+			"error-title": httpError ? undefined : "Aplicación no disponible",
+			"error-description": httpError ? undefined : `En estos momentos, ${moduleName} no está disponible`,
+			color: "#ef4444",
 		})
 	);
 }
@@ -188,11 +176,11 @@ async function loadRemoteEntry(url: string, name: string): Promise<void> {
 	}
 
 	return new Promise((resolve, reject) => {
-		const script = document.createElement('script');
+		const script = document.createElement("script");
 		script.src = url;
-		script.type = 'text/javascript';
+		script.type = "text/javascript";
 		script.async = true;
-		script.setAttribute('data-remote-entry', name);
+		script.dataset.remoteEntry = name;
 
 		script.onload = () => {
 			console.log(`[Layout] 📦 Remote entry loaded: ${name} from ${url}`);
@@ -222,9 +210,7 @@ async function loadRemoteEntry(url: string, name: string): Promise<void> {
  * });
  * ```
  */
-export async function lazyLoadRemoteComponent(
-	options: LazyLoadRemoteComponentOptions
-): Promise<RemoteComponentResult> {
+export async function lazyLoadRemoteComponent(options: LazyLoadRemoteComponentOptions): Promise<RemoteComponentResult> {
 	const { remoteEntryUrl, remoteName, scope, moduleName, framework, errorComponent } = options;
 	const timestamp = Date.now();
 
@@ -254,13 +240,13 @@ export async function lazyLoadRemoteComponent(
 		let WrapperComponent: React.ComponentType<any>;
 
 		switch (framework) {
-			case 'vue':
+			case "vue":
 				WrapperComponent = createVueWrapper(RemoteComponent, moduleName, timestamp);
 				break;
-			case 'vanilla':
+			case "vanilla":
 				WrapperComponent = createVanillaWrapper(RemoteComponent, moduleName, timestamp);
 				break;
-			case 'react':
+			case "react":
 			default:
 				WrapperComponent = createReactWrapper(RemoteComponent, moduleName, timestamp);
 				break;
@@ -271,9 +257,7 @@ export async function lazyLoadRemoteComponent(
 		console.error(`[Layout] ❌ Error lazy loading ${moduleName}:`, error);
 
 		const ErrorComponent = () =>
-			errorComponent
-				? errorComponent(error as Error, moduleName)
-				: DefaultErrorComponent(error as Error, moduleName);
+			errorComponent ? errorComponent(error as Error, moduleName) : DefaultErrorComponent(error as Error, moduleName);
 
 		return { Component: ErrorComponent, moduleName, timestamp: Date.now() };
 	}
@@ -293,9 +277,7 @@ export async function lazyLoadRemoteComponent(
  * });
  * ```
  */
-export async function loadRemoteComponent(
-	options: LoadRemoteComponentOptions
-): Promise<RemoteComponentResult> {
+export async function loadRemoteComponent(options: LoadRemoteComponentOptions): Promise<RemoteComponentResult> {
 	const { importFn, moduleName, framework, errorComponent } = options;
 	const timestamp = Date.now();
 
@@ -308,13 +290,13 @@ export async function loadRemoteComponent(
 		let WrapperComponent: React.ComponentType<any>;
 
 		switch (framework) {
-			case 'vue':
+			case "vue":
 				WrapperComponent = createVueWrapper(RemoteComponent, moduleName, timestamp);
 				break;
-			case 'vanilla':
+			case "vanilla":
 				WrapperComponent = createVanillaWrapper(RemoteComponent, moduleName, timestamp);
 				break;
-			case 'react':
+			case "react":
 			default:
 				WrapperComponent = createReactWrapper(RemoteComponent, moduleName, timestamp);
 				break;
@@ -325,11 +307,8 @@ export async function loadRemoteComponent(
 		console.error(`[Layout] ❌ Error cargando ${moduleName}:`, error);
 
 		const ErrorComponent = () =>
-			errorComponent
-				? errorComponent(error as Error, moduleName)
-				: DefaultErrorComponent(error as Error, moduleName);
+			errorComponent ? errorComponent(error as Error, moduleName) : DefaultErrorComponent(error as Error, moduleName);
 
 		return { Component: ErrorComponent, moduleName, timestamp: Date.now() };
 	}
 }
-

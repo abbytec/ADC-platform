@@ -42,19 +42,19 @@ export class AdcStarRating {
 			</span>
 		);
 
+		const displayStarRating = (i: number) => <span class={displayRating >= i ? "text-yellow-400" : "text-gray-300"}>★</span>;
+
 		return disabled ? (
 			<div class="flex items-center gap-1">
 				{[1, 2, 3, 4, 5].map((i) => (
-					<button
+					<span
 						key={`star-${i}`}
-						type="button"
 						class={`text-4xl leading-none focus:outline-none cursor-default`}
 						aria-hidden
-						disabled
 						onClick={() => this.handleClick(i)}
 					>
-						<span class={displayRating >= i ? "text-yellow-400" : "text-gray-300"}>★</span>
-					</button>
+						{displayStarRating(i)}
+					</span>
 				))}
 				{clasification}
 			</div>
@@ -70,7 +70,7 @@ export class AdcStarRating {
 						aria-checked={this.myRating === i ? "true" : "false"}
 						onClick={() => this.handleClick(i)}
 					>
-						<span class={displayRating >= i ? "text-yellow-400" : "text-gray-300"}>★</span>
+						{displayStarRating(i)}
 					</button>
 				))}
 				{clasification}
