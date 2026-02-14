@@ -140,7 +140,7 @@ export class AuthEndpoints {
 			throw new AuthError(400, "WEAK_PASSWORD", "La contraseña debe tener al menos 8 caracteres");
 		}
 
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		const emailRegex = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 		if (!emailRegex.test(email)) {
 			throw new AuthError(400, "INVALID_EMAIL", "El email no es válido");
 		}
