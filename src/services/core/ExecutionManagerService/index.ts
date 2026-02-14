@@ -3,6 +3,7 @@ import { Worker } from "node:worker_threads";
 import { BaseService } from "../../BaseService.js";
 import { assignWorker } from "../../../utils/decorators/Distributed.js";
 import type { WorkerInfo, SystemLoad, IExecutionManager } from "./types.js";
+import crypto from "node:crypto";
 
 /**
  * ExecutionManagerService - Gestiona la ejecución distribuida de módulos
@@ -103,7 +104,7 @@ export default class ExecutionManagerService extends BaseService implements IExe
 	 * Crea un nuevo worker en el pool
 	 */
 	#createWorker(): WorkerInfo {
-		const workerId = `worker-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		const workerId = `worker-${Date.now()}-${crypto.randomBytes(6).toString("base64url").slice(2, 9)}`;
 
 		// TODO: En el futuro, aquí se podría crear una conexión a un nodo remoto
 		// en lugar de un Worker local

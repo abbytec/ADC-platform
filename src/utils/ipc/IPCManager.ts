@@ -2,6 +2,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as net from "node:net";
 import { promises as fs } from "node:fs";
+import crypto from "node:crypto";
 import { Logger } from "../logger/Logger.js";
 
 /**
@@ -236,7 +237,7 @@ class IPCManager {
 			return arg;
 		});
 
-		const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		const messageId = `${Date.now()}-${crypto.randomBytes(6).toString("base64url").slice(2, 9)}`;
 		const message: IPCMessage = {
 			id: messageId,
 			type: "request",

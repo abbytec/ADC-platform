@@ -6,6 +6,7 @@ import type SessionManagerService from "../../../services/security/SessionManage
 import { Logger } from "../../../utils/logger/Logger.js";
 import { Action } from "../../../interfaces/behaviours/Actions.js";
 import { Scope } from "../../../services/core/IdentityManagerService/permissions.js";
+import crypto from "node:crypto";
 
 interface IdentityTestData {
 	userIds: string[];
@@ -126,9 +127,7 @@ export default class UserProfileApp extends BaseApp {
 		Logger.ok(`[${this.name}] ✓ Grupo creado: ${group.name}`);
 
 		// 3. Crear usuario
-		const user = await this.identityManager.users.createUser(`test-user-${Date.now()}`, `pwd-${Math.random().toString(36).slice(-8)}`, [
-			role.id,
-		]);
+		const user = await this.identityManager.users.createUser(`test-user-${Date.now()}`, `pwd-${crypto.randomUUID()}`, [role.id]);
 		this.testData.userIds.push(user.id);
 		Logger.ok(`[${this.name}] ✓ Usuario creado: ${user.username}`);
 
@@ -175,7 +174,7 @@ export default class UserProfileApp extends BaseApp {
 		Logger.ok(`[${this.name}] ✓ Rol limitado creado: ${limitedRole.name}`);
 
 		// 4. Crear usuario con permisos limitados
-		const limitedPassword = `limited-pwd-${Math.random().toString(36).slice(-8)}`;
+		const limitedPassword = `limited-pwd-${crypto.randomUUID()}`;
 		const limitedUser = await this.identityManager.users.createUser(`limited-${Date.now()}`, limitedPassword, [limitedRole.id]);
 		this.testData.userIds.push(limitedUser.id);
 		Logger.ok(`[${this.name}] ✓ Usuario limitado creado: ${limitedUser.username}`);

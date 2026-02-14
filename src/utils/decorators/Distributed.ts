@@ -1,5 +1,6 @@
 import { Worker } from "node:worker_threads";
 import { Logger } from "../logger/Logger.js";
+import crypto from "node:crypto";
 
 /**
  * Símbolo para almacenar el worker asignado en la instancia
@@ -106,7 +107,7 @@ export function Distributed<T extends new (...args: any[]) => any>(constructor: 
 				Logger.debug(`[Distributed] Ejecutando '${method}' en worker`);
 
 				return new Promise((resolve, reject) => {
-					const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+					const messageId = `${Date.now()}-${crypto.randomBytes(6).toString("base64url").slice(2, 9)}`;
 
 					// Listener para la respuesta del worker
 					const messageHandler = (message: any) => {
