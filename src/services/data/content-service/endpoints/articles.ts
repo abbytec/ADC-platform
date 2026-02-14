@@ -120,8 +120,8 @@ export class ArticleEndpoints {
 			{ $sort: { createdAt: -1 } },
 		];
 
-		const limit = query.limit ? parseInt(query.limit) : undefined;
-		const skip = query.skip ? parseInt(query.skip) : undefined;
+		const limit = query.limit ? Number.parseInt(query.limit) : undefined;
+		const skip = query.skip ? Number.parseInt(query.skip) : undefined;
 
 		if (limit) pipeline.push({ $limit: limit });
 		if (skip) pipeline.push({ $skip: skip });

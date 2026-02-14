@@ -57,8 +57,8 @@ export class PathEndpoints {
 		if (query.public !== undefined) filter.public = query.public === "true";
 		if (query.listed !== undefined) filter.listed = query.listed === "true";
 
-		const limit = query.limit ? parseInt(query.limit) : 100;
-		const skip = query.skip ? parseInt(query.skip) : 0;
+		const limit = query.limit ? Number.parseInt(query.limit) : 100;
+		const skip = query.skip ? Number.parseInt(query.skip) : 0;
 
 		const docs = await PathEndpoints.model.find(filter).limit(limit).skip(skip).sort({ createdAt: -1 }).lean();
 

@@ -96,7 +96,7 @@ export class KeyStore {
 				this.#currentKeyBytes = this.#stringToKey(current);
 				this.#previousKey = previous;
 				this.#previousKeyBytes = previous ? this.#stringToKey(previous) : null;
-				this.#rotatedAt = rotatedAt ? parseInt(rotatedAt, 10) : Date.now();
+				this.#rotatedAt = rotatedAt ? Number.parseInt(rotatedAt, 10) : Date.now();
 			} else {
 				// No hay claves en Redis, persistir las actuales
 				await this.#persistKeys();

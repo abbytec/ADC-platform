@@ -222,7 +222,7 @@ export default class JWTProvider extends BaseProvider implements IJWTProviderMul
 		const match = exp.match(/^(\d+)([smhdw])$/);
 		if (!match) return 7 * 24 * 60 * 60; // default 7 días
 
-		const value = parseInt(match[1], 10);
+		const value = Number.parseInt(match[1], 10);
 		const unit = match[2];
 
 		const multipliers: Record<string, number> = {
