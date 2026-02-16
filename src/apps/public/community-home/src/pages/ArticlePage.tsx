@@ -3,11 +3,7 @@ import { router } from "@ui-library/utils/router";
 import { contentAPI, type Article, type LearningPath } from "../utils/content-api";
 import { AUTHORS } from "../utils/constants";
 
-interface ArticlePageProps {
-	slug: string;
-}
-
-export function ArticlePage({ slug }: ArticlePageProps) {
+export function ArticlePage({ slug }: { readonly slug: string }) {
 	const [article, setArticle] = useState<Article | null>(null);
 	const [fromPath, setFromPath] = useState<LearningPath | null>(null);
 	const [loading, setLoading] = useState(true);

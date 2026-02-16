@@ -79,7 +79,7 @@ export class ModuleRegistry {
 		const configStr = JSON.stringify(config);
 		let hash = 0;
 		for (let i = 0; i < configStr.length; i++) {
-			const char = configStr.charCodeAt(i);
+			const char = configStr.codePointAt(i) ?? -1;
 			hash = (hash << 5) - hash + char;
 			hash = hash & hash;
 		}

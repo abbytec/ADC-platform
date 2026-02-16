@@ -9,7 +9,7 @@ const isProd = process.env.NODE_ENV === "production";
  * Secure cookies require HTTPS. In start:prodtests (NODE_ENV=production over HTTP)
  * secure must be false, otherwise the browser silently rejects the cookies.
  */
-const useSecureCookies = isProd && !(process.env.PROD_PORT == "3000");
+const useSecureCookies = isProd && process.env.PROD_PORT != "3000";
 
 /**
  * Payload del Access Token (JWT)

@@ -4,6 +4,7 @@ import type IdentityManagerService from "../../core/IdentityManagerService/index
 import type { IJWTProviderMultiKey } from "../../../providers/security/jwt/index.js";
 import type { IRedisProvider } from "../../../providers/queue/redis/index.js";
 import type { AuthenticatedUser, OAuthProviderConfig, TokenVerificationResult } from "./types.js";
+export type { AuthenticatedUser, TokenVerificationResult } from "./types.js";
 
 // Domain components
 import { KeyStore } from "./domain/keys/KeyStore.js";
@@ -20,9 +21,6 @@ import { OAuthEndpoints } from "./endpoints/oauth.js";
 
 // Decoradores
 import { EnableEndpoints, DisableEndpoints } from "../../core/EndpointManagerService/index.js";
-
-// Re-exportar tipos
-export type { AuthenticatedUser, TokenVerificationResult };
 
 /** Configuración custom del servicio (desde config.json + .env) */
 interface SessionManagerConfig {

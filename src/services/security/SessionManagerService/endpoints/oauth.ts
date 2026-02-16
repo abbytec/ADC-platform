@@ -249,7 +249,7 @@ export class OAuthEndpoints {
 		const fingerprint = `${ua}|${accept}|${lang}`;
 		let hash = 0;
 		for (let i = 0; i < fingerprint.length; i++) {
-			const char = fingerprint.charCodeAt(i);
+			const char = fingerprint.codePointAt(i) ?? -1;
 			hash = (hash << 5) - hash + char;
 			hash = hash & hash;
 		}

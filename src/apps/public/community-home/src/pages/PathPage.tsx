@@ -2,10 +2,6 @@ import { useEffect, useState } from "react";
 import { router } from "@ui-library/utils/router";
 import { contentAPI, type LearningPath, type Article, type PathItemLevel } from "../utils/content-api";
 
-interface PathPageProps {
-	slug: string;
-}
-
 type Level = PathItemLevel;
 type ItemElement = Article | LearningPath;
 // Item poblado desde el backend
@@ -36,7 +32,7 @@ const getLevelColor = (type: "article" | "path", level: Level) => (type === "pat
 
 const ALL_LEVELS: Level[] = ["critico", "importante", "opcional"];
 
-export function PathPage({ slug }: PathPageProps) {
+export function PathPage({ slug }: { readonly slug: string }) {
 	const [path, setPath] = useState<LearningPath | null>(null);
 	const [items, setItems] = useState<ExpandedItem[]>([]);
 	const [loading, setLoading] = useState(true);

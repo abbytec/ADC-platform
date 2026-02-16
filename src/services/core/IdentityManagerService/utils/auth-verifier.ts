@@ -1,5 +1,5 @@
-import { Action } from "../../../../interfaces/behaviours/Actions.js";
-import { Scope } from "../permissions.js";
+export { Action } from "../../../../interfaces/behaviours/Actions.js";
+export { Scope } from "../permissions.js";
 
 /**
  * Interfaz para verificación de autenticación y autorización
@@ -72,6 +72,3 @@ export class PermissionChecker {
 		return result.userId;
 	}
 }
-
-// Re-export para uso externo
-export { Action, Scope };

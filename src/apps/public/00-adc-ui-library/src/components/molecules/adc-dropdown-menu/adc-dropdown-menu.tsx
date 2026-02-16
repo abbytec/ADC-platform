@@ -1,4 +1,4 @@
-import { Component, Prop, h, Event, EventEmitter, State } from "@stencil/core";
+import { Component, Prop, h, Event, EventEmitter, State, Listen, Element } from "@stencil/core";
 
 export interface DropdownMenuItem {
 	label: string;
@@ -18,9 +18,48 @@ export class AdcDropdownMenu {
 
 	@State() isOpen: boolean = false;
 
+	@Element() el!: HTMLElement;
+
 	@Event() adcItemClick!: EventEmitter<DropdownMenuItem>;
 
 	private hoverTimeout?: ReturnType<typeof setTimeout>;
+
+	@Listen("mouseenter")
+	handleMouseEnter() {
+		if (!this.openOnHover) return;
+		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+		this.isOpen = true;
+	}
+
+	@Listen("mouseleave")
+	handleMouseLeave() {
+		if (!this.openOnHover) return;
+		this.hoverTimeout = setTimeout(() => {
+			this.isOpen = false;
+		}, 150);
+	}
+
+	@Listen("focusin")
+	handleFocusIn() {
+		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+		this.isOpen = true;
+	}
+
+	@Listen("focusout")
+	handleFocusOut(event: FocusEvent) {
+		const relatedTarget = event.relatedTarget as HTMLElement | null;
+		if (relatedTarget && this.el.contains(relatedTarget)) return;
+		this.hoverTimeout = setTimeout(() => {
+			this.isOpen = false;
+		}, 150);
+	}
+
+	@Listen("keydown")
+	handleKeyDown(event: KeyboardEvent) {
+		if (event.key === "Escape") {
+			this.isOpen = false;
+		}
+	}
 
 	private handleToggle = () => {
 		this.isOpen = !this.isOpen;
@@ -31,38 +70,6 @@ export class AdcDropdownMenu {
 		this.isOpen = false;
 	};
 
-	private handleMouseEnter = () => {
-		if (!this.openOnHover) return;
-		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
-		this.isOpen = true;
-	};
-
-	private handleMouseLeave = () => {
-		if (!this.openOnHover) return;
-		this.hoverTimeout = setTimeout(() => {
-			this.isOpen = false;
-		}, 150);
-	};
-
-	private handleFocusIn = () => {
-		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
-		this.isOpen = true;
-	};
-
-	private handleFocusOut = (event: FocusEvent) => {
-		const relatedTarget = event.relatedTarget as HTMLElement | null;
-		if (relatedTarget && (event.currentTarget as HTMLElement)?.contains(relatedTarget)) return;
-		this.hoverTimeout = setTimeout(() => {
-			this.isOpen = false;
-		}, 150);
-	};
-
-	private handleKeyDown = (event: KeyboardEvent) => {
-		if (event.key === "Escape") {
-			this.isOpen = false;
-		}
-	};
-
 	disconnectedCallback() {
 		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
 	}
@@ -71,22 +78,13 @@ export class AdcDropdownMenu {
 		const alignClass = this.alignState === "right" ? "right-0" : "left-0";
 
 		return (
-			<div
-				class="relative inline-block"
-				role="group"
-				onMouseEnter={this.handleMouseEnter}
-				onMouseLeave={this.handleMouseLeave}
-				onFocusin={this.handleFocusIn}
-				onFocusout={this.handleFocusOut}
-				onKeyDown={this.handleKeyDown}
-			>
+			<div class="relative inline-block" role="group">
 				<button
 					type="button"
 					class="group inline-flex items-center !bg-transparent"
 					aria-haspopup="menu"
 					aria-expanded={this.isOpen ? "true" : "false"}
 					onClick={this.handleToggle}
-					onKeyDown={this.handleKeyDown}
 				>
 					<slot>Menú</slot>
 				</button>

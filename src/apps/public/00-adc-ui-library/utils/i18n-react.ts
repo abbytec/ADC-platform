@@ -78,7 +78,7 @@ export function useTranslation(options: UseTranslationOptions = {}): UseTranslat
 		return ns.every((n) => n in state.translations);
 	});
 
-	const [locale, setLocaleState] = useState(() => {
+	const [locale, setLocale] = useState(() => {
 		return customThis.__ADC_I18N__?.locale || localStorage.getItem("language") || navigator.language?.split("-")[0] || "en";
 	});
 
@@ -122,13 +122,13 @@ export function useTranslation(options: UseTranslationOptions = {}): UseTranslat
 	);
 
 	// Set locale function
-	const setLocale = useCallback((newLocale: string) => {
+	const setLocaleFn = useCallback((newLocale: string) => {
 		if (customThis.setLocale) {
 			customThis.setLocale(newLocale);
 		} else {
 			localStorage.setItem("language", newLocale);
 		}
-		setLocaleState(newLocale);
+		setLocale(newLocale);
 	}, []);
 
 	// Load translations on mount
@@ -181,7 +181,7 @@ export function useTranslation(options: UseTranslationOptions = {}): UseTranslat
 		const handleI18nLoaded = (event: Event) => {
 			const detail = (event as CustomEvent).detail;
 			if (detail?.locale) {
-				setLocaleState(detail.locale);
+				setLocale(detail.locale);
 			}
 			setReady(true);
 			// Forzar re-cálculo de t() cuando cambian traducciones
@@ -192,7 +192,7 @@ export function useTranslation(options: UseTranslationOptions = {}): UseTranslat
 		return () => customThis.removeEventListener("adc:i18n:loaded", handleI18nLoaded);
 	}, []);
 
-	return { t, locale, ready, setLocale };
+	return { t, locale, ready, setLocale: setLocaleFn };
 }
 
 /**

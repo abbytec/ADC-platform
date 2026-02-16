@@ -29,10 +29,10 @@ const translations = {
  * Usa Tailwind CSS para estilos optimizados
  */
 export default class HomeApp {
+	stats = null;
+	loading = true;
+	container = null;
 	constructor() {
-		this.stats = null;
-		this.loading = true;
-		this.container = null;
 		this.locale = this.detectLocale();
 	}
 	

@@ -1,10 +1,6 @@
 import { router } from "@ui-library/utils/router";
 
-interface NavigationProps {
-	currentPath: string;
-}
-
-export function Navigation({ currentPath }: NavigationProps) {
+export function Navigation({ currentPath }: { readonly currentPath: string }) {
 	const handleNavigate = (path: string) => {
 		if (path !== currentPath) {
 			router.navigate(path);
@@ -19,22 +15,13 @@ export function Navigation({ currentPath }: NavigationProps) {
 
 	return (
 		<nav className="flex gap-3 py-4 border-b-2 border-gray-200 mb-5">
-			<button 
-				onClick={() => handleNavigate("/")} 
-				className={getButtonClasses("/")}
-			>
+			<button onClick={() => handleNavigate("/")} className={getButtonClasses("/")}>
 				Inicio
 			</button>
-			<button 
-				onClick={() => handleNavigate("/users")} 
-				className={getButtonClasses("/users")}
-			>
+			<button onClick={() => handleNavigate("/users")} className={getButtonClasses("/users")}>
 				Usuarios
 			</button>
-			<button 
-				onClick={() => handleNavigate("/config")} 
-				className={getButtonClasses("/config")}
-			>
+			<button onClick={() => handleNavigate("/config")} className={getButtonClasses("/config")}>
 				Configuración
 			</button>
 		</nav>

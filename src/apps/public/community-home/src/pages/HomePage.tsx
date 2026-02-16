@@ -34,19 +34,19 @@ export function HomePage() {
 					<span slot="icon">
 						<adc-icon-community size="2rem"></adc-icon-community>
 					</span>
-					Espacio para compartir y apoyarnos mutuamente.
+					<span>Espacio para compartir y apoyarnos mutuamente.</span>
 				</adc-feature-card>
 				<adc-feature-card title="Aprendizaje">
 					<span slot="icon">
 						<adc-icon-learning size="2rem"></adc-icon-learning>
 					</span>
-					Contenido claro para crecer paso a paso.
+					<span>Contenido claro para crecer paso a paso.</span>
 				</adc-feature-card>
 				<adc-feature-card title="Open Source">
 					<span slot="icon">
 						<adc-icon-opensource size="2rem"></adc-icon-opensource>
 					</span>
-					Proyectos libres para colaborar y aprender.
+					<span>Proyectos libres para colaborar y aprender.</span>
 				</adc-feature-card>
 			</section>
 

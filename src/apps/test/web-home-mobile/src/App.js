@@ -30,10 +30,10 @@ const localTranslations = {
  * desde adc-i18n.js (cargado en index.html del layout)
  */
 export default class HomeApp {
+	stats = null;
+	loading = true;
+	container = null;
 	constructor() {
-		this.stats = null;
-		this.loading = true;
-		this.container = null;
 		this.locale = globalThis.getLocale ? globalThis.getLocale() : this.detectLocale();
 	}
 	

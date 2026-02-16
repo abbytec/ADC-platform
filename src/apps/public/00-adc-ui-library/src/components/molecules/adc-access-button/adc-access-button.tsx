@@ -1,4 +1,4 @@
-import { Component, Prop, State, h, Event, EventEmitter } from "@stencil/core";
+import { Component, Prop, State, h, Event, EventEmitter, Listen, Element } from "@stencil/core";
 
 interface SessionUser {
 	id: string;
@@ -64,6 +64,8 @@ export class AdcAccessButton {
 	/** Dropdown abierto */
 	@State() dropdownOpen: boolean = false;
 
+	@Element() el!: HTMLElement;
+
 	/** Evento emitido al cerrar sesión */
 	@Event() adcLogout!: EventEmitter<void>;
 
@@ -71,6 +73,39 @@ export class AdcAccessButton {
 	@Event() adcLoginClick!: EventEmitter<void>;
 
 	private hoverTimeout?: ReturnType<typeof setTimeout>;
+
+	@Listen("mouseenter")
+	@Listen("focusin")
+	handleOpen() {
+		if (!this.isAuthenticated) return;
+		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+		this.dropdownOpen = true;
+	}
+
+	@Listen("mouseleave")
+	handleMouseLeave() {
+		if (!this.isAuthenticated) return;
+		this.hoverTimeout = setTimeout(() => {
+			this.dropdownOpen = false;
+		}, 150);
+	}
+
+	@Listen("focusout")
+	handleFocusOut(event: FocusEvent) {
+		if (!this.isAuthenticated) return;
+		const relatedTarget = event.relatedTarget as HTMLElement | null;
+		if (relatedTarget && this.el.contains(relatedTarget)) return;
+		this.hoverTimeout = setTimeout(() => {
+			this.dropdownOpen = false;
+		}, 150);
+	}
+
+	@Listen("keydown")
+	handleKeyDown(event: KeyboardEvent) {
+		if (event.key === "Escape") {
+			this.dropdownOpen = false;
+		}
+	}
 
 	componentWillLoad() {
 		this.checkSession();
@@ -136,39 +171,8 @@ export class AdcAccessButton {
 		this.adcLogout.emit();
 	};
 
-	private handleMouseEnter = () => {
-		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
-		this.dropdownOpen = true;
-	};
-
-	private handleMouseLeave = () => {
-		this.hoverTimeout = setTimeout(() => {
-			this.dropdownOpen = false;
-		}, 150);
-	};
-
-	private handleFocusIn = () => {
-		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
-		this.dropdownOpen = true;
-	};
-
-	private handleFocusOut = (event: FocusEvent) => {
-		const relatedTarget = event.relatedTarget as HTMLElement | null;
-		// Cerrar solo si el foco sale completamente del contenedor
-		if (relatedTarget && (event.currentTarget as HTMLElement)?.contains(relatedTarget)) return;
-		this.hoverTimeout = setTimeout(() => {
-			this.dropdownOpen = false;
-		}, 150);
-	};
-
 	private handleToggle = () => {
 		this.dropdownOpen = !this.dropdownOpen;
-	};
-
-	private handleKeyDown = (event: KeyboardEvent) => {
-		if (event.key === "Escape") {
-			this.dropdownOpen = false;
-		}
 	};
 
 	/**
@@ -217,21 +221,13 @@ export class AdcAccessButton {
 
 		// Autenticado - mostrar avatar con dropdown
 		return (
-			<div
-				class="relative inline-block"
-				onMouseEnter={this.handleMouseEnter}
-				onMouseLeave={this.handleMouseLeave}
-				onFocusin={this.handleFocusIn}
-				onFocusout={this.handleFocusOut}
-				onKeyDown={this.handleKeyDown}
-			>
+			<div class="relative inline-block">
 				<button
 					type="button"
 					class="flex items-center gap-2 p-1 rounded-full hover:bg-accent/10 transition-all cursor-pointer"
 					aria-haspopup="menu"
 					aria-expanded={this.dropdownOpen ? "true" : "false"}
 					onClick={this.handleToggle}
-					onKeyDown={this.handleKeyDown}
 				>
 					{/* Header del dropdown con info del usuario */}
 					<div class="pl-4 pr-2">

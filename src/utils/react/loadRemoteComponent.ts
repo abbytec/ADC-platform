@@ -219,7 +219,7 @@ export async function lazyLoadRemoteComponent(options: LazyLoadRemoteComponentOp
 		await loadRemoteEntry(remoteEntryUrl, remoteName);
 
 		// 2. Obtener el contenedor del window
-		const container = (window as any)[remoteName];
+		const container = (globalThis as any)[remoteName];
 		if (!container) {
 			throw new Error(`Remote container "${remoteName}" not found after loading ${remoteEntryUrl}`);
 		}
