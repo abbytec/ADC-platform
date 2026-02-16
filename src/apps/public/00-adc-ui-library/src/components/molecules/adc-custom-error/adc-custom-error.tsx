@@ -64,8 +64,8 @@ export class AdcCustomError {
 		if (!this.global && this.parsedKeys.length > 0) {
 			registerClaimedKeys(this.parsedKeys);
 		}
-		window.addEventListener("adc-error", this.boundHandleError as EventListener);
-		window.addEventListener("adc-error-clear", this.boundHandleClear);
+		globalThis.addEventListener("adc-error", this.boundHandleError as EventListener);
+		globalThis.addEventListener("adc-error-clear", this.boundHandleClear);
 		if (this.handleUnhandled) {
 			if (!this.global && this.parsedKeys.length === 0) {
 				console.error("[adc-custom-error] handleUnhandled requires either global=true or keys.");
@@ -74,16 +74,16 @@ export class AdcCustomError {
 					global: this.global,
 					handleError: this.boundHandleError,
 				});
-				window.addEventListener("unhandledrejection", this.boundHandleUnhandledRejection);
+				globalThis.addEventListener("unhandledrejection", this.boundHandleUnhandledRejection);
 			}
 		}
 	}
 
 	disconnectedCallback() {
-		window.removeEventListener("adc-error", this.boundHandleError as EventListener);
-		window.removeEventListener("adc-error-clear", this.boundHandleClear);
+		globalThis.removeEventListener("adc-error", this.boundHandleError as EventListener);
+		globalThis.removeEventListener("adc-error-clear", this.boundHandleClear);
 		if (this.handleUnhandled && this.boundHandleUnhandledRejection) {
-			window.removeEventListener("unhandledrejection", this.boundHandleUnhandledRejection);
+			globalThis.removeEventListener("unhandledrejection", this.boundHandleUnhandledRejection);
 		}
 		if (!this.global && this.parsedKeys.length > 0) recalculateClaimedKeys();
 		this.errors.forEach((err) => err.timeout && clearTimeout(err.timeout));

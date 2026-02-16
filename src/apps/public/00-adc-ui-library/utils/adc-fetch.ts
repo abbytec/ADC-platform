@@ -8,11 +8,11 @@
  * - Type-safe request/response handling
  */
 
-import { showError, clearErrors } from "./error-handler.js";
+import { showError } from "./error-handler.js";
 import ADCCustomError, { HttpError } from "@common/types/ADCCustomError.js";
 import { IS_DEV, getDevUrl } from "@common/types/url-utils.js";
 
-export { clearErrors };
+export { clearErrors } from "./error-handler.js";
 
 export interface AdcFetchResult<T> {
 	success: boolean;

@@ -16,10 +16,13 @@ export class AdcSiteHeader {
 	@Prop() homeHref: string = "/";
 
 	/** URL base para auth (dev vs prod) */
-	@Prop() authUrl: string = `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`;
+	@Prop() authUrl: string =
+		`${globalThis.location?.protocol}//auth.adigitalcafe.com${globalThis.location?.port ? `:${globalThis.location?.port}` : ""}`;
 
 	/** URL base de la API (en dev: http://localhost:3000, en prod: vacío) */
-	@Prop() apiBaseUrl: string = "";
+	@Prop() apiBaseUrl: string = ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname)
+		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000`
+		: "";
 
 	/** Mostrar botón de acceso/perfil */
 	@Prop() showAccessButton: boolean = true;

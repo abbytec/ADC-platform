@@ -5,14 +5,14 @@ import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { getUrl, getBaseUrl } from "@common/types/url-utils.js";
 
 /** URL base del sitio principal según entorno */
-const BASE_URL = getUrl(3011, "adigitalcafe.com");
+const BASE_URL = getUrl(3011, "community.adigitalcafe.com");
 
 /** Base URL for API calls */
 const API_BASE = getBaseUrl(3000);
 
 interface LoginProps {
-	onNavigateToRegister: () => void;
-	originPath: string;
+	readonly onNavigateToRegister: () => void;
+	readonly originPath: string;
 }
 
 /**
@@ -69,8 +69,8 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 			}),
 		});
 
-		if (result.success) {
-			window.location.href = getRedirectUrl();
+		if (result.success && globalThis.location) {
+			globalThis.location.href = getRedirectUrl();
 		}
 
 		setLoading(false);

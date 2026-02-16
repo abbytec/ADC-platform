@@ -14,11 +14,11 @@ export function ArticlePage({ slug }: ArticlePageProps) {
 	const [error, setError] = useState<string | null>(null);
 
 	// Obtener fromPath query param
-	const urlParams = new URLSearchParams(window.location.search);
+	const urlParams = new URLSearchParams(globalThis.location?.search);
 	const fromPathSlug = urlParams.get("fromPath");
 
 	// URL para compartir
-	const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+	const shareUrl = typeof globalThis !== "undefined" ? globalThis.location?.href : "";
 
 	useEffect(() => {
 		loadArticle();

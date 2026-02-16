@@ -34,7 +34,7 @@ export default class HomeApp {
 		this.stats = null;
 		this.loading = true;
 		this.container = null;
-		this.locale = window.getLocale ? window.getLocale() : this.detectLocale();
+		this.locale = globalThis.getLocale ? globalThis.getLocale() : this.detectLocale();
 	}
 	
 	detectLocale() {
@@ -45,8 +45,8 @@ export default class HomeApp {
 	
 	t(key) {
 		// Si existe t() global, usarla primero
-		if (window.t && window.__ADC_I18N__?.loaded) {
-			return window.t(key, null, 'home');
+		if (globalThis.t && globalThis.__ADC_I18N__?.loaded) {
+			return globalThis.t(key, null, 'home');
 		}
 		// Fallback a traducciones locales
 		const dict = localTranslations[this.locale] || localTranslations.en;

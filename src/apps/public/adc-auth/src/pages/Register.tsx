@@ -18,14 +18,14 @@ const REGISTER_SPECIFIC_ERROR_KEYS = [
 ];
 
 /** URL base del sitio principal según entorno */
-const BASE_URL = getUrl(3011, "adigitalcafe.com");
+const BASE_URL = getUrl(3011, "community.adigitalcafe.com");
 
 /** Base URL for API calls */
 const API_BASE = getBaseUrl(3000);
 
 interface RegisterProps {
-	onNavigateToLogin: () => void;
-	originPath: string;
+	readonly onNavigateToLogin: () => void;
+	readonly originPath: string;
 }
 
 export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
@@ -65,8 +65,8 @@ export function Register({ onNavigateToLogin, originPath }: RegisterProps) {
 		// authApi.register now handles errors internally via createAdcApi
 		const result = await authApi.register(username, email, password);
 
-		if (result.success) {
-			window.location.href = getRedirectUrl();
+		if (result.success && globalThis.location) {
+			globalThis.location.href = getRedirectUrl();
 		}
 
 		setLoading(false);

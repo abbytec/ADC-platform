@@ -1,8 +1,5 @@
-import { AuthError } from "@common/types/custom-errors/AuthError.js";
+export { AuthError } from "@common/types/custom-errors/AuthError.js";
 import { createAdcApi, type AdcFetchResult, type RequestOptions } from "@ui-library/utils/adc-fetch";
-
-// Re-export AuthError for use in components
-export { AuthError };
 
 export interface AuthUser {
 	id: string;
@@ -38,7 +35,7 @@ export interface BlockedErrorData {
 const api = createAdcApi({
 	basePath: "/api/auth",
 	devPort: 3000,
-	credentials: "same-origin",
+	credentials: process.env.NODE_ENV === "development" ? "include" : "same-origin",
 });
 
 export const authApi = {

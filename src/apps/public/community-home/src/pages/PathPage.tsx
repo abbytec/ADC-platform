@@ -104,7 +104,7 @@ export function PathPage({ slug }: PathPageProps) {
 	}
 
 	// URL para compartir
-	const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+	const shareUrl = globalThis.location?.href ?? "";
 
 	if (loading) {
 		return (

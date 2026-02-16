@@ -107,7 +107,7 @@ export default function App() {
 			loadingPathRef.current = null;
 		}
 
-		loadComponent(window.location.pathname);
+		loadComponent(globalThis.location?.pathname);
 		router.setOnRouteChange((path: string) => {
 			console.log("[ADC Layout] 🔄 Route change:", path);
 			loadComponent(path);

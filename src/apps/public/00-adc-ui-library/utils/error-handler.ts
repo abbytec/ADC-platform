@@ -48,7 +48,7 @@ export function showError(options: ShowErrorOptions): void {
 		bubbles: true,
 		composed: true,
 	});
-	window.dispatchEvent(event);
+	globalThis.dispatchEvent(event);
 }
 
 /**
@@ -60,5 +60,5 @@ export function clearErrors(): void {
 		bubbles: true,
 		composed: true,
 	});
-	window.dispatchEvent(event);
+	globalThis.dispatchEvent(event);
 }

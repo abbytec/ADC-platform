@@ -26,12 +26,12 @@ export namespace Components {
     interface AdcAccessButton {
         /**
           * URL base de la API (en dev: http://localhost:3000, en prod: vacío para usar relativo)
-          * @default ""
+          * @default ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname) 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
         "apiBaseUrl": string;
         /**
           * URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com)
-          * @default `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`
+          * @default `${globalThis.location?.protocol}//auth.adigitalcafe.com${globalThis.location?.port ? `:${globalThis.location?.port}` : ""}`
          */
         "authUrl": string;
         /**
@@ -420,12 +420,12 @@ export namespace Components {
     interface AdcSiteHeader {
         /**
           * URL base de la API (en dev: http://localhost:3000, en prod: vacío)
-          * @default ""
+          * @default ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname) 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
         "apiBaseUrl": string;
         /**
           * URL base para auth (dev vs prod)
-          * @default `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`
+          * @default `${globalThis.location?.protocol}//auth.adigitalcafe.com${globalThis.location?.port ? `:${globalThis.location?.port}` : ""}`
          */
         "authUrl": string;
         /**
@@ -985,12 +985,12 @@ declare namespace LocalJSX {
     interface AdcAccessButton {
         /**
           * URL base de la API (en dev: http://localhost:3000, en prod: vacío para usar relativo)
-          * @default ""
+          * @default ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname) 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
         "apiBaseUrl"?: string;
         /**
           * URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com)
-          * @default `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`
+          * @default `${globalThis.location?.protocol}//auth.adigitalcafe.com${globalThis.location?.port ? `:${globalThis.location?.port}` : ""}`
          */
         "authUrl"?: string;
         /**
@@ -1394,12 +1394,12 @@ declare namespace LocalJSX {
     interface AdcSiteHeader {
         /**
           * URL base de la API (en dev: http://localhost:3000, en prod: vacío)
-          * @default ""
+          * @default ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname) 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
         "apiBaseUrl"?: string;
         /**
           * URL base para auth (dev vs prod)
-          * @default `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`
+          * @default `${globalThis.location?.protocol}//auth.adigitalcafe.com${globalThis.location?.port ? `:${globalThis.location?.port}` : ""}`
          */
         "authUrl"?: string;
         /**

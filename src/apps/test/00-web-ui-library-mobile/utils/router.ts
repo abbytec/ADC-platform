@@ -10,11 +10,11 @@ export class Router {
 	private baseDomain: string | null = null;
 
 	navigate(path: string) {
-		if (window.location.pathname === path) {
+		if (globalThis.location?.pathname === path) {
 			return;
 		}
 
-		window.history.pushState({}, "", path);
+		globalThis.history?.pushState({}, "", path);
 		if (this.onRouteChange) {
 			this.onRouteChange(path);
 		}
@@ -26,22 +26,22 @@ export class Router {
 		if (!this.popstateListener) {
 			this.popstateListener = () => {
 				if (this.onRouteChange) {
-					this.onRouteChange(window.location.pathname);
+					this.onRouteChange(globalThis.location?.pathname ?? "");
 				}
 			};
-			window.addEventListener("popstate", this.popstateListener);
+			globalThis.addEventListener("popstate", this.popstateListener);
 		}
 
 		return () => {
 			if (this.popstateListener) {
-				window.removeEventListener("popstate", this.popstateListener);
+				globalThis.removeEventListener("popstate", this.popstateListener);
 				this.popstateListener = null;
 			}
 		};
 	}
 
 	getCurrentPath(): string {
-		return window.location.pathname;
+		return globalThis.location?.pathname ?? "";
 	}
 
 	setBaseDomain(domain: string) {
@@ -49,7 +49,7 @@ export class Router {
 	}
 
 	getSubdomain(): string | null {
-		const hostname = window.location.hostname;
+		const hostname = globalThis.location?.hostname;
 
 		if (hostname === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
 			return null;
@@ -98,4 +98,3 @@ export class Router {
 }
 
 export const router = new Router();
-

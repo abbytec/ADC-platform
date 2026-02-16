@@ -64,7 +64,7 @@
 		"@types/react": "^19.2.1",
 		"@types/react-dom": "^19.2.1",
 		"@vitejs/plugin-vue": "^6.0.2",
-		"autoprefixer": "^10.4.22",
+		"autoprefixer": "^10.4.24",
 		"cross-env": "^10.1.0",
 		"css-loader": "^7.1.2",
 		"eslint": "^9.39.1",
@@ -76,5 +76,8 @@
 		"typescript": "^5.4.5",
 		"typescript-eslint": "^8.46.3",
 		"vue-loader": "^17.4.2"
+	},
+	"overrides": {
+		"baseline-browser-mapping": "^2.9.19"
 	}
 }

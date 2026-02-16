@@ -14,7 +14,7 @@ export function generateI18nClientCode(module: RegisteredUIModule, _namespaceMod
 	const STORAGE_KEY = 'language';
 	
 	// Estado global de traducciones
-	window.__ADC_I18N__ = window.__ADC_I18N__ || {
+	globalThis.__ADC_I18N__ = globalThis.__ADC_I18N__ || {
 		translations: {},
 		locale: null,
 		loading: false,
@@ -31,8 +31,8 @@ export function generateI18nClientCode(module: RegisteredUIModule, _namespaceMod
 	}
 	
 	// Función t() global para traducciones
-	window.t = function(key, params, namespace) {
-		const state = window.__ADC_I18N__;
+	globalThis.t = function(key, params, namespace) {
+		const state = globalThis.__ADC_I18N__;
 		// Si no se especifica namespace, usar el primero cargado
 		const ns = namespace || Object.keys(state.translations)[0] || 'default';
 		const translations = state.translations[ns] || {};
@@ -57,13 +57,13 @@ export function generateI18nClientCode(module: RegisteredUIModule, _namespaceMod
 	};
 	
 	// Cargar traducciones (debe ser llamado por cada app con sus propios namespaces)
-	window.loadTranslations = async function(namespaces, locale) {
+	globalThis.loadTranslations = async function(namespaces, locale) {
 		if (!namespaces || !Array.isArray(namespaces)) {
 			console.error('[i18n] loadTranslations requiere un array de namespaces. Ejemplo: loadTranslations(["module-name"])');
 			return;
 		}
 
-		const state = window.__ADC_I18N__;
+		const state = globalThis.__ADC_I18N__;
 		const targetLocale = locale || state.locale || detectLocale();
 
 		state.locale = targetLocale;
@@ -81,7 +81,7 @@ export function generateI18nClientCode(module: RegisteredUIModule, _namespaceMod
 				}
 			}
 
-			window.dispatchEvent(new CustomEvent('adc:i18n:loaded', {
+			globalThis.dispatchEvent(new CustomEvent('adc:i18n:loaded', {
 				detail: { locale: targetLocale, namespaces }
 			}));
 
@@ -99,14 +99,14 @@ export function generateI18nClientCode(module: RegisteredUIModule, _namespaceMod
 	};
 	
 	// Cambiar locale (recarga traducciones ya cargadas con el nuevo locale)
-	window.setLocale = function(locale) {
+	globalThis.setLocale = function(locale) {
 		localStorage.setItem(STORAGE_KEY, locale);
-		const state = window.__ADC_I18N__;
+		const state = globalThis.__ADC_I18N__;
 		const loadedNamespaces = Object.keys(state.translations);
 
 		// Limpiar traducciones anteriores y recargar
 		state.translations = {};
-		window.loadTranslations(loadedNamespaces, locale);
+		globalThis.loadTranslations(loadedNamespaces, locale);
 
 		if (navigator.serviceWorker?.controller) {
 			navigator.serviceWorker.controller.postMessage({
@@ -118,20 +118,20 @@ export function generateI18nClientCode(module: RegisteredUIModule, _namespaceMod
 	};
 
 	// Obtener locale actual
-	window.getLocale = function() {
-		return window.__ADC_I18N__.locale || detectLocale();
+	globalThis.getLocale = function() {
+		return globalThis.__ADC_I18N__.locale || detectLocale();
 	};
 
 	// Inicializar locale (sin cargar traducciones - cada app carga las suyas)
 	const initialLocale = detectLocale();
-	window.__ADC_I18N__.locale = initialLocale;
+	globalThis.__ADC_I18N__.locale = initialLocale;
 	
 	${
 		hasServiceWorker
 			? `
 	// Registrar Service Worker
 	if ('serviceWorker' in navigator) {
-		window.addEventListener('load', () => {
+		globalThis.addEventListener('load', () => {
 			navigator.serviceWorker.register('/adc-sw.js')
 				.then((registration) => {
 					console.log('[SW] Service Worker registrado:', registration.scope);

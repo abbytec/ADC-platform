@@ -223,6 +223,7 @@ export class OAuthEndpoints {
 					sameSite: accessConfig.sameSite,
 					path: accessConfig.path,
 					maxAge: accessConfig.maxAge,
+					domain: accessConfig.domain,
 				},
 			},
 			{

@@ -6,20 +6,19 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 
-declare global {
-	interface Window {
-		__ADC_I18N__?: {
-			translations: Record<string, Record<string, unknown>>;
-			locale: string | null;
-			loading: boolean;
-			loaded: boolean;
-		};
-		t?: (key: string, params?: Record<string, string> | null, namespace?: string) => string;
-		loadTranslations?: (namespaces: string[], locale?: string) => Promise<void>;
-		getLocale?: () => string;
-		setLocale?: (locale: string) => void;
-	}
+interface ADCGlobal {
+	__ADC_I18N__?: {
+		translations: Record<string, Record<string, unknown>>;
+		locale: string | null;
+		loading: boolean;
+		loaded: boolean;
+	};
+	t?: (key: string, params?: Record<string, string> | null, namespace?: string) => string;
+	loadTranslations?: (namespaces: string[], locale?: string) => Promise<void>;
+	getLocale?: () => string;
+	setLocale?: (locale: string) => void;
 }
+const customThis = globalThis as typeof globalThis & ADCGlobal;
 
 export interface UseTranslationOptions {
 	/** Namespace(s) to load translations from */
@@ -74,26 +73,26 @@ export function useTranslation(options: UseTranslationOptions = {}): UseTranslat
 		// Check if translations are already loaded
 		// Nota: usamos namespace directamente aquí porque namespaces aún no está calculado
 		const ns = Array.isArray(namespace) ? namespace : namespace ? [namespace] : [];
-		const state = window.__ADC_I18N__;
+		const state = customThis.__ADC_I18N__;
 		if (!state || ns.length === 0) return false;
 		return ns.every((n) => n in state.translations);
 	});
 
 	const [locale, setLocaleState] = useState(() => {
-		return window.__ADC_I18N__?.locale || localStorage.getItem("language") || navigator.language?.split("-")[0] || "en";
+		return customThis.__ADC_I18N__?.locale || localStorage.getItem("language") || navigator.language?.split("-")[0] || "en";
 	});
 
 	// Translation function
 	const t = useCallback(
 		(key: string, params?: Record<string, string>): string => {
 			// Use global t() if available
-			if (window.t) {
+			if (customThis.t) {
 				const ns = namespaces[0];
-				return window.t(key, params || null, ns);
+				return customThis.t(key, params || null, ns);
 			}
 
 			// Fallback: direct lookup
-			const state = window.__ADC_I18N__;
+			const state = customThis.__ADC_I18N__;
 			if (!state) return key;
 
 			const ns = namespaces[0];
@@ -124,8 +123,8 @@ export function useTranslation(options: UseTranslationOptions = {}): UseTranslat
 
 	// Set locale function
 	const setLocale = useCallback((newLocale: string) => {
-		if (window.setLocale) {
-			window.setLocale(newLocale);
+		if (customThis.setLocale) {
+			customThis.setLocale(newLocale);
 		} else {
 			localStorage.setItem("language", newLocale);
 		}
@@ -142,22 +141,22 @@ export function useTranslation(options: UseTranslationOptions = {}): UseTranslat
 		let cancelled = false;
 
 		const loadIfNeeded = async () => {
-			// Esperar a que window.loadTranslations esté disponible (max 5s)
+			// Esperar a que customThis.loadTranslations esté disponible (max 5s)
 			let retries = 0;
 			const maxRetries = 50;
-			while (!window.loadTranslations && retries < maxRetries) {
+			while (!customThis.loadTranslations && retries < maxRetries) {
 				await new Promise((r) => setTimeout(r, 100));
 				retries++;
 			}
 
 			if (cancelled) return;
 
-			const state = window.__ADC_I18N__;
+			const state = customThis.__ADC_I18N__;
 			const allLoaded = state && namespaces.every((ns) => ns in state.translations);
 
-			if (!allLoaded && window.loadTranslations) {
+			if (!allLoaded && customThis.loadTranslations) {
 				try {
-					await window.loadTranslations(namespaces);
+					await customThis.loadTranslations(namespaces);
 				} catch (err) {
 					console.error("[i18n-react] Error loading translations:", err);
 				}
@@ -189,8 +188,8 @@ export function useTranslation(options: UseTranslationOptions = {}): UseTranslat
 			setTranslationsVersion((v) => v + 1);
 		};
 
-		window.addEventListener("adc:i18n:loaded", handleI18nLoaded);
-		return () => window.removeEventListener("adc:i18n:loaded", handleI18nLoaded);
+		customThis.addEventListener("adc:i18n:loaded", handleI18nLoaded);
+		return () => customThis.removeEventListener("adc:i18n:loaded", handleI18nLoaded);
 	}, []);
 
 	return { t, locale, ready, setLocale };

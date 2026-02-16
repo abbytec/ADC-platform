@@ -9,7 +9,7 @@ import { ArticlePage } from "./pages/ArticlePage";
 
 export default function App() {
 	const [mounted, setMounted] = useState(false);
-	const [currentPath, setCurrentPath] = useState(window.location.pathname);
+	const [currentPath, setCurrentPath] = useState(globalThis.location?.pathname);
 
 	useEffect(() => {
 		setMounted(true);

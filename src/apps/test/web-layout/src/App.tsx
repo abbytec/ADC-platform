@@ -44,7 +44,7 @@ const routes: RouteDefinition[] = [
 
 export default function App() {
 	const [renderKey, setRenderKey] = useState(0);
-	const [currentPath, setCurrentPath] = useState(window.location.pathname);
+	const [currentPath, setCurrentPath] = useState(globalThis.location?.pathname ?? "");
 	const [moduleData, setModuleData] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
 	const loadingPathRef = useRef<string | null>(null);
@@ -59,7 +59,7 @@ export default function App() {
 				return subdomainRoute.path;
 			}
 		}
-		return window.location.pathname;
+		return globalThis.location?.pathname ?? "";
 	};
 
 	useEffect(() => {
@@ -106,7 +106,7 @@ export default function App() {
 			loadingPathRef.current = null;
 		}
 
-		loadComponent(window.location.pathname);
+		loadComponent(globalThis.location?.pathname ?? "");
 		router.setOnRouteChange((path: string) => {
 			console.log("[Layout] 🔄 Route change:", path);
 			loadComponent(path);

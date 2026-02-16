@@ -29,10 +29,13 @@ export interface AccessMenuItem {
 })
 export class AdcAccessButton {
 	/** URL base del auth (en dev: localhost:3012, en prod: auth.adigitalcafe.com) */
-	@Prop() authUrl: string = `${window.location.protocol}//auth.adigitalcafe.com${window.location.port ? `:${window.location.port}` : ""}`;
+	@Prop() authUrl: string =
+		`${globalThis.location?.protocol}//auth.adigitalcafe.com${globalThis.location?.port ? `:${globalThis.location?.port}` : ""}`;
 
 	/** URL base de la API (en dev: http://localhost:3000, en prod: vacío para usar relativo) */
-	@Prop() apiBaseUrl: string = "";
+	@Prop() apiBaseUrl: string = ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname)
+		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000`
+		: "";
 
 	/** URL de la API de sesión */
 	@Prop() sessionApiUrl: string = "/api/auth/session";
@@ -110,10 +113,11 @@ export class AdcAccessButton {
 
 	private handleLoginClick = () => {
 		this.adcLoginClick.emit();
+		if (!globalThis.location) return;
 		// Pasar la ruta actual como originPath para redirigir tras login
-		const currentPath = window.location.pathname;
+		const currentPath = globalThis.location?.pathname;
 		const originParam = currentPath && currentPath !== "/" ? `?originPath=${encodeURIComponent(currentPath)}` : "";
-		window.location.href = `${this.authUrl}/login${originParam}`;
+		globalThis.location.href = `${this.authUrl}/login${originParam}`;
 	};
 
 	private handleLogout = async () => {
@@ -184,7 +188,7 @@ export class AdcAccessButton {
 	render() {
 		if (this.loading) {
 			return (
-				<div class="w-10 h-10 rounded-full bg-muted animate-pulse" role="status">
+				<div class="w-10 h-10 rounded-full bg-muted animate-pulse" aria-live="polite" role="status">
 					<span class="sr-only">Cargando sesión</span>
 				</div>
 			);
@@ -215,7 +219,6 @@ export class AdcAccessButton {
 		return (
 			<div
 				class="relative inline-block"
-				role="group"
 				onMouseEnter={this.handleMouseEnter}
 				onMouseLeave={this.handleMouseLeave}
 				onFocusin={this.handleFocusIn}

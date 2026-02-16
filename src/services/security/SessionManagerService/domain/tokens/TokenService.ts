@@ -6,6 +6,12 @@ import type { RefreshTokenRepository, StoredRefreshToken } from "./RefreshTokenR
 const isProd = process.env.NODE_ENV === "production";
 
 /**
+ * Secure cookies require HTTPS. In start:prodtests (NODE_ENV=production over HTTP)
+ * secure must be false, otherwise the browser silently rejects the cookies.
+ */
+const useSecureCookies = isProd && !(process.env.PROD_PORT == "3000");
+
+/**
  * Payload del Access Token (JWT)
  * Extiende Record para ser compatible con jose.JWTPayload
  */
@@ -267,7 +273,7 @@ export class TokenService {
 		return {
 			name: "refresh_token",
 			httpOnly: true,
-			secure: isProd,
+			secure: useSecureCookies,
 			sameSite: "strict",
 			path: "/api/auth/refresh",
 			maxAge: this.#config.refreshTokenTtlSeconds,
@@ -285,15 +291,17 @@ export class TokenService {
 		sameSite: "strict" | "lax" | "none";
 		path: string;
 		maxAge: number;
+		domain: string;
 	} {
 		// Access token expira en 15 minutos = 900 segundos
 		return {
 			name: "access_token",
 			httpOnly: true,
-			secure: isProd,
+			secure: useSecureCookies,
 			sameSite: "lax",
 			path: "/",
 			maxAge: 900, // 15 minutos
+			domain: this.#config.cookieDomain,
 		};
 	}
 

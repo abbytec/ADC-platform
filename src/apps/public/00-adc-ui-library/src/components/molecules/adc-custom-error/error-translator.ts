@@ -6,7 +6,7 @@ import type { ADCErrorEvent } from "./types.js";
 
 /** Global translate function from ADC i18n system */
 function t(key: string, params?: Record<string, string>): string {
-	return (window as { t?: (k: string, p?: Record<string, string>) => string }).t?.(key, params) ?? key;
+	return (globalThis as { t?: (k: string, p?: Record<string, string>) => string }).t?.(key, params) ?? key;
 }
 
 const ERROR_PREFIX = "errors.";

@@ -86,6 +86,27 @@ const { ModuleFederationPlugin } = rspack.container;
     `;
 	}
 
+	/**
+	 * Disable native CSS experiments for Vue apps.
+	 * vue-loader 17.x is incompatible with Rspack's `experiments.css`
+	 * because its pitcher requires `experimentalInlineMatchResource`,
+	 * which is a webpack-only flag not supported by Rspack.
+	 * CSS is already handled via style-loader/css-loader with `type: 'javascript/auto'`.
+	 */
+	protected getExperiments(): string {
+		return `
+        css: false,`;
+	}
+
+	/**
+	 * Exclude the `scheme: 'data'` rule because vue-loader 17.x clones all webpack rules
+	 * internally via its pitcher and does not recognize the `scheme` property,
+	 * causing "Properties scheme are unknown" errors.
+	 */
+	protected getAdditionalRules(): string {
+		return "";
+	}
+
 	protected getPlugins(context: IBuildContext, isHost: boolean, _usedFrameworks: Set<string>): string {
 		const hasI18n = context.module.uiConfig.i18n;
 

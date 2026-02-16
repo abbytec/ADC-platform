@@ -9,7 +9,7 @@ function getDarkModeScript(): string {
 	return `<script>
       (function () {
         const savedTheme = localStorage.getItem('theme');
-        if ((!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        if ((!savedTheme && globalThis.matchMedia('(prefers-color-scheme: dark)').matches)
          || savedTheme?.includes("dark")) {
           document.documentElement.setAttribute('dark-mode', '');
         } else {

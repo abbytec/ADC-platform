@@ -28,7 +28,7 @@ const routes: RouteDefinition[] = [{ module: "home", path: "/" }];
 
 export default function App() {
 	const [renderKey, setRenderKey] = useState(0);
-	const [currentPath, setCurrentPath] = useState(window.location.pathname);
+	const [currentPath, setCurrentPath] = useState(globalThis.location?.pathname ?? "");
 	const [moduleData, setModuleData] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
 	const loadingPathRef = useRef<string | null>(null);
@@ -75,7 +75,7 @@ export default function App() {
 			loadingPathRef.current = null;
 		}
 
-		loadComponent(window.location.pathname);
+		loadComponent(globalThis.location?.pathname ?? "");
 		router.setOnRouteChange((path: string) => {
 			loadComponent(path);
 		});

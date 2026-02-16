@@ -11,7 +11,7 @@ type Page = "login" | "register";
  * Este es el path al que redirigir tras login/register exitoso
  */
 function getOriginPath(): string {
-	const params = new URLSearchParams(window.location.search);
+	const params = new URLSearchParams(globalThis.location?.search);
 	return params.get("originPath") || "/";
 }
 
@@ -19,7 +19,7 @@ function getOriginPath(): string {
  * Construye una URL preservando el originPath
  */
 function buildUrl(path: string, originPath: string): string {
-	const url = new URL(path, window.location.origin);
+	const url = new URL(path, globalThis.location?.origin);
 	if (originPath && originPath !== "/") {
 		url.searchParams.set("originPath", originPath);
 	}
@@ -31,7 +31,7 @@ export default function App() {
 	const [originPath, setOriginPath] = useState<string>("/");
 
 	useEffect(() => {
-		const path = window.location.pathname;
+		const path = globalThis.location?.pathname;
 		const origin = getOriginPath();
 
 		setOriginPath(origin);
@@ -43,18 +43,18 @@ export default function App() {
 		}
 
 		const handlePopState = () => {
-			const newPath = window.location.pathname;
+			const newPath = globalThis.location?.pathname;
 			setPage(newPath === "/register" ? "register" : "login");
 			setOriginPath(getOriginPath());
 		};
 
-		window.addEventListener("popstate", handlePopState);
-		return () => window.removeEventListener("popstate", handlePopState);
+		globalThis.addEventListener("popstate", handlePopState);
+		return () => globalThis.removeEventListener("popstate", handlePopState);
 	}, []);
 
 	const navigate = (to: Page) => {
 		const newUrl = buildUrl(to === "register" ? "/register" : "/login", originPath);
-		window.history.pushState({}, "", newUrl);
+		globalThis.history.pushState({}, "", newUrl);
 		setPage(to);
 	};
 

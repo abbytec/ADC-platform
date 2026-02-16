@@ -1,10 +1,6 @@
 import React from "react";
 
-interface AuthLayoutProps {
-	children: React.ReactNode;
-}
-
-export function AuthLayout({ children }: AuthLayoutProps) {
+export function AuthLayout({ children }: { readonly children: React.ReactNode }) {
 	return (
 		<div className="min-h-screen flex flex-col bg-bg text-text">
 			<adc-custom-error variant="toast" global handle-unhandled />

@@ -346,7 +346,7 @@ export class AuthEndpoints {
 		}
 
 		const clearCookies: ClearCookie[] = [
-			{ name: ACCESS_COOKIE_NAME, options: { path: "/" } },
+			{ name: ACCESS_COOKIE_NAME, options: { path: "/", domain: AuthEndpoints.deps.cookieDomain } },
 			{ name: REFRESH_COOKIE_NAME, options: { path: "/api/auth/refresh", domain: AuthEndpoints.deps.cookieDomain } },
 		];
 
@@ -379,6 +379,7 @@ export class AuthEndpoints {
 					sameSite: accessConfig.sameSite,
 					path: accessConfig.path,
 					maxAge: accessConfig.maxAge,
+					domain: accessConfig.domain,
 				},
 			},
 			{

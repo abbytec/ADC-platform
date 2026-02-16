@@ -44,8 +44,8 @@ export default class HomeApp {
 	
 	t(key) {
 		// Si existe t() global y hay traducciones cargadas para 'home', usarla
-		if (window.t && window.__ADC_I18N__?.translations?.home) {
-			return window.t(key, null, 'home');
+		if (globalThis.t && globalThis.__ADC_I18N__?.translations?.home) {
+			return globalThis.t(key, null, 'home');
 		}
 		// Fallback a traducciones locales
 		const dict = translations[this.locale] || translations.en;
@@ -70,16 +70,16 @@ export default class HomeApp {
 		this.render();
 
 		// Cargar traducciones de este módulo
-		if (window.loadTranslations) {
-			await window.loadTranslations(['home']);
+		if (globalThis.loadTranslations) {
+			await globalThis.loadTranslations(['home']);
 		}
 
 		// Listener para actualizar UI cuando cambien las traducciones
 		this.i18nListener = () => {
-			this.locale = window.getLocale?.() || this.detectLocale();
+			this.locale = globalThis.getLocale?.() || this.detectLocale();
 			this.render();
 		};
-		window.addEventListener('adc:i18n:loaded', this.i18nListener);
+		globalThis.addEventListener('adc:i18n:loaded', this.i18nListener);
 
 		this.loadStats();
 	}
@@ -90,7 +90,7 @@ export default class HomeApp {
 	unmount() {
 		// Limpiar listener de i18n
 		if (this.i18nListener) {
-			window.removeEventListener('adc:i18n:loaded', this.i18nListener);
+			globalThis.removeEventListener('adc:i18n:loaded', this.i18nListener);
 			this.i18nListener = null;
 		}
 

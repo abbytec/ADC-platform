@@ -1,9 +1,9 @@
 /** Dev mode: localhost or 127.0.0.1 */
-export const IS_DEV = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location?.hostname);
+export const IS_DEV = ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname);
 
-const hostname = () => (typeof window !== "undefined" ? window.location.hostname : "localhost");
-const protocol = () => (typeof window !== "undefined" ? window.location.protocol : "http:");
-const port = () => (typeof window !== "undefined" && window.location.port ? `:${window.location.port}` : "");
+const hostname = () => globalThis.location?.hostname ?? "localhost";
+const protocol = () => globalThis.location?.protocol ?? "http:";
+const port = () => (globalThis.location?.port ? `:${globalThis.location?.port}` : "");
 
 /** Dev URL: http://{hostname}:{devPort}{path} */
 export function getDevUrl(devPort: number, path = ""): string {

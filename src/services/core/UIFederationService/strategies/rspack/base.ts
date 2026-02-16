@@ -437,16 +437,10 @@ export default {
 	}
     module: {
         rules: [
-            ${moduleRules},
-            {
-                scheme: 'data',
-                mimetype: 'text/javascript',
-                type: 'javascript/auto',
-            },
+            ${moduleRules},${this.getAdditionalRules()}
         ],
     },
-    experiments: {
-        css: true,
+    experiments: {${this.getExperiments()}
     },
     plugins: [
         new rspack.DefinePlugin({
@@ -570,6 +564,28 @@ ${exposesEntries}
 		return `[
             ${staticConfigs.join(",\n            ")}
         ]`;
+	}
+
+	/**
+	 * Returns the experiments config block content.
+	 * Override in subclasses to add framework-specific experiment flags.
+	 */
+	protected getExperiments(): string {
+		return `
+        css: true,`;
+	}
+
+	/**
+	 * Returns additional module rules appended after framework-specific rules.
+	 * Override in subclasses to modify or exclude rules that cause compatibility issues.
+	 */
+	protected getAdditionalRules(): string {
+		return `
+            {
+                scheme: 'data',
+                mimetype: 'text/javascript',
+                type: 'javascript/auto',
+            },`;
 	}
 
 	/**
