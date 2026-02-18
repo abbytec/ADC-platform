@@ -25,6 +25,7 @@ const moduleDefinitions: Record<string, RemoteModuleConfig> = {
 };
 
 const routes: RouteDefinition[] = [{ module: "home", path: "/" }];
+const notFoundComponent = () => <div style={{ padding: 20, textAlign: "center", color: "#a0aec0" }}>Página no encontrada</div>;
 
 export default function App() {
 	const [renderKey, setRenderKey] = useState(0);
@@ -46,7 +47,7 @@ export default function App() {
 			if (!moduleName || !moduleDefinitions[moduleName]) {
 				console.warn("[Layout Mobile] Módulo no encontrado:", moduleName);
 				setModuleData({
-					Component: () => <div style={{ padding: 20, textAlign: "center", color: "#a0aec0" }}>Página no encontrada</div>,
+					Component: notFoundComponent,
 					moduleName: "not-found",
 					timestamp: Date.now(),
 				});

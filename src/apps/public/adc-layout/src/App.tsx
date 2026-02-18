@@ -36,6 +36,7 @@ function getRemoteConfig(moduleName: string, scopeName: string) {
 }
 
 const routes: RouteDefinition[] = [{ module: "community-home", path: "/" }];
+const notFoundComponent = () => <div style={{ padding: 20, textAlign: "center", color: "#a0aec0" }}>Página no encontrada</div>;
 
 export default function App() {
 	const [renderKey, setRenderKey] = useState(0);
@@ -58,7 +59,7 @@ export default function App() {
 			if (!moduleName || !definition) {
 				console.warn("[ADC Layout] Ruta no reconocida:", path);
 				setModuleData({
-					Component: () => <div style={{ padding: 20 }}>Página no encontrada: {path}</div>,
+					Component: notFoundComponent,
 					moduleName: "not-found",
 					timestamp: Date.now(),
 				});
