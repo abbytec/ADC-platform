@@ -32,6 +32,10 @@ const getLevelColor = (type: "article" | "path", level: Level) => (type === "pat
 
 const ALL_LEVELS: Level[] = ["critico", "importante", "opcional"];
 
+function handleBack() {
+	router.navigate("/paths");
+}
+
 export function PathPage({ slug }: { readonly slug: string }) {
 	const [path, setPath] = useState<LearningPath | null>(null);
 	const [items, setItems] = useState<ExpandedItem[]>([]);
@@ -69,10 +73,6 @@ export function PathPage({ slug }: { readonly slug: string }) {
 		} finally {
 			setLoading(false);
 		}
-	}
-
-	function handleBack() {
-		router.navigate("/paths");
 	}
 
 	// Niveles disponibles en este path
