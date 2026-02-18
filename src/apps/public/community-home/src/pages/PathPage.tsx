@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { router } from "@ui-library/utils/router";
+import { router } from "@common/utils/router.js";
 import { contentAPI, type LearningPath, type Article, type PathItemLevel } from "../utils/content-api";
 
 type Level = PathItemLevel;

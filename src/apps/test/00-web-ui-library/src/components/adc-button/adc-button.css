@@ -19,7 +19,9 @@
 }
 
 .adc-btn:focus {
-	box-shadow: 0 0 0 2px var(--ring-offset-color, white), 0 0 0 4px var(--ring-color, #3b82f6);
+	box-shadow:
+		0 0 0 2px var(--ring-offset-color, white),
+		0 0 0 4px var(--ring-color, #3b82f6);
 }
 
 /* Tamaños */
@@ -69,7 +71,7 @@
 
 .adc-btn--success {
 	background-color: #10b981;
-	color: white;
+	color: black;
 	--ring-color: #34d399;
 }
 
@@ -120,4 +122,3 @@
 .adc-btn--disabled:active {
 	background-color: #d1d5db;
 }
-

@@ -18,7 +18,7 @@ type ModuleType = "provider" | "utility" | "service";
 type Module = IProvider | IUtility | IService;
 
 export class Kernel {
-	static #kernelKey: symbol = Symbol(crypto.randomUUID());
+	static readonly #kernelKey: symbol = Symbol(crypto.randomUUID());
 	#isStartingUp = true;
 	#isShuttingDown = false;
 	readonly #logger: ILogger = Logger.getLogger("Kernel");
@@ -465,8 +465,8 @@ export class Kernel {
 		return configNameRaw === "config"
 			? "default"
 			: configNameRaw.startsWith("config-")
-			? configNameRaw.substring("config-".length)
-			: configNameRaw;
+				? configNameRaw.substring("config-".length)
+				: configNameRaw;
 	}
 
 	async #initializeAndRunApp(app: IApp, filePath: string, instanceName: string, configPath?: string): Promise<void> {

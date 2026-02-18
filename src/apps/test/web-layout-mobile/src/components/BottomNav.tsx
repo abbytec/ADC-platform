@@ -1,4 +1,4 @@
-import { router } from "@ui-library/utils/router";
+import { router } from "@common/utils/router.js";
 
 export function BottomNav({ currentPath }: { readonly currentPath: string }) {
 	const handleNavigate = (path: string) => {

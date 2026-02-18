@@ -10,7 +10,7 @@
 
 import { showError } from "./error-handler.js";
 import ADCCustomError, { HttpError } from "@common/types/ADCCustomError.js";
-import { IS_DEV, getDevUrl } from "@common/types/url-utils.js";
+import { IS_DEV, getDevUrl } from "@common/utils/url-utils.js";
 
 export { clearErrors } from "./error-handler.js";
 

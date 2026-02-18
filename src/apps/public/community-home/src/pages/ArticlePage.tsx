@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { router } from "@ui-library/utils/router";
+import { router } from "@common/utils/router.js";
 import { contentAPI, type Article, type LearningPath } from "../utils/content-api";
 import { AUTHORS } from "../utils/constants";
 

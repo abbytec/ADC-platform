@@ -1,10 +1,12 @@
 import { Component, Prop, h } from "@stencil/core";
 
+type Align = "left" | "center" | "right";
+
 export interface Block {
 	type: "heading" | "paragraph" | "list" | "code" | "callout" | "quote" | "table" | "divider";
 	level?: number;
 	id?: string;
-	align?: "left" | "center" | "right";
+	align?: Align;
 	text?: string;
 	marks?: Array<"bold" | "italic" | "code">;
 	ordered?: boolean;
@@ -19,7 +21,7 @@ export interface Block {
 	rel?: string[];
 	header?: string[];
 	rows?: string[][];
-	columnAlign?: Array<"left" | "center" | "right">;
+	columnAlign?: Array<Align>;
 	caption?: string;
 	rowHeaders?: boolean;
 }
@@ -31,7 +33,7 @@ export interface Block {
 export class AdcBlocksRenderer {
 	@Prop() blocks: Block[] = [];
 
-	private getAlignClass(align?: "left" | "center" | "right"): string {
+	private getAlignClass(align?: Align): string {
 		if (align === "center") return "text-center";
 		if (align === "right") return "text-right";
 		return "";

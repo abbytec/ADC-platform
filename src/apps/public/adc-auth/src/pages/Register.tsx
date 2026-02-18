@@ -3,7 +3,7 @@ import { authApi } from "../utils/auth.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { showError } from "@ui-library/utils/error-handler";
-import { getUrl, getBaseUrl } from "@common/types/url-utils.js";
+import { getUrl, getBaseUrl } from "@common/utils/url-utils.js";
 
 /** Errores específicos de formulario registro (se muestran inline como callout) */
 const REGISTER_SPECIFIC_ERROR_KEYS = [

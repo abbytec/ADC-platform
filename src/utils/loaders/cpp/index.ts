@@ -2,7 +2,7 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { spawn, ChildProcess, exec, ExecException } from "node:child_process";
 import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
-import { IModuleConfig } from "../../../interfaces/modules/IModule.js";
+import { IModule, IModuleConfig } from "../../../interfaces/modules/IModule.js";
 import { IProvider } from "../../../providers/BaseProvider.js";
 import { IService } from "../../../services/BaseService.js";
 import { IUtility } from "../../../utilities/BaseUtility.js";
@@ -28,7 +28,7 @@ interface CppModuleOptions {
  * - Delega métodos de lifecycle (start, stop) con verificación de kernelKey
  * - Delega cualquier otro método automáticamente via IPC
  */
-function createCppModuleProxy(options: CppModuleOptions): IProvider & IUtility & IService {
+function createCppModuleProxy(options: CppModuleOptions): IModule {
 	let kernelKey: symbol | undefined;
 
 	const wrapper = {
@@ -88,7 +88,7 @@ function createCppModuleProxy(options: CppModuleOptions): IProvider & IUtility &
 				return await ipcManager.call(options.name, options.version, "C++", prop as string, args);
 			};
 		},
-	}) as IProvider & IUtility & IService;
+	}) as IModule;
 }
 
 /**
@@ -98,9 +98,9 @@ function createCppModuleProxy(options: CppModuleOptions): IProvider & IUtility &
 export default class CppLoader implements IModuleLoader {
 	private processes = new Map<string, ChildProcess>();
 	private modules = {
-		provider: [] as (IProvider & IUtility & IService)[],
-		utility: [] as (IProvider & IUtility & IService)[],
-		service: [] as (IProvider & IUtility & IService)[],
+		provider: [] as IModule[],
+		utility: [] as IModule[],
+		service: [] as IModule[],
 	};
 
 	async canHandle(modulePath: string): Promise<boolean> {
@@ -252,7 +252,7 @@ export default class CppLoader implements IModuleLoader {
 			});
 
 			this.modules.provider.push(proxy);
-			return proxy;
+			return proxy as IProvider;
 		} catch (error) {
 			Logger.error(`[CppLoader] Error cargando Provider: ${error}`);
 			throw error;

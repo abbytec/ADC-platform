@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { authApi, type BlockedErrorData } from "../utils/auth.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
-import { getUrl, getBaseUrl } from "@common/types/url-utils.js";
+import { getUrl, getBaseUrl } from "@common/utils/url-utils.js";
 
 /** URL base del sitio principal según entorno */
 const BASE_URL = getUrl(3011, "community.adigitalcafe.com");

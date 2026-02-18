@@ -1,9 +1,9 @@
 import "@ui-library/utils/react-jsx";
 import { createElement, useState, useEffect, useRef } from "react";
 import { Shell } from "./components/Shell.tsx";
-import { router, type RouteDefinition } from "@ui-library/utils/router";
+import { router, type RouteDefinition } from "@common/utils/router.js";
 import { lazyLoadRemoteComponent, type Framework } from "@adc/utils/react/loadRemoteComponent";
-import { getRemoteEntryUrl } from "@common/types/url-utils.js";
+import { getRemoteEntryUrl } from "@common/utils/url-utils.js";
 
 // Las funciones t(), setLocale(), getLocale() están disponibles globalmente
 // desde adc-i18n.js (cargado en index.html)

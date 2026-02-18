@@ -7,7 +7,6 @@ import { IModule, IModuleConfig } from "../../../interfaces/modules/IModule.js";
 import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
 import { ipcManager } from "../../ipc/IPCManager.js";
-import type { IProvider } from "../../../providers/BaseProvider.ts";
 import type { IUtility } from "../../../utilities/BaseUtility.ts";
 import type { IService } from "../../../services/BaseService.ts";
 
@@ -89,7 +88,7 @@ function createPythonModuleProxy(options: PythonModuleOptions): IModule {
 				return await ipcManager.call(options.name, options.version, "python", prop as string, args);
 			};
 		},
-	}) as IProvider & IUtility & IService;
+	}) as IModule;
 }
 
 /**

@@ -1,6 +1,6 @@
 import "@ui-library/utils/react-jsx";
 import { useEffect, useState } from "react";
-import { router } from "@ui-library/utils/router";
+import { router } from "@common/utils/router.js";
 import { HomePage } from "./pages/HomePage";
 import { PathsPage } from "./pages/PathsPage";
 import { PathPage } from "./pages/PathPage";

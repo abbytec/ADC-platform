@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { getUrl, getBaseUrl } from "@common/types/url-utils.js";
+import { getUrl, getBaseUrl } from "@common/utils/url-utils.js";
 
 interface ShellProps {
 	children: React.ReactNode;
