@@ -1,4 +1,5 @@
 import { Component, Prop, State, Element, h, Host, Listen } from "@stencil/core";
+import { IS_DEV } from "../../../utils/url.js";
 
 export interface AppMenuItem {
 	id: string;
@@ -7,7 +8,6 @@ export interface AppMenuItem {
 	icon?: string;
 }
 
-const IS_DEV = ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname);
 const host = () => globalThis.location?.hostname ?? "localhost";
 const proto = () => globalThis.location?.protocol ?? "http:";
 
