@@ -132,9 +132,17 @@ export default {
 		stats: "Estadísticas",
 		toggleAll: "Alternar toda la columna",
 		toggleRow: "Alternar toda la fila",
+		addResource: "Agregar recurso",
+		removeResource: "Quitar recurso",
+		cancel: "Cancelar",
+		all: "Todos",
 		predefinedReadonly: "Los permisos de roles predefinidos no se pueden modificar.",
 		directTitle: "Permisos directos",
 		directHint: "Permisos asignados directamente a este usuario (se suman a los heredados de roles y grupos).",
 		directHintGroup: "Permisos asignados directamente a este grupo (se suman a los heredados de roles)."
+	},
+	resources: {
+		identity: "Identidad",
+		content: "Contenido"
 	}
 };

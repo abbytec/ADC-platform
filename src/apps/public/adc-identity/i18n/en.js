@@ -132,9 +132,17 @@ export default {
 		stats: "Stats",
 		toggleAll: "Toggle entire column",
 		toggleRow: "Toggle entire row",
+		addResource: "Add resource",
+		removeResource: "Remove resource",
+		cancel: "Cancel",
+		all: "All",
 		predefinedReadonly: "Predefined role permissions cannot be modified.",
 		directTitle: "Direct Permissions",
 		directHint: "Permissions assigned directly to this user (added on top of role/group-inherited ones).",
 		directHintGroup: "Permissions assigned directly to this group (added on top of role-inherited ones)."
+	},
+	resources: {
+		identity: "Identity",
+		content: "Content"
 	}
 };
