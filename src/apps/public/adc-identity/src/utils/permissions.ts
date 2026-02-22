@@ -1,4 +1,5 @@
-import { IdentityScope as Scope, Action } from "@common/types/identity.js";
+import { IdentityScope as Scope } from "@common/types/identity.js";
+import { CRUDXAction as Action } from "@common/types/Actions";
 import type { IdentityScope as IdentityScopeFromApi } from "./identity-api.ts";
 
 export { Scope, Action };

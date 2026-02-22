@@ -1,7 +1,8 @@
 import type { Model } from "mongoose";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "../utils/crypto.ts";
-import { IdentityScope, Action } from "@common/types/identity.js";
+import { IdentityScope } from "@common/types/identity.js";
+import { CRUDXAction } from "@common/types/Actions.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
 import type { Permission, Role } from "../domain/index.ts";
 import { PREDEFINED_ROLES } from "../defaults/systemRoles.ts";
@@ -52,7 +53,7 @@ export class RoleManager {
 	 */
 	async createRole(name: string, description: string, permissions?: Permission[], token?: string): Promise<Role> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.WRITE, IdentityScope.ROLES);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScope.ROLES);
 		}
 
 		try {
@@ -81,7 +82,7 @@ export class RoleManager {
 	 */
 	async getRole(roleId: string, token?: string): Promise<Role | null> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.READ, IdentityScope.ROLES);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.ROLES);
 		}
 
 		try {
@@ -99,7 +100,7 @@ export class RoleManager {
 	 */
 	async getRoleByName(name: string, token?: string): Promise<Role | null> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.READ, IdentityScope.ROLES);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.ROLES);
 		}
 
 		try {
@@ -117,7 +118,7 @@ export class RoleManager {
 	 */
 	async updateRole(roleId: string, updates: Partial<Role>, token?: string): Promise<Role> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.UPDATE, IdentityScope.ROLES);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScope.ROLES);
 		}
 
 		try {
@@ -137,7 +138,7 @@ export class RoleManager {
 	 */
 	async deleteRole(roleId: string, token?: string): Promise<void> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.DELETE, IdentityScope.ROLES);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScope.ROLES);
 		}
 
 		const role = (await this.roleModel.findOne({ id: roleId }).lean()) as Role | null;
@@ -161,7 +162,7 @@ export class RoleManager {
 	 */
 	async getAllRoles(token?: string): Promise<Role[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.READ, IdentityScope.ROLES);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.ROLES);
 		}
 
 		try {
@@ -179,7 +180,7 @@ export class RoleManager {
 	 */
 	async getPredefinedRoles(token?: string): Promise<Role[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.READ, IdentityScope.ROLES);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.ROLES);
 		}
 
 		try {

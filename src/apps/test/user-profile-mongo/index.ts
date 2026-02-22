@@ -4,7 +4,8 @@ import { AuthorizationError } from "../../../services/core/IdentityManagerServic
 import type { Role, User } from "../../../services/core/IdentityManagerService/domain/index.js";
 import type SessionManagerService from "../../../services/security/SessionManagerService/index.js";
 import { Logger } from "../../../utils/logger/Logger.js";
-import { Action, IdentityScope } from "@common/types/identity.js";
+import { IdentityScope } from "@common/types/identity.js";
+import { CRUDXAction } from "@common/types/Actions.ts";
 import crypto from "node:crypto";
 
 interface IdentityTestData {
@@ -135,7 +136,7 @@ export default class UserProfileApp extends BaseApp {
 		Logger.ok(`[${this.name}] ✓ Usuario asociado al grupo`);
 
 		// 5. Verificar permisos
-		const hasReadPerm = await this.identityManager.permissions.hasPermission(user.id, Action.READ, IdentityScope.SELF);
+		const hasReadPerm = await this.identityManager.permissions.hasPermission(user.id, CRUDXAction.READ, IdentityScope.SELF);
 		Logger.info(`[${this.name}]   Usuario tiene permiso READ.SELF: ${hasReadPerm}`);
 
 		// 6. Estadísticas
@@ -167,7 +168,7 @@ export default class UserProfileApp extends BaseApp {
 
 		// 3. Crear rol con permisos limitados (solo lectura)
 		const limitedRole = await this.identityManager.roles.createRole(`limited-role-${Date.now()}`, "Rol con permisos limitados", [
-			{ resource: "identity", action: Action.READ, scope: IdentityScope.USERS },
+			{ resource: "identity", action: CRUDXAction.READ, scope: IdentityScope.USERS },
 		]);
 		this.testData.roleIds.push(limitedRole.id);
 		Logger.ok(`[${this.name}] ✓ Rol limitado creado: ${limitedRole.name}`);
@@ -264,8 +265,8 @@ export default class UserProfileApp extends BaseApp {
 	 */
 	async #createTestRole(prefix: string): Promise<Role> {
 		return await this.identityManager.roles.createRole(`${prefix}-role-${Date.now()}`, `Rol de prueba ${prefix}`, [
-			{ resource: "user-profile", action: Action.READ, scope: IdentityScope.SELF },
-			{ resource: "user-profile", action: Action.WRITE, scope: IdentityScope.SELF },
+			{ resource: "user-profile", action: CRUDXAction.READ, scope: IdentityScope.SELF },
+			{ resource: "user-profile", action: CRUDXAction.WRITE, scope: IdentityScope.SELF },
 		]);
 	}
 }
