@@ -60,10 +60,10 @@ export const authApi = {
 		username: string,
 		password: string,
 		options?: Pick<RequestOptions<BlockedErrorData>, "translateParams">,
-		orgId?: string
+		orgId?: string | null
 	): Promise<AdcFetchResult<AuthResponse>> =>
 		api.post<AuthResponse, BlockedErrorData>("/login", {
-			body: { username, password, orgId },
+			body: { username, password, ...(orgId !== undefined ? { orgId } : {}) },
 			...options,
 		}),
 

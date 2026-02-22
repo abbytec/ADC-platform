@@ -96,9 +96,10 @@ export class AuthEndpoints {
 
 			const fullUser = profile as User;
 
-			// Si el usuario tiene organizaciones y no se especificó orgId,
-			// retornar la lista de orgs para que el frontend muestre el selector
-			if (fullUser.orgMemberships?.length && !orgId) {
+			// Si el usuario tiene organizaciones y no se especificó orgId (undefined = no ha elegido),
+			// retornar la lista de orgs para que el frontend muestre el selector.
+			// orgId === null significa "acceso personal" (elección explícita sin organización).
+			if (fullUser.orgMemberships?.length && orgId === undefined) {
 				const orgOptions = await AuthEndpoints.getUserOrgOptions(fullUser);
 				throw UncommonResponse.json({
 					success: true,

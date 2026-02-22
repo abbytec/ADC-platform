@@ -87,7 +87,7 @@ export function Login({ onNavigateToRegister, returnUrl }: LoginProps) {
 	/**
 	 * Completa el login con la organización seleccionada (o sin org = acceso personal)
 	 */
-	const handleOrgSelect = async (orgId?: string) => {
+	const handleOrgSelect = async (orgId: string | null) => {
 		clearErrors();
 		setLoading(true);
 
@@ -232,7 +232,7 @@ export function Login({ onNavigateToRegister, returnUrl }: LoginProps) {
 						{/* Opción: acceso personal (sin org) */}
 						<button
 							type="button"
-							onClick={() => handleOrgSelect(undefined)}
+							onClick={() => handleOrgSelect(null)}
 							className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:bg-accent/10 transition-colors text-left cursor-pointer"
 						>
 							<svg className="w-5 h-5 text-muted shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
