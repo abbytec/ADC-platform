@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { execFileSync } from "node:child_process";
 import { Logger } from "../logger/Logger.ts";
 import { ILogger } from "../../interfaces/utils/ILogger.js";
 
@@ -8,9 +9,19 @@ import { ILogger } from "../../interfaces/utils/ILogger.js";
  */
 export class DockerManager {
 	readonly #logger: ILogger = Logger.getLogger("DockerManager");
+	readonly #dockerPath: string;
 	readonly #appDockerComposeMap = new Map<string, string>();
 	readonly #serviceDockerComposeMap = new Map<string, string>();
 	readonly #commonDockerComposeMap = new Map<string, string>();
+
+	constructor() {
+		try {
+			this.#dockerPath = execFileSync("/usr/bin/which", ["docker"]).toString().trim();
+		} catch (error) {
+			this.#logger.logError(`Failed to locate Docker binary: ${error}`);
+			throw new Error("Docker binary not found. Ensure Docker is installed and available in PATH.");
+		}
+	}
 
 	/**
 	 * Ejecuta docker-compose up -d en el directorio especificado.
@@ -22,7 +33,7 @@ export class DockerManager {
 		this.#logger.logInfo(`Iniciando servicios Docker para ${name}...`);
 
 		const { spawn } = await import("node:child_process");
-		const docker = spawn("/usr/local/bin/docker", ["compose", "-f", dockerComposeFile, "up", "-d"], {
+		const docker = spawn(this.#dockerPath, ["compose", "-f", dockerComposeFile, "up", "-d"], {
 			cwd: dir,
 			stdio: "pipe",
 		});
@@ -94,7 +105,7 @@ export class DockerManager {
 			this.#logger.logInfo(`Deteniendo servicios Docker para app en ${appDir}...`);
 
 			const { spawn } = await import("node:child_process");
-			const docker = spawn("/usr/local/bin/docker", ["compose", "-f", dockerComposeFile, "down"], {
+			const docker = spawn(this.#dockerPath, ["compose", "-f", dockerComposeFile, "down"], {
 				cwd: appDir,
 				stdio: "pipe",
 			});
