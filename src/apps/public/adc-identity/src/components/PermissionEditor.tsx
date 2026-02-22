@@ -64,8 +64,16 @@ function getSimpleActions(permissions: Permission[], resource: string): Set<stri
 // Resource header (shared)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ResourceHeader({ resource, onRemove, disabled, t }: {
-	resource: string; onRemove: (r: string) => void; disabled?: boolean; t: (k: string) => string;
+function ResourceHeader({
+	resource,
+	onRemove,
+	disabled,
+	t,
+}: {
+	resource: string;
+	onRemove: (r: string) => void;
+	disabled?: boolean;
+	t: (k: string) => string;
 }) {
 	return (
 		<div className="flex items-center justify-between bg-surface/30 px-3 py-1.5 border-b border-surface">
@@ -88,7 +96,14 @@ function ResourceHeader({ resource, onRemove, disabled, t }: {
 // Simple resource row (content-style: just action checkboxes)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SimpleResourceCard({ resource, activeActions, onToggle, onRemove, disabled, t }: {
+function SimpleResourceCard({
+	resource,
+	activeActions,
+	onToggle,
+	onRemove,
+	disabled,
+	t,
+}: {
 	resource: string;
 	activeActions: Set<string>;
 	onToggle: (resource: string, action: string) => void;
@@ -121,7 +136,17 @@ function SimpleResourceCard({ resource, activeActions, onToggle, onRemove, disab
 // Bitfield resource matrix (identity-style: scope × action)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ResourceMatrix({ resource, scopes, permMap, onToggle, onToggleRow, onToggleCol, onRemove, disabled, t }: {
+function ResourceMatrix({
+	resource,
+	scopes,
+	permMap,
+	onToggle,
+	onToggleRow,
+	onToggleCol,
+	onRemove,
+	disabled,
+	t,
+}: {
 	resource: string;
 	scopes: ScopeDef[];
 	permMap: Map<string, number>;
@@ -225,7 +250,7 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 			const bf = bitfieldMapToPermissions(nextBitfield);
 			onChange([...bf, ...(nextSimple ?? simplePerms)]);
 		},
-		[onChange, simplePerms],
+		[onChange, simplePerms]
 	);
 
 	const toggle = useCallback(
@@ -237,7 +262,7 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 			updated.set(key, (current & actionValue) === actionValue ? current & ~actionValue : current | actionValue);
 			rebuildAll(updated);
 		},
-		[permMap, disabled, rebuildAll],
+		[permMap, disabled, rebuildAll]
 	);
 
 	const toggleRow = useCallback(
@@ -250,14 +275,14 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 			updated.set(key, current === allActs ? 0 : allActs);
 			rebuildAll(updated);
 		},
-		[permMap, disabled, rebuildAll],
+		[permMap, disabled, rebuildAll]
 	);
 
 	const toggleCol = useCallback(
 		(resource: string, scopes: ScopeDef[], actionValue: number) => {
 			if (disabled) return;
 			const updated = new Map(permMap);
-			const allHave = scopes.every((s) => (((updated.get(`${resource}:${s.value}`) ?? 0) & actionValue) === actionValue));
+			const allHave = scopes.every((s) => ((updated.get(`${resource}:${s.value}`) ?? 0) & actionValue) === actionValue);
 			for (const scope of scopes) {
 				const key = `${resource}:${scope.value}`;
 				const current = updated.get(key) ?? 0;
@@ -265,7 +290,7 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 			}
 			rebuildAll(updated);
 		},
-		[permMap, disabled, rebuildAll],
+		[permMap, disabled, rebuildAll]
 	);
 
 	// ── Simple callbacks ──
@@ -283,7 +308,7 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 			}
 			onChange([...bitfieldMapToPermissions(permMap), ...next]);
 		},
-		[disabled, simplePerms, permMap, onChange],
+		[disabled, simplePerms, permMap, onChange]
 	);
 
 	// ── Shared callbacks ──
@@ -291,7 +316,11 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 	const removeResource = useCallback(
 		(resource: string) => {
 			const def = RESOURCE_MAP.get(resource);
-			setAddedResources((prev) => { const n = new Set(prev); n.delete(resource); return n; });
+			setAddedResources((prev) => {
+				const n = new Set(prev);
+				n.delete(resource);
+				return n;
+			});
 			if (def?.simple) {
 				const next = simplePerms.filter((p) => p.resource !== resource);
 				onChange([...bitfieldMapToPermissions(permMap), ...next]);
@@ -303,7 +332,7 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 				rebuildAll(updated);
 			}
 		},
-		[permMap, simplePerms, onChange, rebuildAll],
+		[permMap, simplePerms, onChange, rebuildAll]
 	);
 
 	const addResource = useCallback(
@@ -312,20 +341,14 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 			if (activeResources.has(resourceId)) return;
 			setAddedResources((prev) => new Set(prev).add(resourceId));
 		},
-		[activeResources],
+		[activeResources]
 	);
 
 	// ── Visible / available ──
 
-	const visibleResources = useMemo(() =>
-		RESOURCES.filter((r) => activeResources.has(r.id)),
-		[activeResources],
-	);
+	const visibleResources = useMemo(() => RESOURCES.filter((r) => activeResources.has(r.id)), [activeResources]);
 
-	const availableResources = useMemo(() =>
-		RESOURCES.filter((r) => !activeResources.has(r.id)),
-		[activeResources],
-	);
+	const availableResources = useMemo(() => RESOURCES.filter((r) => !activeResources.has(r.id)), [activeResources]);
 
 	return (
 		<div className="flex flex-col gap-3">
@@ -353,7 +376,7 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 						disabled={disabled}
 						t={t}
 					/>
-				),
+				)
 			)}
 
 			{!disabled && availableResources.length > 0 && (
