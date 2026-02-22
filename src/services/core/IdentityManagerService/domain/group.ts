@@ -9,6 +9,8 @@ export interface Group {
 	description: string;
 	roleIds: string[];
 	permissions?: Permission[];
+	/** Organización a la que pertenece (null = global) */
+	orgId?: string;
 	metadata?: Record<string, any>;
 	createdAt: Date;
 	updatedAt: Date;
@@ -27,6 +29,7 @@ export const groupSchema = new Schema<Group>(
 				scope: { type: Number, required: true }, // Bitfield
 			},
 		],
+		orgId: { type: String, default: null },
 		metadata: Schema.Types.Mixed,
 		createdAt: { type: Date, default: Date.now },
 		updatedAt: { type: Date, default: Date.now },

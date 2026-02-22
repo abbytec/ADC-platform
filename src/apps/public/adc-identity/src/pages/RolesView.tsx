@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { identityApi, type Role, type Permission, type IdentityScope } from "../utils/identity-api.ts";
+import { identityApi, type Role, type Permission, type IdentityScope, type Organization } from "../utils/identity-api.ts";
 import { Scope, canWrite, canUpdate, canDelete } from "../utils/permissions.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { PermissionEditor } from "../components/PermissionEditor.tsx";
@@ -8,9 +8,11 @@ import { clearErrors } from "@ui-library/utils/adc-fetch";
 
 interface RolesViewProps {
 	readonly scopes: IdentityScope[];
+	readonly orgId?: string;
+	readonly isAdmin?: boolean;
 }
 
-export function RolesView({ scopes }: RolesViewProps) {
+export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [roles, setRoles] = useState<Role[]>([]);
 	const [filteredRoles, setFilteredRoles] = useState<Role[]>([]);
@@ -18,6 +20,7 @@ export function RolesView({ scopes }: RolesViewProps) {
 	const [modalOpen, setModalOpen] = useState(false);
 	const [editingRole, setEditingRole] = useState<Role | null>(null);
 	const [deleteConfirm, setDeleteConfirm] = useState<Role | null>(null);
+	const [orgMap, setOrgMap] = useState<Map<string, string>>(new Map());
 
 	// Form state
 	const [formName, setFormName] = useState("");
@@ -38,13 +41,18 @@ export function RolesView({ scopes }: RolesViewProps) {
 
 	const loadData = useCallback(async () => {
 		setLoading(true);
-		const result = await identityApi.listRoles();
+		const promises: Promise<any>[] = [identityApi.listRoles(orgId)];
+		if (isAdmin && !orgId) promises.push(identityApi.listOrganizations());
+		const [result, orgsRes] = await Promise.all(promises);
 		if (result.success && result.data) {
 			setRoles(result.data);
 			setFilteredRoles(result.data);
 		}
+		if (orgsRes?.success && orgsRes.data) {
+			setOrgMap(new Map((orgsRes.data as Organization[]).map((o) => [o.orgId, o.slug])));
+		}
 		setLoading(false);
-	}, []);
+	}, [orgId, isAdmin]);
 
 	useEffect(() => {
 		loadData();
@@ -135,6 +143,22 @@ export function RolesView({ scopes }: RolesViewProps) {
 				</span>
 			),
 		},
+		...(isAdmin && !orgId
+			? [
+					{
+						key: "orgId" as keyof Role,
+						label: t("common.organization"),
+						render: (r: Role) =>
+							r.orgId ? (
+								<adc-badge color="indigo" size="sm">
+									{orgMap.get(r.orgId) || r.orgId}
+								</adc-badge>
+							) : (
+								<span className="text-muted text-xs">—</span>
+							),
+					} as Column<Role>,
+				]
+			: []),
 	];
 
 	return (
@@ -162,14 +186,12 @@ export function RolesView({ scopes }: RolesViewProps) {
 										</adc-button-rounded>
 									)}
 									{deletable && role.isCustom && (
-										<adc-button-rounded variant="danger" aria-label={t("common.delete")} onClick={() => setDeleteConfirm(role)}>
-											<svg
-												className="w-4 h-4"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="2"
-											>
+										<adc-button-rounded
+											variant="danger"
+											aria-label={t("common.delete")}
+											onClick={() => setDeleteConfirm(role)}
+										>
+											<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
 												<path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
 											</svg>
 										</adc-button-rounded>

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { authApi, type BlockedErrorData } from "../utils/auth.ts";
+import React, { useState, useCallback } from "react";
+import { authApi, type BlockedErrorData, type OrgOption } from "../utils/auth.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { getBaseUrl } from "@common/utils/url-utils.js";
@@ -44,23 +44,70 @@ export function Login({ onNavigateToRegister, returnUrl }: LoginProps) {
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
 
+	// Estado para selección de organización
+	const [showOrgSelector, setShowOrgSelector] = useState(false);
+	const [orgOptions, setOrgOptions] = useState<OrgOption[]>([]);
+	const [pendingUsername, setPendingUsername] = useState("");
+	const [pendingPassword, setPendingPassword] = useState("");
+
+	const orgModalRef = useCallback((el: HTMLElement | null) => {
+		if (el) el.addEventListener("adcClose", () => setShowOrgSelector(false));
+	}, []);
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		clearErrors();
 		setLoading(true);
 
-		// authApi.login now handles errors internally via createAdcApi
 		const result = await authApi.login(username, password, {
 			translateParams: (data: BlockedErrorData) => ({
 				time: data.blockedUntil ? formatBlockedTime(data.blockedUntil) : "",
 			}),
 		});
 
-		if (result.success && globalThis.location) {
+		if (result.success && result.data) {
+			// Verificar si requiere selección de organización
+			if (result.data.requiresOrgSelection && result.data.orgOptions?.length) {
+				setPendingUsername(username);
+				setPendingPassword(password);
+				setOrgOptions(result.data.orgOptions);
+				setShowOrgSelector(true);
+				setLoading(false);
+				return;
+			}
+
+			if (globalThis.location) {
+				globalThis.location.href = returnUrl;
+			}
+		}
+
+		setLoading(false);
+	};
+
+	/**
+	 * Completa el login con la organización seleccionada (o sin org = acceso personal)
+	 */
+	const handleOrgSelect = async (orgId?: string) => {
+		clearErrors();
+		setLoading(true);
+
+		const result = await authApi.login(
+			pendingUsername,
+			pendingPassword,
+			{
+				translateParams: (data: BlockedErrorData) => ({
+					time: data.blockedUntil ? formatBlockedTime(data.blockedUntil) : "",
+				}),
+			},
+			orgId
+		);
+
+		if (result.success && result.data && !result.data.requiresOrgSelection && globalThis.location) {
 			globalThis.location.href = returnUrl;
 		}
 
 		setLoading(false);
+		setShowOrgSelector(false);
 	};
 
 	/**
@@ -176,6 +223,61 @@ export function Login({ onNavigateToRegister, returnUrl }: LoginProps) {
 					</div>
 				</div>
 			</adc-blur-panel>
+
+			{/* Modal de selección de organización */}
+			{showOrgSelector && (
+				<adc-modal ref={orgModalRef} open modalTitle={t("login.selectAccess")} size="sm">
+					<p className="text-muted text-sm mb-4">{t("login.selectAccessHint")}</p>
+					<div className="space-y-2">
+						{/* Opción: acceso personal (sin org) */}
+						<button
+							type="button"
+							onClick={() => handleOrgSelect(undefined)}
+							className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:bg-accent/10 transition-colors text-left cursor-pointer"
+						>
+							<svg className="w-5 h-5 text-muted shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+								/>
+							</svg>
+							<div>
+								<p className="font-medium text-text">{pendingUsername}</p>
+								<p className="text-xs text-muted">{t("login.personalAccess")}</p>
+							</div>
+						</button>
+
+						{/* Opciones de organizaciones */}
+						{orgOptions.map((org) => (
+							<button
+								key={org.orgId}
+								type="button"
+								onClick={() => handleOrgSelect(org.orgId)}
+								className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:bg-accent/10 transition-colors text-left cursor-pointer"
+							>
+								<svg
+									className="w-5 h-5 text-muted shrink-0"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+									viewBox="0 0 24 24"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 0h.008v.008h-.008V7.5Z"
+									/>
+								</svg>
+								<div>
+									<p className="font-medium text-text">{org.slug}</p>
+									<p className="text-xs text-muted">{t("login.orgAccess")}</p>
+								</div>
+							</button>
+						))}
+					</div>
+				</adc-modal>
+			)}
 		</div>
 	);
 }

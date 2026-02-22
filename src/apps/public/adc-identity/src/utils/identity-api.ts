@@ -33,6 +33,7 @@ export interface Role {
 	description: string;
 	permissions: Permission[];
 	isCustom: boolean;
+	orgId?: string;
 	createdAt: string;
 }
 
@@ -48,6 +49,7 @@ export interface Group {
 	description: string;
 	roleIds: string[];
 	permissions?: Permission[];
+	orgId?: string;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -82,10 +84,10 @@ export interface IdentityScope {
 
 export const identityApi = {
 	// My Permissions
-	getMyPermissions: () => api.get<{ scopes: IdentityScope[] }>("/my-permissions"),
+	getMyPermissions: () => api.get<{ scopes: IdentityScope[]; orgId?: string; isAdmin?: boolean }>("/my-permissions"),
 
 	// Users
-	listUsers: () => api.get<User[]>("/users"),
+	listUsers: (orgId?: string) => api.get<User[]>("/users", orgId ? { params: { orgId } } : undefined),
 	searchUsers: (q: string) => api.get<User[]>("/users/search", { params: { q } }),
 	getUser: (userId: string) => api.get<User>(`/users/${userId}`),
 	createUser: (data: { username: string; password: string; roleIds?: string[] }) => api.post<User>("/users", { body: data }),
@@ -93,14 +95,14 @@ export const identityApi = {
 	deleteUser: (userId: string) => api.delete<{ success: boolean }>(`/users/${userId}`),
 
 	// Roles
-	listRoles: () => api.get<Role[]>("/roles"),
+	listRoles: (orgId?: string) => api.get<Role[]>("/roles", orgId ? { params: { orgId } } : undefined),
 	getRole: (roleId: string) => api.get<Role>(`/roles/${roleId}`),
 	createRole: (data: { name: string; description: string; permissions?: Permission[] }) => api.post<Role>("/roles", { body: data }),
 	updateRole: (roleId: string, data: Partial<Role>) => api.put<Role>(`/roles/${roleId}`, { body: data }),
 	deleteRole: (roleId: string) => api.delete<{ success: boolean }>(`/roles/${roleId}`),
 
 	// Groups
-	listGroups: () => api.get<Group[]>("/groups"),
+	listGroups: (orgId?: string) => api.get<Group[]>("/groups", orgId ? { params: { orgId } } : undefined),
 	getGroup: (groupId: string) => api.get<Group>(`/groups/${groupId}`),
 	createGroup: (data: { name: string; description: string; roleIds?: string[] }) => api.post<Group>("/groups", { body: data }),
 	updateGroup: (groupId: string, data: Partial<Group>) => api.put<Group>(`/groups/${groupId}`, { body: data }),
@@ -116,6 +118,10 @@ export const identityApi = {
 		api.post<Organization>("/organizations", { body: data }),
 	updateOrganization: (orgId: string, data: Partial<Organization>) => api.put<Organization>(`/organizations/${orgId}`, { body: data }),
 	deleteOrganization: (orgId: string) => api.delete<{ success: boolean }>(`/organizations/${orgId}`),
+	listOrgMembers: (orgId: string) => api.get<User[]>(`/organizations/${orgId}/members`),
+	addUserToOrg: (orgId: string, userId: string, roleIds?: string[]) =>
+		api.post<{ success: boolean }>(`/organizations/${orgId}/members/${userId}`, roleIds ? { body: { roleIds } } : undefined),
+	removeUserFromOrg: (orgId: string, userId: string) => api.delete<{ success: boolean }>(`/organizations/${orgId}/members/${userId}`),
 
 	// Regions
 	listRegions: () => api.get<Region[]>("/regions"),

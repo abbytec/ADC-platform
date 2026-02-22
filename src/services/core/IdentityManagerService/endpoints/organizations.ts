@@ -68,4 +68,42 @@ export class OrgEndpoints {
 		await OrgEndpoints.#identity.organizations.deleteOrganization(ctx.params.orgId);
 		return { success: true };
 	}
+
+	// ── Miembros de organización ──────────────────────────────────────────────
+
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/identity/organizations/:orgId/members",
+		permissions: ["identity.16.1"],
+	})
+	static async listOrgMembers(ctx: EndpointCtx<{ orgId: string }>) {
+		const org = await OrgEndpoints.#identity.organizations.getOrganization(ctx.params.orgId);
+		if (!org) throw new HttpError(404, "ORG_NOT_FOUND", "Organización no encontrada");
+
+		const members = await OrgEndpoints.#identity.users.getAllUsers(ctx.token!, ctx.params.orgId);
+		return members.map(({ passwordHash, ...user }) => user);
+	}
+
+	@RegisterEndpoint({
+		method: "POST",
+		url: "/api/identity/organizations/:orgId/members/:userId",
+		permissions: ["identity.16.4"],
+	})
+	static async addOrgMember(ctx: EndpointCtx<{ orgId: string; userId: string }, { roleIds?: string[] }>) {
+		const org = await OrgEndpoints.#identity.organizations.getOrganization(ctx.params.orgId);
+		if (!org) throw new HttpError(404, "ORG_NOT_FOUND", "Organización no encontrada");
+
+		await OrgEndpoints.#identity.users.addOrgMembership(ctx.params.userId, ctx.params.orgId, ctx.data?.roleIds || [], ctx.token!);
+		return { success: true };
+	}
+
+	@RegisterEndpoint({
+		method: "DELETE",
+		url: "/api/identity/organizations/:orgId/members/:userId",
+		permissions: ["identity.16.8"],
+	})
+	static async removeOrgMember(ctx: EndpointCtx<{ orgId: string; userId: string }>) {
+		await OrgEndpoints.#identity.users.removeOrgMembership(ctx.params.userId, ctx.params.orgId, ctx.token!);
+		return { success: true };
+	}
 }

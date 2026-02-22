@@ -44,6 +44,7 @@ export interface AuthenticatedUserInfo {
 	username: string;
 	email?: string;
 	permissions: string[];
+	orgId?: string;
 	metadata?: Record<string, unknown>;
 }
 

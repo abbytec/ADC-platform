@@ -215,16 +215,18 @@ export class UserManager {
 	}
 
 	/**
-	 * Obtiene todos los usuarios
+	 * Obtiene todos los usuarios, opcionalmente filtrados por orgId
 	 * @param token Token de autenticación (requerido para verificar permisos)
+	 * @param orgId Si se proporciona, filtra usuarios que pertenecen a esta organización
 	 */
-	async getAllUsers(token?: string): Promise<User[]> {
+	async getAllUsers(token?: string, orgId?: string): Promise<User[]> {
 		if (token) {
 			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.USERS);
 		}
 
 		try {
-			const docs = await this.userModel.find({});
+			const filter = orgId ? { "orgMemberships.orgId": orgId } : {};
+			const docs = await this.userModel.find(filter);
 			return docs.map((d: any) => d.toObject?.() || d);
 		} catch (error) {
 			this.logger.logError(`Error obteniendo usuarios: ${error}`);
@@ -237,15 +239,18 @@ export class UserManager {
 	 * @param query Texto a buscar
 	 * @param limit Máximo de resultados (default 10)
 	 * @param token Token de autenticación
+	 * @param orgId Si se proporciona, filtra usuarios que pertenecen a esta organización
 	 */
-	async searchUsers(query: string, limit: number = 10, token?: string): Promise<User[]> {
+	async searchUsers(query: string, limit: number = 10, token?: string, orgId?: string): Promise<User[]> {
 		if (token) {
 			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.USERS);
 		}
 
 		try {
 			const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-			const docs = await this.userModel.find({ $or: [{ username: regex }, { email: regex }] }).limit(limit);
+			const filter: any = { $or: [{ username: regex }, { email: regex }] };
+			if (orgId) filter["orgMemberships.orgId"] = orgId;
+			const docs = await this.userModel.find(filter).limit(limit);
 			return docs.map((d: any) => d.toObject?.() || d);
 		} catch (error) {
 			this.logger.logError(`Error buscando usuarios: ${error}`);

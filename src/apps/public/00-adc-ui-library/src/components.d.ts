@@ -57,10 +57,20 @@ export namespace Components {
          */
         "menuItems": AccessMenuItem[];
         /**
+          * Texto para acceso personal (sin org)
+          * @default "Acceso personal"
+         */
+        "personalAccessText": string;
+        /**
           * URL de la API de sesión
           * @default "/api/auth/session"
          */
         "sessionApiUrl": string;
+        /**
+          * Texto para cambiar de organización
+          * @default "Cambiar acceso"
+         */
+        "switchOrgText": string;
     }
     interface AdcAppsMenu {
         /**
@@ -792,6 +802,7 @@ declare global {
     interface HTMLAdcAccessButtonElementEventMap {
         "adcLogout": void;
         "adcLoginClick": void;
+        "adcOrgSwitch": string | undefined;
     }
     /**
      * Botón de acceso que muestra:
@@ -1337,10 +1348,24 @@ declare namespace LocalJSX {
          */
         "onAdcLogout"?: (event: AdcAccessButtonCustomEvent<void>) => void;
         /**
+          * Evento emitido al cambiar de organización
+         */
+        "onAdcOrgSwitch"?: (event: AdcAccessButtonCustomEvent<string | undefined>) => void;
+        /**
+          * Texto para acceso personal (sin org)
+          * @default "Acceso personal"
+         */
+        "personalAccessText"?: string;
+        /**
           * URL de la API de sesión
           * @default "/api/auth/session"
          */
         "sessionApiUrl"?: string;
+        /**
+          * Texto para cambiar de organización
+          * @default "Cambiar acceso"
+         */
+        "switchOrgText"?: string;
     }
     interface AdcAppsMenu {
         /**

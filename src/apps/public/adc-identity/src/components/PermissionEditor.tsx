@@ -13,10 +13,8 @@ const ACTIONS = [
 	{ key: "delete", value: 8, label: "permissions.delete" },
 ] as const;
 
-/**
- * Simple action names (used for simple resources like content)
- */
-const SIMPLE_ACTIONS = ["read", "write", "update", "delete"] as const;
+/** Action lookup by key (for simple toggle) */
+const ACTION_MAP = new Map<string, number>(ACTIONS.map((a) => [a.key, a.value]));
 
 interface PermissionEditorProps {
 	readonly permissions: Permission[];
@@ -55,7 +53,11 @@ function bitfieldMapToPermissions(permMap: Map<string, number>): Permission[] {
 function getSimpleActions(permissions: Permission[], resource: string): Set<string> {
 	const set = new Set<string>();
 	for (const p of permissions) {
-		if (p.resource === resource) set.add(String(p.scope));
+		if (p.resource === resource) {
+			for (const a of ACTIONS) {
+				if ((p.action & a.value) === a.value) set.add(a.key);
+			}
+		}
 	}
 	return set;
 }
@@ -115,16 +117,16 @@ function SimpleResourceCard({
 		<div className="border border-surface rounded-xl overflow-hidden">
 			<ResourceHeader resource={resource} onRemove={onRemove} disabled={disabled} t={t} />
 			<div className="flex flex-wrap gap-4 px-4 py-3">
-				{SIMPLE_ACTIONS.map((action) => (
-					<label key={action} className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+				{ACTIONS.map((action) => (
+					<label key={action.key} className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
 						<input
 							type="checkbox"
-							checked={activeActions.has(action)}
-							onChange={() => onToggle(resource, action)}
+							checked={activeActions.has(action.key)}
+							onChange={() => onToggle(resource, action.key)}
 							disabled={disabled}
 							className="w-4 h-4 accent-primary cursor-pointer"
 						/>
-						<span className="text-text">{t(`permissions.${action}`)}</span>
+						<span className="text-text">{t(action.label)}</span>
 					</label>
 				))}
 			</div>
@@ -296,16 +298,14 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 	// ── Simple callbacks ──
 
 	const toggleSimple = useCallback(
-		(resource: string, action: string) => {
+		(resource: string, actionKey: string) => {
 			if (disabled) return;
-			const existing = simplePerms.filter((p) => p.resource === resource);
-			const has = existing.some((p) => String(p.scope) === action);
-			let next: Permission[];
-			if (has) {
-				next = simplePerms.filter((p) => !(p.resource === resource && String(p.scope) === action));
-			} else {
-				next = [...simplePerms, { resource, action: 0, scope: action as unknown as number }];
-			}
+			const actionValue = ACTION_MAP.get(actionKey) ?? 0;
+			const existing = simplePerms.find((p) => p.resource === resource);
+			const current = existing?.action ?? 0;
+			const toggled = (current & actionValue) === actionValue ? current & ~actionValue : current | actionValue;
+			const others = simplePerms.filter((p) => p.resource !== resource);
+			const next = toggled > 0 ? [...others, { resource, action: toggled, scope: 0 }] : others;
 			onChange([...bitfieldMapToPermissions(permMap), ...next]);
 		},
 		[disabled, simplePerms, permMap, onChange]

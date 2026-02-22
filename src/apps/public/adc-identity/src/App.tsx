@@ -24,6 +24,10 @@ export default function App() {
 	const [loading, setLoading] = useState(true);
 	const [unauthorized, setUnauthorized] = useState(false);
 
+	// Contexto de organización
+	const [orgId, setOrgId] = useState<string | undefined>(undefined);
+	const [isAdmin, setIsAdmin] = useState(false);
+
 	const loadPermissions = useCallback(async () => {
 		setLoading(true);
 		clearErrors();
@@ -33,8 +37,11 @@ export default function App() {
 		if (result.success && result.data) {
 			const userScopes = result.data.scopes;
 			setScopes(userScopes);
+			const currentOrgId = result.data.orgId || undefined;
+			setOrgId(currentOrgId);
+			setIsAdmin(result.data.isAdmin ?? false);
 
-			const tabs = getVisibleTabs(userScopes);
+			const tabs = getVisibleTabs(userScopes, currentOrgId);
 			setVisibleTabs(tabs);
 
 			if (tabs.length > 0) {
@@ -117,11 +124,11 @@ export default function App() {
 	const renderActiveView = () => {
 		switch (activeTab) {
 			case "users":
-				return <UsersView scopes={scopes} />;
+				return <UsersView scopes={scopes} orgId={orgId} isAdmin={isAdmin} />;
 			case "roles":
-				return <RolesView scopes={scopes} />;
+				return <RolesView scopes={scopes} orgId={orgId} isAdmin={isAdmin} />;
 			case "groups":
-				return <GroupsView scopes={scopes} />;
+				return <GroupsView scopes={scopes} orgId={orgId} isAdmin={isAdmin} />;
 			case "organizations":
 				return <OrganizationsView scopes={scopes} />;
 			case "regions":

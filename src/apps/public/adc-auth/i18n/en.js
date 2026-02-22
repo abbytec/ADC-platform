@@ -7,7 +7,11 @@ export default {
 		submitting: "Signing in...",
 		noAccount: "Don't have an account?",
 		register: "Sign up",
-		orContinueWith: "Or continue with"
+		orContinueWith: "Or continue with",
+		selectAccess: "Select access",
+		selectAccessHint: "Choose the context you want to sign in with.",
+		personalAccess: "Personal access",
+		orgAccess: "Organization"
 	},
 	register: {
 		title: "Create Account",

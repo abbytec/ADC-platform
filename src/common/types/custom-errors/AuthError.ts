@@ -16,7 +16,9 @@ type ExcpectedAuthErrorTypes =
 	| "WEAK_PASSWORD"
 	| "INVALID_EMAIL"
 	| "USERNAME_EXISTS"
-	| "EMAIL_EXISTS";
+	| "EMAIL_EXISTS"
+	| "NOT_ORG_MEMBER"
+	| "USER_NOT_FOUND";
 
 type UnexpectedAuthErrorTypes =
 	// AUTH FLOW

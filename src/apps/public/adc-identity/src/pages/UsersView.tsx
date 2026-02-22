@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { identityApi, type User, type Role, type Permission, type IdentityScope } from "../utils/identity-api.ts";
+import { identityApi, type User, type Role, type Permission, type IdentityScope, type Organization } from "../utils/identity-api.ts";
 import { Scope, canWrite, canUpdate, canDelete } from "../utils/permissions.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { PermissionEditor } from "../components/PermissionEditor.tsx";
@@ -8,13 +8,16 @@ import { clearErrors } from "@ui-library/utils/adc-fetch";
 
 interface UsersViewProps {
 	readonly scopes: IdentityScope[];
+	readonly orgId?: string;
+	readonly isAdmin?: boolean;
 }
 
-export function UsersView({ scopes }: UsersViewProps) {
+export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [users, setUsers] = useState<User[]>([]);
 	const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
 	const [roles, setRoles] = useState<Role[]>([]);
+	const [orgMap, setOrgMap] = useState<Map<string, string>>(new Map());
 	const [loading, setLoading] = useState(true);
 	const [modalOpen, setModalOpen] = useState(false);
 	const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -47,7 +50,9 @@ export function UsersView({ scopes }: UsersViewProps) {
 
 	const loadData = useCallback(async () => {
 		setLoading(true);
-		const [usersRes, rolesRes] = await Promise.all([identityApi.listUsers(), identityApi.listRoles()]);
+		const promises: Promise<any>[] = [identityApi.listUsers(orgId), identityApi.listRoles(orgId)];
+		if (isAdmin && !orgId) promises.push(identityApi.listOrganizations());
+		const [usersRes, rolesRes, orgsRes] = await Promise.all(promises);
 
 		if (usersRes.success && usersRes.data) {
 			setUsers(usersRes.data);
@@ -56,8 +61,11 @@ export function UsersView({ scopes }: UsersViewProps) {
 		if (rolesRes.success && rolesRes.data) {
 			setRoles(rolesRes.data);
 		}
+		if (orgsRes?.success && orgsRes.data) {
+			setOrgMap(new Map((orgsRes.data as Organization[]).map((o) => [o.orgId, o.slug])));
+		}
 		setLoading(false);
-	}, []);
+	}, [orgId, isAdmin]);
 
 	useEffect(() => {
 		loadData();
@@ -172,6 +180,24 @@ export function UsersView({ scopes }: UsersViewProps) {
 				</adc-badge>
 			),
 		},
+		...(isAdmin && !orgId
+			? [
+					{
+						key: "orgMemberships" as keyof User,
+						label: t("common.organization"),
+						render: (u: User) => (
+							<div className="flex flex-wrap gap-1">
+								{u.orgMemberships?.map((m) => (
+									<adc-badge key={m.orgId} color="indigo" size="sm">
+										{orgMap.get(m.orgId) || m.orgId}
+									</adc-badge>
+								))}
+								{(!u.orgMemberships || u.orgMemberships.length === 0) && <span className="text-muted text-xs">—</span>}
+							</div>
+						),
+					} as Column<User>,
+				]
+			: []),
 		{
 			key: "lastLogin",
 			label: t("users.lastLogin"),

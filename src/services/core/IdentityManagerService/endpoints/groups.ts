@@ -18,7 +18,8 @@ export class GroupEndpoints {
 		permissions: ["identity.8.1"],
 	})
 	static async listGroups(ctx: EndpointCtx) {
-		return GroupEndpoints.#identity.groups.getAllGroups(ctx.token!);
+		const orgId = ctx.user?.orgId;
+		return GroupEndpoints.#identity.groups.getAllGroups(ctx.token!, orgId);
 	}
 
 	@RegisterEndpoint({
@@ -41,7 +42,8 @@ export class GroupEndpoints {
 		if (!ctx.data?.name) {
 			throw new HttpError(400, "MISSING_FIELDS", "name es requerido");
 		}
-		return GroupEndpoints.#identity.groups.createGroup(ctx.data.name, ctx.data.description || "", ctx.data.roleIds, ctx.token!);
+		const orgId = ctx.user?.orgId;
+		return GroupEndpoints.#identity.groups.createGroup(ctx.data.name, ctx.data.description || "", ctx.data.roleIds, ctx.token!, orgId);
 	}
 
 	@RegisterEndpoint({

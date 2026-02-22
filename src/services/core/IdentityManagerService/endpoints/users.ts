@@ -19,7 +19,9 @@ export class UserEndpoints {
 		permissions: ["identity.2.1"],
 	})
 	static async listUsers(ctx: EndpointCtx) {
-		const users = await UserEndpoints.#identity.users.getAllUsers(ctx.token!);
+		const orgId = ctx.user?.orgId;
+		const users = await UserEndpoints.#identity.users.getAllUsers(ctx.token!, orgId);
+
 		// Strip passwordHash from response
 		return users.map(({ passwordHash, ...user }) => user);
 	}
@@ -32,7 +34,9 @@ export class UserEndpoints {
 	static async searchUsers(ctx: EndpointCtx) {
 		const q = ctx.query?.q?.trim();
 		if (!q || q.length < 2) return [];
-		const users = await UserEndpoints.#identity.users.searchUsers(q, 10, ctx.token!);
+		const orgId = ctx.user?.orgId;
+		const users = await UserEndpoints.#identity.users.searchUsers(q, 10, ctx.token!, orgId);
+
 		return users.map(({ passwordHash, ...user }) => user);
 	}
 

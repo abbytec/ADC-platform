@@ -16,7 +16,8 @@ export default {
 		confirmDelete: "Confirm deletion",
 		active: "Active",
 		inactive: "Inactive",
-		loading: "Loading..."
+		loading: "Loading...",
+		organization: "Organization"
 	},
 	tabs: {
 		users: "Users",
@@ -96,7 +97,11 @@ export default {
 			active: "Active",
 			inactive: "Inactive",
 			blocked: "Blocked"
-		}
+		},
+		members: "Members",
+		manageMembers: "Members of {{slug}}",
+		searchUserPlaceholder: "Search users by name or email...",
+		noMembers: "No members in this organization"
 	},
 	regions: {
 		path: "Path",

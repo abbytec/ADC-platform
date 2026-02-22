@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { identityApi, type Group, type Role, type Permission, type IdentityScope } from "../utils/identity-api.ts";
+import { identityApi, type Group, type Role, type Permission, type IdentityScope, type Organization } from "../utils/identity-api.ts";
 import { Scope, canWrite, canUpdate, canDelete } from "../utils/permissions.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { PermissionEditor } from "../components/PermissionEditor.tsx";
@@ -8,9 +8,11 @@ import { clearErrors } from "@ui-library/utils/adc-fetch";
 
 interface GroupsViewProps {
 	readonly scopes: IdentityScope[];
+	readonly orgId?: string;
+	readonly isAdmin?: boolean;
 }
 
-export function GroupsView({ scopes }: GroupsViewProps) {
+export function GroupsView({ scopes, orgId, isAdmin }: GroupsViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [groups, setGroups] = useState<Group[]>([]);
 	const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
@@ -20,6 +22,7 @@ export function GroupsView({ scopes }: GroupsViewProps) {
 	const [editingGroup, setEditingGroup] = useState<Group | null>(null);
 	const [deleteConfirm, setDeleteConfirm] = useState<Group | null>(null);
 	const [membersModal, setMembersModal] = useState<Group | null>(null);
+	const [orgMap, setOrgMap] = useState<Map<string, string>>(new Map());
 
 	// Form state
 	const [formName, setFormName] = useState("");
@@ -52,14 +55,19 @@ export function GroupsView({ scopes }: GroupsViewProps) {
 
 	const loadData = useCallback(async () => {
 		setLoading(true);
-		const [groupsRes, rolesRes] = await Promise.all([identityApi.listGroups(), identityApi.listRoles()]);
+		const promises: Promise<any>[] = [identityApi.listGroups(orgId), identityApi.listRoles(orgId)];
+		if (isAdmin && !orgId) promises.push(identityApi.listOrganizations());
+		const [groupsRes, rolesRes, orgsRes] = await Promise.all(promises);
 		if (groupsRes.success && groupsRes.data) {
 			setGroups(groupsRes.data);
 			setFilteredGroups(groupsRes.data);
 		}
 		if (rolesRes.success && rolesRes.data) setAllRoles(rolesRes.data);
+		if (orgsRes?.success && orgsRes.data) {
+			setOrgMap(new Map((orgsRes.data as Organization[]).map((o) => [o.orgId, o.slug])));
+		}
 		setLoading(false);
-	}, []);
+	}, [orgId, isAdmin]);
 
 	useEffect(() => {
 		loadData();
@@ -219,6 +227,22 @@ export function GroupsView({ scopes }: GroupsViewProps) {
 				</div>
 			),
 		},
+		...(isAdmin && !orgId
+			? [
+					{
+						key: "orgId" as keyof Group,
+						label: t("common.organization"),
+						render: (g: Group) =>
+							g.orgId ? (
+								<adc-badge color="indigo" size="sm">
+									{orgMap.get(g.orgId) || g.orgId}
+								</adc-badge>
+							) : (
+								<span className="text-muted text-xs">—</span>
+							),
+					} as Column<Group>,
+				]
+			: []),
 	];
 
 	return (

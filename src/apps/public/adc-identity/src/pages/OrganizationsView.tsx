@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { identityApi, type Organization, type Region, type IdentityScope } from "../utils/identity-api.ts";
+import { identityApi, type Organization, type Region, type User, type IdentityScope } from "../utils/identity-api.ts";
 import { Scope, canWrite, canUpdate, canDelete } from "../utils/permissions.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
@@ -26,6 +26,7 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 	const [modalOpen, setModalOpen] = useState(false);
 	const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
 	const [deleteConfirm, setDeleteConfirm] = useState<Organization | null>(null);
+	const [membersModal, setMembersModal] = useState<Organization | null>(null);
 
 	// Form state
 	const [formSlug, setFormSlug] = useState("");
@@ -33,6 +34,13 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 	const [formTier, setFormTier] = useState("");
 	const [formStatus, setFormStatus] = useState<string>("active");
 	const [submitting, setSubmitting] = useState(false);
+
+	// Members state
+	const [addingMember, setAddingMember] = useState(false);
+	const [members, setMembers] = useState<User[]>([]);
+	const [loadingMembers, setLoadingMembers] = useState(false);
+	const [userSearchResults, setUserSearchResults] = useState<User[]>([]);
+	const [userSearching, setUserSearching] = useState(false);
 
 	const writable = canWrite(scopes, Scope.ORGANIZATIONS);
 	const updatable = canUpdate(scopes, Scope.ORGANIZATIONS);
@@ -43,6 +51,9 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 	}, []);
 	const deleteModalRef = useCallback((el: HTMLElement | null) => {
 		if (el) el.addEventListener("adcClose", () => setDeleteConfirm(null));
+	}, []);
+	const membersModalRef = useCallback((el: HTMLElement | null) => {
+		if (el) el.addEventListener("adcClose", () => setMembersModal(null));
 	}, []);
 
 	const loadData = useCallback(async () => {
@@ -127,6 +138,61 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 		}
 	};
 
+	// ── Members management ───────────────────────────────────────────────────
+
+	const loadMembers = useCallback(async (orgId: string) => {
+		setLoadingMembers(true);
+		const res = await identityApi.listOrgMembers(orgId);
+		if (res.success && res.data) setMembers(res.data);
+		setLoadingMembers(false);
+	}, []);
+
+	const openMembersModal = useCallback(
+		(org: Organization) => {
+			setMembersModal(org);
+			setUserSearchResults([]);
+			loadMembers(org.orgId);
+		},
+		[loadMembers]
+	);
+
+	const handleAddMember = async (userId: string) => {
+		if (!membersModal) return;
+		clearErrors();
+		setAddingMember(true);
+		const result = await identityApi.addUserToOrg(membersModal.orgId, userId);
+		if (result.success) {
+			loadMembers(membersModal.orgId);
+			setUserSearchResults((prev) => prev.filter((u) => u.id !== userId));
+		}
+		setAddingMember(false);
+	};
+
+	const handleUserSearch = useCallback(async (query: string) => {
+		if (!query || query.length < 2) {
+			setUserSearchResults([]);
+			return;
+		}
+		setUserSearching(true);
+		const res = await identityApi.searchUsers(query);
+		if (res.success && res.data) setUserSearchResults(res.data);
+		setUserSearching(false);
+	}, []);
+
+	const userSearchRef = useCallback(
+		(el: HTMLElement | null) => {
+			if (el) el.addEventListener("adcInput", (e: Event) => handleUserSearch((e as CustomEvent<string>).detail));
+		},
+		[handleUserSearch]
+	);
+
+	const handleRemoveMember = async (userId: string) => {
+		if (!membersModal) return;
+		clearErrors();
+		const result = await identityApi.removeUserFromOrg(membersModal.orgId, userId);
+		if (result.success) loadMembers(membersModal.orgId);
+	};
+
 	const columns: Column<Organization>[] = [
 		{ key: "slug", label: t("organizations.slug") },
 		{ key: "region", label: t("organizations.region") },
@@ -168,22 +234,29 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 						? (org) => (
 								<>
 									{updatable && (
-										<adc-button-rounded aria-label={t("common.edit")} onClick={() => openEditModal(org)}>
-											<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-												<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-												<path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-											</svg>
-										</adc-button-rounded>
+										<>
+											<adc-button-rounded aria-label={t("organizations.members")} onClick={() => openMembersModal(org)}>
+												<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+													<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+													<circle cx="9" cy="7" r="4" />
+													<path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+												</svg>
+											</adc-button-rounded>
+											<adc-button-rounded aria-label={t("common.edit")} onClick={() => openEditModal(org)}>
+												<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+													<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+													<path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+												</svg>
+											</adc-button-rounded>
+										</>
 									)}
 									{deletable && (
-										<adc-button-rounded aria-label={t("common.delete")} onClick={() => setDeleteConfirm(org)}>
-											<svg
-												className="w-4 h-4 text-tdanger"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="2"
-											>
+										<adc-button-rounded
+											variant="danger"
+											aria-label={t("common.delete")}
+											onClick={() => setDeleteConfirm(org)}
+										>
+											<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
 												<path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
 											</svg>
 										</adc-button-rounded>
@@ -257,6 +330,87 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 							</adc-button>
 						</div>
 					</form>
+				</adc-modal>
+			)}
+
+			{/* Members Modal */}
+			{membersModal && (
+				<adc-modal ref={membersModalRef} open modalTitle={t("organizations.manageMembers", { slug: membersModal.slug })} size="md">
+					<div className="space-y-4">
+						{/* User search */}
+						<div className="relative">
+							<adc-search-input ref={userSearchRef} placeholder={t("organizations.searchUserPlaceholder")} debounce={350} />
+							{(userSearchResults.length > 0 || userSearching) && (
+								<div className="absolute z-20 left-0 right-0 mt-1 bg-background border border-surface rounded-xl shadow-lg max-h-48 overflow-y-auto">
+									{userSearching ? (
+										<div className="flex justify-center py-3">
+											<adc-spinner />
+										</div>
+									) : (
+										userSearchResults
+											.filter((u) => !members.some((m) => m.id === u.id))
+											.map((user) => (
+												<button
+													key={user.id}
+													type="button"
+													className="w-full text-left px-3 py-2 hover:bg-surface/50 transition-colors cursor-pointer flex items-center justify-between"
+													onClick={() => handleAddMember(user.id)}
+													disabled={addingMember}
+												>
+													<div>
+														<span className="text-sm font-medium text-text">{user.username}</span>
+														{user.email && <span className="text-xs text-muted ml-2">{user.email}</span>}
+													</div>
+													<svg
+														className="w-4 h-4 text-primary shrink-0"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														strokeWidth="2"
+													>
+														<path d="M12 5v14M5 12h14" />
+													</svg>
+												</button>
+											))
+									)}
+								</div>
+							)}
+						</div>
+
+						{/* Member list */}
+						{loadingMembers ? (
+							<div className="flex justify-center py-4">
+								<adc-spinner />
+							</div>
+						) : members.length === 0 ? (
+							<p className="text-sm text-muted py-2">{t("organizations.noMembers")}</p>
+						) : (
+							<ul className="divide-y divide-surface">
+								{members.map((member) => (
+									<li key={member.id} className="flex items-center justify-between py-2">
+										<div>
+											<span className="text-sm font-medium text-text">{member.username}</span>
+											{member.email && <span className="text-xs text-muted ml-2">{member.email}</span>}
+										</div>
+										<adc-button-rounded
+											variant="danger"
+											aria-label={t("common.delete")}
+											onClick={() => handleRemoveMember(member.id)}
+										>
+											<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+												<path d="M18 6L6 18M6 6l12 12" />
+											</svg>
+										</adc-button-rounded>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+					<div slot="footer" className="flex justify-end">
+						<adc-button variant="accent" onClick={() => setMembersModal(null)}>
+							{t("common.close")}
+						</adc-button>
+					</div>
 				</adc-modal>
 			)}
 

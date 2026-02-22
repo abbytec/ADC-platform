@@ -7,12 +7,23 @@ export interface AuthUser {
 	email: string;
 	avatar?: string;
 	permissions?: string[];
+	orgId?: string;
+}
+
+export interface OrgOption {
+	orgId: string;
+	slug: string;
 }
 
 export interface AuthResponse {
 	success: boolean;
 	user?: AuthUser;
 	error?: string;
+	/** Indica que el usuario debe seleccionar una organización antes de concretar el login */
+	requiresOrgSelection?: boolean;
+	userId?: string;
+	username?: string;
+	orgOptions?: OrgOption[];
 }
 
 export interface SessionResponse {
@@ -41,15 +52,18 @@ const api = createAdcApi({
 export const authApi = {
 	/**
 	 * Login nativo con username/password
+	 * Si el usuario tiene orgs, puede retornar requiresOrgSelection con las opciones.
+	 * En ese caso, llamar de nuevo con orgId para completar el login.
 	 * @param options - Request options (e.g., translateParams for blocked time formatting)
 	 */
 	login: (
 		username: string,
 		password: string,
-		options?: Pick<RequestOptions<BlockedErrorData>, "translateParams">
+		options?: Pick<RequestOptions<BlockedErrorData>, "translateParams">,
+		orgId?: string
 	): Promise<AdcFetchResult<AuthResponse>> =>
 		api.post<AuthResponse, BlockedErrorData>("/login", {
-			body: { username, password },
+			body: { username, password, orgId },
 			...options,
 		}),
 
@@ -73,4 +87,16 @@ export const authApi = {
 	 * Refrescar tokens
 	 */
 	refresh: (): Promise<AdcFetchResult<{ success: boolean }>> => api.post<{ success: boolean }>("/refresh"),
+
+	/**
+	 * Cambiar contexto de organización (re-emite tokens)
+	 * @param orgId - ID de la organización o undefined para acceso personal
+	 */
+	switchOrg: (orgId?: string): Promise<AdcFetchResult<AuthResponse>> => api.post<AuthResponse>("/switch-org", { body: { orgId } }),
+
+	/**
+	 * Obtener organizaciones del usuario autenticado
+	 */
+	getUserOrgs: (): Promise<AdcFetchResult<{ orgs: OrgOption[]; currentOrgId?: string }>> =>
+		api.get<{ orgs: OrgOption[]; currentOrgId?: string }>("/user-orgs"),
 };

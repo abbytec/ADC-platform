@@ -7,7 +7,11 @@ export default {
 		submitting: "Ingresando...",
 		noAccount: "¿No tienes cuenta?",
 		register: "Regístrate",
-		orContinueWith: "O continúa con"
+		orContinueWith: "O continúa con",
+		selectAccess: "Seleccionar acceso",
+		selectAccessHint: "Elige el contexto con el que quieres ingresar.",
+		personalAccess: "Acceso personal",
+		orgAccess: "Organización"
 	},
 	register: {
 		title: "Crear Cuenta",

@@ -35,6 +35,7 @@ export interface AuthEndpointsDeps {
 interface LoginBody {
 	username?: string;
 	password?: string;
+	orgId?: string;
 }
 
 interface RegisterBody {
@@ -65,7 +66,7 @@ export class AuthEndpoints {
 		permissions: [],
 	})
 	static async handleNativeLogin(ctx: EndpointCtx<Record<string, string>, LoginBody>): Promise<unknown> {
-		const { username, password } = ctx.data || {};
+		const { username, password, orgId } = ctx.data || {};
 
 		if (!username || !password) {
 			throw new AuthError(400, "MISSING_CREDENTIALS", "Username y password son requeridos");
@@ -93,8 +94,23 @@ export class AuthEndpoints {
 				throw new AuthError(401, "INVALID_CREDENTIALS", "Credenciales inválidas");
 			}
 
+			const fullUser = profile as User;
+
+			// Si el usuario tiene organizaciones y no se especificó orgId,
+			// retornar la lista de orgs para que el frontend muestre el selector
+			if (fullUser.orgMemberships?.length && !orgId) {
+				const orgOptions = await AuthEndpoints.getUserOrgOptions(fullUser);
+				throw UncommonResponse.json({
+					success: true,
+					requiresOrgSelection: true,
+					userId: fullUser.id,
+					username: fullUser.username,
+					orgOptions,
+				});
+			}
+
 			// Construir usuario directamente desde profile (ya validado por authenticate)
-			const user = await AuthEndpoints.buildAuthenticatedUser("platform", profile as User);
+			const user = await AuthEndpoints.buildAuthenticatedUser("platform", fullUser, orgId);
 			const cookies = await AuthEndpoints.getTokenCookies(ctx, user);
 
 			throw UncommonResponse.json(
@@ -105,6 +121,8 @@ export class AuthEndpoints {
 						username: user.username,
 						email: user.email,
 						permissions: user.permissions,
+						orgId: user.orgId,
+						orgSlug: user.orgId ? await AuthEndpoints.resolveOrgSlug(user.orgId) : undefined,
 					},
 				},
 				{ cookies }
@@ -230,6 +248,7 @@ export class AuthEndpoints {
 
 		// Si hay headers especiales, usar UncommonResponse
 		if (Object.keys(headers).length > 0) {
+			const orgSlug = result.session.user.orgId ? await AuthEndpoints.resolveOrgSlug(result.session.user.orgId) : undefined;
 			throw UncommonResponse.json(
 				{
 					authenticated: true,
@@ -240,6 +259,7 @@ export class AuthEndpoints {
 						avatar: result.session.user.avatar,
 						provider: result.session.user.provider,
 						orgId: result.session.user.orgId,
+						orgSlug,
 					},
 					expiresAt: result.session.expiresAt,
 				},
@@ -247,6 +267,7 @@ export class AuthEndpoints {
 			);
 		}
 
+		const orgSlug = result.session.user.orgId ? await AuthEndpoints.resolveOrgSlug(result.session.user.orgId) : undefined;
 		return {
 			authenticated: true,
 			user: {
@@ -256,6 +277,7 @@ export class AuthEndpoints {
 				avatar: result.session.user.avatar,
 				provider: result.session.user.provider,
 				orgId: result.session.user.orgId,
+				orgSlug,
 			},
 			expiresAt: result.session.expiresAt,
 		};
@@ -328,6 +350,101 @@ export class AuthEndpoints {
 
 		const cookies = AuthEndpoints.buildTokenCookies(result.tokens.accessToken, result.tokens.refreshToken.token);
 		throw UncommonResponse.json({ success: true }, { cookies });
+	}
+
+	/**
+	 * POST /api/auth/switch-org - Cambiar contexto de organización
+	 * Re-emite tokens con el nuevo orgId
+	 */
+	@RegisterEndpoint({
+		method: "POST",
+		url: "/api/auth/switch-org",
+		permissions: [],
+	})
+	static async handleSwitchOrg(ctx: EndpointCtx<Record<string, string>, { orgId?: string }>): Promise<never> {
+		const token = ctx.cookies?.[ACCESS_COOKIE_NAME];
+		if (!token) {
+			throw new AuthError(401, "NO_SESSION", "No hay sesión activa");
+		}
+
+		const result = await AuthEndpoints.deps.tokenService.verifyAccessToken(token);
+		if (!result.valid || !result.session) {
+			throw new AuthError(401, "INVALID_SESSION", "Sesión inválida");
+		}
+
+		const userId = result.session.user.id;
+		const newOrgId = ctx.data?.orgId || undefined;
+
+		// Validar que el usuario pertenece a la org (si se especificó)
+		if (newOrgId && AuthEndpoints.deps.identityService) {
+			const user = await AuthEndpoints.deps.identityService.users.getUser(userId);
+			if (!user) throw new AuthError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+			const isMember = user.orgMemberships?.some((m) => m.orgId === newOrgId);
+			if (!isMember) {
+				throw new AuthError(403, "NOT_ORG_MEMBER", "No perteneces a esta organización");
+			}
+		}
+
+		// Re-construir usuario con nuevo orgId y permisos actualizados
+		const updatedUser = await AuthEndpoints.getUserById(userId);
+		if (!updatedUser) throw new AuthError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+
+		// Re-resolver permisos con el nuevo orgId
+		const permissions = await AuthEndpoints.getUserPermissions(userId, newOrgId);
+		updatedUser.permissions = permissions;
+		updatedUser.orgId = newOrgId;
+
+		const cookies = await AuthEndpoints.getTokenCookies(ctx, updatedUser);
+
+		const orgSlug = newOrgId ? await AuthEndpoints.resolveOrgSlug(newOrgId) : undefined;
+		throw UncommonResponse.json(
+			{
+				success: true,
+				user: {
+					id: updatedUser.id,
+					username: updatedUser.username,
+					email: updatedUser.email,
+					permissions: updatedUser.permissions,
+					orgId: updatedUser.orgId,
+					orgSlug,
+				},
+			},
+			{ cookies }
+		);
+	}
+
+	/**
+	 * GET /api/auth/user-orgs - Obtener organizaciones del usuario autenticado
+	 */
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/auth/user-orgs",
+		permissions: [],
+	})
+	static async handleUserOrgs(ctx: EndpointCtx): Promise<unknown> {
+		const token = ctx.cookies?.[ACCESS_COOKIE_NAME];
+		if (!token) {
+			throw new AuthError(401, "NO_SESSION", "No hay sesión activa");
+		}
+
+		const result = await AuthEndpoints.deps.tokenService.verifyAccessToken(token);
+		if (!result.valid || !result.session) {
+			throw new AuthError(401, "INVALID_SESSION", "Sesión inválida");
+		}
+
+		const userId = result.session.user.id;
+		if (!AuthEndpoints.deps.identityService) {
+			return { orgs: [], currentOrgId: result.session.user.orgId };
+		}
+
+		const user = await AuthEndpoints.deps.identityService.users.getUser(userId);
+		if (!user) return { orgs: [], currentOrgId: result.session.user.orgId };
+
+		const orgOptions = await AuthEndpoints.getUserOrgOptions(user);
+		return {
+			orgs: orgOptions,
+			currentOrgId: result.session.user.orgId,
+		};
 	}
 
 	/**
@@ -442,9 +559,10 @@ export class AuthEndpoints {
 	 */
 	private static async buildAuthenticatedUser(
 		provider: string,
-		profile: { id: string; username: string; email?: string; avatar?: string }
+		profile: { id: string; username: string; email?: string; avatar?: string },
+		orgId?: string
 	): Promise<AuthenticatedUser> {
-		const permissions = await AuthEndpoints.getUserPermissions(profile.id);
+		const permissions = await AuthEndpoints.getUserPermissions(profile.id, orgId);
 		return {
 			id: profile.id,
 			providerId: profile.id,
@@ -453,18 +571,52 @@ export class AuthEndpoints {
 			email: profile.email,
 			avatar: profile.avatar,
 			permissions,
+			orgId,
 		};
 	}
 
-	private static async getUserPermissions(userId: string): Promise<string[]> {
+	private static async getUserPermissions(userId: string, orgId?: string): Promise<string[]> {
 		if (!AuthEndpoints.deps.identityService) return ["public.read"];
 
 		try {
 			const permissions = AuthEndpoints.deps.identityService.permissions;
-			const resolved = await permissions.resolvePermissions(userId);
+			const resolved = await permissions.resolvePermissions(userId, orgId);
 			return resolved.map((p: { resource: string; scope: number; action: number }) => `${p.resource}.${p.scope}.${p.action}`);
 		} catch {
 			return ["public.read"];
 		}
+	}
+
+	/**
+	 * Resuelve el slug de una organización a partir de su ID
+	 */
+	private static async resolveOrgSlug(orgId: string): Promise<string | undefined> {
+		if (!AuthEndpoints.deps.identityService) return undefined;
+		try {
+			const org = await AuthEndpoints.deps.identityService.organizations.getOrganization(orgId);
+			return org?.slug;
+		} catch {
+			return undefined;
+		}
+	}
+
+	/**
+	 * Obtiene las opciones de organización para un usuario
+	 */
+	private static async getUserOrgOptions(user: User): Promise<{ orgId: string; slug: string }[]> {
+		if (!AuthEndpoints.deps.identityService || !user.orgMemberships?.length) return [];
+
+		const orgOptions: { orgId: string; slug: string }[] = [];
+		for (const membership of user.orgMemberships) {
+			try {
+				const org = await AuthEndpoints.deps.identityService.organizations.getOrganization(membership.orgId);
+				if (org && org.status === "active") {
+					orgOptions.push({ orgId: org.orgId, slug: org.slug });
+				}
+			} catch {
+				/* org no encontrada */
+			}
+		}
+		return orgOptions;
 	}
 }

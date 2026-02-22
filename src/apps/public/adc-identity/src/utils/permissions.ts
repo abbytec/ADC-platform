@@ -33,10 +33,14 @@ export function hasPermission(scopes: IdentityScopeFromApi[], requiredAction: nu
 }
 
 /**
- * Filters tabs based on user's permissions
+ * Filters tabs based on user's permissions.
+ * When orgId is set (org mode), organizations and regions tabs are hidden.
  */
-export function getVisibleTabs(scopes: IdentityScopeFromApi[]): IdentityTab[] {
-	return IDENTITY_TABS.filter((tab) => hasPermission(scopes, tab.requiredAction, tab.requiredScope));
+export function getVisibleTabs(scopes: IdentityScopeFromApi[], orgId?: string): IdentityTab[] {
+	return IDENTITY_TABS.filter((tab) => {
+		if (orgId && (tab.id === "organizations" || tab.id === "regions")) return false;
+		return hasPermission(scopes, tab.requiredAction, tab.requiredScope);
+	});
 }
 
 /**

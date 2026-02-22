@@ -18,7 +18,8 @@ export class RoleEndpoints {
 		permissions: ["identity.4.1"],
 	})
 	static async listRoles(ctx: EndpointCtx) {
-		return RoleEndpoints.#identity.roles.getAllRoles(ctx.token!);
+		const orgId = ctx.user?.orgId;
+		return RoleEndpoints.#identity.roles.getAllRoles(ctx.token!, orgId);
 	}
 
 	@RegisterEndpoint({
@@ -41,7 +42,8 @@ export class RoleEndpoints {
 		if (!ctx.data?.name) {
 			throw new HttpError(400, "MISSING_FIELDS", "name es requerido");
 		}
-		return RoleEndpoints.#identity.roles.createRole(ctx.data.name, ctx.data.description || "", ctx.data.permissions, ctx.token!);
+		const orgId = ctx.user?.orgId;
+		return RoleEndpoints.#identity.roles.createRole(ctx.data.name, ctx.data.description || "", ctx.data.permissions, ctx.token!, orgId);
 	}
 
 	@RegisterEndpoint({

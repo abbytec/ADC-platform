@@ -50,8 +50,9 @@ export class RoleManager {
 	/**
 	 * Crea un rol personalizado
 	 * @param token Token de autenticación (requerido para verificar permisos)
+	 * @param orgId Organización a la que pertenece el rol (undefined = global)
 	 */
-	async createRole(name: string, description: string, permissions?: Permission[], token?: string): Promise<Role> {
+	async createRole(name: string, description: string, permissions?: Permission[], token?: string, orgId?: string): Promise<Role> {
 		if (token) {
 			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScope.ROLES);
 		}
@@ -64,6 +65,7 @@ export class RoleManager {
 				description,
 				permissions: permissions || [],
 				isCustom: true,
+				orgId: orgId || undefined,
 				createdAt: new Date(),
 			};
 
@@ -157,16 +159,20 @@ export class RoleManager {
 	}
 
 	/**
-	 * Obtiene todos los roles
+	 * Obtiene todos los roles, opcionalmente filtrados por orgId
 	 * @param token Token de autenticación (requerido para verificar permisos)
+	 * @param orgId Si se proporciona, retorna roles globales (sin orgId) + roles de esta org
 	 */
-	async getAllRoles(token?: string): Promise<Role[]> {
+	async getAllRoles(token?: string, orgId?: string): Promise<Role[]> {
 		if (token) {
 			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.ROLES);
 		}
 
 		try {
-			const docs = await this.roleModel.find({});
+			// Con orgId: roles predefinidos (isCustom: false) + roles custom de esta org
+			// Sin orgId (admin): todos
+			const filter = orgId ? { $or: [{ isCustom: false }, { orgId }] } : {};
+			const docs = await this.roleModel.find(filter);
 			return docs.map((d: any) => d.toObject?.() || d);
 		} catch (error) {
 			this.logger.logError(`Error obteniendo roles: ${error}`);
