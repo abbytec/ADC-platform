@@ -1,5 +1,6 @@
 import { Component, Prop, h } from "@stencil/core";
 import type { AccessMenuItem } from "../../molecules/adc-access-button/adc-access-button.js";
+import { isPrivateHost } from "../../../utils/url.js";
 
 export interface NavItem {
 	label: string;
@@ -19,8 +20,8 @@ export class AdcSiteHeader {
 	@Prop() authUrl: string =
 		`${globalThis.location?.protocol}//auth.adigitalcafe.com${globalThis.location?.port ? `:${globalThis.location?.port}` : ""}`;
 
-	/** URL base de la API (en dev: http://localhost:3000, en prod: vacío) */
-	@Prop() apiBaseUrl: string = ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname)
+	/** URL base de la API (en dev: http://hostname:3000, en prod: vacío) */
+	@Prop() apiBaseUrl: string = isPrivateHost(globalThis.location?.hostname ?? "")
 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000`
 		: "";
 
