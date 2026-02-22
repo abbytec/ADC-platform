@@ -12,6 +12,7 @@ import {
 	type EndpointHandler,
 } from "./types.js";
 import ADCCustomError from "@common/types/ADCCustomError.js";
+import { humanizePermission } from "@common/types/identity.js";
 import { setPermissionValidator } from "./decorators.js";
 import SessionManagerService from "../../security/SessionManagerService/index.ts";
 // Re-exportar decoradores para uso externo
@@ -364,18 +365,38 @@ export default class EndpointManagerService extends BaseService {
 
 			// Verificar que el usuario tiene al menos uno de los permisos requeridos
 			const hasPermission = requiredPermissions.some((perm) => {
+				// 1. Match exacto
 				if (userPermissions.has(perm)) return true;
+				// 2. Wildcard parcial (e.g. "identity.4.*")
 				const wildcardPerm = perm.split(".").slice(0, -1).join(".") + ".*";
 				if (userPermissions.has(wildcardPerm)) return true;
+				// 3. Super-wildcard
 				if (userPermissions.has("*")) return true;
+				// 4. Bitwise: "identity.127.15" cubre "identity.4.1"
+				const reqParts = perm.split(".");
+				if (reqParts.length === 3) {
+					const reqScope = Number(reqParts[1]);
+					const reqAction = Number(reqParts[2]);
+					if (!Number.isNaN(reqScope) && !Number.isNaN(reqAction)) {
+						for (const up of userPermissions) {
+							const upParts = up.split(".");
+							if (upParts.length !== 3 || upParts[0] !== reqParts[0]) continue;
+							const upScope = Number(upParts[1]);
+							const upAction = Number(upParts[2]);
+							if (Number.isNaN(upScope) || Number.isNaN(upAction)) continue;
+							if ((upScope & reqScope) === reqScope && (upAction & reqAction) === reqAction) return true;
+						}
+					}
+				}
 				return false;
 			});
 
 			if (!hasPermission) {
+				const readable = requiredPermissions.map(humanizePermission);
 				return {
 					valid: false,
 					user,
-					error: `Permisos insuficientes. Requerido: ${requiredPermissions.join(" o ")}`,
+					error: `Permisos insuficientes. Requerido: ${readable.join(" o ")}`,
 				};
 			}
 

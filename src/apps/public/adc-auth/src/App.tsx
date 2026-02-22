@@ -3,38 +3,36 @@ import { useState, useEffect } from "react";
 import { Login } from "./pages/Login.tsx";
 import { Register } from "./pages/Register.tsx";
 import { AuthLayout } from "./components/AuthLayout.tsx";
+import { getUrl } from "@common/utils/url-utils.js";
 
 type Page = "login" | "register";
 
-/**
- * Obtiene el originPath desde la URL (query param ?originPath=...)
- * Este es el path al que redirigir tras login/register exitoso
- */
-function getOriginPath(): string {
+/** URL base del sitio principal según entorno */
+const DEFAULT_RETURN_URL = getUrl(3011, "community.adigitalcafe.com");
+
+function getReturnUrl(): string {
 	const params = new URLSearchParams(globalThis.location?.search);
-	return params.get("originPath") || "/";
+	return params.get("returnUrl") || DEFAULT_RETURN_URL;
 }
 
 /**
- * Construye una URL preservando el originPath
+ * Construye una URL preservando el returnUrl
  */
-function buildUrl(path: string, originPath: string): string {
+function buildUrl(path: string, returnUrl: string): string {
 	const url = new URL(path, globalThis.location?.origin);
-	if (originPath && originPath !== "/") {
-		url.searchParams.set("originPath", originPath);
+	if (returnUrl && returnUrl !== DEFAULT_RETURN_URL) {
+		url.searchParams.set("returnUrl", returnUrl);
 	}
 	return url.pathname + url.search;
 }
 
 export default function App() {
 	const [page, setPage] = useState<Page>("login");
-	const [originPath, setOriginPath] = useState<string>("/");
+	const [returnUrl, setReturnUrl] = useState<string>(DEFAULT_RETURN_URL);
 
 	useEffect(() => {
 		const path = globalThis.location?.pathname;
-		const origin = getOriginPath();
-
-		setOriginPath(origin);
+		setReturnUrl(getReturnUrl());
 
 		if (path === "/register") {
 			setPage("register");
@@ -45,7 +43,7 @@ export default function App() {
 		const handlePopState = () => {
 			const newPath = globalThis.location?.pathname;
 			setPage(newPath === "/register" ? "register" : "login");
-			setOriginPath(getOriginPath());
+			setReturnUrl(getReturnUrl());
 		};
 
 		globalThis.addEventListener("popstate", handlePopState);
@@ -53,7 +51,7 @@ export default function App() {
 	}, []);
 
 	const navigate = (to: Page) => {
-		const newUrl = buildUrl(to === "register" ? "/register" : "/login", originPath);
+		const newUrl = buildUrl(to === "register" ? "/register" : "/login", returnUrl);
 		globalThis.history.pushState({}, "", newUrl);
 		setPage(to);
 	};
@@ -61,9 +59,9 @@ export default function App() {
 	return (
 		<AuthLayout>
 			{page === "login" ? (
-				<Login onNavigateToRegister={() => navigate("register")} originPath={originPath} />
+				<Login onNavigateToRegister={() => navigate("register")} returnUrl={returnUrl} />
 			) : (
-				<Register onNavigateToLogin={() => navigate("login")} originPath={originPath} />
+				<Register onNavigateToLogin={() => navigate("login")} returnUrl={returnUrl} />
 			)}
 		</AuthLayout>
 	);

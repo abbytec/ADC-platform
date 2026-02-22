@@ -15,7 +15,7 @@ import type { AuthenticatedUser, OAuthProviderConfig } from "../types.js";
 
 /** Nombre de las cookies */
 const STATE_COOKIE_NAME = "oauth_state";
-const ORIGIN_PATH_COOKIE_NAME = "oauth_origin_path";
+const RETURN_URL_COOKIE_NAME = "oauth_return_url";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -68,8 +68,8 @@ export class OAuthEndpoints {
 			throw new AuthError(500, "PROVIDER_CONFIG_NOT_FOUND", `Configuración del proveedor '${provider}' no encontrada`);
 		}
 
-		// Capturar originPath de query params para redirect post-auth
-		const originPath = ctx.query?.originPath || "/";
+		// Capturar returnUrl de query params para redirect post-auth
+		const returnUrl = ctx.query?.returnUrl || "";
 
 		// Generar state para CSRF protection
 		const state = OAuthEndpoints.deps.sessionManager.generateState();
@@ -89,11 +89,11 @@ export class OAuthEndpoints {
 			},
 		];
 
-		// Guardar originPath en cookie separada si no es "/"
-		if (originPath && originPath !== "/") {
+		// Guardar returnUrl en cookie separada si está presente
+		if (returnUrl) {
 			cookies.push({
-				name: ORIGIN_PATH_COOKIE_NAME,
-				value: originPath,
+				name: RETURN_URL_COOKIE_NAME,
+				value: returnUrl,
 				options: {
 					httpOnly: true,
 					secure: isProd,
@@ -123,7 +123,7 @@ export class OAuthEndpoints {
 		// Cookies a limpiar (siempre limpiar state cookies)
 		const clearCookies: ClearCookie[] = [
 			{ name: STATE_COOKIE_NAME, options: { path: "/" } },
-			{ name: ORIGIN_PATH_COOKIE_NAME, options: { path: "/" } },
+			{ name: RETURN_URL_COOKIE_NAME, options: { path: "/" } },
 		];
 
 		if (error) {
@@ -158,8 +158,8 @@ export class OAuthEndpoints {
 			});
 		}
 
-		// Obtener originPath de la cookie
-		const originPath = ctx.cookies?.[ORIGIN_PATH_COOKIE_NAME] || "/";
+		// Obtener returnUrl de la cookie
+		const returnUrl = ctx.cookies?.[RETURN_URL_COOKIE_NAME] || "";
 
 		const oauthProvider = OAuthEndpoints.deps.oauthRegistry.get(provider);
 		if (!oauthProvider) {
@@ -181,8 +181,8 @@ export class OAuthEndpoints {
 
 			const tokenCookies = await OAuthEndpoints.getTokenCookies(ctx, user);
 
-			// Redirigir al originPath o al default
-			const redirectUrl = OAuthEndpoints.getRedirectUrl(user, originPath);
+			// Redirigir al returnUrl o al default
+			const redirectUrl = OAuthEndpoints.getRedirectUrl(user, returnUrl);
 			throw UncommonResponse.redirect(redirectUrl, {
 				status: 302,
 				cookies: tokenCookies,
@@ -257,13 +257,10 @@ export class OAuthEndpoints {
 		return `device_${Math.abs(hash).toString(36)}`;
 	}
 
-	private static getRedirectUrl(user: AuthenticatedUser, originPath?: string): string {
+	private static getRedirectUrl(user: AuthenticatedUser, returnUrl?: string): string {
+		if (returnUrl) return returnUrl;
+
 		const baseUrl = user.orgId ? `https://${user.orgId}.adigitalcafe.com` : OAuthEndpoints.deps.defaultRedirectUrl;
-
-		if (originPath && originPath !== "/") {
-			return `${baseUrl}${originPath}`;
-		}
-
 		return baseUrl;
 	}
 

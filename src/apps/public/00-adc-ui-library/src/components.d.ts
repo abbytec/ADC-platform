@@ -11,12 +11,14 @@ import { DropdownMenuItem } from "./components/molecules/adc-dropdown-menu/adc-d
 import { InlineToken } from "./components/atoms/adc-inline-tokens/adc-inline-tokens";
 import { SelectOption } from "./components/atoms/adc-select/adc-select";
 import { AccessMenuItem as AccessMenuItem1 } from "./components/molecules/adc-access-button/adc-access-button.js";
+import { TabItem } from "./components/atoms/adc-tabs/adc-tabs";
 export { AccessMenuItem } from "./components/molecules/adc-access-button/adc-access-button";
 export { Block } from "./components/organisms/adc-blocks-renderer/adc-blocks-renderer";
 export { DropdownMenuItem } from "./components/molecules/adc-dropdown-menu/adc-dropdown-menu";
 export { InlineToken } from "./components/atoms/adc-inline-tokens/adc-inline-tokens";
 export { SelectOption } from "./components/atoms/adc-select/adc-select";
 export { AccessMenuItem as AccessMenuItem1 } from "./components/molecules/adc-access-button/adc-access-button.js";
+export { TabItem } from "./components/atoms/adc-tabs/adc-tabs";
 export namespace Components {
     /**
      * Botón de acceso que muestra:
@@ -59,6 +61,29 @@ export namespace Components {
           * @default "/api/auth/session"
          */
         "sessionApiUrl": string;
+    }
+    interface AdcAppsMenu {
+        /**
+          * Override default apps list (JSON array of AppMenuItem)
+         */
+        "apps"?: string;
+    }
+    interface AdcBadge {
+        /**
+          * Badge color
+          * @default "gray"
+         */
+        "color": "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "purple" | "pink";
+        /**
+          * Whether to show a dot indicator
+          * @default false
+         */
+        "dot": boolean;
+        /**
+          * Badge size
+          * @default "md"
+         */
+        "size": "sm" | "md";
     }
     interface AdcBlocksRenderer {
         /**
@@ -121,6 +146,11 @@ export namespace Components {
           * @default "button"
          */
         "type": "button" | "submit" | "reset";
+        /**
+          * Visual variant
+          * @default "default"
+         */
+        "variant": "default" | "danger";
     }
     interface AdcCallout {
         /**
@@ -211,6 +241,18 @@ export namespace Components {
          */
         "title": string;
     }
+    interface AdcIconAppCommunity {
+        /**
+          * @default "1.75rem"
+         */
+        "size": string;
+    }
+    interface AdcIconAppIdentity {
+        /**
+          * @default "1.75rem"
+         */
+        "size": string;
+    }
     interface AdcIconCommunity {
         /**
           * @default "2rem"
@@ -279,6 +321,10 @@ export namespace Components {
          */
         "autocomplete"?: string;
         /**
+          * @default false
+         */
+        "disabled"?: boolean;
+        /**
           * @default ""
          */
         "inputId"?: string;
@@ -298,6 +344,42 @@ export namespace Components {
           * @default ""
          */
         "value": string;
+    }
+    interface AdcLayout {
+        "apiBaseUrl"?: string;
+        "authUrl"?: string;
+        /**
+          * @default "Abby's Digital Cafe"
+         */
+        "brandName": string;
+        /**
+          * @default "Una taza de código con tintes de amistad"
+         */
+        "brandSlogan": string;
+        /**
+          * @default "https://abbytec.dev.ar/"
+         */
+        "creatorHref": string;
+        /**
+          * @default "Abbytec"
+         */
+        "creatorName": string;
+        /**
+          * @default "/"
+         */
+        "homeHref": string;
+        /**
+          * @default "ADC"
+         */
+        "logoAlt": string;
+        /**
+          * @default "/ui/images/mini-logo.webp"
+         */
+        "logoSrc": string;
+        /**
+          * @default true
+         */
+        "showAccessButton": boolean;
     }
     interface AdcListBlock {
         "ariaLabel"?: string;
@@ -322,6 +404,50 @@ export namespace Components {
           * @default ""
          */
         "title": string;
+    }
+    interface AdcModal {
+        /**
+          * Whether clicking the backdrop closes the modal
+          * @default true
+         */
+        "dismissOnBackdrop": boolean;
+        /**
+          * Whether pressing Escape closes the modal
+          * @default true
+         */
+        "dismissOnEscape": boolean;
+        /**
+          * Modal title
+          * @default ""
+         */
+        "modalTitle": string;
+        /**
+          * Whether the modal is visible
+          * @default false
+         */
+        "open": boolean;
+        /**
+          * Size variant
+          * @default "md"
+         */
+        "size": "sm" | "md" | "lg";
+    }
+    interface AdcPagination {
+        /**
+          * Current page (1-indexed)
+          * @default 1
+         */
+        "currentPage": number;
+        /**
+          * Max visible page buttons
+          * @default 5
+         */
+        "maxVisible": number;
+        /**
+          * Total number of pages
+          * @default 1
+         */
+        "totalPages": number;
     }
     interface AdcQuote {
         /**
@@ -517,6 +643,23 @@ export namespace Components {
          */
         "rows": string[][];
     }
+    interface AdcTabs {
+        /**
+          * Currently active tab ID
+          * @default ""
+         */
+        "activeTab": string;
+        /**
+          * Tab items to display
+          * @default []
+         */
+        "tabs": TabItem[] | string;
+        /**
+          * Visual variant
+          * @default "underline"
+         */
+        "variant": "underline" | "pills";
+    }
     interface AdcTestimonialCard {
         /**
           * @default ""
@@ -536,6 +679,33 @@ export namespace Components {
           * @default true
          */
         "staticRender": boolean;
+    }
+    interface AdcToggle {
+        /**
+          * Accessible name
+         */
+        "ariaLabel"?: string;
+        /**
+          * Whether the toggle is checked
+          * @default false
+         */
+        "checked": boolean;
+        /**
+          * Whether the toggle is disabled
+          * @default false
+         */
+        "disabled": boolean;
+        /**
+          * Label text
+         */
+        "label"?: string;
+    }
+    interface AdcToggleBadge {
+        /**
+          * Whether the badge is in the active/selected state
+          * @default false
+         */
+        "active": boolean;
     }
     /**
      * Componente YouTube Facade para carga perezosa de videos
@@ -586,6 +756,14 @@ export interface AdcLpBadgeCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcLpBadgeElement;
 }
+export interface AdcModalCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcModalElement;
+}
+export interface AdcPaginationCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcPaginationElement;
+}
 export interface AdcSearchInputCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcSearchInputElement;
@@ -597,6 +775,18 @@ export interface AdcSelectCustomEvent<T> extends CustomEvent<T> {
 export interface AdcStarRatingCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcStarRatingElement;
+}
+export interface AdcTabsCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcTabsElement;
+}
+export interface AdcToggleCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcToggleElement;
+}
+export interface AdcToggleBadgeCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcToggleBadgeElement;
 }
 declare global {
     interface HTMLAdcAccessButtonElementEventMap {
@@ -621,6 +811,18 @@ declare global {
     var HTMLAdcAccessButtonElement: {
         prototype: HTMLAdcAccessButtonElement;
         new (): HTMLAdcAccessButtonElement;
+    };
+    interface HTMLAdcAppsMenuElement extends Components.AdcAppsMenu, HTMLStencilElement {
+    }
+    var HTMLAdcAppsMenuElement: {
+        prototype: HTMLAdcAppsMenuElement;
+        new (): HTMLAdcAppsMenuElement;
+    };
+    interface HTMLAdcBadgeElement extends Components.AdcBadge, HTMLStencilElement {
+    }
+    var HTMLAdcBadgeElement: {
+        prototype: HTMLAdcBadgeElement;
+        new (): HTMLAdcBadgeElement;
     };
     interface HTMLAdcBlocksRendererElement extends Components.AdcBlocksRenderer, HTMLStencilElement {
     }
@@ -736,6 +938,18 @@ declare global {
         prototype: HTMLAdcFeatureCardElement;
         new (): HTMLAdcFeatureCardElement;
     };
+    interface HTMLAdcIconAppCommunityElement extends Components.AdcIconAppCommunity, HTMLStencilElement {
+    }
+    var HTMLAdcIconAppCommunityElement: {
+        prototype: HTMLAdcIconAppCommunityElement;
+        new (): HTMLAdcIconAppCommunityElement;
+    };
+    interface HTMLAdcIconAppIdentityElement extends Components.AdcIconAppIdentity, HTMLStencilElement {
+    }
+    var HTMLAdcIconAppIdentityElement: {
+        prototype: HTMLAdcIconAppIdentityElement;
+        new (): HTMLAdcIconAppIdentityElement;
+    };
     interface HTMLAdcIconCommunityElement extends Components.AdcIconCommunity, HTMLStencilElement {
     }
     var HTMLAdcIconCommunityElement: {
@@ -796,6 +1010,12 @@ declare global {
         prototype: HTMLAdcInputElement;
         new (): HTMLAdcInputElement;
     };
+    interface HTMLAdcLayoutElement extends Components.AdcLayout, HTMLStencilElement {
+    }
+    var HTMLAdcLayoutElement: {
+        prototype: HTMLAdcLayoutElement;
+        new (): HTMLAdcLayoutElement;
+    };
     interface HTMLAdcListBlockElement extends Components.AdcListBlock, HTMLStencilElement {
     }
     var HTMLAdcListBlockElement: {
@@ -818,6 +1038,40 @@ declare global {
     var HTMLAdcLpBadgeElement: {
         prototype: HTMLAdcLpBadgeElement;
         new (): HTMLAdcLpBadgeElement;
+    };
+    interface HTMLAdcModalElementEventMap {
+        "adcClose": void;
+    }
+    interface HTMLAdcModalElement extends Components.AdcModal, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcModalElementEventMap>(type: K, listener: (this: HTMLAdcModalElement, ev: AdcModalCustomEvent<HTMLAdcModalElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcModalElementEventMap>(type: K, listener: (this: HTMLAdcModalElement, ev: AdcModalCustomEvent<HTMLAdcModalElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcModalElement: {
+        prototype: HTMLAdcModalElement;
+        new (): HTMLAdcModalElement;
+    };
+    interface HTMLAdcPaginationElementEventMap {
+        "adcPageChange": number;
+    }
+    interface HTMLAdcPaginationElement extends Components.AdcPagination, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcPaginationElementEventMap>(type: K, listener: (this: HTMLAdcPaginationElement, ev: AdcPaginationCustomEvent<HTMLAdcPaginationElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcPaginationElementEventMap>(type: K, listener: (this: HTMLAdcPaginationElement, ev: AdcPaginationCustomEvent<HTMLAdcPaginationElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcPaginationElement: {
+        prototype: HTMLAdcPaginationElement;
+        new (): HTMLAdcPaginationElement;
     };
     interface HTMLAdcQuoteElement extends Components.AdcQuote, HTMLStencilElement {
     }
@@ -914,6 +1168,23 @@ declare global {
         prototype: HTMLAdcTableBlockElement;
         new (): HTMLAdcTableBlockElement;
     };
+    interface HTMLAdcTabsElementEventMap {
+        "adcTabChange": string;
+    }
+    interface HTMLAdcTabsElement extends Components.AdcTabs, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcTabsElementEventMap>(type: K, listener: (this: HTMLAdcTabsElement, ev: AdcTabsCustomEvent<HTMLAdcTabsElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcTabsElementEventMap>(type: K, listener: (this: HTMLAdcTabsElement, ev: AdcTabsCustomEvent<HTMLAdcTabsElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcTabsElement: {
+        prototype: HTMLAdcTabsElement;
+        new (): HTMLAdcTabsElement;
+    };
     interface HTMLAdcTestimonialCardElement extends Components.AdcTestimonialCard, HTMLStencilElement {
     }
     var HTMLAdcTestimonialCardElement: {
@@ -925,6 +1196,40 @@ declare global {
     var HTMLAdcTextElement: {
         prototype: HTMLAdcTextElement;
         new (): HTMLAdcTextElement;
+    };
+    interface HTMLAdcToggleElementEventMap {
+        "adcChange": boolean;
+    }
+    interface HTMLAdcToggleElement extends Components.AdcToggle, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcToggleElementEventMap>(type: K, listener: (this: HTMLAdcToggleElement, ev: AdcToggleCustomEvent<HTMLAdcToggleElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcToggleElementEventMap>(type: K, listener: (this: HTMLAdcToggleElement, ev: AdcToggleCustomEvent<HTMLAdcToggleElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcToggleElement: {
+        prototype: HTMLAdcToggleElement;
+        new (): HTMLAdcToggleElement;
+    };
+    interface HTMLAdcToggleBadgeElementEventMap {
+        "adcToggle": void;
+    }
+    interface HTMLAdcToggleBadgeElement extends Components.AdcToggleBadge, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcToggleBadgeElementEventMap>(type: K, listener: (this: HTMLAdcToggleBadgeElement, ev: AdcToggleBadgeCustomEvent<HTMLAdcToggleBadgeElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcToggleBadgeElementEventMap>(type: K, listener: (this: HTMLAdcToggleBadgeElement, ev: AdcToggleBadgeCustomEvent<HTMLAdcToggleBadgeElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcToggleBadgeElement: {
+        prototype: HTMLAdcToggleBadgeElement;
+        new (): HTMLAdcToggleBadgeElement;
     };
     /**
      * Componente YouTube Facade para carga perezosa de videos
@@ -939,6 +1244,8 @@ declare global {
     };
     interface HTMLElementTagNameMap {
         "adc-access-button": HTMLAdcAccessButtonElement;
+        "adc-apps-menu": HTMLAdcAppsMenuElement;
+        "adc-badge": HTMLAdcBadgeElement;
         "adc-blocks-renderer": HTMLAdcBlocksRendererElement;
         "adc-blur-panel": HTMLAdcBlurPanelElement;
         "adc-button": HTMLAdcButtonElement;
@@ -950,6 +1257,8 @@ declare global {
         "adc-divider": HTMLAdcDividerElement;
         "adc-dropdown-menu": HTMLAdcDropdownMenuElement;
         "adc-feature-card": HTMLAdcFeatureCardElement;
+        "adc-icon-app-community": HTMLAdcIconAppCommunityElement;
+        "adc-icon-app-identity": HTMLAdcIconAppIdentityElement;
         "adc-icon-community": HTMLAdcIconCommunityElement;
         "adc-icon-learning": HTMLAdcIconLearningElement;
         "adc-icon-left-arrow": HTMLAdcIconLeftArrowElement;
@@ -960,8 +1269,11 @@ declare global {
         "adc-icon-vip": HTMLAdcIconVipElement;
         "adc-inline-tokens": HTMLAdcInlineTokensElement;
         "adc-input": HTMLAdcInputElement;
+        "adc-layout": HTMLAdcLayoutElement;
         "adc-list-block": HTMLAdcListBlockElement;
         "adc-lp-badge": HTMLAdcLpBadgeElement;
+        "adc-modal": HTMLAdcModalElement;
+        "adc-pagination": HTMLAdcPaginationElement;
         "adc-quote": HTMLAdcQuoteElement;
         "adc-search-input": HTMLAdcSearchInputElement;
         "adc-select": HTMLAdcSelectElement;
@@ -971,8 +1283,11 @@ declare global {
         "adc-skeleton": HTMLAdcSkeletonElement;
         "adc-star-rating": HTMLAdcStarRatingElement;
         "adc-table-block": HTMLAdcTableBlockElement;
+        "adc-tabs": HTMLAdcTabsElement;
         "adc-testimonial-card": HTMLAdcTestimonialCardElement;
         "adc-text": HTMLAdcTextElement;
+        "adc-toggle": HTMLAdcToggleElement;
+        "adc-toggle-badge": HTMLAdcToggleBadgeElement;
         "adc-youtube-facade": HTMLAdcYoutubeFacadeElement;
     }
 }
@@ -1026,6 +1341,29 @@ declare namespace LocalJSX {
           * @default "/api/auth/session"
          */
         "sessionApiUrl"?: string;
+    }
+    interface AdcAppsMenu {
+        /**
+          * Override default apps list (JSON array of AppMenuItem)
+         */
+        "apps"?: string;
+    }
+    interface AdcBadge {
+        /**
+          * Badge color
+          * @default "gray"
+         */
+        "color"?: "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "purple" | "pink";
+        /**
+          * Whether to show a dot indicator
+          * @default false
+         */
+        "dot"?: boolean;
+        /**
+          * Badge size
+          * @default "md"
+         */
+        "size"?: "sm" | "md";
     }
     interface AdcBlocksRenderer {
         /**
@@ -1090,6 +1428,11 @@ declare namespace LocalJSX {
           * @default "button"
          */
         "type"?: "button" | "submit" | "reset";
+        /**
+          * Visual variant
+          * @default "default"
+         */
+        "variant"?: "default" | "danger";
     }
     interface AdcCallout {
         /**
@@ -1182,6 +1525,18 @@ declare namespace LocalJSX {
          */
         "title"?: string;
     }
+    interface AdcIconAppCommunity {
+        /**
+          * @default "1.75rem"
+         */
+        "size"?: string;
+    }
+    interface AdcIconAppIdentity {
+        /**
+          * @default "1.75rem"
+         */
+        "size"?: string;
+    }
     interface AdcIconCommunity {
         /**
           * @default "2rem"
@@ -1250,6 +1605,10 @@ declare namespace LocalJSX {
          */
         "autocomplete"?: string;
         /**
+          * @default false
+         */
+        "disabled"?: boolean;
+        /**
           * @default ""
          */
         "inputId"?: string;
@@ -1269,6 +1628,42 @@ declare namespace LocalJSX {
           * @default ""
          */
         "value"?: string;
+    }
+    interface AdcLayout {
+        "apiBaseUrl"?: string;
+        "authUrl"?: string;
+        /**
+          * @default "Abby's Digital Cafe"
+         */
+        "brandName"?: string;
+        /**
+          * @default "Una taza de código con tintes de amistad"
+         */
+        "brandSlogan"?: string;
+        /**
+          * @default "https://abbytec.dev.ar/"
+         */
+        "creatorHref"?: string;
+        /**
+          * @default "Abbytec"
+         */
+        "creatorName"?: string;
+        /**
+          * @default "/"
+         */
+        "homeHref"?: string;
+        /**
+          * @default "ADC"
+         */
+        "logoAlt"?: string;
+        /**
+          * @default "/ui/images/mini-logo.webp"
+         */
+        "logoSrc"?: string;
+        /**
+          * @default true
+         */
+        "showAccessButton"?: boolean;
     }
     interface AdcListBlock {
         "ariaLabel"?: string;
@@ -1294,6 +1689,52 @@ declare namespace LocalJSX {
           * @default ""
          */
         "title"?: string;
+    }
+    interface AdcModal {
+        /**
+          * Whether clicking the backdrop closes the modal
+          * @default true
+         */
+        "dismissOnBackdrop"?: boolean;
+        /**
+          * Whether pressing Escape closes the modal
+          * @default true
+         */
+        "dismissOnEscape"?: boolean;
+        /**
+          * Modal title
+          * @default ""
+         */
+        "modalTitle"?: string;
+        "onAdcClose"?: (event: AdcModalCustomEvent<void>) => void;
+        /**
+          * Whether the modal is visible
+          * @default false
+         */
+        "open"?: boolean;
+        /**
+          * Size variant
+          * @default "md"
+         */
+        "size"?: "sm" | "md" | "lg";
+    }
+    interface AdcPagination {
+        /**
+          * Current page (1-indexed)
+          * @default 1
+         */
+        "currentPage"?: number;
+        /**
+          * Max visible page buttons
+          * @default 5
+         */
+        "maxVisible"?: number;
+        "onAdcPageChange"?: (event: AdcPaginationCustomEvent<number>) => void;
+        /**
+          * Total number of pages
+          * @default 1
+         */
+        "totalPages"?: number;
     }
     interface AdcQuote {
         /**
@@ -1492,6 +1933,24 @@ declare namespace LocalJSX {
          */
         "rows"?: string[][];
     }
+    interface AdcTabs {
+        /**
+          * Currently active tab ID
+          * @default ""
+         */
+        "activeTab"?: string;
+        "onAdcTabChange"?: (event: AdcTabsCustomEvent<string>) => void;
+        /**
+          * Tab items to display
+          * @default []
+         */
+        "tabs"?: TabItem[] | string;
+        /**
+          * Visual variant
+          * @default "underline"
+         */
+        "variant"?: "underline" | "pills";
+    }
     interface AdcTestimonialCard {
         /**
           * @default ""
@@ -1511,6 +1970,38 @@ declare namespace LocalJSX {
           * @default true
          */
         "staticRender"?: boolean;
+    }
+    interface AdcToggle {
+        /**
+          * Accessible name
+         */
+        "ariaLabel"?: string;
+        /**
+          * Whether the toggle is checked
+          * @default false
+         */
+        "checked"?: boolean;
+        /**
+          * Whether the toggle is disabled
+          * @default false
+         */
+        "disabled"?: boolean;
+        /**
+          * Label text
+         */
+        "label"?: string;
+        "onAdcChange"?: (event: AdcToggleCustomEvent<boolean>) => void;
+    }
+    interface AdcToggleBadge {
+        /**
+          * Whether the badge is in the active/selected state
+          * @default false
+         */
+        "active"?: boolean;
+        /**
+          * Emitted when tapped
+         */
+        "onAdcToggle"?: (event: AdcToggleBadgeCustomEvent<void>) => void;
     }
     /**
      * Componente YouTube Facade para carga perezosa de videos
@@ -1538,6 +2029,8 @@ declare namespace LocalJSX {
     }
     interface IntrinsicElements {
         "adc-access-button": AdcAccessButton;
+        "adc-apps-menu": AdcAppsMenu;
+        "adc-badge": AdcBadge;
         "adc-blocks-renderer": AdcBlocksRenderer;
         "adc-blur-panel": AdcBlurPanel;
         "adc-button": AdcButton;
@@ -1549,6 +2042,8 @@ declare namespace LocalJSX {
         "adc-divider": AdcDivider;
         "adc-dropdown-menu": AdcDropdownMenu;
         "adc-feature-card": AdcFeatureCard;
+        "adc-icon-app-community": AdcIconAppCommunity;
+        "adc-icon-app-identity": AdcIconAppIdentity;
         "adc-icon-community": AdcIconCommunity;
         "adc-icon-learning": AdcIconLearning;
         "adc-icon-left-arrow": AdcIconLeftArrow;
@@ -1559,8 +2054,11 @@ declare namespace LocalJSX {
         "adc-icon-vip": AdcIconVip;
         "adc-inline-tokens": AdcInlineTokens;
         "adc-input": AdcInput;
+        "adc-layout": AdcLayout;
         "adc-list-block": AdcListBlock;
         "adc-lp-badge": AdcLpBadge;
+        "adc-modal": AdcModal;
+        "adc-pagination": AdcPagination;
         "adc-quote": AdcQuote;
         "adc-search-input": AdcSearchInput;
         "adc-select": AdcSelect;
@@ -1570,8 +2068,11 @@ declare namespace LocalJSX {
         "adc-skeleton": AdcSkeleton;
         "adc-star-rating": AdcStarRating;
         "adc-table-block": AdcTableBlock;
+        "adc-tabs": AdcTabs;
         "adc-testimonial-card": AdcTestimonialCard;
         "adc-text": AdcText;
+        "adc-toggle": AdcToggle;
+        "adc-toggle-badge": AdcToggleBadge;
         "adc-youtube-facade": AdcYoutubeFacade;
     }
 }
@@ -1585,6 +2086,8 @@ declare module "@stencil/core" {
              * - Si no logueado: botón "Ingresar" que redirige a auth
              */
             "adc-access-button": LocalJSX.AdcAccessButton & JSXBase.HTMLAttributes<HTMLAdcAccessButtonElement>;
+            "adc-apps-menu": LocalJSX.AdcAppsMenu & JSXBase.HTMLAttributes<HTMLAdcAppsMenuElement>;
+            "adc-badge": LocalJSX.AdcBadge & JSXBase.HTMLAttributes<HTMLAdcBadgeElement>;
             "adc-blocks-renderer": LocalJSX.AdcBlocksRenderer & JSXBase.HTMLAttributes<HTMLAdcBlocksRendererElement>;
             /**
              * Panel con efecto glassmorphism/blur
@@ -1600,6 +2103,8 @@ declare module "@stencil/core" {
             "adc-divider": LocalJSX.AdcDivider & JSXBase.HTMLAttributes<HTMLAdcDividerElement>;
             "adc-dropdown-menu": LocalJSX.AdcDropdownMenu & JSXBase.HTMLAttributes<HTMLAdcDropdownMenuElement>;
             "adc-feature-card": LocalJSX.AdcFeatureCard & JSXBase.HTMLAttributes<HTMLAdcFeatureCardElement>;
+            "adc-icon-app-community": LocalJSX.AdcIconAppCommunity & JSXBase.HTMLAttributes<HTMLAdcIconAppCommunityElement>;
+            "adc-icon-app-identity": LocalJSX.AdcIconAppIdentity & JSXBase.HTMLAttributes<HTMLAdcIconAppIdentityElement>;
             "adc-icon-community": LocalJSX.AdcIconCommunity & JSXBase.HTMLAttributes<HTMLAdcIconCommunityElement>;
             "adc-icon-learning": LocalJSX.AdcIconLearning & JSXBase.HTMLAttributes<HTMLAdcIconLearningElement>;
             "adc-icon-left-arrow": LocalJSX.AdcIconLeftArrow & JSXBase.HTMLAttributes<HTMLAdcIconLeftArrowElement>;
@@ -1610,8 +2115,11 @@ declare module "@stencil/core" {
             "adc-icon-vip": LocalJSX.AdcIconVip & JSXBase.HTMLAttributes<HTMLAdcIconVipElement>;
             "adc-inline-tokens": LocalJSX.AdcInlineTokens & JSXBase.HTMLAttributes<HTMLAdcInlineTokensElement>;
             "adc-input": LocalJSX.AdcInput & JSXBase.HTMLAttributes<HTMLAdcInputElement>;
+            "adc-layout": LocalJSX.AdcLayout & JSXBase.HTMLAttributes<HTMLAdcLayoutElement>;
             "adc-list-block": LocalJSX.AdcListBlock & JSXBase.HTMLAttributes<HTMLAdcListBlockElement>;
             "adc-lp-badge": LocalJSX.AdcLpBadge & JSXBase.HTMLAttributes<HTMLAdcLpBadgeElement>;
+            "adc-modal": LocalJSX.AdcModal & JSXBase.HTMLAttributes<HTMLAdcModalElement>;
+            "adc-pagination": LocalJSX.AdcPagination & JSXBase.HTMLAttributes<HTMLAdcPaginationElement>;
             "adc-quote": LocalJSX.AdcQuote & JSXBase.HTMLAttributes<HTMLAdcQuoteElement>;
             "adc-search-input": LocalJSX.AdcSearchInput & JSXBase.HTMLAttributes<HTMLAdcSearchInputElement>;
             "adc-select": LocalJSX.AdcSelect & JSXBase.HTMLAttributes<HTMLAdcSelectElement>;
@@ -1629,8 +2137,11 @@ declare module "@stencil/core" {
             "adc-skeleton": LocalJSX.AdcSkeleton & JSXBase.HTMLAttributes<HTMLAdcSkeletonElement>;
             "adc-star-rating": LocalJSX.AdcStarRating & JSXBase.HTMLAttributes<HTMLAdcStarRatingElement>;
             "adc-table-block": LocalJSX.AdcTableBlock & JSXBase.HTMLAttributes<HTMLAdcTableBlockElement>;
+            "adc-tabs": LocalJSX.AdcTabs & JSXBase.HTMLAttributes<HTMLAdcTabsElement>;
             "adc-testimonial-card": LocalJSX.AdcTestimonialCard & JSXBase.HTMLAttributes<HTMLAdcTestimonialCardElement>;
             "adc-text": LocalJSX.AdcText & JSXBase.HTMLAttributes<HTMLAdcTextElement>;
+            "adc-toggle": LocalJSX.AdcToggle & JSXBase.HTMLAttributes<HTMLAdcToggleElement>;
+            "adc-toggle-badge": LocalJSX.AdcToggleBadge & JSXBase.HTMLAttributes<HTMLAdcToggleBadgeElement>;
             /**
              * Componente YouTube Facade para carga perezosa de videos
              * Muestra una thumbnail clickeable en lugar de cargar el iframe inmediatamente

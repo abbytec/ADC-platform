@@ -13,6 +13,9 @@ export const getBinPath = (binary: string) => path.join(process.cwd(), "node_mod
 /** Normaliza un path para usarlo en configuraciones (escapa backslashes en Windows) */
 export const normalizeForConfig = (filePath: string) => filePath.replace(/\\/g, "\\\\");
 
+/** Obtiene el directorio public/ común (fallback para assets compartidos como favicon) */
+export const getCommonPublicDir = () => path.resolve(process.cwd(), "src", "common", "public");
+
 /**
  * Obtiene el hostname/IP del servidor para URLs accesibles desde la red.
  * Prioridad:

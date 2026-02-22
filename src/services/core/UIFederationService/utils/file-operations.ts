@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { spawn } from "node:child_process";
+import { getCommonPublicDir } from "./path-resolver.js";
 
 /**
  * Copia un directorio recursivamente
@@ -14,18 +15,30 @@ export async function copyDirectory(source: string, target: string): Promise<voi
 		const sourcePath = path.join(source, entry.name);
 		const targetPath = path.join(target, entry.name);
 
-		if (entry.isDirectory()) {
-			await copyDirectory(sourcePath, targetPath);
-		} else {
-			await fs.copyFile(sourcePath, targetPath);
-		}
+		if (entry.isDirectory()) await copyDirectory(sourcePath, targetPath);
+		else await fs.copyFile(sourcePath, targetPath);
 	}
 }
 
 /**
- * Copia archivos públicos de una app al output
+ * Copia archivos públicos de una app al output.
+ * Primero copia common/public (fallback global), luego la carpeta public/ del app (override).
  */
 export async function copyPublicFiles(appDir: string, outputDir: string, logger?: any): Promise<void> {
+	const commonPublicDir = getCommonPublicDir();
+	try {
+		await fs.access(commonPublicDir);
+		const commonEntries = await fs.readdir(commonPublicDir);
+		for (const entry of commonEntries) {
+			const sourcePath = path.join(commonPublicDir, entry);
+			const targetPath = path.join(outputDir, entry);
+			await fs.copyFile(sourcePath, targetPath);
+		}
+		logger?.logDebug(`Assets comunes copiados desde ${commonPublicDir}`);
+	} catch {
+		logger?.logDebug(`No hay directorio common/public`);
+	}
+
 	const publicDir = path.join(appDir, "public");
 	try {
 		await fs.access(publicDir);
@@ -44,12 +57,7 @@ export async function copyPublicFiles(appDir: string, outputDir: string, logger?
 /**
  * Ejecuta un comando en un directorio específico
  */
-export async function runCommand(
-	command: string,
-	args: string[],
-	cwd: string,
-	logger?: any
-): Promise<void> {
+export async function runCommand(command: string, args: string[], cwd: string, logger?: any): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const process = spawn(command, args, {
 			cwd,
@@ -78,12 +86,10 @@ export async function runCommand(
 				logger?.logError(`Comando falló con código ${code}`);
 				logger?.logError(`Directorio: ${cwd}`);
 				logger?.logError(`Comando: ${command} ${args.join(" ")}`);
-				if (output) {
-					logger?.logError(`Stdout: ${output.slice(0, 1000)}`);
-				}
-				if (errorOutput) {
-					logger?.logError(`Stderr: ${errorOutput.slice(0, 1000)}`);
-				}
+				if (output) logger?.logError(`Stdout: ${output.slice(0, 1000)}`);
+
+				if (errorOutput) logger?.logError(`Stderr: ${errorOutput.slice(0, 1000)}`);
+
 				reject(new Error(`Comando falló: ${command} ${args.join(" ")}`));
 			}
 		});
@@ -99,10 +105,7 @@ export async function runCommand(
  * Procesa recursivamente archivos HTML en un directorio
  * Si el directorio no existe, retorna silenciosamente (útil para dev servers que sirven desde memoria)
  */
-export async function processHTMLFiles(
-	dir: string,
-	callback: (filePath: string, content: string) => Promise<void>
-): Promise<void> {
+export async function processHTMLFiles(dir: string, callback: (filePath: string, content: string) => Promise<void>): Promise<void> {
 	try {
 		await fs.access(dir);
 	} catch {
@@ -123,4 +126,3 @@ export async function processHTMLFiles(
 		}
 	}
 }
-

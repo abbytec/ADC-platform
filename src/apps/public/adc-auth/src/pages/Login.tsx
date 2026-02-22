@@ -2,17 +2,14 @@ import React, { useState } from "react";
 import { authApi, type BlockedErrorData } from "../utils/auth.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
-import { getUrl, getBaseUrl } from "@common/utils/url-utils.js";
-
-/** URL base del sitio principal según entorno */
-const BASE_URL = getUrl(3011, "community.adigitalcafe.com");
+import { getBaseUrl } from "@common/utils/url-utils.js";
 
 /** Base URL for API calls */
 const API_BASE = getBaseUrl(3000);
 
 interface LoginProps {
 	readonly onNavigateToRegister: () => void;
-	readonly originPath: string;
+	readonly returnUrl: string;
 }
 
 /**
@@ -41,21 +38,11 @@ const LOGIN_SPECIFIC_ERROR_KEYS = [
 	{ key: "ACCOUNT_BLOCKED_PERMANENT", severity: "error" },
 ];
 
-export function Login({ onNavigateToRegister, originPath }: LoginProps) {
+export function Login({ onNavigateToRegister, returnUrl }: LoginProps) {
 	const { t, ready } = useTranslation({ namespace: "adc-auth", autoLoad: true });
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
-
-	/**
-	 * Construye la URL de redirección tras login exitoso
-	 */
-	const getRedirectUrl = (): string => {
-		if (originPath && originPath !== "/") {
-			return `${BASE_URL}${originPath}`;
-		}
-		return BASE_URL;
-	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -70,23 +57,18 @@ export function Login({ onNavigateToRegister, originPath }: LoginProps) {
 		});
 
 		if (result.success && globalThis.location) {
-			globalThis.location.href = getRedirectUrl();
+			globalThis.location.href = returnUrl;
 		}
 
 		setLoading(false);
 	};
 
 	/**
-	 * Construye URL de OAuth preservando originPath para el callback
+	 * Construye URL de OAuth preservando returnUrl para el callback
 	 */
 	const getOAuthUrl = (provider: string): string => {
 		const base = `${API_BASE}/api/auth/login/${provider}`;
-		if (originPath && originPath !== "/") {
-			return `${base}?originPath=${encodeURIComponent(originPath)}`;
-		}
-		console.log("OAuth base URL:", base);
-		console.log("Origin Path:", originPath);
-		return base;
+		return `${base}?returnUrl=${encodeURIComponent(returnUrl)}`;
 	};
 
 	// Skeleton mientras cargan las traducciones

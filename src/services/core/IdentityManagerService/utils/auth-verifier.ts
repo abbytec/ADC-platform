@@ -1,6 +1,3 @@
-export { Action } from "../../../../interfaces/behaviours/Actions.js";
-export { Scope } from "../permissions.js";
-
 /**
  * Interfaz para verificación de autenticación y autorización
  * Inyectada en los managers para verificar tokens y permisos

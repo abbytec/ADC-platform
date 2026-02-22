@@ -6,6 +6,13 @@ import { userSchema, groupSchema, roleSchema, organizationSchema, regionSchema }
 import { UserManager, GroupManager, RoleManager, PermissionManager, SystemManager, RegionManager, OrgManager } from "./dao/index.js";
 import { type IAuthVerifier, type AuthVerifierGetter } from "./utils/auth-verifier.js";
 import type SessionManagerService from "../../security/SessionManagerService/index.js";
+import { EnableEndpoints, DisableEndpoints } from "../../core/EndpointManagerService/index.js";
+import { UserEndpoints } from "./endpoints/users.js";
+import { RoleEndpoints } from "./endpoints/roles.js";
+import { GroupEndpoints } from "./endpoints/groups.js";
+import { OrgEndpoints } from "./endpoints/organizations.js";
+import { RegionEndpoints } from "./endpoints/regions.js";
+import { StatsEndpoints } from "./endpoints/stats.js";
 
 /**
  * IdentityManagerService - Gestión centralizada de identidades, usuarios, roles y grupos
@@ -59,6 +66,9 @@ export default class IdentityManagerService extends BaseService {
 	 */
 	#getAuthVerifier: AuthVerifierGetter = () => this.#authVerifier;
 
+	@EnableEndpoints({
+		managers: () => [UserEndpoints, RoleEndpoints, GroupEndpoints, OrgEndpoints, RegionEndpoints, StatsEndpoints],
+	})
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
 
@@ -110,6 +120,14 @@ export default class IdentityManagerService extends BaseService {
 
 			// Crear el AuthVerifier ahora que tenemos todos los componentes
 			this.#authVerifier = this.#createAuthVerifier();
+
+			// Inicializar endpoint managers
+			UserEndpoints.init(this);
+			RoleEndpoints.init(this);
+			GroupEndpoints.init(this);
+			OrgEndpoints.init(this);
+			RegionEndpoints.init(this);
+			StatsEndpoints.init(this);
 
 			this.logger.logOk("IdentityManagerService iniciado con soporte multi-tenant y autenticación");
 		} catch (error: any) {
@@ -291,6 +309,7 @@ export default class IdentityManagerService extends BaseService {
 		};
 	}
 
+	@DisableEndpoints()
 	async stop(kernelKey: symbol): Promise<void> {
 		// Limpiar cache de conexiones por organización
 		this.#orgConnectionCache.clear();

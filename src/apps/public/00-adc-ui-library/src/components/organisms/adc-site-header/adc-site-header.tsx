@@ -42,6 +42,8 @@ export class AdcSiteHeader {
 				<nav class="flex flex-wrap items-center gap-4" style={{ minHeight: "48px" }} aria-label="Menu">
 					<slot></slot>
 
+					<adc-apps-menu></adc-apps-menu>
+
 					{this.showAccessButton && (
 						<adc-access-button
 							auth-url={this.authUrl}

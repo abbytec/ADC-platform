@@ -6,7 +6,7 @@ import type { BundlerType, IBuildContext, IBuildResult } from "../types.js";
 import aliasGenerator from "../../utils/alias-generator.js";
 import { generateCompleteImportMap } from "../../utils/import-map.js";
 import { copyPublicFiles } from "../../utils/file-operations.js";
-import { getServerHost } from "../../utils/path-resolver.js";
+import { getServerHost, getCommonPublicDir } from "../../utils/path-resolver.js";
 
 /**
  * Clase base para estrategias Vite
@@ -83,6 +83,12 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 		const staticAssetsPlugin = this.createStaticAssetsPlugin(context);
 		if (staticAssetsPlugin) {
 			plugins.push(staticAssetsPlugin);
+		}
+
+		// Plugin para servir common/public como fallback (ej: favicon por defecto)
+		const commonFallbackPlugin = this.createCommonPublicFallbackPlugin();
+		if (commonFallbackPlugin) {
+			plugins.push(commonFallbackPlugin);
 		}
 
 		return {
@@ -179,6 +185,52 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 							fs.createReadStream(filePath).pipe(res);
 							return;
 						}
+					}
+
+					next();
+				});
+			},
+		};
+	}
+
+	/**
+	 * Crea un plugin para servir common/public/ como fallback (ej: favicon por defecto).
+	 * Solo sirve archivos que NO están ya en el publicDir del módulo.
+	 */
+	protected createCommonPublicFallbackPlugin(): any {
+		const commonDir = getCommonPublicDir();
+		if (!fs.existsSync(commonDir)) return null;
+
+		return {
+			name: "serve-common-public-fallback",
+			configureServer(server: any) {
+				// Registrar como middleware de baja prioridad (después del publicDir del módulo)
+				server.middlewares.use((req: any, res: any, next: any) => {
+					if (!req.url || req.url.startsWith("/ui/") || req.url.startsWith("/@")) {
+						return next();
+					}
+
+					// Limpiar query strings y fragmentos
+					const cleanUrl = req.url.split("?")[0].split("#")[0];
+					const filePath = path.join(commonDir, cleanUrl);
+
+					if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+						const ext = path.extname(filePath).toLowerCase();
+						const contentTypes: Record<string, string> = {
+							".ico": "image/x-icon",
+							".png": "image/png",
+							".jpg": "image/jpeg",
+							".svg": "image/svg+xml",
+							".webp": "image/webp",
+							".webmanifest": "application/manifest+json",
+							".json": "application/json",
+						};
+						const contentType = contentTypes[ext] || "application/octet-stream";
+
+						res.setHeader("Content-Type", contentType);
+						res.setHeader("Cache-Control", "public, max-age=86400");
+						fs.createReadStream(filePath).pipe(res);
+						return;
 					}
 
 					next();

@@ -4,8 +4,9 @@
 		"uiNamespace": "adc-platform",
 		"framework": "react",
 		"outputDir": "dist-ui",
-		"isHost": false,
-		"isRemote": true,
+		"isHost": true,
+		"isRemote": false,
+		"serviceWorker": true,
 		"uiDependencies": ["adc-ui-library"],
 		"devPort": 3010,
 		"sharedLibs": ["react", "tailwind"],
@@ -13,13 +14,9 @@
 		"hosting": [
 			{
 				"domains": ["adigitalcafe.com"],
-				"subdomains": ["s-community"]
+				"subdomains": ["*"]
 			}
-		],
-		"federationExposes": {
-			"./App": "./src/App.tsx",
-			"./HeaderSlot": "./src/components/HeaderSlot.tsx"
-		}
+		]
 	},
 	"services": [
 		{

@@ -1,6 +1,5 @@
-import { Action } from "../../../../interfaces/behaviours/Actions.ts";
 import { Permission } from "../domain/permission.ts";
-import { RESOURCE_NAME, Scope } from "../permissions.ts";
+import { Action, RESOURCE_NAME, IdentityScope } from "@common/types/identity.js";
 
 export enum SystemRole {
 	SYSTEM = "SYSTEM",
@@ -17,12 +16,12 @@ export const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; pe
 	{
 		name: SystemRole.SYSTEM,
 		description: "Usuario del sistema con acceso total",
-		permissions: [{ resource: RESOURCE_NAME, action: Action.CRUD, scope: Scope.ALL }],
+		permissions: [{ resource: RESOURCE_NAME, action: Action.CRUD, scope: IdentityScope.ALL }],
 	},
 	{
 		name: SystemRole.ADMIN,
 		description: "Administrador del sistema",
-		permissions: [{ resource: RESOURCE_NAME, action: Action.CRUD, scope: Scope.ALL }],
+		permissions: [{ resource: RESOURCE_NAME, action: Action.CRUD, scope: IdentityScope.ALL }],
 	},
 	{
 		name: SystemRole.NETWORK_MANAGER,
@@ -68,6 +67,6 @@ export const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; pe
 	{
 		name: SystemRole.USER,
 		description: "Usuario estándar del sistema",
-		permissions: [{ resource: RESOURCE_NAME, action: Action.READ, scope: Scope.SELF }],
+		permissions: [{ resource: RESOURCE_NAME, action: Action.READ, scope: IdentityScope.SELF }],
 	},
 ];

@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { spawn } from "node:child_process";
 import { BaseFrameworkStrategy } from "../base-strategy.js";
 import type { BundlerType, IBuildContext, IBuildResult } from "../types.js";
-import { getConfigDir, getBinPath, getLogsDir, normalizeForConfig, getServerHost } from "../../utils/path-resolver.js";
+import { getConfigDir, getBinPath, getLogsDir, normalizeForConfig, getServerHost, getCommonPublicDir } from "../../utils/path-resolver.js";
 import aliasGenerator from "../../utils/alias-generator.js";
 import { generateTailwindConfig, generatePostCSSConfig, hasTailwindEnabled } from "../../config-generators/tailwind.js";
 
@@ -356,8 +356,18 @@ export abstract class RspackBaseStrategy extends BaseFrameworkStrategy {
 		const imports = this.getImports();
 		const shared = this.buildSharedConfig(usedFrameworks);
 
-		// Layouts cargan remotes, el resto se expone
-		const federationConfig = isLayout ? `remotes: ${JSON.stringify(remotes, null, 4)},` : this.buildExposesConfig(context, appExtension);
+		// Layouts cargan remotes, módulos remotos se exponen, host-only no tiene ni remotes ni exposes
+		const isRemote = module.uiConfig.isRemote ?? false;
+		let federationConfig: string;
+		if (isLayout) {
+			federationConfig = `remotes: ${JSON.stringify(remotes, null, 4)},`;
+		} else if (isRemote) {
+			federationConfig = this.buildExposesConfig(context, appExtension);
+		} else {
+			// Host-only modules: no exposes, no remotes — avoids producing a remoteEntry.js
+			// that creates a separate runtime receiving hot-update pushes for foreign modules
+			federationConfig = "";
+		}
 
 		// Determinar publicPath correcto
 		// Para módulos remotos (isRemote) en desarrollo, usar URL absoluta del dev server
@@ -365,7 +375,6 @@ export abstract class RspackBaseStrategy extends BaseFrameworkStrategy {
 		// los chunks como __federation_expose_App.js se carguen desde el servidor correcto
 		// Para layouts (shell principal), usar '/'
 		// Para producción, usar 'auto'
-		const isRemote = module.uiConfig.isRemote ?? false;
 		const devPort = module.uiConfig.devPort;
 		let publicPath: string;
 		const serverHost = getServerHost();
@@ -541,14 +550,21 @@ ${exposesEntries}
 		const { module, registeredModules } = context;
 		const staticConfigs: string[] = [];
 
-		// 1. Carpeta public/ del propio módulo -> /pub/
+		// 1. Carpeta public/ del propio módulo -> / (root, máxima prioridad para overrides como favicon)
 		const ownPublicDir = normalizeForConfig(path.join(module.appDir, "public"));
 		staticConfigs.push(`{
             directory: '${ownPublicDir}',
-            publicPath: '/pub/',
+            publicPath: '/',
         }`);
 
-		// 2. Carpetas public/ de uiDependencies que sean UI libraries -> /ui/
+		// 2. Common public/ -> / (fallback global para assets compartidos como favicon)
+		const commonPublicDir = normalizeForConfig(getCommonPublicDir());
+		staticConfigs.push(`{
+            directory: '${commonPublicDir}',
+            publicPath: '/',
+        }`);
+
+		// 3. Carpetas public/ de uiDependencies que sean UI libraries -> /ui/
 		const uiDependencies = module.uiConfig.uiDependencies || [];
 		for (const depName of uiDependencies) {
 			const depModule = registeredModules.get(depName);
@@ -572,7 +588,8 @@ ${exposesEntries}
 	 */
 	protected getExperiments(): string {
 		return `
-        css: true,`;
+        css: true,
+        lazyCompilation: false,`;
 	}
 
 	/**

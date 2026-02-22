@@ -299,6 +299,7 @@ import "@ui-library";
 <adc-button onClick={handleClick}>Click me</adc-button>
 
 <adc-input
+  inputId="name"
   value={value}
   onInput={(e) => setValue(e.target.value)}
 />

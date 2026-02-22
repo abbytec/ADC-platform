@@ -1,3 +1,8 @@
+import { FederatedRouter } from "./federated-router.js";
+
+export type { FederatedRoute } from "./federated-router.js";
+export { FederatedRouter } from "./federated-router.js";
+
 export interface RouteDefinition {
 	module: string;
 	path?: string;
@@ -8,6 +13,7 @@ export class Router {
 	private onRouteChange: ((path: string) => void) | null = null;
 	private popstateListener: (() => void) | null = null;
 	private baseDomain: string | null = null;
+	readonly federated = new FederatedRouter((p) => this.navigate(p));
 
 	navigate(path: string) {
 		if (globalThis.location?.pathname === path) {

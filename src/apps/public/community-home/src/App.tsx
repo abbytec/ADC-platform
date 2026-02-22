@@ -1,69 +1,59 @@
 import "@ui-library/utils/react-jsx";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { router } from "@common/utils/router.js";
 import { HomePage } from "./pages/HomePage";
 import { PathsPage } from "./pages/PathsPage";
 import { PathPage } from "./pages/PathPage";
 import { ArticlesPage } from "./pages/ArticlesPage";
 import { ArticlePage } from "./pages/ArticlePage";
+import HeaderNav from "./components/HeaderNav";
 
 export default function App() {
-	const [mounted, setMounted] = useState(false);
-	const [currentPath, setCurrentPath] = useState(globalThis.location?.pathname);
+	const [currentPath, setCurrentPath] = useState(globalThis.location?.pathname || "/");
 
 	useEffect(() => {
-		setMounted(true);
-
-		// Configurar listener para cambios de ruta
-		const cleanup = router.setOnRouteChange((path: string) => {
-			setCurrentPath(path);
-		});
-
-		return cleanup;
+		return router.setOnRouteChange(setCurrentPath);
 	}, []);
 
-	if (!mounted) {
-		return <div className="p-4 text-center">Cargando...</div>;
-	}
-
-	// Extraer slug de rutas dinamicas
-	function extractSlug(basePath: string): string | null {
-		if (currentPath.startsWith(`${basePath}/`)) {
-			const slug = currentPath.slice(basePath.length + 1).split("?")[0];
-			return slug || null;
-		}
-		return null;
-	}
-
-	// Determinar que pagina mostrar segun la ruta
 	function renderPage() {
-		// Rutas de paths
-		const pathSlug = extractSlug("/paths");
-		if (pathSlug) {
-			return <PathPage slug={pathSlug} />;
+		if (currentPath.startsWith("/paths/")) {
+			const slug = currentPath.slice(7).split("?")[0];
+			return slug ? <PathPage slug={slug} /> : <PathsPage />;
 		}
-		if (currentPath === "/paths") {
-			return <PathsPage />;
+		if (currentPath === "/paths") return <PathsPage />;
+		if (currentPath.startsWith("/articles/")) {
+			const slug = currentPath.slice(10).split("?")[0];
+			return slug ? <ArticlePage slug={slug} /> : <ArticlesPage />;
 		}
-
-		// Rutas de articulos
-		const articleSlug = extractSlug("/articles");
-		if (articleSlug) {
-			return <ArticlePage slug={articleSlug} />;
-		}
-		if (currentPath === "/articles") {
-			return <ArticlesPage />;
-		}
-
-		// Por defecto, mostrar la home
+		if (currentPath === "/articles") return <ArticlesPage />;
 		return <HomePage />;
 	}
 
 	return (
-		<div>
-			{/* Toast handler global para errores no manejados */}
-			<adc-custom-error variant="toast" global handle-unhandled />
-			{renderPage()}
-		</div>
+		<adc-layout>
+			<div slot="header">
+				<HeaderNav />
+			</div>
+
+			<div className="px-8 mt-8 animate-slide-in">{renderPage()}</div>
+
+			<div slot="footer">
+				<a href="/privacy" className="underline hover:no-underline">
+					Política de Privacidad
+				</a>
+				<span aria-hidden="true" className="mx-1">
+					·
+				</span>
+				<a href="/terms" className="underline hover:no-underline">
+					Términos y Condiciones
+				</a>
+				<span aria-hidden="true" className="mx-1">
+					·
+				</span>
+				<a href="/cookies" className="underline hover:no-underline">
+					Política de Cookies
+				</a>
+			</div>
+		</adc-layout>
 	);
 }

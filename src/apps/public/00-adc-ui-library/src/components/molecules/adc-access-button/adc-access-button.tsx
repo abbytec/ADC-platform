@@ -149,10 +149,9 @@ export class AdcAccessButton {
 	private handleLoginClick = () => {
 		this.adcLoginClick.emit();
 		if (!globalThis.location) return;
-		// Pasar la ruta actual como originPath para redirigir tras login
-		const currentPath = globalThis.location?.pathname;
-		const originParam = currentPath && currentPath !== "/" ? `?originPath=${encodeURIComponent(currentPath)}` : "";
-		globalThis.location.href = `${this.authUrl}/login${originParam}`;
+		const params = new URLSearchParams();
+		params.set("returnUrl", globalThis.location.origin + globalThis.location.pathname);
+		globalThis.location.href = `${this.authUrl}/login?${params.toString()}`;
 	};
 
 	private handleLogout = async () => {

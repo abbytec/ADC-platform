@@ -2,7 +2,7 @@ import React from "react";
 
 export function AuthLayout({ children }: { readonly children: React.ReactNode }) {
 	return (
-		<div className="min-h-screen flex flex-col bg-bg text-text">
+		<div className="min-h-screen flex flex-col bg-background text-text">
 			<adc-custom-error variant="toast" global handle-unhandled />
 			<header className="flex items-center justify-center py-6 px-8 shadow-cozy bg-header text-theader rounded-b-xxl">
 				<a href="https://adigitalcafe.com" aria-label="Volver al inicio" className="flex items-center gap-3">

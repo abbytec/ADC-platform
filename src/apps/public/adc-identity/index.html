@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es" crystal-theme>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Identity Management - ADC</title>
+    <style>
+        :root {
+            --custom-tone-1: 200;
+            --custom-tone-2: 220;
+        }
+    </style>
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('theme');
+            if ((!savedTheme && globalThis.matchMedia('(prefers-color-scheme: dark)').matches)
+                || savedTheme?.includes("dark")) {
+                document.documentElement.setAttribute('dark-mode', '');
+            } else {
+                document.documentElement.removeAttribute('dark-mode');
+            }
+        })();
+    </script>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

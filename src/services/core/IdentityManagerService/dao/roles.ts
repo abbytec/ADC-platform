@@ -1,8 +1,7 @@
 import type { Model } from "mongoose";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "../utils/crypto.ts";
-import { Scope } from "../permissions.ts";
-import { Action } from "../../../../interfaces/behaviours/Actions.ts";
+import { IdentityScope, Action } from "@common/types/identity.js";
 import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
 import type { Permission, Role } from "../domain/index.ts";
 import { PREDEFINED_ROLES } from "../defaults/systemRoles.ts";
@@ -10,7 +9,11 @@ import { PREDEFINED_ROLES } from "../defaults/systemRoles.ts";
 export class RoleManager {
 	#permissionChecker: PermissionChecker;
 
-	constructor(private readonly roleModel: Model<any>, private readonly logger: ILogger, getAuthVerifier: AuthVerifierGetter = () => null) {
+	constructor(
+		private readonly roleModel: Model<any>,
+		private readonly logger: ILogger,
+		getAuthVerifier: AuthVerifierGetter = () => null
+	) {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "RoleManager");
 	}
 
@@ -49,7 +52,7 @@ export class RoleManager {
 	 */
 	async createRole(name: string, description: string, permissions?: Permission[], token?: string): Promise<Role> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.WRITE, Scope.ROLES);
+			await this.#permissionChecker.requirePermission(token, Action.WRITE, IdentityScope.ROLES);
 		}
 
 		try {
@@ -78,7 +81,7 @@ export class RoleManager {
 	 */
 	async getRole(roleId: string, token?: string): Promise<Role | null> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.ROLES);
+			await this.#permissionChecker.requirePermission(token, Action.READ, IdentityScope.ROLES);
 		}
 
 		try {
@@ -96,7 +99,7 @@ export class RoleManager {
 	 */
 	async getRoleByName(name: string, token?: string): Promise<Role | null> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.ROLES);
+			await this.#permissionChecker.requirePermission(token, Action.READ, IdentityScope.ROLES);
 		}
 
 		try {
@@ -114,7 +117,7 @@ export class RoleManager {
 	 */
 	async updateRole(roleId: string, updates: Partial<Role>, token?: string): Promise<Role> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.UPDATE, Scope.ROLES);
+			await this.#permissionChecker.requirePermission(token, Action.UPDATE, IdentityScope.ROLES);
 		}
 
 		try {
@@ -134,16 +137,22 @@ export class RoleManager {
 	 */
 	async deleteRole(roleId: string, token?: string): Promise<void> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.DELETE, Scope.ROLES);
+			await this.#permissionChecker.requirePermission(token, Action.DELETE, IdentityScope.ROLES);
 		}
 
-		try {
-			await this.roleModel.deleteOne({ id: roleId });
-			this.logger.logDebug(`Rol eliminado: ${roleId}`);
-		} catch (error) {
-			this.logger.logError(`Error eliminando rol: ${error}`);
-			throw error;
+		const role = (await this.roleModel.findOne({ id: roleId }).lean()) as Role | null;
+		if (!role) {
+			throw new Error(`Rol ${roleId} no encontrado`);
 		}
+		if (!role.isCustom) {
+			throw new Error("No se pueden eliminar roles predefinidos");
+		}
+
+		const result = await this.roleModel.deleteOne({ id: roleId });
+		if (result.deletedCount === 0) {
+			throw new Error(`No se pudo eliminar el rol ${roleId}`);
+		}
+		this.logger.logOk(`Rol eliminado: ${roleId} (${role.name})`);
 	}
 
 	/**
@@ -152,7 +161,7 @@ export class RoleManager {
 	 */
 	async getAllRoles(token?: string): Promise<Role[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.ROLES);
+			await this.#permissionChecker.requirePermission(token, Action.READ, IdentityScope.ROLES);
 		}
 
 		try {
@@ -170,7 +179,7 @@ export class RoleManager {
 	 */
 	async getPredefinedRoles(token?: string): Promise<Role[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, Action.READ, Scope.ROLES);
+			await this.#permissionChecker.requirePermission(token, Action.READ, IdentityScope.ROLES);
 		}
 
 		try {

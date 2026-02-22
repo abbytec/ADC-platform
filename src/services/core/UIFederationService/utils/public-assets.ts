@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { RegisteredUIModule } from "../types.js";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
+import { getCommonPublicDir } from "./path-resolver.js";
 
 interface PublicAssetsContext {
 	/** Módulo que se está registrando */
@@ -35,7 +36,10 @@ export async function registerPublicAssets(ctx: PublicAssetsContext): Promise<vo
 	const { module, namespaceModules, logger, serveStatic } = ctx;
 	const uiDependencies = module.uiConfig.uiDependencies || [];
 
-	// 1. Registrar assets públicos de las dependencias (ej: UI libraries)
+	// 1. Registrar common/public como fallback global (ej: favicon por defecto)
+	await tryRegisterPublicDir(getCommonPublicDir(), "common", "/", logger, serveStatic, true);
+
+	// 2. Registrar assets públicos de las dependencias (ej: UI libraries)
 	for (const depName of uiDependencies) {
 		const depModule = namespaceModules.get(depName);
 		if (depModule) {
@@ -44,7 +48,7 @@ export async function registerPublicAssets(ctx: PublicAssetsContext): Promise<vo
 		}
 	}
 
-	// 2. Registrar assets públicos del propio módulo
+	// 3. Registrar assets públicos del propio módulo (mayor prioridad, sobreescribe common)
 	const basePath = isUILibrary(module) ? "/ui" : "/pub";
 	await tryRegisterPublicDir(module.appDir, module.name, basePath, logger, serveStatic);
 }
@@ -52,17 +56,19 @@ export async function registerPublicAssets(ctx: PublicAssetsContext): Promise<vo
 /**
  * Intenta registrar la carpeta public/ de un directorio de app.
  * Si no existe o ya fue registrada, no hace nada.
+ * @param isDirect - Si true, usa appDir directamente en vez de appDir/public/
  */
 async function tryRegisterPublicDir(
 	appDir: string,
 	moduleName: string,
 	basePath: string,
 	logger?: ILogger,
-	serveStatic?: (urlPath: string, directory: string) => void
+	serveStatic?: (urlPath: string, directory: string) => void,
+	isDirect?: boolean
 ): Promise<string | null> {
 	if (!serveStatic) return null;
 
-	const publicDir = path.join(appDir, "public");
+	const publicDir = isDirect ? appDir : path.join(appDir, "public");
 
 	// Evitar registrar el mismo directorio múltiples veces
 	if (registeredPublicDirs.has(publicDir)) {
