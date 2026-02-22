@@ -1,8 +1,15 @@
 import { RegisterEndpoint, type EndpointCtx } from "../../EndpointManagerService/index.js";
-import { HttpError } from "@common/types/ADCCustomError.js";
+import { IdentityError } from "@common/types/custom-errors/IdentityError.js";
 import type IdentityManagerService from "../index.js";
 
 import type { Organization } from "../domain/index.js";
+
+/** Org/region management is global-only. Users in org mode cannot manage these. */
+function requireGlobalAccess(ctx: EndpointCtx): void {
+	if (ctx.user?.orgId) {
+		throw new IdentityError(403, "GLOBAL_ONLY", "La gestión de organizaciones requiere acceso global (modo personal)");
+	}
+}
 
 /**
  * Endpoints HTTP para gestión de organizaciones
@@ -30,7 +37,7 @@ export class OrgEndpoints {
 	})
 	static async getOrganization(ctx: EndpointCtx<{ orgId: string }>) {
 		const org = await OrgEndpoints.#identity.organizations.getOrganization(ctx.params.orgId);
-		if (!org) throw new HttpError(404, "ORG_NOT_FOUND", "Organización no encontrada");
+		if (!org) throw new IdentityError(404, "ORG_NOT_FOUND", "Organización no encontrada");
 		return org;
 	}
 
@@ -42,8 +49,9 @@ export class OrgEndpoints {
 	static async createOrganization(
 		ctx: EndpointCtx<Record<string, string>, { slug: string; region?: string; metadata?: Record<string, any> }>
 	) {
+		requireGlobalAccess(ctx);
 		if (!ctx.data?.slug) {
-			throw new HttpError(400, "MISSING_FIELDS", "slug es requerido");
+			throw new IdentityError(400, "MISSING_FIELDS", "slug es requerido");
 		}
 		return OrgEndpoints.#identity.organizations.createOrganization(ctx.data.slug, ctx.data.region, ctx.data.metadata);
 	}
@@ -56,6 +64,7 @@ export class OrgEndpoints {
 	static async updateOrganization(
 		ctx: EndpointCtx<{ orgId: string }, Partial<Pick<Organization, "slug" | "region" | "status" | "metadata">>>
 	) {
+		requireGlobalAccess(ctx);
 		return OrgEndpoints.#identity.organizations.updateOrganization(ctx.params.orgId, ctx.data || {});
 	}
 
@@ -65,6 +74,7 @@ export class OrgEndpoints {
 		permissions: ["identity.16.8"],
 	})
 	static async deleteOrganization(ctx: EndpointCtx<{ orgId: string }>) {
+		requireGlobalAccess(ctx);
 		await OrgEndpoints.#identity.organizations.deleteOrganization(ctx.params.orgId);
 		return { success: true };
 	}
@@ -78,7 +88,7 @@ export class OrgEndpoints {
 	})
 	static async listOrgMembers(ctx: EndpointCtx<{ orgId: string }>) {
 		const org = await OrgEndpoints.#identity.organizations.getOrganization(ctx.params.orgId);
-		if (!org) throw new HttpError(404, "ORG_NOT_FOUND", "Organización no encontrada");
+		if (!org) throw new IdentityError(404, "ORG_NOT_FOUND", "Organización no encontrada");
 
 		const members = await OrgEndpoints.#identity.users.getAllUsers(ctx.token!, ctx.params.orgId);
 		return members.map(({ passwordHash, ...user }) => user);
@@ -90,8 +100,9 @@ export class OrgEndpoints {
 		permissions: ["identity.16.4"],
 	})
 	static async addOrgMember(ctx: EndpointCtx<{ orgId: string; userId: string }, { roleIds?: string[] }>) {
+		requireGlobalAccess(ctx);
 		const org = await OrgEndpoints.#identity.organizations.getOrganization(ctx.params.orgId);
-		if (!org) throw new HttpError(404, "ORG_NOT_FOUND", "Organización no encontrada");
+		if (!org) throw new IdentityError(404, "ORG_NOT_FOUND", "Organización no encontrada");
 
 		await OrgEndpoints.#identity.users.addOrgMembership(ctx.params.userId, ctx.params.orgId, ctx.data?.roleIds || [], ctx.token!);
 		return { success: true };
@@ -103,6 +114,7 @@ export class OrgEndpoints {
 		permissions: ["identity.16.8"],
 	})
 	static async removeOrgMember(ctx: EndpointCtx<{ orgId: string; userId: string }>) {
+		requireGlobalAccess(ctx);
 		await OrgEndpoints.#identity.users.removeOrgMembership(ctx.params.userId, ctx.params.orgId, ctx.token!);
 		return { success: true };
 	}

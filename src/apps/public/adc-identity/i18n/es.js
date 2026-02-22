@@ -149,5 +149,23 @@ export default {
 	resources: {
 		identity: "Identidad",
 		content: "Contenido"
+	},
+	errors: {
+		// Acceso / aislamiento de org
+		ORG_ACCESS_DENIED: "No tienes acceso a este recurso",
+		GLOBAL_ONLY: "Esta operación requiere acceso global (modo personal)",
+		CROSS_ORG_ROLE: "No puedes asignar un rol de otra organización",
+		CROSS_ORG_USER: "El usuario no pertenece a tu organización",
+		CANNOT_MODIFY_PREDEFINED: "Los roles predefinidos no se pueden modificar",
+		CANNOT_DELETE_PREDEFINED: "Los roles predefinidos no se pueden eliminar",
+		// No encontrado
+		USER_NOT_FOUND: "Usuario no encontrado",
+		ROLE_NOT_FOUND: "Rol no encontrado",
+		GROUP_NOT_FOUND: "Grupo no encontrado",
+		ORG_NOT_FOUND: "Organización no encontrada",
+		REGION_NOT_FOUND: "Región no encontrada",
+		// Validación
+		MISSING_FIELDS: "Faltan campos requeridos",
+		INVALID_ROLE: "Rol inválido"
 	}
 };

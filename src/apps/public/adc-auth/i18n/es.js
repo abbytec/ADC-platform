@@ -50,6 +50,8 @@ export default {
 		SERVICE_UNAVAILABLE: "Servicio de identidad no disponible",
 		PROVIDER_NOT_SUPPORTED: "Proveedor no soportado",
 		PROVIDER_CONFIG_NOT_FOUND: "Proveedor no configurado",
-		REGISTER_ERROR: "Error al crear la cuenta"
+		REGISTER_ERROR: "Error al crear la cuenta",
+		NOT_ORG_MEMBER: "No perteneces a esta organización",
+		USER_NOT_FOUND: "Usuario no encontrado"
 	}
 };
