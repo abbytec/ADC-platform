@@ -15,6 +15,7 @@ export default {
 		UNAUTHORIZED: "Unauthorized",
 		UNHANDLED_ERROR: "An unexpected error occurred",
 		UNKNOWN_ERROR: "Unknown error",
+		CONNECTION_REFUSED: "Could not connect to the server. Please check your connection or try again later.",
 		// Generic session/auth errors (authGenericErrors)
 		NO_SESSION: "No active session",
 		INVALID_SESSION: "Invalid session",

@@ -15,6 +15,7 @@ export default {
 		UNAUTHORIZED: "No autorizado",
 		UNHANDLED_ERROR: "Ha ocurrido un error inesperado",
 		UNKNOWN_ERROR: "Error desconocido",
+		CONNECTION_REFUSED: "No se pudo conectar con el servidor. Verifica tu conexión o inténtalo más tarde.",
 		// Errores genéricos de sesión/auth (authGenericErrors)
 		NO_SESSION: "No hay sesión activa",
 		INVALID_SESSION: "Sesión inválida",

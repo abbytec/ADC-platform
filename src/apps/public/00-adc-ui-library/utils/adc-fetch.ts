@@ -141,8 +141,14 @@ export function createAdcApi(config: AdcApiConfig) {
 			const data = (await response.json()) as T;
 			return { success: true, data };
 		} catch (err) {
-			const errorKey = (err as ADCCustomError).errorKey || "UNKNOWN_ERROR";
-			const httpStatus = (err as ADCCustomError).status;
+			// Detect network-level errors (connection refused, offline, etc.)
+			const isNetworkError =
+				!(err instanceof ADCCustomError) &&
+				err instanceof TypeError &&
+				(err.message.includes("Failed to fetch") || err.message.includes("CONNECTION_REFUSED") || err.message.includes("NetworkError"));
+
+			const errorKey = isNetworkError ? "CONNECTION_REFUSED" : (err as ADCCustomError).errorKey || "UNKNOWN_ERROR";
+			const httpStatus = isNetworkError ? 503 : (err as ADCCustomError).status;
 
 			// Extract error data and generate translation params
 			let translationParams: Record<string, string> | undefined;
