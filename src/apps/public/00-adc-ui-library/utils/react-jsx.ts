@@ -54,12 +54,15 @@ interface AdcIntrinsicElements {
 	"adc-dropdown-menu": WebComponentProps<{ items?: unknown[]; alignState?: "left" | "right"; openOnHover?: boolean }>;
 	"adc-feature-card": WebComponentProps<{ staticRender?: boolean; title?: string }>;
 	"adc-icon-community": WebComponentProps<{ size?: string }>;
+	"adc-icon-edit": WebComponentProps<{ size?: string }>;
 	"adc-icon-learning": WebComponentProps<{ size?: string }>;
 	"adc-icon-left-arrow": WebComponentProps<{ size?: string }>;
 	"adc-icon-logout": WebComponentProps<{ size?: string }>;
+	"adc-icon-members": WebComponentProps<{ size?: string }>;
 	"adc-icon-nitro": WebComponentProps<{ size?: string }>;
 	"adc-icon-opensource": WebComponentProps<{ size?: string }>;
 	"adc-icon-pencil": WebComponentProps<{ size?: string }>;
+	"adc-icon-trash": WebComponentProps<{ size?: string }>;
 	"adc-icon-vip": WebComponentProps<{ size?: string }>;
 	"adc-layout": WebComponentProps<{
 		authUrl?: string;

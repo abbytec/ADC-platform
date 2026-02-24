@@ -19,7 +19,7 @@ export interface FederatedRoute {
  */
 export class FederatedRouter {
 	#routes: FederatedRoute[] = [];
-	#navigate: (path: string) => void;
+	readonly #navigate: (path: string) => void;
 
 	constructor(navigate: (path: string) => void) {
 		this.#navigate = navigate;

@@ -14,11 +14,11 @@ export class AdcContentCard {
 
 	@Event() cardClick!: EventEmitter<MouseEvent>;
 
-	private handleClick = (event: MouseEvent) => {
+	private readonly handleClick = (event: MouseEvent) => {
 		this.cardClick.emit(event);
 	};
 
-	private handleKeyDown = (event: KeyboardEvent) => {
+	private readonly handleKeyDown = (event: KeyboardEvent) => {
 		if (event.key === "Enter" || event.key === " ") {
 			event.preventDefault();
 			this.handleClick(event as unknown as MouseEvent);

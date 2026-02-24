@@ -611,7 +611,7 @@ export class AuthEndpoints {
 		for (const membership of user.orgMemberships) {
 			try {
 				const org = await AuthEndpoints.deps.identityService.organizations.getOrganization(membership.orgId);
-				if (org && org.status === "active") {
+				if (org?.status === "active") {
 					orgOptions.push({ orgId: org.orgId, slug: org.slug });
 				}
 			} catch {

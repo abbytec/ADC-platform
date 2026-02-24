@@ -11,7 +11,7 @@ function applyTSTokenReplacements(input: string): string {
 	let out = input;
 	const protectedSpans: [string, string][] = [];
 	let protIdx = 0;
-	out = out.replace(/\b(class|interface)\s+([A-Za-z_]\w*)/g, (_m: string, kw: string, name: string) => {
+	out = out.replaceAll(/\b(class|interface)\s+([A-Za-z_]\w*)/g, (_m: string, kw: string, name: string) => {
 		const ph = `__CLSIFC_${protIdx++}__`;
 		protectedSpans.push([ph, `<span class="token keyword">${kw}</span> <span class="token type">${name}</span>`]);
 		return ph;

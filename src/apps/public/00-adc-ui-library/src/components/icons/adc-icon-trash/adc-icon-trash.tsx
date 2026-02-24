@@ -1,11 +1,11 @@
 import { Component, Prop, h, Host } from "@stencil/core";
 
 @Component({
-	tag: "adc-icon-left-arrow",
+	tag: "adc-icon-trash",
 	styleUrl: "../adc-icon.css",
 	shadow: true,
 })
-export class AdcIconLeftArrow {
+export class AdcIconTrash {
 	@Prop() size: string = "1rem";
 
 	render() {
@@ -15,12 +15,16 @@ export class AdcIconLeftArrow {
 					class="adc-icon"
 					style={{ width: this.size, height: this.size }}
 					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 448 512"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
 					aria-hidden="true"
 				>
 					<path
-						fill="currentColor"
-						d="M257.5 445.1c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0l-192-192c-12.5-12.5-12.5-32.8 0-45.3l192-192c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3L141.2 224H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H141.2l116.3 125.1z"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
 					/>
 				</svg>
 			</Host>

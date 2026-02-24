@@ -95,7 +95,7 @@ function createVanillaWrapper(RemoteComponent: any, moduleName: string, timestam
 			}
 
 			return () => {
-				if (appInstanceRef.current && appInstanceRef.current.unmount) {
+				if (appInstanceRef.current?.unmount) {
 					appInstanceRef.current.unmount();
 					appInstanceRef.current = null;
 					console.log(`[Layout] Vanilla JS app desmontada: ${moduleName}`);

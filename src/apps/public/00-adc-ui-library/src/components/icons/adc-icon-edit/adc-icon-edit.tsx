@@ -1,11 +1,11 @@
 import { Component, Prop, h, Host } from "@stencil/core";
 
 @Component({
-	tag: "adc-icon-vip",
+	tag: "adc-icon-edit",
 	styleUrl: "../adc-icon.css",
 	shadow: true,
 })
-export class AdcIconVip {
+export class AdcIconEdit {
 	@Prop() size: string = "1rem";
 
 	render() {
@@ -21,7 +21,8 @@ export class AdcIconVip {
 					stroke-width="2"
 					aria-hidden="true"
 				>
-					<path stroke-linecap="round" stroke-linejoin="round" d="M3 10l4 3 5-8 5 8 4-3v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6z" />
+					<path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+					<path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
 				</svg>
 			</Host>
 		);

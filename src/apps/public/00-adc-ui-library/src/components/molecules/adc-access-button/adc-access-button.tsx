@@ -217,7 +217,7 @@ export class AdcAccessButton {
 		}
 	};
 
-	private handleSwitchOrg = async (orgId?: string) => {
+	private readonly handleSwitchOrg = async (orgId?: string) => {
 		try {
 			const response = await fetch(this.getApiUrl("/api/auth/switch-org"), {
 				method: "POST",
@@ -375,8 +375,9 @@ export class AdcAccessButton {
 										[
 											<button
 												type="button"
+												key="personal-access-btn"
 												class={`w-full flex items-center gap-2 px-3 py-2 rounded text-left text-sm hover:bg-accent/10 transition-colors cursor-pointer ${!this.user?.orgId ? "bg-accent/15 font-semibold" : ""}`}
-												onClick={() => this.handleSwitchOrg(undefined)}
+												onClick={() => this.handleSwitchOrg()}
 											>
 												<svg
 													class="w-4 h-4 shrink-0"
@@ -396,6 +397,7 @@ export class AdcAccessButton {
 											...this.userOrgs.map((org) => (
 												<button
 													type="button"
+													key={`org-${org.orgId}`}
 													class={`w-full flex items-center gap-2 px-3 py-2 rounded text-left text-sm hover:bg-accent/10 transition-colors cursor-pointer ${this.user?.orgId === org.orgId ? "bg-accent/15 font-semibold" : ""}`}
 													onClick={() => this.handleSwitchOrg(org.orgId)}
 												>

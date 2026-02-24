@@ -2,7 +2,7 @@ import { Component, Prop, h, Host } from "@stencil/core";
 
 @Component({
 	tag: "adc-icon-logout",
-	styleUrl: "adc-icon-logout.css",
+	styleUrl: "../adc-icon.css",
 	shadow: true,
 })
 export class AdcIconLogout {

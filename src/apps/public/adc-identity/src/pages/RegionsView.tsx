@@ -3,6 +3,8 @@ import { useTranslation } from "@ui-library/utils/i18n-react";
 import { identityApi, type Region, type IdentityScope } from "../utils/identity-api.ts";
 import { Scope, canWrite, canUpdate, canDelete } from "../utils/permissions.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
+import { DeleteConfirmModal } from "../components/DeleteConfirmModal.tsx";
+import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 
 interface RegionsViewProps {
@@ -32,9 +34,6 @@ export function RegionsView({ scopes }: RegionsViewProps) {
 
 	const editModalRef = useCallback((el: HTMLElement | null) => {
 		if (el) el.addEventListener("adcClose", () => setModalOpen(false));
-	}, []);
-	const deleteModalRef = useCallback((el: HTMLElement | null) => {
-		if (el) el.addEventListener("adcClose", () => setDeleteConfirm(null));
 	}, []);
 	const globalToggleRef = useCallback((el: HTMLElement | null) => {
 		if (el) el.addEventListener("adcChange", (e: Event) => setFormIsGlobal((e as CustomEvent<boolean>).detail));
@@ -195,23 +194,16 @@ export function RegionsView({ scopes }: RegionsViewProps) {
 								<>
 									{updatable && (
 										<adc-button-rounded aria-label={t("common.edit")} onClick={() => openEditModal(region)}>
-											<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-												<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-												<path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-											</svg>
+											<adc-icon-edit />
 										</adc-button-rounded>
 									)}
 									{deletable && (
-										<adc-button-rounded variant="danger" aria-label={t("common.delete")} onClick={() => setDeleteConfirm(region)}>
-											<svg
-												className="w-4 h-4"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="2"
-											>
-												<path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-											</svg>
+										<adc-button-rounded
+											variant="danger"
+											aria-label={t("common.delete")}
+											onClick={() => setDeleteConfirm(region)}
+										>
+											<adc-icon-trash />
 										</adc-button-rounded>
 									)}
 								</>
@@ -254,31 +246,18 @@ export function RegionsView({ scopes }: RegionsViewProps) {
 							<label className="block text-sm font-medium mb-1 text-text">{t("regions.cacheConnectionUri")}</label>
 							<adc-input value={formCacheUri} placeholder="redis://..." onInput={(e: any) => setFormCacheUri(e.target.value)} />
 						</div>
-						<div slot="footer" className="flex justify-end gap-2">
-							<adc-button variant="accent" type="button" onClick={() => setModalOpen(false)}>
-								{t("common.cancel")}
-							</adc-button>
-							<adc-button variant="primary" type="submit" disabled={submitting}>
-								{submitting ? t("common.saving") : t("common.save")}
-							</adc-button>
-						</div>
+						<FormModalFooter onCancel={() => setModalOpen(false)} submitting={submitting} />
 					</form>
 				</adc-modal>
 			)}
 
 			{/* Delete Confirmation */}
 			{deleteConfirm && (
-				<adc-modal ref={deleteModalRef} open modalTitle={t("common.confirmDelete")} size="sm">
-					<p className="text-text">{t("regions.deleteConfirm", { path: deleteConfirm.path })}</p>
-					<div slot="footer" className="flex justify-end gap-2">
-						<adc-button variant="accent" onClick={() => setDeleteConfirm(null)}>
-							{t("common.cancel")}
-						</adc-button>
-						<adc-button variant="primary" onClick={handleDelete}>
-							{t("common.delete")}
-						</adc-button>
-					</div>
-				</adc-modal>
+				<DeleteConfirmModal
+					message={t("regions.deleteConfirm", { path: deleteConfirm.path })}
+					onClose={() => setDeleteConfirm(null)}
+					onConfirm={handleDelete}
+				/>
 			)}
 		</>
 	);

@@ -1,8 +1,9 @@
-import { IdentityScope as Scope } from "@common/types/identity.js";
-import { CRUDXAction as Action } from "@common/types/Actions";
-import type { IdentityScope as IdentityScopeFromApi } from "./identity-api.ts";
+export { IdentityScope as Scope } from "@common/types/identity.js";
+export { CRUDXAction as Action } from "@common/types/Actions";
 
-export { Scope, Action };
+import { IdentityScope } from "@common/types/identity.js";
+import { CRUDXAction } from "@common/types/Actions";
+import type { IdentityScope as IdentityScopeFromApi } from "./identity-api.ts";
 
 /**
  * Tab definition for the identity management panel
@@ -18,11 +19,11 @@ export interface IdentityTab {
  * Available tabs with their required permissions
  */
 export const IDENTITY_TABS: IdentityTab[] = [
-	{ id: "users", label: "users", requiredScope: Scope.USERS, requiredAction: Action.READ },
-	{ id: "roles", label: "roles", requiredScope: Scope.ROLES, requiredAction: Action.READ },
-	{ id: "groups", label: "groups", requiredScope: Scope.GROUPS, requiredAction: Action.READ },
-	{ id: "organizations", label: "organizations", requiredScope: Scope.ORGANIZATIONS, requiredAction: Action.READ },
-	{ id: "regions", label: "regions", requiredScope: Scope.REGIONS, requiredAction: Action.READ },
+	{ id: "users", label: "users", requiredScope: IdentityScope.USERS, requiredAction: CRUDXAction.READ },
+	{ id: "roles", label: "roles", requiredScope: IdentityScope.ROLES, requiredAction: CRUDXAction.READ },
+	{ id: "groups", label: "groups", requiredScope: IdentityScope.GROUPS, requiredAction: CRUDXAction.READ },
+	{ id: "organizations", label: "organizations", requiredScope: IdentityScope.ORGANIZATIONS, requiredAction: CRUDXAction.READ },
+	{ id: "regions", label: "regions", requiredScope: IdentityScope.REGIONS, requiredAction: CRUDXAction.READ },
 ];
 
 /**
@@ -47,13 +48,13 @@ export function getVisibleTabs(scopes: IdentityScopeFromApi[], orgId?: string): 
  * Checks if user can perform a specific action on a scope
  */
 export function canWrite(scopes: IdentityScopeFromApi[], scope: number): boolean {
-	return hasPermission(scopes, Action.WRITE, scope);
+	return hasPermission(scopes, CRUDXAction.WRITE, scope);
 }
 
 export function canUpdate(scopes: IdentityScopeFromApi[], scope: number): boolean {
-	return hasPermission(scopes, Action.UPDATE, scope);
+	return hasPermission(scopes, CRUDXAction.UPDATE, scope);
 }
 
 export function canDelete(scopes: IdentityScopeFromApi[], scope: number): boolean {
-	return hasPermission(scopes, Action.DELETE, scope);
+	return hasPermission(scopes, CRUDXAction.DELETE, scope);
 }

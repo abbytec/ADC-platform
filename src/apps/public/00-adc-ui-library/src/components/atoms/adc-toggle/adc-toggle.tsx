@@ -19,12 +19,12 @@ export class AdcToggle {
 
 	@Event() adcChange!: EventEmitter<boolean>;
 
-	private handleClick = () => {
+	private readonly handleClick = () => {
 		if (this.disabled) return;
 		this.adcChange.emit(!this.checked);
 	};
 
-	private handleKeyDown = (event: KeyboardEvent) => {
+	private readonly handleKeyDown = (event: KeyboardEvent) => {
 		if (event.key === "Enter" || event.key === " ") {
 			event.preventDefault();
 			this.handleClick();

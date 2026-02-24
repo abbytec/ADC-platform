@@ -12,7 +12,7 @@ export class AdcLpBadge {
 
 	@Event() adcClick!: EventEmitter<void>;
 
-	private handleClick = () => {
+	private readonly handleClick = () => {
 		this.adcClick.emit();
 	};
 

@@ -247,7 +247,8 @@ export class UserManager {
 		}
 
 		try {
-			const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+			const escapedQuery = query.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+			const regex = new RegExp(escapedQuery, "i");
 			const filter: any = { $or: [{ username: regex }, { email: regex }] };
 			if (orgId) filter["orgMemberships.orgId"] = orgId;
 			const docs = await this.userModel.find(filter).limit(limit);

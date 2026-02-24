@@ -52,7 +52,8 @@ export function highlightJSFamily(
 	// Comments (line and block)
 	const lineCommentRegex = /\/\/[^\n]*/g;
 	const blockCommentRegex = /\/\*[\s\S]*?\*\//g;
-	const neutralizeInsideComment = (text: string): string => text.replace(/__TPL_\d+__|__STR_\d+__/g, (ph) => rawByPlaceholder.get(ph) ?? ph);
+	const neutralizeInsideComment = (text: string): string =>
+		text.replaceAll(/__TPL_\d+__|__STR_\d+__/g, (ph) => rawByPlaceholder.get(ph) ?? ph);
 
 	escaped = escaped.replace(lineCommentRegex, (match) => {
 		const placeholder = `__COMMENT_${placeholderIndex++}__`;

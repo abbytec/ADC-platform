@@ -16,7 +16,7 @@ export class AdcPagination {
 
 	@Event() adcPageChange!: EventEmitter<number>;
 
-	private handlePage = (page: number) => {
+	private readonly handlePage = (page: number) => {
 		if (page < 1 || page > this.totalPages || page === this.currentPage) return;
 		this.adcPageChange.emit(page);
 	};
@@ -92,6 +92,7 @@ export class AdcPagination {
 					return (
 						<button
 							type="button"
+							key={`page-${page}`}
 							class={`${btnBase} ${isActive ? btnActive : btnInactive}`}
 							onClick={() => this.handlePage(page)}
 							aria-current={isActive ? "page" : undefined}

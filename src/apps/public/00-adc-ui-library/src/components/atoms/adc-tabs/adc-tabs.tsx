@@ -78,23 +78,27 @@ export class AdcTabs {
 					const isActive = tab.id === this.internalActive;
 					const isDisabled = tab.disabled;
 
-					const baseClass = isUnderline
-						? `px-4 py-2 font-text text-sm cursor-pointer transition-colors border-b-2 -mb-[1px] min-h-[44px] min-w-[44px] touch-manipulation ${
-								isActive
-									? "border-primary text-primary font-semibold"
-									: "border-transparent text-muted hover:text-text hover:border-surface"
-							}`
-						: `px-4 py-2 font-text text-sm cursor-pointer transition-colors rounded-xxl min-h-[44px] min-w-[44px] touch-manipulation ${
-								isActive
-									? "bg-primary text-tprimary font-semibold shadow-cozy"
-									: "text-muted hover:text-text hover:bg-surface/50"
-							}`;
+					let baseClass: string;
+					if (isUnderline) {
+						const stateClass = isActive
+							? "border-primary text-primary font-semibold"
+							: "border-transparent text-muted hover:text-text hover:border-surface";
+
+						baseClass = `px-4 py-2 font-text text-sm cursor-pointer transition-colors border-b-2 -mb-[1px] min-h-[44px] min-w-[44px] touch-manipulation ${stateClass}`;
+					} else {
+						const stateClass = isActive
+							? "bg-primary text-tprimary font-semibold shadow-cozy"
+							: "text-muted hover:text-text hover:bg-surface/50";
+
+						baseClass = `px-4 py-2 font-text text-sm cursor-pointer transition-colors rounded-xxl min-h-[44px] min-w-[44px] touch-manipulation ${stateClass}`;
+					}
 
 					const disabledClass = isDisabled ? "opacity-40 cursor-not-allowed pointer-events-none" : "";
 
 					return (
 						<button
 							type="button"
+							key={`tab-${tab.id}`}
 							role="tab"
 							aria-selected={isActive ? "true" : "false"}
 							aria-disabled={isDisabled ? "true" : undefined}

@@ -27,8 +27,8 @@ export namespace Components {
      */
     interface AdcAccessButton {
         /**
-          * URL base de la API (en dev: http://localhost:3000, en prod: vacío para usar relativo)
-          * @default ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname) 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
+          * URL base de la API (en dev: http://hostname:3000, en prod: vacío para usar relativo)
+          * @default isPrivateHost(globalThis.location?.hostname ?? "") 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
         "apiBaseUrl": string;
         /**
@@ -269,6 +269,12 @@ export namespace Components {
          */
         "size": string;
     }
+    interface AdcIconEdit {
+        /**
+          * @default "1rem"
+         */
+        "size": string;
+    }
     interface AdcIconLearning {
         /**
           * @default "2rem"
@@ -287,6 +293,12 @@ export namespace Components {
          */
         "size": string;
     }
+    interface AdcIconMembers {
+        /**
+          * @default "1rem"
+         */
+        "size": string;
+    }
     interface AdcIconNitro {
         /**
           * @default "1rem"
@@ -300,6 +312,12 @@ export namespace Components {
         "size": string;
     }
     interface AdcIconPencil {
+        /**
+          * @default "1rem"
+         */
+        "size": string;
+    }
+    interface AdcIconTrash {
         /**
           * @default "1rem"
          */
@@ -555,8 +573,8 @@ export namespace Components {
     }
     interface AdcSiteHeader {
         /**
-          * URL base de la API (en dev: http://localhost:3000, en prod: vacío)
-          * @default ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname) 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
+          * URL base de la API (en dev: http://hostname:3000, en prod: vacío)
+          * @default isPrivateHost(globalThis.location?.hostname ?? "") 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
         "apiBaseUrl": string;
         /**
@@ -967,6 +985,12 @@ declare global {
         prototype: HTMLAdcIconCommunityElement;
         new (): HTMLAdcIconCommunityElement;
     };
+    interface HTMLAdcIconEditElement extends Components.AdcIconEdit, HTMLStencilElement {
+    }
+    var HTMLAdcIconEditElement: {
+        prototype: HTMLAdcIconEditElement;
+        new (): HTMLAdcIconEditElement;
+    };
     interface HTMLAdcIconLearningElement extends Components.AdcIconLearning, HTMLStencilElement {
     }
     var HTMLAdcIconLearningElement: {
@@ -985,6 +1009,12 @@ declare global {
         prototype: HTMLAdcIconLogoutElement;
         new (): HTMLAdcIconLogoutElement;
     };
+    interface HTMLAdcIconMembersElement extends Components.AdcIconMembers, HTMLStencilElement {
+    }
+    var HTMLAdcIconMembersElement: {
+        prototype: HTMLAdcIconMembersElement;
+        new (): HTMLAdcIconMembersElement;
+    };
     interface HTMLAdcIconNitroElement extends Components.AdcIconNitro, HTMLStencilElement {
     }
     var HTMLAdcIconNitroElement: {
@@ -1002,6 +1032,12 @@ declare global {
     var HTMLAdcIconPencilElement: {
         prototype: HTMLAdcIconPencilElement;
         new (): HTMLAdcIconPencilElement;
+    };
+    interface HTMLAdcIconTrashElement extends Components.AdcIconTrash, HTMLStencilElement {
+    }
+    var HTMLAdcIconTrashElement: {
+        prototype: HTMLAdcIconTrashElement;
+        new (): HTMLAdcIconTrashElement;
     };
     interface HTMLAdcIconVipElement extends Components.AdcIconVip, HTMLStencilElement {
     }
@@ -1271,12 +1307,15 @@ declare global {
         "adc-icon-app-community": HTMLAdcIconAppCommunityElement;
         "adc-icon-app-identity": HTMLAdcIconAppIdentityElement;
         "adc-icon-community": HTMLAdcIconCommunityElement;
+        "adc-icon-edit": HTMLAdcIconEditElement;
         "adc-icon-learning": HTMLAdcIconLearningElement;
         "adc-icon-left-arrow": HTMLAdcIconLeftArrowElement;
         "adc-icon-logout": HTMLAdcIconLogoutElement;
+        "adc-icon-members": HTMLAdcIconMembersElement;
         "adc-icon-nitro": HTMLAdcIconNitroElement;
         "adc-icon-opensource": HTMLAdcIconOpensourceElement;
         "adc-icon-pencil": HTMLAdcIconPencilElement;
+        "adc-icon-trash": HTMLAdcIconTrashElement;
         "adc-icon-vip": HTMLAdcIconVipElement;
         "adc-inline-tokens": HTMLAdcInlineTokensElement;
         "adc-input": HTMLAdcInputElement;
@@ -1310,8 +1349,8 @@ declare namespace LocalJSX {
      */
     interface AdcAccessButton {
         /**
-          * URL base de la API (en dev: http://localhost:3000, en prod: vacío para usar relativo)
-          * @default ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname) 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
+          * URL base de la API (en dev: http://hostname:3000, en prod: vacío para usar relativo)
+          * @default isPrivateHost(globalThis.location?.hostname ?? "") 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
         "apiBaseUrl"?: string;
         /**
@@ -1568,6 +1607,12 @@ declare namespace LocalJSX {
          */
         "size"?: string;
     }
+    interface AdcIconEdit {
+        /**
+          * @default "1rem"
+         */
+        "size"?: string;
+    }
     interface AdcIconLearning {
         /**
           * @default "2rem"
@@ -1586,6 +1631,12 @@ declare namespace LocalJSX {
          */
         "size"?: string;
     }
+    interface AdcIconMembers {
+        /**
+          * @default "1rem"
+         */
+        "size"?: string;
+    }
     interface AdcIconNitro {
         /**
           * @default "1rem"
@@ -1599,6 +1650,12 @@ declare namespace LocalJSX {
         "size"?: string;
     }
     interface AdcIconPencil {
+        /**
+          * @default "1rem"
+         */
+        "size"?: string;
+    }
+    interface AdcIconTrash {
         /**
           * @default "1rem"
          */
@@ -1859,8 +1916,8 @@ declare namespace LocalJSX {
     }
     interface AdcSiteHeader {
         /**
-          * URL base de la API (en dev: http://localhost:3000, en prod: vacío)
-          * @default ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname) 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
+          * URL base de la API (en dev: http://hostname:3000, en prod: vacío)
+          * @default isPrivateHost(globalThis.location?.hostname ?? "") 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
         "apiBaseUrl"?: string;
         /**
@@ -2070,12 +2127,15 @@ declare namespace LocalJSX {
         "adc-icon-app-community": AdcIconAppCommunity;
         "adc-icon-app-identity": AdcIconAppIdentity;
         "adc-icon-community": AdcIconCommunity;
+        "adc-icon-edit": AdcIconEdit;
         "adc-icon-learning": AdcIconLearning;
         "adc-icon-left-arrow": AdcIconLeftArrow;
         "adc-icon-logout": AdcIconLogout;
+        "adc-icon-members": AdcIconMembers;
         "adc-icon-nitro": AdcIconNitro;
         "adc-icon-opensource": AdcIconOpensource;
         "adc-icon-pencil": AdcIconPencil;
+        "adc-icon-trash": AdcIconTrash;
         "adc-icon-vip": AdcIconVip;
         "adc-inline-tokens": AdcInlineTokens;
         "adc-input": AdcInput;
@@ -2131,12 +2191,15 @@ declare module "@stencil/core" {
             "adc-icon-app-community": LocalJSX.AdcIconAppCommunity & JSXBase.HTMLAttributes<HTMLAdcIconAppCommunityElement>;
             "adc-icon-app-identity": LocalJSX.AdcIconAppIdentity & JSXBase.HTMLAttributes<HTMLAdcIconAppIdentityElement>;
             "adc-icon-community": LocalJSX.AdcIconCommunity & JSXBase.HTMLAttributes<HTMLAdcIconCommunityElement>;
+            "adc-icon-edit": LocalJSX.AdcIconEdit & JSXBase.HTMLAttributes<HTMLAdcIconEditElement>;
             "adc-icon-learning": LocalJSX.AdcIconLearning & JSXBase.HTMLAttributes<HTMLAdcIconLearningElement>;
             "adc-icon-left-arrow": LocalJSX.AdcIconLeftArrow & JSXBase.HTMLAttributes<HTMLAdcIconLeftArrowElement>;
             "adc-icon-logout": LocalJSX.AdcIconLogout & JSXBase.HTMLAttributes<HTMLAdcIconLogoutElement>;
+            "adc-icon-members": LocalJSX.AdcIconMembers & JSXBase.HTMLAttributes<HTMLAdcIconMembersElement>;
             "adc-icon-nitro": LocalJSX.AdcIconNitro & JSXBase.HTMLAttributes<HTMLAdcIconNitroElement>;
             "adc-icon-opensource": LocalJSX.AdcIconOpensource & JSXBase.HTMLAttributes<HTMLAdcIconOpensourceElement>;
             "adc-icon-pencil": LocalJSX.AdcIconPencil & JSXBase.HTMLAttributes<HTMLAdcIconPencilElement>;
+            "adc-icon-trash": LocalJSX.AdcIconTrash & JSXBase.HTMLAttributes<HTMLAdcIconTrashElement>;
             "adc-icon-vip": LocalJSX.AdcIconVip & JSXBase.HTMLAttributes<HTMLAdcIconVipElement>;
             "adc-inline-tokens": LocalJSX.AdcInlineTokens & JSXBase.HTMLAttributes<HTMLAdcInlineTokensElement>;
             "adc-input": LocalJSX.AdcInput & JSXBase.HTMLAttributes<HTMLAdcInputElement>;

@@ -18,25 +18,25 @@ export class AdcSelect {
 
 	@Event() adcChange!: EventEmitter<string>;
 
-	private handleToggle = () => {
+	private readonly handleToggle = () => {
 		this.isOpen = !this.isOpen;
 	};
 
-	private handleSelect = (option: SelectOption) => {
+	private readonly handleSelect = (option: SelectOption) => {
 		this.adcChange.emit(option.value);
 		this.isOpen = false;
 	};
 
-	private handleKeyDown = (event: KeyboardEvent) => {
+	private readonly handleKeyDown = (event: KeyboardEvent) => {
 		if (event.key === "Escape") {
 			this.isOpen = false;
 		}
 	};
 
-	private getSelectedLabel(): string {
+	private readonly getSelectedLabel = (): string => {
 		const selected = this.options.find((opt) => opt.value === this.value);
 		return selected ? selected.label : this.placeholder;
-	}
+	};
 
 	render() {
 		return (

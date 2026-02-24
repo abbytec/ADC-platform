@@ -13,7 +13,7 @@ export class AdcToggleBadge {
 	/** Emitted when tapped */
 	@Event() adcToggle!: EventEmitter<void>;
 
-	private handleClick = () => {
+	private readonly handleClick = () => {
 		this.adcToggle.emit();
 	};
 

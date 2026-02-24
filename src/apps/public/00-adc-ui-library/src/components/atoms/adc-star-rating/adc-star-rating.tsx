@@ -61,17 +61,16 @@ export class AdcStarRating {
 		) : (
 			<div class="flex items-center gap-1" role={"radiogroup"}>
 				{[1, 2, 3, 4, 5].map((i) => (
-					<button
+					<input
+						type="radio"
 						key={`star-${i}`}
-						type="button"
 						class={`text-4xl leading-none focus:outline-none cursor-pointer`}
 						aria-label={`Calificar con ${i} estrellas`}
-						role={"radio"}
 						aria-checked={this.myRating === i ? "true" : "false"}
 						onClick={() => this.handleClick(i)}
 					>
 						{displayStarRating(i)}
-					</button>
+					</input>
 				))}
 				{clasification}
 			</div>

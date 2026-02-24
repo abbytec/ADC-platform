@@ -8,6 +8,40 @@ import { generateCompleteImportMap } from "../../utils/import-map.js";
 import { copyPublicFiles } from "../../utils/file-operations.js";
 import { getServerHost, getCommonPublicDir } from "../../utils/path-resolver.js";
 
+/** Mapa consolidado de extensiones a content-types para servir archivos estáticos */
+const STATIC_CONTENT_TYPES: Record<string, string> = {
+	".webp": "image/webp",
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".gif": "image/gif",
+	".svg": "image/svg+xml",
+	".ico": "image/x-icon",
+	".woff": "font/woff",
+	".woff2": "font/woff2",
+	".ttf": "font/ttf",
+	".css": "text/css",
+	".js": "application/javascript",
+	".json": "application/json",
+	".webmanifest": "application/manifest+json",
+};
+
+/**
+ * Sirve un archivo estático con el content-type apropiado.
+ * @returns true si el archivo fue servido, false si no existe.
+ */
+function serveStaticFile(filePath: string, res: any, maxAge: number): boolean {
+	if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+		const ext = path.extname(filePath).toLowerCase();
+		const contentType = STATIC_CONTENT_TYPES[ext] || "application/octet-stream";
+		res.setHeader("Content-Type", contentType);
+		res.setHeader("Cache-Control", `public, max-age=${maxAge}`);
+		fs.createReadStream(filePath).pipe(res);
+		return true;
+	}
+	return false;
+}
+
 /**
  * Clase base para estrategias Vite
  */
@@ -43,10 +77,7 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 
 		for (const moduleName of registeredModules.keys()) {
 			federatedModules.push(`@${moduleName}`);
-			externalModules.push(`@${moduleName}`);
-			externalModules.push(moduleName);
-			externalModules.push(`${moduleName}/App`);
-			externalModules.push(`${moduleName}/App.js`);
+			externalModules.push(`@${moduleName}`, moduleName, `${moduleName}/App`, `${moduleName}/App.js`);
 		}
 
 		const externals: (string | RegExp)[] = isDev ? [] : externalModules;
@@ -136,7 +167,7 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 		const uiLibraryDirs: string[] = [];
 		for (const depName of uiDependencies) {
 			const depModule = registeredModules.get(depName);
-			if (depModule && depModule.uiConfig.framework === "stencil") {
+			if (depModule?.uiConfig.framework === "stencil") {
 				const publicDir = path.join(depModule.appDir, "public");
 				if (fs.existsSync(publicDir)) {
 					uiLibraryDirs.push(publicDir);
@@ -160,31 +191,7 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 					// Buscar el archivo en los directorios de UI libraries
 					for (const dir of uiLibraryDirs) {
 						const filePath = path.join(dir, relativePath);
-						if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-							// Determinar content-type básico
-							const ext = path.extname(filePath).toLowerCase();
-							const contentTypes: Record<string, string> = {
-								".webp": "image/webp",
-								".png": "image/png",
-								".jpg": "image/jpeg",
-								".jpeg": "image/jpeg",
-								".gif": "image/gif",
-								".svg": "image/svg+xml",
-								".ico": "image/x-icon",
-								".woff": "font/woff",
-								".woff2": "font/woff2",
-								".ttf": "font/ttf",
-								".css": "text/css",
-								".js": "application/javascript",
-								".json": "application/json",
-							};
-							const contentType = contentTypes[ext] || "application/octet-stream";
-
-							res.setHeader("Content-Type", contentType);
-							res.setHeader("Cache-Control", "public, max-age=31536000");
-							fs.createReadStream(filePath).pipe(res);
-							return;
-						}
+						if (serveStaticFile(filePath, res, 31536000)) return;
 					}
 
 					next();
@@ -213,25 +220,7 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 					// Limpiar query strings y fragmentos
 					const cleanUrl = req.url.split("?")[0].split("#")[0];
 					const filePath = path.join(commonDir, cleanUrl);
-
-					if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-						const ext = path.extname(filePath).toLowerCase();
-						const contentTypes: Record<string, string> = {
-							".ico": "image/x-icon",
-							".png": "image/png",
-							".jpg": "image/jpeg",
-							".svg": "image/svg+xml",
-							".webp": "image/webp",
-							".webmanifest": "application/manifest+json",
-							".json": "application/json",
-						};
-						const contentType = contentTypes[ext] || "application/octet-stream";
-
-						res.setHeader("Content-Type", contentType);
-						res.setHeader("Cache-Control", "public, max-age=86400");
-						fs.createReadStream(filePath).pipe(res);
-						return;
-					}
+					if (serveStaticFile(filePath, res, 86400)) return;
 
 					next();
 				});
@@ -407,7 +396,7 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 						const module = registeredModules.get(moduleName);
 						const remainder = source.substring(prefix.length);
 
-						if (module && module.uiConfig.framework === "vite") {
+						if (module?.uiConfig.framework === "vite") {
 							const withJs = remainder.endsWith(".js") ? remainder : `${remainder}.js`;
 							return {
 								id: `${federatedHosts[prefix]}${withJs}`,

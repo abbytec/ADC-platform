@@ -2,7 +2,7 @@ import { Component, Prop, h, Host } from "@stencil/core";
 
 @Component({
 	tag: "adc-icon-app-identity",
-	styleUrl: "adc-icon-app-identity.css",
+	styleUrl: "../../adc-icon.css",
 	shadow: true,
 })
 export class AdcIconAppIdentity {

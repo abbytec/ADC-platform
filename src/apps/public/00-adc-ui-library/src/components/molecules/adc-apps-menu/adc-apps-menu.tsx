@@ -57,14 +57,14 @@ export class AdcAppsMenu {
 		}
 	}
 
-	private toggle = () => {
+	private readonly toggle = () => {
 		this.open = !this.open;
 	};
 
-	private isCurrent(url: string): boolean {
+	private readonly isCurrent = (url: string): boolean => {
 		const origin = globalThis.location?.origin;
 		return origin === url || origin + "/" === url + "/";
-	}
+	};
 
 	render() {
 		const apps = this.appList;

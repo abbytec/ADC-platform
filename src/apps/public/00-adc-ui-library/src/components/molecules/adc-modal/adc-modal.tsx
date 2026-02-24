@@ -31,12 +31,12 @@ export class AdcModal {
 		}
 	}
 
-	private close = () => {
+	private readonly close = () => {
 		this.open = false;
 		this.adcClose.emit();
 	};
 
-	private handleBackdropClick = (event: MouseEvent) => {
+	private readonly handleBackdropClick = (event: MouseEvent) => {
 		if (this.dismissOnBackdrop && event.target === event.currentTarget) {
 			this.close();
 		}
@@ -57,10 +57,10 @@ export class AdcModal {
 		if (!this.open) return null;
 
 		return (
-			<div
-				class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]"
+			<dialog
+				open
+				class="fixed inset-0 z-50 text-text flex items-center justify-center p-4 m-0 border-none w-full h-full max-w-none max-h-none bg-black/50 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]"
 				onClick={this.handleBackdropClick}
-				role="dialog"
 				aria-modal="true"
 				aria-label={this.modalTitle}
 			>
@@ -94,7 +94,7 @@ export class AdcModal {
 						<slot name="footer"></slot>
 					</div>
 				</div>
-			</div>
+			</dialog>
 		);
 	}
 }
