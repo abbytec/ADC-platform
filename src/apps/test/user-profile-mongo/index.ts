@@ -1,10 +1,10 @@
 import { BaseApp } from "../../BaseApp.js";
 import type IdentityManagerService from "../../../services/core/IdentityManagerService/index.js";
 import { AuthorizationError } from "../../../services/core/IdentityManagerService/index.js";
-import type { Role, User } from "../../../services/core/IdentityManagerService/domain/index.js";
+import type { Role, User } from "@common/types/identity/index.js";
 import type SessionManagerService from "../../../services/security/SessionManagerService/index.js";
 import { Logger } from "../../../utils/logger/Logger.js";
-import { IdentityScope } from "@common/types/identity.js";
+import { IdentityScope } from "@common/types/identity/permissions.js";
 import { CRUDXAction } from "@common/types/Actions.ts";
 import crypto from "node:crypto";
 

@@ -14,7 +14,7 @@ import {
 import { AuthError } from "@common/types/custom-errors/AuthError.ts";
 import type { AuthenticatedUser } from "../types.js";
 import { UserAuthenticationResult } from "../../../core/IdentityManagerService/dao/users.ts";
-import { User } from "../../../core/IdentityManagerService/index.js";
+import { User } from "@common/types/identity/User.js";
 
 /** Nombre de las cookies */
 const ACCESS_COOKIE_NAME = "access_token";

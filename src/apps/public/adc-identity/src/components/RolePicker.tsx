@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import type { Role } from "../utils/identity-api.ts";
+import type { Role } from "@common/types/identity/Role.ts";
 
 interface RolePickerProps {
 	readonly roles: Role[];

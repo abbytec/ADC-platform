@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { identityApi, type Role, type Permission, type IdentityScope, type Organization } from "../utils/identity-api.ts";
+import { identityApi } from "../utils/identity-api.ts";
+import type { Organization, Permission, Role } from "@common/types/identity/index.d.ts";
 import { Scope, canWrite, canUpdate, canDelete } from "../utils/permissions.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { PermissionEditor } from "../components/PermissionEditor/index.ts";
@@ -9,7 +10,7 @@ import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 
 interface RolesViewProps {
-	readonly scopes: IdentityScope[];
+	readonly scopes: Permission[];
 	readonly orgId?: string;
 	readonly isAdmin?: boolean;
 }

@@ -1,5 +1,5 @@
 import type { AuthenticatedUserInfo } from "../types.js";
-import { humanizePermission } from "@common/types/identity.js";
+import { humanizePermission } from "@common/types/identity/permissions.js";
 import type SessionManagerService from "../../../security/SessionManagerService/index.ts";
 
 /**

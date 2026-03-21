@@ -1,4 +1,4 @@
-import type { Permission } from "../../utils/identity-api.ts";
+import type { Permission } from "@common/types/identity/Permission.ts";
 import { ACTIONS } from "./constants.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────

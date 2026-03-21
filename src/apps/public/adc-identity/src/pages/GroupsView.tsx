@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { identityApi, type Group, type Role, type Permission, type IdentityScope, type Organization } from "../utils/identity-api.ts";
+import { identityApi } from "../utils/identity-api.ts";
+import type { Group, Organization, Permission, Role } from "@common/types/identity/index.d.ts";
 import { Scope, canWrite, canUpdate, canDelete } from "../utils/permissions.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { PermissionEditor } from "../components/PermissionEditor/index.ts";
@@ -11,7 +12,7 @@ import { MembersModal } from "../components/MembersModal.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 
 interface GroupsViewProps {
-	readonly scopes: IdentityScope[];
+	readonly scopes: Permission[];
 	readonly orgId?: string;
 	readonly isAdmin?: boolean;
 }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { identityApi, type User } from "../utils/identity-api.ts";
-import { AdcFetchResult, clearErrors } from "@ui-library/utils/adc-fetch";
+import { identityApi } from "../utils/identity-api.ts";
+import type { ClientUser } from "@common/types/identity/User.js";
+import { clearErrors } from "@ui-library/utils/adc-fetch";
 
 interface MembersModalProps {
 	readonly title: string;
@@ -9,9 +10,9 @@ interface MembersModalProps {
 	readonly noMembersText: string;
 	readonly entityId: string;
 	readonly onClose: () => void;
-	readonly fetchMembers: (entityId: string) => Promise<AdcFetchResult<User[]>>;
-	readonly onAddMember: (entityId: string, userId: string) => Promise<{ success: boolean }>;
-	readonly onRemoveMember: (entityId: string, userId: string) => Promise<{ success: boolean }>;
+	readonly fetchMembers: (entityId: string) => Promise<ClientUser[]>;
+	readonly onAddMember: (entityId: string, userId: string) => Promise<boolean>;
+	readonly onRemoveMember: (entityId: string, userId: string) => Promise<boolean>;
 }
 
 export function MembersModal({
@@ -25,9 +26,9 @@ export function MembersModal({
 	onRemoveMember,
 }: MembersModalProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
-	const [members, setMembers] = useState<User[]>([]);
+	const [members, setMembers] = useState<ClientUser[]>([]);
 	const [loadingMembers, setLoadingMembers] = useState(false);
-	const [userSearchResults, setUserSearchResults] = useState<User[]>([]);
+	const [userSearchResults, setUserSearchResults] = useState<ClientUser[]>([]);
 	const [userSearching, setUserSearching] = useState(false);
 	const [addingMember, setAddingMember] = useState(false);
 
@@ -38,7 +39,7 @@ export function MembersModal({
 	const loadMembers = useCallback(async () => {
 		setLoadingMembers(true);
 		const data = await fetchMembers(entityId);
-		setMembers(data.data || []);
+		setMembers(data || []);
 		setLoadingMembers(false);
 	}, [entityId, fetchMembers]);
 

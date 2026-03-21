@@ -325,7 +325,6 @@ export default class IdentityManagerService extends BaseService {
 // Re-exportar tipos para facilitar uso
 export type { OrgScopedManagers } from "./types.js";
 export type { IdentityManagerService as IIdentityManager };
-export type { User, Role, Group, Permission, Organization, RegionInfo } from "./domain/index.js";
 // Re-exportar SystemRole para compatibilidad
 export { SystemRole } from "./defaults/systemRoles.js";
 // Re-exportar AuthorizationError

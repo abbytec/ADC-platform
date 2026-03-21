@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { identityApi, type Region, type IdentityScope } from "../utils/identity-api.ts";
+import { identityApi } from "../utils/identity-api.ts";
+import type { RegionInfo, Permission } from "@common/types/identity/index.d.ts";
 import { Scope, canWrite, canUpdate, canDelete } from "../utils/permissions.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal.tsx";
@@ -8,17 +9,17 @@ import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 
 interface RegionsViewProps {
-	readonly scopes: IdentityScope[];
+	readonly scopes: Permission[];
 }
 
 export function RegionsView({ scopes }: RegionsViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
-	const [regions, setRegions] = useState<Region[]>([]);
-	const [filteredRegions, setFilteredRegions] = useState<Region[]>([]);
+	const [regions, setRegions] = useState<RegionInfo[]>([]);
+	const [filteredRegions, setFilteredRegions] = useState<RegionInfo[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [modalOpen, setModalOpen] = useState(false);
-	const [editingRegion, setEditingRegion] = useState<Region | null>(null);
-	const [deleteConfirm, setDeleteConfirm] = useState<Region | null>(null);
+	const [editingRegion, setEditingRegion] = useState<RegionInfo | null>(null);
+	const [deleteConfirm, setDeleteConfirm] = useState<RegionInfo | null>(null);
 
 	// Form state
 	const [formPath, setFormPath] = useState("");
@@ -75,7 +76,7 @@ export function RegionsView({ scopes }: RegionsViewProps) {
 		setModalOpen(true);
 	};
 
-	const openEditModal = (region: Region) => {
+	const openEditModal = (region: RegionInfo) => {
 		setEditingRegion(region);
 		setFormPath(region.path);
 		setFormIsGlobal(region.isGlobal);
@@ -126,7 +127,7 @@ export function RegionsView({ scopes }: RegionsViewProps) {
 		}
 	};
 
-	const columns: Column<Region>[] = [
+	const columns: Column<RegionInfo>[] = [
 		{ key: "path", label: t("regions.path") },
 		{
 			key: "isGlobal",

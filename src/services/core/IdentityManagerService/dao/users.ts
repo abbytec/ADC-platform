@@ -1,9 +1,9 @@
 import type { Model } from "mongoose";
-import type { User } from "../domain/user.ts";
+import type { User } from "@common/types/identity/User.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId, hashPassword, verifyPassword } from "../utils/crypto.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
-import { IdentityScope } from "@common/types/identity.js";
+import { IdentityScope } from "@common/types/identity/permissions.js";
 import { CRUDXAction } from "@common/types/Actions.ts";
 
 export type UserAuthenticationResult = Partial<User> | { id: string; isActive: boolean } | { id: string; wrongPassword: boolean } | null;

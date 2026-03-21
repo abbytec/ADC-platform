@@ -1,19 +1,5 @@
 import { Schema } from "mongoose";
-import type { Permission } from "./permission.ts";
-/**
- * Organización
- */
-export interface Organization {
-	orgId: string;
-	slug: string;
-	region: string;
-	tier: "default";
-	status: "active" | "inactive" | "blocked";
-	permissions?: Permission[];
-	metadata?: Record<string, any>;
-	createdAt: Date;
-	updatedAt: Date;
-}
+import type { Organization } from "@common/types/identity/Organization.ts";
 
 export const organizationSchema = new Schema<Organization>({
 	orgId: { type: String, required: true, unique: true },

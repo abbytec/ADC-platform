@@ -1,9 +1,9 @@
 import type { Model } from "mongoose";
-import type { Group, User } from "../domain/index.ts";
+import type { Group, User } from "@common/types/identity/index.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "../utils/crypto.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
-import { IdentityScope } from "@common/types/identity.js";
+import { IdentityScope } from "@common/types/identity/permissions.js";
 import { CRUDXAction } from "@common/types/Actions.js";
 
 export class GroupManager {

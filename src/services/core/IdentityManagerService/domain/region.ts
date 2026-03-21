@@ -1,24 +1,5 @@
 import { Schema } from "mongoose";
-/**
- * Metadata de región (extensible)
- */
-export interface RegionMetadata {
-	objectConnectionUri?: string;
-	cacheConnectionUri?: string;
-	[key: string]: any;
-}
-
-/**
- * Información de región
- */
-export interface RegionInfo {
-	path: string;
-	isGlobal: boolean;
-	isActive: boolean;
-	metadata: RegionMetadata;
-	createdAt: Date;
-	updatedAt: Date;
-}
+import type { RegionInfo } from "@common/types/identity/Region.ts";
 
 export const regionSchema = new Schema<RegionInfo>({
 	path: { type: String, required: true, unique: true },

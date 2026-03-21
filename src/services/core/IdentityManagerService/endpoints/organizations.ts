@@ -2,7 +2,7 @@ import { RegisterEndpoint, type EndpointCtx } from "../../EndpointManagerService
 import { IdentityError } from "@common/types/custom-errors/IdentityError.js";
 import type IdentityManagerService from "../index.js";
 
-import type { Organization } from "../domain/index.js";
+import type { Organization } from "@common/types/identity/Organization.js";
 
 /** Org/region management is global-only. Users in org mode cannot manage these. */
 function requireGlobalAccess(ctx: EndpointCtx): void {

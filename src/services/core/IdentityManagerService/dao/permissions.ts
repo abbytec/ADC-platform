@@ -1,7 +1,7 @@
-import { Permission, ResolvedPermission } from "../domain/permission.ts";
+import { Permission, ResolvedPermission } from "@common/types/identity/Permission.ts";
 import type { UserManager, RoleManager, GroupManager, OrgManager } from "./index.ts";
 import LRUCache from "../../../../utils/performance/LRUCache.ts";
-import { RESOURCE_NAME, hasFlags } from "@common/types/identity.ts";
+import { RESOURCE_NAME, hasFlags } from "@common/types/identity/permissions.ts";
 
 interface PermissionCacheEntry {
 	permissions: ResolvedPermission[];

@@ -1,6 +1,6 @@
 import { CRUDXAction } from "@common/types/Actions.ts";
-import { Permission } from "../domain/permission.ts";
-import { RESOURCE_NAME, IdentityScope } from "@common/types/identity.js";
+import { Permission } from "@common/types/identity/Permission.ts";
+import { RESOURCE_NAME, IdentityScope } from "@common/types/identity/permissions.js";
 
 export enum SystemRole {
 	SYSTEM = "SYSTEM",

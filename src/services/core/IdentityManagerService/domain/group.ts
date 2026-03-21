@@ -1,20 +1,5 @@
 import { Schema } from "mongoose";
-import type { Permission } from "./permission.ts";
-/**
- * Grupo de usuarios
- */
-export interface Group {
-	id: string;
-	name: string;
-	description: string;
-	roleIds: string[];
-	permissions?: Permission[];
-	/** Organización a la que pertenece (null = global) */
-	orgId?: string;
-	metadata?: Record<string, any>;
-	createdAt: Date;
-	updatedAt: Date;
-}
+import type { Group } from "@common/types/identity/Group.ts";
 
 export const groupSchema = new Schema<Group>(
 	{

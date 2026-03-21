@@ -1,4 +1,4 @@
-import { CRUDXAction } from "./Actions.ts";
+import { CRUDXAction } from "../Actions.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Resource

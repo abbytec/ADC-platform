@@ -1,34 +1,5 @@
 import { Schema } from "mongoose";
-import { Permission } from "./permission.ts";
-/**
- * Membresía por organización
- */
-export interface OrgMembership {
-	orgId: string;
-	roleIds: string[];
-	joinedAt: Date;
-}
-
-/**
- * Usuario del sistema
- */
-export interface User {
-	id: string;
-	username: string;
-	passwordHash: string;
-	email?: string;
-	avatar?: string;
-	roleIds: string[];
-	groupIds: string[];
-	permissions?: Permission[];
-	orgMemberships?: OrgMembership[];
-	metadata?: Record<string, any>;
-	isActive: boolean;
-	createdAt: Date;
-	updatedAt: Date;
-	lastLogin?: Date;
-}
-
+import type { User } from "@common/types/identity/User.ts";
 export const userSchema = new Schema<User>(
 	{
 		id: { type: String, required: true, unique: true },

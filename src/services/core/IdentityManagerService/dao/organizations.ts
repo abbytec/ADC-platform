@@ -2,10 +2,14 @@ import type { Model } from "mongoose";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "../utils/crypto.ts";
 import type { RegionManager } from "./regions.js";
-import type { Organization } from "../domain/organization.ts";
+import type { Organization } from "@common/types/identity/Organization.ts";
 
 export class OrgManager {
-	constructor(private readonly orgModel: Model<any>, private readonly regionManager: RegionManager, private readonly logger: ILogger) {}
+	constructor(
+		private readonly orgModel: Model<any>,
+		private readonly regionManager: RegionManager,
+		private readonly logger: ILogger
+	) {}
 
 	/** Crea una nueva organización */
 	async createOrganization(slug: string, region?: string, metadata?: Record<string, any>): Promise<Organization> {

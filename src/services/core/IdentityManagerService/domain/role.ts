@@ -1,18 +1,6 @@
 import { Schema } from "mongoose";
-import type { Permission } from "./permission.ts";
-/**
- * Definición de rol
- */
-export interface Role {
-	id: string;
-	name: string;
-	description: string;
-	permissions: Permission[];
-	isCustom: boolean;
-	/** Organización a la que pertenece (null = global/predefinido) */
-	orgId?: string;
-	createdAt: Date;
-}
+import type { Role } from "@common/types/identity/Role.ts";
+
 export const roleSchema = new Schema<Role>(
 	{
 		id: { type: String, required: true, unique: true },

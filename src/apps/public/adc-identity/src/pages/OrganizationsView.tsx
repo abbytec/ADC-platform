@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import { identityApi, type Organization, type Region, type IdentityScope } from "../utils/identity-api.ts";
+import type { Organization, RegionInfo, Permission, OrganizationStatus, OrganizationTier } from "@common/types/identity/index.d.ts";
+import { identityApi } from "../utils/identity-api.ts";
 import { Scope, canWrite, canUpdate, canDelete } from "../utils/permissions.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal.tsx";
@@ -9,7 +10,7 @@ import { MembersModal } from "../components/MembersModal.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 
 interface OrganizationsViewProps {
-	readonly scopes: IdentityScope[];
+	readonly scopes: Permission[];
 }
 
 const ORG_STATUSES = ["active", "inactive", "blocked"] as const;
@@ -24,7 +25,7 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [orgs, setOrgs] = useState<Organization[]>([]);
 	const [filteredOrgs, setFilteredOrgs] = useState<Organization[]>([]);
-	const [allRegions, setAllRegions] = useState<Region[]>([]);
+	const [allRegions, setAllRegions] = useState<RegionInfo[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [modalOpen, setModalOpen] = useState(false);
 	const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
@@ -98,8 +99,8 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 		const payload = {
 			slug: formSlug,
 			region: formRegion,
-			tier: formTier || undefined,
-			status: formStatus as Organization["status"],
+			tier: (formTier as OrganizationTier) || undefined,
+			status: formStatus as OrganizationStatus,
 		};
 
 		if (editingOrg) {
@@ -260,9 +261,9 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 					noMembersText={t("organizations.noMembers")}
 					entityId={membersModal.orgId}
 					onClose={() => setMembersModal(null)}
-					fetchMembers={(orgId) => identityApi.listOrgMembers(orgId)}
-					onAddMember={(orgId, userId) => identityApi.addUserToOrg(orgId, userId)}
-					onRemoveMember={(orgId, userId) => identityApi.removeUserFromOrg(orgId, userId)}
+					fetchMembers={(orgId) => identityApi.listOrgMembers(orgId).then((res) => res.data || [])}
+					onAddMember={(orgId, userId) => identityApi.addUserToOrg(orgId, userId).then((res) => res.success || false)}
+					onRemoveMember={(orgId, userId) => identityApi.removeUserFromOrg(orgId, userId).then((res) => res.success || false)}
 				/>
 			)}
 

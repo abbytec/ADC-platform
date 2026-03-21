@@ -2,7 +2,8 @@ import "@ui-library/utils/react-jsx";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { router } from "@common/utils/router";
-import { identityApi, type IdentityScope } from "./utils/identity-api.ts";
+import { identityApi } from "./utils/identity-api.ts";
+import type { Permission } from "@common/types/identity/Permission.ts";
 import { getVisibleTabs, type IdentityTab } from "./utils/permissions.ts";
 import { UsersView } from "./pages/UsersView.tsx";
 import { RolesView } from "./pages/RolesView.tsx";
@@ -18,7 +19,7 @@ function getTabFromPath(path: string): string {
 
 export default function App() {
 	const { t, ready } = useTranslation({ namespace: "adc-identity", autoLoad: true });
-	const [scopes, setScopes] = useState<IdentityScope[]>([]);
+	const [scopes, setScopes] = useState<Permission[]>([]);
 	const [visibleTabs, setVisibleTabs] = useState<IdentityTab[]>([]);
 	const [activeTab, setActiveTab] = useState<string>("");
 	const [loading, setLoading] = useState(true);

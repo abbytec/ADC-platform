@@ -1,4 +1,10 @@
 import { createAdcApi } from "@ui-library/utils/adc-fetch";
+import type { ClientUser } from "@common/types/identity/User.ts";
+import type { Role } from "@common/types/identity/Role.ts";
+import type { Permission } from "@common/types/identity/Permission.ts";
+import type { Group } from "@common/types/identity/Group.ts";
+import type { Organization } from "@common/types/identity/Organization.ts";
+import type { RegionInfo } from "@common/types/identity/Region.ts";
 
 /**
  * Identity API client
@@ -10,88 +16,18 @@ const api = createAdcApi({
 	credentials: process.env.NODE_ENV === "development" ? "include" : "same-origin",
 });
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-export interface User {
-	id: string;
-	username: string;
-	email?: string;
-	roleIds: string[];
-	groupIds: string[];
-	permissions?: Permission[];
-	isActive: boolean;
-	createdAt: string;
-	updatedAt: string;
-	lastLogin?: string;
-	orgMemberships?: { orgId: string; roleIds: string[]; joinedAt: string }[];
-	metadata?: Record<string, any>;
-}
-
-export interface Role {
-	id: string;
-	name: string;
-	description: string;
-	permissions: Permission[];
-	isCustom: boolean;
-	orgId?: string;
-	createdAt: string;
-}
-
-export interface Permission {
-	resource: string;
-	action: number;
-	scope: number;
-}
-
-export interface Group {
-	id: string;
-	name: string;
-	description: string;
-	roleIds: string[];
-	permissions?: Permission[];
-	orgId?: string;
-	createdAt: string;
-	updatedAt: string;
-}
-
-export interface Organization {
-	orgId: string;
-	slug: string;
-	region: string;
-	tier: string;
-	status: "active" | "inactive" | "blocked";
-	metadata?: Record<string, any>;
-	createdAt: string;
-	updatedAt: string;
-}
-
-export interface Region {
-	path: string;
-	isGlobal: boolean;
-	isActive: boolean;
-	metadata: Record<string, any>;
-	createdAt: string;
-	updatedAt: string;
-}
-
-export interface IdentityScope {
-	action: number;
-	scope: number;
-	source: string;
-}
-
 // ── API methods ──────────────────────────────────────────────────────────────
 
 export const identityApi = {
 	// My Permissions
-	getMyPermissions: () => api.get<{ scopes: IdentityScope[]; orgId?: string; isAdmin?: boolean }>("/my-permissions"),
+	getMyPermissions: () => api.get<{ scopes: Permission[]; orgId?: string; isAdmin?: boolean }>("/my-permissions"),
 
 	// Users
-	listUsers: (orgId?: string) => api.get<User[]>("/users", orgId ? { params: { orgId } } : undefined),
-	searchUsers: (q: string) => api.get<User[]>("/users/search", { params: { q } }),
-	getUser: (userId: string) => api.get<User>(`/users/${userId}`),
-	createUser: (data: { username: string; password: string; roleIds?: string[] }) => api.post<User>("/users", { body: data }),
-	updateUser: (userId: string, data: Partial<User>) => api.put<User>(`/users/${userId}`, { body: data }),
+	listUsers: (orgId?: string) => api.get<ClientUser[]>("/users", orgId ? { params: { orgId } } : undefined),
+	searchUsers: (q: string) => api.get<ClientUser[]>("/users/search", { params: { q } }),
+	getUser: (userId: string) => api.get<ClientUser>(`/users/${userId}`),
+	createUser: (data: { username: string; password: string; roleIds?: string[] }) => api.post<ClientUser>("/users", { body: data }),
+	updateUser: (userId: string, data: Partial<ClientUser>) => api.put<ClientUser>(`/users/${userId}`, { body: data }),
 	deleteUser: (userId: string) => api.delete<{ success: boolean }>(`/users/${userId}`),
 
 	// Roles
@@ -107,7 +43,7 @@ export const identityApi = {
 	createGroup: (data: { name: string; description: string; roleIds?: string[] }) => api.post<Group>("/groups", { body: data }),
 	updateGroup: (groupId: string, data: Partial<Group>) => api.put<Group>(`/groups/${groupId}`, { body: data }),
 	deleteGroup: (groupId: string) => api.delete<{ success: boolean }>(`/groups/${groupId}`),
-	listGroupMembers: (groupId: string) => api.get<User[]>(`/groups/${groupId}/users`),
+	listGroupMembers: (groupId: string) => api.get<ClientUser[]>(`/groups/${groupId}/users`),
 	addUserToGroup: (groupId: string, userId: string) => api.post<{ success: boolean }>(`/groups/${groupId}/users/${userId}`),
 	removeUserFromGroup: (groupId: string, userId: string) => api.delete<{ success: boolean }>(`/groups/${groupId}/users/${userId}`),
 
@@ -118,15 +54,16 @@ export const identityApi = {
 		api.post<Organization>("/organizations", { body: data }),
 	updateOrganization: (orgId: string, data: Partial<Organization>) => api.put<Organization>(`/organizations/${orgId}`, { body: data }),
 	deleteOrganization: (orgId: string) => api.delete<{ success: boolean }>(`/organizations/${orgId}`),
-	listOrgMembers: (orgId: string) => api.get<User[]>(`/organizations/${orgId}/members`),
+	listOrgMembers: (orgId: string) => api.get<ClientUser[]>(`/organizations/${orgId}/members`),
 	addUserToOrg: (orgId: string, userId: string, roleIds?: string[]) =>
 		api.post<{ success: boolean }>(`/organizations/${orgId}/members/${userId}`, roleIds ? { body: { roleIds } } : undefined),
 	removeUserFromOrg: (orgId: string, userId: string) => api.delete<{ success: boolean }>(`/organizations/${orgId}/members/${userId}`),
 
 	// Regions
-	listRegions: () => api.get<Region[]>("/regions"),
-	createRegion: (data: { path: string; metadata: Record<string, any>; isGlobal?: boolean }) => api.post<Region>("/regions", { body: data }),
-	updateRegion: (path: string, data: Partial<Region>) => api.put<Region>(`/regions/${path}`, { body: data }),
+	listRegions: () => api.get<RegionInfo[]>("/regions"),
+	createRegion: (data: { path: string; metadata: Record<string, any>; isGlobal?: boolean }) =>
+		api.post<RegionInfo>("/regions", { body: data }),
+	updateRegion: (path: string, data: Partial<RegionInfo>) => api.put<RegionInfo>(`/regions/${path}`, { body: data }),
 	deleteRegion: (path: string) => api.delete<{ success: boolean }>(`/regions/${path}`),
 
 	// Stats

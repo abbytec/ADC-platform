@@ -1,12 +1,15 @@
 import type { Model } from "mongoose";
-import { RegionInfo, RegionMetadata } from "../domain/region.ts";
+import { RegionInfo, RegionMetadata } from "@common/types/identity/Region.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 
 export class RegionManager {
 	#regionsCache: Map<string, RegionInfo> = new Map();
 	#globalRegion: RegionInfo | null = null;
 
-	constructor(private readonly regionModel: Model<any>, private readonly logger: ILogger) {}
+	constructor(
+		private readonly regionModel: Model<any>,
+		private readonly logger: ILogger
+	) {}
 
 	/**
 	 * Precarga todas las regiones en memoria

@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import type { Permission } from "../../utils/identity-api.ts";
+import type { Permission } from "@common/types/identity/Permission.js";
 import { RESOURCES, RESOURCE_MAP, type ScopeDef } from "@common/types/resources.js";
 import { ACTIONS, ACTION_MAP } from "./constants.ts";
 import { buildBitfieldMap, bitfieldMapToPermissions, getSimpleActions } from "./helpers.ts";
