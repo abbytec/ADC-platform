@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { BaseService } from "../../BaseService.js";
 import { Kernel } from "../../../kernel.js";
 import { ILogManagerService } from "./types.js";
+import { ModuleTypes } from "../../../utils/registry/ModuleRegistry.js";
 
 export default class LogManagerService extends BaseService implements ILogManagerService {
 	public readonly name = "LogManagerService";
@@ -27,9 +28,12 @@ export default class LogManagerService extends BaseService implements ILogManage
 		await this.cleanupLogs();
 
 		// Schedule daily cleanup
-		this.cleanupInterval = setInterval(() => {
-			this.cleanupLogs();
-		}, 24 * 60 * 60 * 1000);
+		this.cleanupInterval = setInterval(
+			() => {
+				this.cleanupLogs();
+			},
+			24 * 60 * 60 * 1000
+		);
 
 		this.logger.logOk("LogManagerService started");
 	}
@@ -41,9 +45,10 @@ export default class LogManagerService extends BaseService implements ILogManage
 		}
 	}
 
-	getLogsDir(): string {
+	getLogsDir(moduleType?: ModuleTypes): string {
 		const configDir = this.config.custom?.logsDir || "temp/logs";
-		return path.resolve(process.cwd(), configDir);
+		if (!moduleType) return path.resolve(process.cwd(), configDir);
+		return path.resolve(process.cwd(), moduleType, configDir);
 	}
 
 	/**
@@ -129,33 +134,33 @@ export default class LogManagerService extends BaseService implements ILogManage
 	/**
 	 * Query logs for a specific app
 	 */
-	async queryLogs(appName: string, date?: string): Promise<string> {
+	async queryLogs(title: string, moduleType: ModuleTypes, date?: string): Promise<string> {
 		const logsDir = this.getLogsDir();
-		const appLogDir = path.join(logsDir, appName);
+		const moduleLogDir = path.join(logsDir, moduleType, title);
 
 		try {
 			// Check if directory exists
 			try {
-				await fs.access(appLogDir);
+				await fs.access(moduleLogDir);
 			} catch {
 				// Check for flat file
-				const flatFile = path.join(logsDir, `${appName}.log`);
+				const flatFile = path.join(logsDir, `${title}.log`);
 				try {
 					return await fs.readFile(flatFile, "utf-8");
 				} catch {
-					return `No logs found for ${appName}`;
+					return `No logs found for ${title}`;
 				}
 			}
 
 			// If directory, read files
-			const files = await fs.readdir(appLogDir);
+			const files = await fs.readdir(moduleLogDir);
 			let content = "";
 
 			for (const file of files) {
 				if (date && !file.includes(date)) continue;
 
 				content += `--- Log File: ${file} ---\n`;
-				content += await fs.readFile(path.join(appLogDir, file), "utf-8");
+				content += await fs.readFile(path.join(moduleLogDir, file), "utf-8");
 				content += "\n";
 			}
 

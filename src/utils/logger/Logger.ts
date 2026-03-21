@@ -32,6 +32,6 @@ export class Logger {
 	}
 
 	static getLogger(title: string): ILogger {
-		return globalLogger.getLogger(title);
+		return globalLogger.createLogger(title);
 	}
 }

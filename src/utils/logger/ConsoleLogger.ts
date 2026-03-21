@@ -30,7 +30,7 @@ const Colors = {
 export default class ConsoleLogger implements ILogger {
 	constructor(private currentLevel: LogLevel = "DEBUG") {}
 
-	public getLogger(title: string): ILogger {
+	public createLogger(title: string): ILogger {
 		return {
 			logDebug: (message: string, ...args: any[]) => this.logDebug(`[${title}] ${message}`, ...args),
 			logInfo: (message: string, ...args: any[]) => this.logInfo(`[${title}] ${message}`, ...args),
@@ -38,7 +38,7 @@ export default class ConsoleLogger implements ILogger {
 			logWarn: (message: string, ...args: any[]) => this.logWarn(`[${title}] ${message}`, ...args),
 			logError: (message: string, ...args: any[]) => this.logError(`[${title}] ${message}`, ...args),
 			setLevel: (level: LogLevel) => this.setLevel(level),
-			getLogger: (newTitle: string): ILogger => this.getLogger(`${title}:${newTitle}`),
+			createLogger: (newTitle: string): ILogger => this.createLogger(`${title}:${newTitle}`),
 		};
 	}
 

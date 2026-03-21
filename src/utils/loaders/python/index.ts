@@ -9,14 +9,13 @@ import { Logger } from "../../logger/Logger.js";
 import { ipcManager } from "../../ipc/IPCManager.js";
 import type { IUtility } from "../../../utilities/BaseUtility.ts";
 import type { IService } from "../../../services/BaseService.ts";
-
-type ModuleRole = "provider" | "utility" | "service";
+import { ModuleType } from "../../registry/ModuleRegistry.ts";
 
 interface PythonModuleOptions {
 	name: string;
 	modulePath: string;
 	version: string;
-	role: ModuleRole;
+	role: ModuleType;
 	config?: Record<string, any>;
 	process: ChildProcess;
 }
@@ -131,7 +130,7 @@ export default class PythonLoader implements IModuleLoader {
 	 */
 	private async loadModule(
 		modulePath: string,
-		role: ModuleRole,
+		role: ModuleType,
 		config?: Record<string, any>,
 		rawModuleConfig?: IModuleConfig
 	): Promise<IModule> {
@@ -239,7 +238,7 @@ export default class PythonLoader implements IModuleLoader {
 
 	// Limpieza de referencias si el proceso muere solo
 	private removeWrapperReference(name: string) {
-		for (const role of ["provider", "utility", "service"] as ModuleRole[]) {
+		for (const role of ["provider", "utility", "service"] as ModuleType[]) {
 			this.modules[role] = this.modules[role].filter((m) => m.name !== name);
 		}
 	}

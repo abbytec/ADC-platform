@@ -6,16 +6,13 @@ import chokidar from "chokidar";
 import { IApp } from "./interfaces/modules/IApp.js";
 import { Logger } from "./utils/logger/Logger.js";
 import { ModuleLoader } from "./utils/loaders/ModuleLoader.js";
-import { ModuleRegistry } from "./utils/registry/ModuleRegistry.js";
+import { ModuleRegistry, type ModuleType, type Module } from "./utils/registry/ModuleRegistry.js";
 import { ILogger } from "./interfaces/utils/ILogger.js";
 import { IModuleConfig } from "./interfaces/modules/IModule.js";
-import type { BaseProvider, IProvider } from "./providers/BaseProvider.ts";
+import type { BaseProvider } from "./providers/BaseProvider.ts";
 import type { IUtility } from "./utilities/BaseUtility.ts";
-import type { BaseService, IService } from "./services/BaseService.ts";
+import type { BaseService } from "./services/BaseService.ts";
 import { DockerManager } from "./utils/system/DockerManager.ts";
-
-type ModuleType = "provider" | "utility" | "service";
-type Module = IProvider | IUtility | IService;
 
 export class Kernel {
 	static readonly #kernelKey: symbol = Symbol(crypto.randomUUID());
@@ -175,7 +172,7 @@ export class Kernel {
 	}
 
 	public async loadModuleOfType(
-		type: "provider" | "utility" | "service",
+		type: ModuleType,
 		moduleName: string,
 		versionRange: string = "latest",
 		language: string = "typescript"

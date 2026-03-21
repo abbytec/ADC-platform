@@ -6,8 +6,9 @@ import type { IProvider } from "../../providers/BaseProvider.ts";
 import type { IUtility } from "../../utilities/BaseUtility.ts";
 import type { IService } from "../../services/BaseService.ts";
 
-type ModuleType = "provider" | "utility" | "service";
-type Module = IProvider | IUtility | IService;
+export type ModuleType = "provider" | "utility" | "service";
+export type ModuleTypes = ModuleType | "app";
+export type Module = IProvider | IUtility | IService;
 
 export class ModuleRegistry {
 	readonly #logger: ILogger = Logger.getLogger("ModuleRegistry");

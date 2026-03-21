@@ -9,14 +9,13 @@ import { IUtility } from "../../../utilities/BaseUtility.js";
 import { Kernel } from "../../../kernel.js";
 import { Logger } from "../../logger/Logger.js";
 import { ipcManager } from "../../ipc/IPCManager.js";
-
-type ModuleRole = "provider" | "utility" | "service";
+import { ModuleType } from "../../registry/ModuleRegistry.ts";
 
 interface CppModuleOptions {
 	name: string;
 	modulePath: string;
 	version: string;
-	role: ModuleRole;
+	role: ModuleType;
 	type?: string;
 	config?: Record<string, any>;
 	process: ChildProcess;
@@ -120,7 +119,7 @@ export default class CppLoader implements IModuleLoader {
 		modulePath: string,
 		moduleName: string,
 		moduleVersion: string,
-		moduleType: ModuleRole,
+		moduleType: ModuleType,
 		config?: Record<string, any>
 	): Promise<ChildProcess> {
 		const processKey = `${moduleName}-${moduleVersion}`;
@@ -226,7 +225,7 @@ export default class CppLoader implements IModuleLoader {
 	}
 
 	private removeModuleReference(name: string) {
-		for (const role of ["provider", "utility", "service"] as ModuleRole[]) {
+		for (const role of ["provider", "utility", "service"] as ModuleType[]) {
 			this.modules[role] = this.modules[role].filter((m) => m.name !== name);
 		}
 	}

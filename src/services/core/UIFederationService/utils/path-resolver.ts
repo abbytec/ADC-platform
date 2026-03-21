@@ -5,7 +5,7 @@ import * as os from "node:os";
 export const getConfigDir = (namespace: string, moduleName: string) => path.resolve(process.cwd(), "temp", "configs", namespace, moduleName);
 
 /** Obtiene el directorio de logs */ //TODO: Reemplazar con LogManagerService
-export const getLogsDir = () => path.resolve(process.cwd(), "temp", "logs");
+export const getLogsDir = () => path.resolve(process.cwd(), "temp", "logs", "app");
 
 /** Obtiene el path a un binario en node_modules/.bin */
 export const getBinPath = (binary: string) => path.join(process.cwd(), "node_modules", ".bin", binary);
