@@ -3,7 +3,7 @@ import type { IHostBasedHttpProvider } from "../../../interfaces/modules/provide
 import { type HttpMethod, type EndpointConfig, type EndpointHandler } from "./types.js";
 import { setPermissionValidator } from "./decorators.js";
 import SessionManagerService from "../../security/SessionManagerService/index.ts";
-import { EndpointRegistry } from "./parts/registry.js";
+import { EndpointRegistry } from "./parts/EndpointRegistry.js";
 import { createPermissionValidator } from "./parts/validator.js";
 import { createHttpWrapper } from "./parts/http.js";
 import { internalCallEndpoint } from "./parts/internalCallEndpoint.ts";

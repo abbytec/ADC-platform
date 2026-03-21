@@ -1,5 +1,5 @@
 import { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import type { RegisteredEndpoint, HttpMethod, EndpointConfig, EndpointHandler } from "../types.js";
+import type { RegisteredEndpoint, HttpMethod, EndpointConfig, EndpointHandler } from "../types.ts";
 
 // Una configuración más específica para el registro, conteniendo solo lo necesario.
 interface RegistryRegistrationConfig {
