@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { identityApi, type User } from "../utils/identity-api.ts";
-import { clearErrors } from "@ui-library/utils/adc-fetch";
+import { AdcFetchResult, clearErrors } from "@ui-library/utils/adc-fetch";
 
 interface MembersModalProps {
 	readonly title: string;
@@ -9,9 +9,9 @@ interface MembersModalProps {
 	readonly noMembersText: string;
 	readonly entityId: string;
 	readonly onClose: () => void;
-	readonly fetchMembers: (entityId: string) => Promise<User[]>;
-	readonly onAddMember: (entityId: string, userId: string) => Promise<boolean>;
-	readonly onRemoveMember: (entityId: string, userId: string) => Promise<boolean>;
+	readonly fetchMembers: (entityId: string) => Promise<AdcFetchResult<User[]>>;
+	readonly onAddMember: (entityId: string, userId: string) => Promise<{ success: boolean }>;
+	readonly onRemoveMember: (entityId: string, userId: string) => Promise<{ success: boolean }>;
 }
 
 export function MembersModal({
@@ -38,7 +38,7 @@ export function MembersModal({
 	const loadMembers = useCallback(async () => {
 		setLoadingMembers(true);
 		const data = await fetchMembers(entityId);
-		setMembers(data);
+		setMembers(data.data || []);
 		setLoadingMembers(false);
 	}, [entityId, fetchMembers]);
 

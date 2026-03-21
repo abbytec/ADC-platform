@@ -136,9 +136,7 @@ export class EndpointRegistry {
 		};
 	}
 
-	/**
-	 * Limpia todos los registros de endpoints.
-	 */
+	// Limpia todos los registros de endpoints.
 	public clear(): void {
 		this.#endpoints.clear();
 		this.#endpointsByOwner.clear();
