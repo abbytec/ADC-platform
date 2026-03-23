@@ -1,6 +1,6 @@
 import { BaseService } from "../../BaseService.js";
 import type { IHostBasedHttpProvider } from "../../../interfaces/modules/providers/IHttpServer.js";
-import { type HttpMethod, type EndpointConfig, type EndpointHandler } from "./types.js";
+import { type HttpMethod, type EndpointConfig, type EndpointHandler, type ServiceCallRequest } from "./types.js";
 import { setPermissionValidator } from "./decorators.js";
 import SessionManagerService from "../../security/SessionManagerService/index.ts";
 import { EndpointRegistry } from "./parts/EndpointRegistry.js";
@@ -99,9 +99,10 @@ export default class EndpointManagerService extends BaseService {
 	 * @param ownerName El nombre del propietario.
 	 * @returns El número de endpoints eliminados.
 	 */
-	unregisterEndpointsByOwner = this.#registry.unregisterByOwner;
+	unregisterEndpointsByOwner = (ownerName: string) => this.#registry.unregisterByOwner(ownerName);
 
-	internalCallEndpoint = internalCallEndpoint;
+	internalCallEndpoint = (request: ServiceCallRequest) =>
+		internalCallEndpoint(request, this.#getSessionManager.bind(this), this.getMyService.bind(this));
 
 	// Obtiene información sobre los endpoints registrados
 	getRegisteredEndpoints = () => this.#registry.getAll();

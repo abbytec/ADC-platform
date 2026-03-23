@@ -10,7 +10,7 @@ import { createPermissionValidator } from "./validator.ts";
  */
 export async function internalCallEndpoint<T>(
 	request: ServiceCallRequest,
-	getSessionManager: () => SessionManagerService,
+	getSessionManager: () => SessionManagerService | null,
 	getMyService: (serviceName: string) => any
 ): Promise<ServiceCallResponse<T>> {
 	const { serviceName, methodName, args, requiredPermissions, callerToken } = request;
