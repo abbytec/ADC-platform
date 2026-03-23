@@ -383,8 +383,8 @@ export abstract class RspackBaseStrategy extends BaseFrameworkStrategy {
 			// Para módulos remotos en desarrollo, usar URL completa del dev server
 			// Esto aplica incluso si también son isHost (pueden ejecutarse standalone)
 			publicPath = `'http://${serverHost}:${devPort}/'`;
-		} else if (isLayout) {
-			// Los layouts (shell principal) usan '/' porque son el punto de entrada
+		} else if (isHost) {
+			// Los hosts (aplicaciones que se pueden ejecutar solas) usan '/' para que el router funcione en subrutas
 			publicPath = "'/'";
 		} else {
 			publicPath = "'auto'";
