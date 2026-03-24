@@ -1342,6 +1342,8 @@ declare global {
     }
 }
 declare namespace LocalJSX {
+    type OneOf<K extends string, PropT, AttrT = PropT> = { [P in K]: PropT } & { [P in `attr:${K}` | `prop:${K}`]?: never } | { [P in `attr:${K}`]: AttrT } & { [P in K | `prop:${K}`]?: never } | { [P in `prop:${K}`]: PropT } & { [P in K | `attr:${K}`]?: never };
+
     /**
      * Botón de acceso que muestra:
      * - Si logueado: avatar + dropdown con menú de items + logout
@@ -2109,56 +2111,302 @@ declare namespace LocalJSX {
          */
         "width"?: string;
     }
+
+    interface AdcAccessButtonAttributes {
+        "authUrl": string;
+        "apiBaseUrl": string;
+        "sessionApiUrl": string;
+        "logoutApiUrl": string;
+        "loginText": string;
+        "logoutText": string;
+        "switchOrgText": string;
+        "personalAccessText": string;
+    }
+    interface AdcAppsMenuAttributes {
+        "apps": string;
+    }
+    interface AdcBadgeAttributes {
+        "color": "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "purple" | "pink";
+        "size": "sm" | "md";
+        "dot": boolean;
+    }
+    interface AdcBlurPanelAttributes {
+        "blur": "sm" | "md" | "lg" | "xl";
+        "padding": "none" | "sm" | "md" | "lg" | "xl";
+        "radius": "sm" | "md" | "lg" | "xl" | "full";
+        "glow": boolean;
+        "variant": "default" | "elevated" | "subtle";
+    }
+    interface AdcButtonAttributes {
+        "type": "button" | "submit" | "reset";
+        "variant": "primary" | "accent";
+        "disabled": boolean;
+        "href": string;
+        "ariaLabel": string;
+        "label": string;
+    }
+    interface AdcButtonRoundedAttributes {
+        "type": "button" | "submit" | "reset";
+        "href": string;
+        "ariaLabel": string;
+        "variant": "default" | "danger";
+    }
+    interface AdcCalloutAttributes {
+        "tone": "info" | "warning" | "success" | "error";
+        "role": "note" | "status" | "alert";
+    }
+    interface AdcCodeBlockAttributes {
+        "language": string;
+        "content": string;
+        "ariaLabel": string;
+    }
+    interface AdcContentCardAttributes {
+        "title": string;
+        "description": string;
+        "bannerUrl": string;
+        "bannerAlt": string;
+        "href": string;
+        "compact": boolean;
+    }
+    interface AdcCustomErrorAttributes {
+        "variant": "callout" | "toast";
+        "global": boolean;
+        "handleUnhandled": boolean;
+        "keys": string;
+        "dismissTimeout": number;
+        "maxStack": number;
+    }
+    interface AdcDropdownMenuAttributes {
+        "alignState": "left" | "right";
+        "openOnHover": boolean;
+    }
+    interface AdcFeatureCardAttributes {
+        "title": string;
+        "staticRender": boolean;
+    }
+    interface AdcIconAppCommunityAttributes {
+        "size": string;
+    }
+    interface AdcIconAppIdentityAttributes {
+        "size": string;
+    }
+    interface AdcIconCommunityAttributes {
+        "size": string;
+    }
+    interface AdcIconEditAttributes {
+        "size": string;
+    }
+    interface AdcIconLearningAttributes {
+        "size": string;
+    }
+    interface AdcIconLeftArrowAttributes {
+        "size": string;
+    }
+    interface AdcIconLogoutAttributes {
+        "size": string;
+    }
+    interface AdcIconMembersAttributes {
+        "size": string;
+    }
+    interface AdcIconNitroAttributes {
+        "size": string;
+    }
+    interface AdcIconOpensourceAttributes {
+        "size": string;
+    }
+    interface AdcIconPencilAttributes {
+        "size": string;
+    }
+    interface AdcIconTrashAttributes {
+        "size": string;
+    }
+    interface AdcIconVipAttributes {
+        "size": string;
+    }
+    interface AdcInlineTokensAttributes {
+        "fallback": string;
+    }
+    interface AdcInputAttributes {
+        "value": string;
+        "placeholder": string;
+        "inputId": string;
+        "name": string;
+        "type": string;
+        "autocomplete": string;
+        "ariaLabel": string;
+        "disabled": boolean;
+    }
+    interface AdcLayoutAttributes {
+        "logoSrc": string;
+        "logoAlt": string;
+        "homeHref": string;
+        "showAccessButton": boolean;
+        "authUrl": string;
+        "apiBaseUrl": string;
+        "brandName": string;
+        "brandSlogan": string;
+        "creatorName": string;
+        "creatorHref": string;
+    }
+    interface AdcListBlockAttributes {
+        "ordered": boolean;
+        "start": number;
+        "ariaLabel": string;
+    }
+    interface AdcLpBadgeAttributes {
+        "title": string;
+        "color": string;
+        "slug": string;
+        "as": "button" | "span";
+    }
+    interface AdcModalAttributes {
+        "open": boolean;
+        "modalTitle": string;
+        "size": "sm" | "md" | "lg";
+        "dismissOnBackdrop": boolean;
+        "dismissOnEscape": boolean;
+    }
+    interface AdcPaginationAttributes {
+        "currentPage": number;
+        "totalPages": number;
+        "maxVisible": number;
+    }
+    interface AdcQuoteAttributes {
+        "staticRender": boolean;
+    }
+    interface AdcSearchInputAttributes {
+        "value": string;
+        "placeholder": string;
+        "inputId": string;
+        "name": string;
+        "type": string;
+        "autocomplete": string;
+        "ariaLabel": string;
+        "debounce": number;
+    }
+    interface AdcSelectAttributes {
+        "value": string;
+        "placeholder": string;
+    }
+    interface AdcShareButtonsAttributes {
+        "title": string;
+        "description": string;
+        "url": string;
+    }
+    interface AdcSiteFooterAttributes {
+        "brandName": string;
+        "brandSlogan": string;
+        "creatorName": string;
+        "creatorHref": string;
+        "lowerSign": boolean;
+        "registered": boolean;
+    }
+    interface AdcSiteHeaderAttributes {
+        "logoSrc": string;
+        "logoAlt": string;
+        "homeHref": string;
+        "authUrl": string;
+        "apiBaseUrl": string;
+        "showAccessButton": boolean;
+    }
+    interface AdcSkeletonAttributes {
+        "variant": "text" | "circular" | "rectangular" | "button" | "input";
+        "width": string;
+        "height": string;
+        "lines": number;
+        "animation": "pulse" | "wave" | "none";
+        "rounded": string;
+    }
+    interface AdcStarRatingAttributes {
+        "average": number | null;
+        "count": number | null;
+        "myRating": number | null;
+        "canRate": boolean;
+        "pending": boolean;
+    }
+    interface AdcTableBlockAttributes {
+        "caption": string;
+        "rowHeaders": boolean;
+    }
+    interface AdcTabsAttributes {
+        "tabs": TabItem[] | string;
+        "activeTab": string;
+        "variant": "underline" | "pills";
+    }
+    interface AdcTestimonialCardAttributes {
+        "author": string;
+        "staticRender": boolean;
+    }
+    interface AdcTextAttributes {
+        "staticRender": boolean;
+        "contain": boolean;
+    }
+    interface AdcToggleAttributes {
+        "checked": boolean;
+        "disabled": boolean;
+        "label": string;
+        "ariaLabel": string;
+    }
+    interface AdcToggleBadgeAttributes {
+        "active": boolean;
+    }
+    interface AdcYoutubeFacadeAttributes {
+        "src": string;
+        "title": string;
+        "width": string;
+        "height": string;
+    }
+
     interface IntrinsicElements {
-        "adc-access-button": AdcAccessButton;
-        "adc-apps-menu": AdcAppsMenu;
-        "adc-badge": AdcBadge;
+        "adc-access-button": Omit<AdcAccessButton, keyof AdcAccessButtonAttributes> & { [K in keyof AdcAccessButton & keyof AdcAccessButtonAttributes]?: AdcAccessButton[K] } & { [K in keyof AdcAccessButton & keyof AdcAccessButtonAttributes as `attr:${K}`]?: AdcAccessButtonAttributes[K] } & { [K in keyof AdcAccessButton & keyof AdcAccessButtonAttributes as `prop:${K}`]?: AdcAccessButton[K] };
+        "adc-apps-menu": Omit<AdcAppsMenu, keyof AdcAppsMenuAttributes> & { [K in keyof AdcAppsMenu & keyof AdcAppsMenuAttributes]?: AdcAppsMenu[K] } & { [K in keyof AdcAppsMenu & keyof AdcAppsMenuAttributes as `attr:${K}`]?: AdcAppsMenuAttributes[K] } & { [K in keyof AdcAppsMenu & keyof AdcAppsMenuAttributes as `prop:${K}`]?: AdcAppsMenu[K] };
+        "adc-badge": Omit<AdcBadge, keyof AdcBadgeAttributes> & { [K in keyof AdcBadge & keyof AdcBadgeAttributes]?: AdcBadge[K] } & { [K in keyof AdcBadge & keyof AdcBadgeAttributes as `attr:${K}`]?: AdcBadgeAttributes[K] } & { [K in keyof AdcBadge & keyof AdcBadgeAttributes as `prop:${K}`]?: AdcBadge[K] };
         "adc-blocks-renderer": AdcBlocksRenderer;
-        "adc-blur-panel": AdcBlurPanel;
-        "adc-button": AdcButton;
-        "adc-button-rounded": AdcButtonRounded;
-        "adc-callout": AdcCallout;
-        "adc-code-block": AdcCodeBlock;
-        "adc-content-card": AdcContentCard;
-        "adc-custom-error": AdcCustomError;
+        "adc-blur-panel": Omit<AdcBlurPanel, keyof AdcBlurPanelAttributes> & { [K in keyof AdcBlurPanel & keyof AdcBlurPanelAttributes]?: AdcBlurPanel[K] } & { [K in keyof AdcBlurPanel & keyof AdcBlurPanelAttributes as `attr:${K}`]?: AdcBlurPanelAttributes[K] } & { [K in keyof AdcBlurPanel & keyof AdcBlurPanelAttributes as `prop:${K}`]?: AdcBlurPanel[K] };
+        "adc-button": Omit<AdcButton, keyof AdcButtonAttributes> & { [K in keyof AdcButton & keyof AdcButtonAttributes]?: AdcButton[K] } & { [K in keyof AdcButton & keyof AdcButtonAttributes as `attr:${K}`]?: AdcButtonAttributes[K] } & { [K in keyof AdcButton & keyof AdcButtonAttributes as `prop:${K}`]?: AdcButton[K] };
+        "adc-button-rounded": Omit<AdcButtonRounded, keyof AdcButtonRoundedAttributes> & { [K in keyof AdcButtonRounded & keyof AdcButtonRoundedAttributes]?: AdcButtonRounded[K] } & { [K in keyof AdcButtonRounded & keyof AdcButtonRoundedAttributes as `attr:${K}`]?: AdcButtonRoundedAttributes[K] } & { [K in keyof AdcButtonRounded & keyof AdcButtonRoundedAttributes as `prop:${K}`]?: AdcButtonRounded[K] };
+        "adc-callout": Omit<AdcCallout, keyof AdcCalloutAttributes> & { [K in keyof AdcCallout & keyof AdcCalloutAttributes]?: AdcCallout[K] } & { [K in keyof AdcCallout & keyof AdcCalloutAttributes as `attr:${K}`]?: AdcCalloutAttributes[K] } & { [K in keyof AdcCallout & keyof AdcCalloutAttributes as `prop:${K}`]?: AdcCallout[K] };
+        "adc-code-block": Omit<AdcCodeBlock, keyof AdcCodeBlockAttributes> & { [K in keyof AdcCodeBlock & keyof AdcCodeBlockAttributes]?: AdcCodeBlock[K] } & { [K in keyof AdcCodeBlock & keyof AdcCodeBlockAttributes as `attr:${K}`]?: AdcCodeBlockAttributes[K] } & { [K in keyof AdcCodeBlock & keyof AdcCodeBlockAttributes as `prop:${K}`]?: AdcCodeBlock[K] };
+        "adc-content-card": Omit<AdcContentCard, keyof AdcContentCardAttributes> & { [K in keyof AdcContentCard & keyof AdcContentCardAttributes]?: AdcContentCard[K] } & { [K in keyof AdcContentCard & keyof AdcContentCardAttributes as `attr:${K}`]?: AdcContentCardAttributes[K] } & { [K in keyof AdcContentCard & keyof AdcContentCardAttributes as `prop:${K}`]?: AdcContentCard[K] };
+        "adc-custom-error": Omit<AdcCustomError, keyof AdcCustomErrorAttributes> & { [K in keyof AdcCustomError & keyof AdcCustomErrorAttributes]?: AdcCustomError[K] } & { [K in keyof AdcCustomError & keyof AdcCustomErrorAttributes as `attr:${K}`]?: AdcCustomErrorAttributes[K] } & { [K in keyof AdcCustomError & keyof AdcCustomErrorAttributes as `prop:${K}`]?: AdcCustomError[K] };
         "adc-divider": AdcDivider;
-        "adc-dropdown-menu": AdcDropdownMenu;
-        "adc-feature-card": AdcFeatureCard;
-        "adc-icon-app-community": AdcIconAppCommunity;
-        "adc-icon-app-identity": AdcIconAppIdentity;
-        "adc-icon-community": AdcIconCommunity;
-        "adc-icon-edit": AdcIconEdit;
-        "adc-icon-learning": AdcIconLearning;
-        "adc-icon-left-arrow": AdcIconLeftArrow;
-        "adc-icon-logout": AdcIconLogout;
-        "adc-icon-members": AdcIconMembers;
-        "adc-icon-nitro": AdcIconNitro;
-        "adc-icon-opensource": AdcIconOpensource;
-        "adc-icon-pencil": AdcIconPencil;
-        "adc-icon-trash": AdcIconTrash;
-        "adc-icon-vip": AdcIconVip;
-        "adc-inline-tokens": AdcInlineTokens;
-        "adc-input": AdcInput;
-        "adc-layout": AdcLayout;
-        "adc-list-block": AdcListBlock;
-        "adc-lp-badge": AdcLpBadge;
-        "adc-modal": AdcModal;
-        "adc-pagination": AdcPagination;
-        "adc-quote": AdcQuote;
-        "adc-search-input": AdcSearchInput;
-        "adc-select": AdcSelect;
-        "adc-share-buttons": AdcShareButtons;
-        "adc-site-footer": AdcSiteFooter;
-        "adc-site-header": AdcSiteHeader;
-        "adc-skeleton": AdcSkeleton;
-        "adc-star-rating": AdcStarRating;
-        "adc-table-block": AdcTableBlock;
-        "adc-tabs": AdcTabs;
-        "adc-testimonial-card": AdcTestimonialCard;
-        "adc-text": AdcText;
-        "adc-toggle": AdcToggle;
-        "adc-toggle-badge": AdcToggleBadge;
-        "adc-youtube-facade": AdcYoutubeFacade;
+        "adc-dropdown-menu": Omit<AdcDropdownMenu, keyof AdcDropdownMenuAttributes> & { [K in keyof AdcDropdownMenu & keyof AdcDropdownMenuAttributes]?: AdcDropdownMenu[K] } & { [K in keyof AdcDropdownMenu & keyof AdcDropdownMenuAttributes as `attr:${K}`]?: AdcDropdownMenuAttributes[K] } & { [K in keyof AdcDropdownMenu & keyof AdcDropdownMenuAttributes as `prop:${K}`]?: AdcDropdownMenu[K] };
+        "adc-feature-card": Omit<AdcFeatureCard, keyof AdcFeatureCardAttributes> & { [K in keyof AdcFeatureCard & keyof AdcFeatureCardAttributes]?: AdcFeatureCard[K] } & { [K in keyof AdcFeatureCard & keyof AdcFeatureCardAttributes as `attr:${K}`]?: AdcFeatureCardAttributes[K] } & { [K in keyof AdcFeatureCard & keyof AdcFeatureCardAttributes as `prop:${K}`]?: AdcFeatureCard[K] };
+        "adc-icon-app-community": Omit<AdcIconAppCommunity, keyof AdcIconAppCommunityAttributes> & { [K in keyof AdcIconAppCommunity & keyof AdcIconAppCommunityAttributes]?: AdcIconAppCommunity[K] } & { [K in keyof AdcIconAppCommunity & keyof AdcIconAppCommunityAttributes as `attr:${K}`]?: AdcIconAppCommunityAttributes[K] } & { [K in keyof AdcIconAppCommunity & keyof AdcIconAppCommunityAttributes as `prop:${K}`]?: AdcIconAppCommunity[K] };
+        "adc-icon-app-identity": Omit<AdcIconAppIdentity, keyof AdcIconAppIdentityAttributes> & { [K in keyof AdcIconAppIdentity & keyof AdcIconAppIdentityAttributes]?: AdcIconAppIdentity[K] } & { [K in keyof AdcIconAppIdentity & keyof AdcIconAppIdentityAttributes as `attr:${K}`]?: AdcIconAppIdentityAttributes[K] } & { [K in keyof AdcIconAppIdentity & keyof AdcIconAppIdentityAttributes as `prop:${K}`]?: AdcIconAppIdentity[K] };
+        "adc-icon-community": Omit<AdcIconCommunity, keyof AdcIconCommunityAttributes> & { [K in keyof AdcIconCommunity & keyof AdcIconCommunityAttributes]?: AdcIconCommunity[K] } & { [K in keyof AdcIconCommunity & keyof AdcIconCommunityAttributes as `attr:${K}`]?: AdcIconCommunityAttributes[K] } & { [K in keyof AdcIconCommunity & keyof AdcIconCommunityAttributes as `prop:${K}`]?: AdcIconCommunity[K] };
+        "adc-icon-edit": Omit<AdcIconEdit, keyof AdcIconEditAttributes> & { [K in keyof AdcIconEdit & keyof AdcIconEditAttributes]?: AdcIconEdit[K] } & { [K in keyof AdcIconEdit & keyof AdcIconEditAttributes as `attr:${K}`]?: AdcIconEditAttributes[K] } & { [K in keyof AdcIconEdit & keyof AdcIconEditAttributes as `prop:${K}`]?: AdcIconEdit[K] };
+        "adc-icon-learning": Omit<AdcIconLearning, keyof AdcIconLearningAttributes> & { [K in keyof AdcIconLearning & keyof AdcIconLearningAttributes]?: AdcIconLearning[K] } & { [K in keyof AdcIconLearning & keyof AdcIconLearningAttributes as `attr:${K}`]?: AdcIconLearningAttributes[K] } & { [K in keyof AdcIconLearning & keyof AdcIconLearningAttributes as `prop:${K}`]?: AdcIconLearning[K] };
+        "adc-icon-left-arrow": Omit<AdcIconLeftArrow, keyof AdcIconLeftArrowAttributes> & { [K in keyof AdcIconLeftArrow & keyof AdcIconLeftArrowAttributes]?: AdcIconLeftArrow[K] } & { [K in keyof AdcIconLeftArrow & keyof AdcIconLeftArrowAttributes as `attr:${K}`]?: AdcIconLeftArrowAttributes[K] } & { [K in keyof AdcIconLeftArrow & keyof AdcIconLeftArrowAttributes as `prop:${K}`]?: AdcIconLeftArrow[K] };
+        "adc-icon-logout": Omit<AdcIconLogout, keyof AdcIconLogoutAttributes> & { [K in keyof AdcIconLogout & keyof AdcIconLogoutAttributes]?: AdcIconLogout[K] } & { [K in keyof AdcIconLogout & keyof AdcIconLogoutAttributes as `attr:${K}`]?: AdcIconLogoutAttributes[K] } & { [K in keyof AdcIconLogout & keyof AdcIconLogoutAttributes as `prop:${K}`]?: AdcIconLogout[K] };
+        "adc-icon-members": Omit<AdcIconMembers, keyof AdcIconMembersAttributes> & { [K in keyof AdcIconMembers & keyof AdcIconMembersAttributes]?: AdcIconMembers[K] } & { [K in keyof AdcIconMembers & keyof AdcIconMembersAttributes as `attr:${K}`]?: AdcIconMembersAttributes[K] } & { [K in keyof AdcIconMembers & keyof AdcIconMembersAttributes as `prop:${K}`]?: AdcIconMembers[K] };
+        "adc-icon-nitro": Omit<AdcIconNitro, keyof AdcIconNitroAttributes> & { [K in keyof AdcIconNitro & keyof AdcIconNitroAttributes]?: AdcIconNitro[K] } & { [K in keyof AdcIconNitro & keyof AdcIconNitroAttributes as `attr:${K}`]?: AdcIconNitroAttributes[K] } & { [K in keyof AdcIconNitro & keyof AdcIconNitroAttributes as `prop:${K}`]?: AdcIconNitro[K] };
+        "adc-icon-opensource": Omit<AdcIconOpensource, keyof AdcIconOpensourceAttributes> & { [K in keyof AdcIconOpensource & keyof AdcIconOpensourceAttributes]?: AdcIconOpensource[K] } & { [K in keyof AdcIconOpensource & keyof AdcIconOpensourceAttributes as `attr:${K}`]?: AdcIconOpensourceAttributes[K] } & { [K in keyof AdcIconOpensource & keyof AdcIconOpensourceAttributes as `prop:${K}`]?: AdcIconOpensource[K] };
+        "adc-icon-pencil": Omit<AdcIconPencil, keyof AdcIconPencilAttributes> & { [K in keyof AdcIconPencil & keyof AdcIconPencilAttributes]?: AdcIconPencil[K] } & { [K in keyof AdcIconPencil & keyof AdcIconPencilAttributes as `attr:${K}`]?: AdcIconPencilAttributes[K] } & { [K in keyof AdcIconPencil & keyof AdcIconPencilAttributes as `prop:${K}`]?: AdcIconPencil[K] };
+        "adc-icon-trash": Omit<AdcIconTrash, keyof AdcIconTrashAttributes> & { [K in keyof AdcIconTrash & keyof AdcIconTrashAttributes]?: AdcIconTrash[K] } & { [K in keyof AdcIconTrash & keyof AdcIconTrashAttributes as `attr:${K}`]?: AdcIconTrashAttributes[K] } & { [K in keyof AdcIconTrash & keyof AdcIconTrashAttributes as `prop:${K}`]?: AdcIconTrash[K] };
+        "adc-icon-vip": Omit<AdcIconVip, keyof AdcIconVipAttributes> & { [K in keyof AdcIconVip & keyof AdcIconVipAttributes]?: AdcIconVip[K] } & { [K in keyof AdcIconVip & keyof AdcIconVipAttributes as `attr:${K}`]?: AdcIconVipAttributes[K] } & { [K in keyof AdcIconVip & keyof AdcIconVipAttributes as `prop:${K}`]?: AdcIconVip[K] };
+        "adc-inline-tokens": Omit<AdcInlineTokens, keyof AdcInlineTokensAttributes> & { [K in keyof AdcInlineTokens & keyof AdcInlineTokensAttributes]?: AdcInlineTokens[K] } & { [K in keyof AdcInlineTokens & keyof AdcInlineTokensAttributes as `attr:${K}`]?: AdcInlineTokensAttributes[K] } & { [K in keyof AdcInlineTokens & keyof AdcInlineTokensAttributes as `prop:${K}`]?: AdcInlineTokens[K] };
+        "adc-input": Omit<AdcInput, keyof AdcInputAttributes> & { [K in keyof AdcInput & keyof AdcInputAttributes]?: AdcInput[K] } & { [K in keyof AdcInput & keyof AdcInputAttributes as `attr:${K}`]?: AdcInputAttributes[K] } & { [K in keyof AdcInput & keyof AdcInputAttributes as `prop:${K}`]?: AdcInput[K] };
+        "adc-layout": Omit<AdcLayout, keyof AdcLayoutAttributes> & { [K in keyof AdcLayout & keyof AdcLayoutAttributes]?: AdcLayout[K] } & { [K in keyof AdcLayout & keyof AdcLayoutAttributes as `attr:${K}`]?: AdcLayoutAttributes[K] } & { [K in keyof AdcLayout & keyof AdcLayoutAttributes as `prop:${K}`]?: AdcLayout[K] };
+        "adc-list-block": Omit<AdcListBlock, keyof AdcListBlockAttributes> & { [K in keyof AdcListBlock & keyof AdcListBlockAttributes]?: AdcListBlock[K] } & { [K in keyof AdcListBlock & keyof AdcListBlockAttributes as `attr:${K}`]?: AdcListBlockAttributes[K] } & { [K in keyof AdcListBlock & keyof AdcListBlockAttributes as `prop:${K}`]?: AdcListBlock[K] };
+        "adc-lp-badge": Omit<AdcLpBadge, keyof AdcLpBadgeAttributes> & { [K in keyof AdcLpBadge & keyof AdcLpBadgeAttributes]?: AdcLpBadge[K] } & { [K in keyof AdcLpBadge & keyof AdcLpBadgeAttributes as `attr:${K}`]?: AdcLpBadgeAttributes[K] } & { [K in keyof AdcLpBadge & keyof AdcLpBadgeAttributes as `prop:${K}`]?: AdcLpBadge[K] };
+        "adc-modal": Omit<AdcModal, keyof AdcModalAttributes> & { [K in keyof AdcModal & keyof AdcModalAttributes]?: AdcModal[K] } & { [K in keyof AdcModal & keyof AdcModalAttributes as `attr:${K}`]?: AdcModalAttributes[K] } & { [K in keyof AdcModal & keyof AdcModalAttributes as `prop:${K}`]?: AdcModal[K] };
+        "adc-pagination": Omit<AdcPagination, keyof AdcPaginationAttributes> & { [K in keyof AdcPagination & keyof AdcPaginationAttributes]?: AdcPagination[K] } & { [K in keyof AdcPagination & keyof AdcPaginationAttributes as `attr:${K}`]?: AdcPaginationAttributes[K] } & { [K in keyof AdcPagination & keyof AdcPaginationAttributes as `prop:${K}`]?: AdcPagination[K] };
+        "adc-quote": Omit<AdcQuote, keyof AdcQuoteAttributes> & { [K in keyof AdcQuote & keyof AdcQuoteAttributes]?: AdcQuote[K] } & { [K in keyof AdcQuote & keyof AdcQuoteAttributes as `attr:${K}`]?: AdcQuoteAttributes[K] } & { [K in keyof AdcQuote & keyof AdcQuoteAttributes as `prop:${K}`]?: AdcQuote[K] };
+        "adc-search-input": Omit<AdcSearchInput, keyof AdcSearchInputAttributes> & { [K in keyof AdcSearchInput & keyof AdcSearchInputAttributes]?: AdcSearchInput[K] } & { [K in keyof AdcSearchInput & keyof AdcSearchInputAttributes as `attr:${K}`]?: AdcSearchInputAttributes[K] } & { [K in keyof AdcSearchInput & keyof AdcSearchInputAttributes as `prop:${K}`]?: AdcSearchInput[K] };
+        "adc-select": Omit<AdcSelect, keyof AdcSelectAttributes> & { [K in keyof AdcSelect & keyof AdcSelectAttributes]?: AdcSelect[K] } & { [K in keyof AdcSelect & keyof AdcSelectAttributes as `attr:${K}`]?: AdcSelectAttributes[K] } & { [K in keyof AdcSelect & keyof AdcSelectAttributes as `prop:${K}`]?: AdcSelect[K] };
+        "adc-share-buttons": Omit<AdcShareButtons, keyof AdcShareButtonsAttributes> & { [K in keyof AdcShareButtons & keyof AdcShareButtonsAttributes]?: AdcShareButtons[K] } & { [K in keyof AdcShareButtons & keyof AdcShareButtonsAttributes as `attr:${K}`]?: AdcShareButtonsAttributes[K] } & { [K in keyof AdcShareButtons & keyof AdcShareButtonsAttributes as `prop:${K}`]?: AdcShareButtons[K] };
+        "adc-site-footer": Omit<AdcSiteFooter, keyof AdcSiteFooterAttributes> & { [K in keyof AdcSiteFooter & keyof AdcSiteFooterAttributes]?: AdcSiteFooter[K] } & { [K in keyof AdcSiteFooter & keyof AdcSiteFooterAttributes as `attr:${K}`]?: AdcSiteFooterAttributes[K] } & { [K in keyof AdcSiteFooter & keyof AdcSiteFooterAttributes as `prop:${K}`]?: AdcSiteFooter[K] };
+        "adc-site-header": Omit<AdcSiteHeader, keyof AdcSiteHeaderAttributes> & { [K in keyof AdcSiteHeader & keyof AdcSiteHeaderAttributes]?: AdcSiteHeader[K] } & { [K in keyof AdcSiteHeader & keyof AdcSiteHeaderAttributes as `attr:${K}`]?: AdcSiteHeaderAttributes[K] } & { [K in keyof AdcSiteHeader & keyof AdcSiteHeaderAttributes as `prop:${K}`]?: AdcSiteHeader[K] };
+        "adc-skeleton": Omit<AdcSkeleton, keyof AdcSkeletonAttributes> & { [K in keyof AdcSkeleton & keyof AdcSkeletonAttributes]?: AdcSkeleton[K] } & { [K in keyof AdcSkeleton & keyof AdcSkeletonAttributes as `attr:${K}`]?: AdcSkeletonAttributes[K] } & { [K in keyof AdcSkeleton & keyof AdcSkeletonAttributes as `prop:${K}`]?: AdcSkeleton[K] };
+        "adc-star-rating": Omit<AdcStarRating, keyof AdcStarRatingAttributes> & { [K in keyof AdcStarRating & keyof AdcStarRatingAttributes]?: AdcStarRating[K] } & { [K in keyof AdcStarRating & keyof AdcStarRatingAttributes as `attr:${K}`]?: AdcStarRatingAttributes[K] } & { [K in keyof AdcStarRating & keyof AdcStarRatingAttributes as `prop:${K}`]?: AdcStarRating[K] };
+        "adc-table-block": Omit<AdcTableBlock, keyof AdcTableBlockAttributes> & { [K in keyof AdcTableBlock & keyof AdcTableBlockAttributes]?: AdcTableBlock[K] } & { [K in keyof AdcTableBlock & keyof AdcTableBlockAttributes as `attr:${K}`]?: AdcTableBlockAttributes[K] } & { [K in keyof AdcTableBlock & keyof AdcTableBlockAttributes as `prop:${K}`]?: AdcTableBlock[K] };
+        "adc-tabs": Omit<AdcTabs, keyof AdcTabsAttributes> & { [K in keyof AdcTabs & keyof AdcTabsAttributes]?: AdcTabs[K] } & { [K in keyof AdcTabs & keyof AdcTabsAttributes as `attr:${K}`]?: AdcTabsAttributes[K] } & { [K in keyof AdcTabs & keyof AdcTabsAttributes as `prop:${K}`]?: AdcTabs[K] };
+        "adc-testimonial-card": Omit<AdcTestimonialCard, keyof AdcTestimonialCardAttributes> & { [K in keyof AdcTestimonialCard & keyof AdcTestimonialCardAttributes]?: AdcTestimonialCard[K] } & { [K in keyof AdcTestimonialCard & keyof AdcTestimonialCardAttributes as `attr:${K}`]?: AdcTestimonialCardAttributes[K] } & { [K in keyof AdcTestimonialCard & keyof AdcTestimonialCardAttributes as `prop:${K}`]?: AdcTestimonialCard[K] };
+        "adc-text": Omit<AdcText, keyof AdcTextAttributes> & { [K in keyof AdcText & keyof AdcTextAttributes]?: AdcText[K] } & { [K in keyof AdcText & keyof AdcTextAttributes as `attr:${K}`]?: AdcTextAttributes[K] } & { [K in keyof AdcText & keyof AdcTextAttributes as `prop:${K}`]?: AdcText[K] };
+        "adc-toggle": Omit<AdcToggle, keyof AdcToggleAttributes> & { [K in keyof AdcToggle & keyof AdcToggleAttributes]?: AdcToggle[K] } & { [K in keyof AdcToggle & keyof AdcToggleAttributes as `attr:${K}`]?: AdcToggleAttributes[K] } & { [K in keyof AdcToggle & keyof AdcToggleAttributes as `prop:${K}`]?: AdcToggle[K] };
+        "adc-toggle-badge": Omit<AdcToggleBadge, keyof AdcToggleBadgeAttributes> & { [K in keyof AdcToggleBadge & keyof AdcToggleBadgeAttributes]?: AdcToggleBadge[K] } & { [K in keyof AdcToggleBadge & keyof AdcToggleBadgeAttributes as `attr:${K}`]?: AdcToggleBadgeAttributes[K] } & { [K in keyof AdcToggleBadge & keyof AdcToggleBadgeAttributes as `prop:${K}`]?: AdcToggleBadge[K] };
+        "adc-youtube-facade": Omit<AdcYoutubeFacade, keyof AdcYoutubeFacadeAttributes> & { [K in keyof AdcYoutubeFacade & keyof AdcYoutubeFacadeAttributes]?: AdcYoutubeFacade[K] } & { [K in keyof AdcYoutubeFacade & keyof AdcYoutubeFacadeAttributes as `attr:${K}`]?: AdcYoutubeFacadeAttributes[K] } & { [K in keyof AdcYoutubeFacade & keyof AdcYoutubeFacadeAttributes as `prop:${K}`]?: AdcYoutubeFacade[K] } & OneOf<"src", AdcYoutubeFacade["src"], AdcYoutubeFacadeAttributes["src"]>;
     }
 }
 export { LocalJSX as JSX };
@@ -2170,50 +2418,50 @@ declare module "@stencil/core" {
              * - Si logueado: avatar + dropdown con menú de items + logout
              * - Si no logueado: botón "Ingresar" que redirige a auth
              */
-            "adc-access-button": LocalJSX.AdcAccessButton & JSXBase.HTMLAttributes<HTMLAdcAccessButtonElement>;
-            "adc-apps-menu": LocalJSX.AdcAppsMenu & JSXBase.HTMLAttributes<HTMLAdcAppsMenuElement>;
-            "adc-badge": LocalJSX.AdcBadge & JSXBase.HTMLAttributes<HTMLAdcBadgeElement>;
-            "adc-blocks-renderer": LocalJSX.AdcBlocksRenderer & JSXBase.HTMLAttributes<HTMLAdcBlocksRendererElement>;
+            "adc-access-button": LocalJSX.IntrinsicElements["adc-access-button"] & JSXBase.HTMLAttributes<HTMLAdcAccessButtonElement>;
+            "adc-apps-menu": LocalJSX.IntrinsicElements["adc-apps-menu"] & JSXBase.HTMLAttributes<HTMLAdcAppsMenuElement>;
+            "adc-badge": LocalJSX.IntrinsicElements["adc-badge"] & JSXBase.HTMLAttributes<HTMLAdcBadgeElement>;
+            "adc-blocks-renderer": LocalJSX.IntrinsicElements["adc-blocks-renderer"] & JSXBase.HTMLAttributes<HTMLAdcBlocksRendererElement>;
             /**
              * Panel con efecto glassmorphism/blur
              * Ideal para formularios de auth, modales y tarjetas destacadas
              */
-            "adc-blur-panel": LocalJSX.AdcBlurPanel & JSXBase.HTMLAttributes<HTMLAdcBlurPanelElement>;
-            "adc-button": LocalJSX.AdcButton & JSXBase.HTMLAttributes<HTMLAdcButtonElement>;
-            "adc-button-rounded": LocalJSX.AdcButtonRounded & JSXBase.HTMLAttributes<HTMLAdcButtonRoundedElement>;
-            "adc-callout": LocalJSX.AdcCallout & JSXBase.HTMLAttributes<HTMLAdcCalloutElement>;
-            "adc-code-block": LocalJSX.AdcCodeBlock & JSXBase.HTMLAttributes<HTMLAdcCodeBlockElement>;
-            "adc-content-card": LocalJSX.AdcContentCard & JSXBase.HTMLAttributes<HTMLAdcContentCardElement>;
-            "adc-custom-error": LocalJSX.AdcCustomError & JSXBase.HTMLAttributes<HTMLAdcCustomErrorElement>;
-            "adc-divider": LocalJSX.AdcDivider & JSXBase.HTMLAttributes<HTMLAdcDividerElement>;
-            "adc-dropdown-menu": LocalJSX.AdcDropdownMenu & JSXBase.HTMLAttributes<HTMLAdcDropdownMenuElement>;
-            "adc-feature-card": LocalJSX.AdcFeatureCard & JSXBase.HTMLAttributes<HTMLAdcFeatureCardElement>;
-            "adc-icon-app-community": LocalJSX.AdcIconAppCommunity & JSXBase.HTMLAttributes<HTMLAdcIconAppCommunityElement>;
-            "adc-icon-app-identity": LocalJSX.AdcIconAppIdentity & JSXBase.HTMLAttributes<HTMLAdcIconAppIdentityElement>;
-            "adc-icon-community": LocalJSX.AdcIconCommunity & JSXBase.HTMLAttributes<HTMLAdcIconCommunityElement>;
-            "adc-icon-edit": LocalJSX.AdcIconEdit & JSXBase.HTMLAttributes<HTMLAdcIconEditElement>;
-            "adc-icon-learning": LocalJSX.AdcIconLearning & JSXBase.HTMLAttributes<HTMLAdcIconLearningElement>;
-            "adc-icon-left-arrow": LocalJSX.AdcIconLeftArrow & JSXBase.HTMLAttributes<HTMLAdcIconLeftArrowElement>;
-            "adc-icon-logout": LocalJSX.AdcIconLogout & JSXBase.HTMLAttributes<HTMLAdcIconLogoutElement>;
-            "adc-icon-members": LocalJSX.AdcIconMembers & JSXBase.HTMLAttributes<HTMLAdcIconMembersElement>;
-            "adc-icon-nitro": LocalJSX.AdcIconNitro & JSXBase.HTMLAttributes<HTMLAdcIconNitroElement>;
-            "adc-icon-opensource": LocalJSX.AdcIconOpensource & JSXBase.HTMLAttributes<HTMLAdcIconOpensourceElement>;
-            "adc-icon-pencil": LocalJSX.AdcIconPencil & JSXBase.HTMLAttributes<HTMLAdcIconPencilElement>;
-            "adc-icon-trash": LocalJSX.AdcIconTrash & JSXBase.HTMLAttributes<HTMLAdcIconTrashElement>;
-            "adc-icon-vip": LocalJSX.AdcIconVip & JSXBase.HTMLAttributes<HTMLAdcIconVipElement>;
-            "adc-inline-tokens": LocalJSX.AdcInlineTokens & JSXBase.HTMLAttributes<HTMLAdcInlineTokensElement>;
-            "adc-input": LocalJSX.AdcInput & JSXBase.HTMLAttributes<HTMLAdcInputElement>;
-            "adc-layout": LocalJSX.AdcLayout & JSXBase.HTMLAttributes<HTMLAdcLayoutElement>;
-            "adc-list-block": LocalJSX.AdcListBlock & JSXBase.HTMLAttributes<HTMLAdcListBlockElement>;
-            "adc-lp-badge": LocalJSX.AdcLpBadge & JSXBase.HTMLAttributes<HTMLAdcLpBadgeElement>;
-            "adc-modal": LocalJSX.AdcModal & JSXBase.HTMLAttributes<HTMLAdcModalElement>;
-            "adc-pagination": LocalJSX.AdcPagination & JSXBase.HTMLAttributes<HTMLAdcPaginationElement>;
-            "adc-quote": LocalJSX.AdcQuote & JSXBase.HTMLAttributes<HTMLAdcQuoteElement>;
-            "adc-search-input": LocalJSX.AdcSearchInput & JSXBase.HTMLAttributes<HTMLAdcSearchInputElement>;
-            "adc-select": LocalJSX.AdcSelect & JSXBase.HTMLAttributes<HTMLAdcSelectElement>;
-            "adc-share-buttons": LocalJSX.AdcShareButtons & JSXBase.HTMLAttributes<HTMLAdcShareButtonsElement>;
-            "adc-site-footer": LocalJSX.AdcSiteFooter & JSXBase.HTMLAttributes<HTMLAdcSiteFooterElement>;
-            "adc-site-header": LocalJSX.AdcSiteHeader & JSXBase.HTMLAttributes<HTMLAdcSiteHeaderElement>;
+            "adc-blur-panel": LocalJSX.IntrinsicElements["adc-blur-panel"] & JSXBase.HTMLAttributes<HTMLAdcBlurPanelElement>;
+            "adc-button": LocalJSX.IntrinsicElements["adc-button"] & JSXBase.HTMLAttributes<HTMLAdcButtonElement>;
+            "adc-button-rounded": LocalJSX.IntrinsicElements["adc-button-rounded"] & JSXBase.HTMLAttributes<HTMLAdcButtonRoundedElement>;
+            "adc-callout": LocalJSX.IntrinsicElements["adc-callout"] & JSXBase.HTMLAttributes<HTMLAdcCalloutElement>;
+            "adc-code-block": LocalJSX.IntrinsicElements["adc-code-block"] & JSXBase.HTMLAttributes<HTMLAdcCodeBlockElement>;
+            "adc-content-card": LocalJSX.IntrinsicElements["adc-content-card"] & JSXBase.HTMLAttributes<HTMLAdcContentCardElement>;
+            "adc-custom-error": LocalJSX.IntrinsicElements["adc-custom-error"] & JSXBase.HTMLAttributes<HTMLAdcCustomErrorElement>;
+            "adc-divider": LocalJSX.IntrinsicElements["adc-divider"] & JSXBase.HTMLAttributes<HTMLAdcDividerElement>;
+            "adc-dropdown-menu": LocalJSX.IntrinsicElements["adc-dropdown-menu"] & JSXBase.HTMLAttributes<HTMLAdcDropdownMenuElement>;
+            "adc-feature-card": LocalJSX.IntrinsicElements["adc-feature-card"] & JSXBase.HTMLAttributes<HTMLAdcFeatureCardElement>;
+            "adc-icon-app-community": LocalJSX.IntrinsicElements["adc-icon-app-community"] & JSXBase.HTMLAttributes<HTMLAdcIconAppCommunityElement>;
+            "adc-icon-app-identity": LocalJSX.IntrinsicElements["adc-icon-app-identity"] & JSXBase.HTMLAttributes<HTMLAdcIconAppIdentityElement>;
+            "adc-icon-community": LocalJSX.IntrinsicElements["adc-icon-community"] & JSXBase.HTMLAttributes<HTMLAdcIconCommunityElement>;
+            "adc-icon-edit": LocalJSX.IntrinsicElements["adc-icon-edit"] & JSXBase.HTMLAttributes<HTMLAdcIconEditElement>;
+            "adc-icon-learning": LocalJSX.IntrinsicElements["adc-icon-learning"] & JSXBase.HTMLAttributes<HTMLAdcIconLearningElement>;
+            "adc-icon-left-arrow": LocalJSX.IntrinsicElements["adc-icon-left-arrow"] & JSXBase.HTMLAttributes<HTMLAdcIconLeftArrowElement>;
+            "adc-icon-logout": LocalJSX.IntrinsicElements["adc-icon-logout"] & JSXBase.HTMLAttributes<HTMLAdcIconLogoutElement>;
+            "adc-icon-members": LocalJSX.IntrinsicElements["adc-icon-members"] & JSXBase.HTMLAttributes<HTMLAdcIconMembersElement>;
+            "adc-icon-nitro": LocalJSX.IntrinsicElements["adc-icon-nitro"] & JSXBase.HTMLAttributes<HTMLAdcIconNitroElement>;
+            "adc-icon-opensource": LocalJSX.IntrinsicElements["adc-icon-opensource"] & JSXBase.HTMLAttributes<HTMLAdcIconOpensourceElement>;
+            "adc-icon-pencil": LocalJSX.IntrinsicElements["adc-icon-pencil"] & JSXBase.HTMLAttributes<HTMLAdcIconPencilElement>;
+            "adc-icon-trash": LocalJSX.IntrinsicElements["adc-icon-trash"] & JSXBase.HTMLAttributes<HTMLAdcIconTrashElement>;
+            "adc-icon-vip": LocalJSX.IntrinsicElements["adc-icon-vip"] & JSXBase.HTMLAttributes<HTMLAdcIconVipElement>;
+            "adc-inline-tokens": LocalJSX.IntrinsicElements["adc-inline-tokens"] & JSXBase.HTMLAttributes<HTMLAdcInlineTokensElement>;
+            "adc-input": LocalJSX.IntrinsicElements["adc-input"] & JSXBase.HTMLAttributes<HTMLAdcInputElement>;
+            "adc-layout": LocalJSX.IntrinsicElements["adc-layout"] & JSXBase.HTMLAttributes<HTMLAdcLayoutElement>;
+            "adc-list-block": LocalJSX.IntrinsicElements["adc-list-block"] & JSXBase.HTMLAttributes<HTMLAdcListBlockElement>;
+            "adc-lp-badge": LocalJSX.IntrinsicElements["adc-lp-badge"] & JSXBase.HTMLAttributes<HTMLAdcLpBadgeElement>;
+            "adc-modal": LocalJSX.IntrinsicElements["adc-modal"] & JSXBase.HTMLAttributes<HTMLAdcModalElement>;
+            "adc-pagination": LocalJSX.IntrinsicElements["adc-pagination"] & JSXBase.HTMLAttributes<HTMLAdcPaginationElement>;
+            "adc-quote": LocalJSX.IntrinsicElements["adc-quote"] & JSXBase.HTMLAttributes<HTMLAdcQuoteElement>;
+            "adc-search-input": LocalJSX.IntrinsicElements["adc-search-input"] & JSXBase.HTMLAttributes<HTMLAdcSearchInputElement>;
+            "adc-select": LocalJSX.IntrinsicElements["adc-select"] & JSXBase.HTMLAttributes<HTMLAdcSelectElement>;
+            "adc-share-buttons": LocalJSX.IntrinsicElements["adc-share-buttons"] & JSXBase.HTMLAttributes<HTMLAdcShareButtonsElement>;
+            "adc-site-footer": LocalJSX.IntrinsicElements["adc-site-footer"] & JSXBase.HTMLAttributes<HTMLAdcSiteFooterElement>;
+            "adc-site-header": LocalJSX.IntrinsicElements["adc-site-header"] & JSXBase.HTMLAttributes<HTMLAdcSiteHeaderElement>;
             /**
              * Skeleton loader component for placeholder content while loading
              * @example <adc-skeleton variant="text" />
@@ -2222,20 +2470,20 @@ declare module "@stencil/core" {
              * <adc-skeleton variant="button" />
              * <adc-skeleton variant="input" />
              */
-            "adc-skeleton": LocalJSX.AdcSkeleton & JSXBase.HTMLAttributes<HTMLAdcSkeletonElement>;
-            "adc-star-rating": LocalJSX.AdcStarRating & JSXBase.HTMLAttributes<HTMLAdcStarRatingElement>;
-            "adc-table-block": LocalJSX.AdcTableBlock & JSXBase.HTMLAttributes<HTMLAdcTableBlockElement>;
-            "adc-tabs": LocalJSX.AdcTabs & JSXBase.HTMLAttributes<HTMLAdcTabsElement>;
-            "adc-testimonial-card": LocalJSX.AdcTestimonialCard & JSXBase.HTMLAttributes<HTMLAdcTestimonialCardElement>;
-            "adc-text": LocalJSX.AdcText & JSXBase.HTMLAttributes<HTMLAdcTextElement>;
-            "adc-toggle": LocalJSX.AdcToggle & JSXBase.HTMLAttributes<HTMLAdcToggleElement>;
-            "adc-toggle-badge": LocalJSX.AdcToggleBadge & JSXBase.HTMLAttributes<HTMLAdcToggleBadgeElement>;
+            "adc-skeleton": LocalJSX.IntrinsicElements["adc-skeleton"] & JSXBase.HTMLAttributes<HTMLAdcSkeletonElement>;
+            "adc-star-rating": LocalJSX.IntrinsicElements["adc-star-rating"] & JSXBase.HTMLAttributes<HTMLAdcStarRatingElement>;
+            "adc-table-block": LocalJSX.IntrinsicElements["adc-table-block"] & JSXBase.HTMLAttributes<HTMLAdcTableBlockElement>;
+            "adc-tabs": LocalJSX.IntrinsicElements["adc-tabs"] & JSXBase.HTMLAttributes<HTMLAdcTabsElement>;
+            "adc-testimonial-card": LocalJSX.IntrinsicElements["adc-testimonial-card"] & JSXBase.HTMLAttributes<HTMLAdcTestimonialCardElement>;
+            "adc-text": LocalJSX.IntrinsicElements["adc-text"] & JSXBase.HTMLAttributes<HTMLAdcTextElement>;
+            "adc-toggle": LocalJSX.IntrinsicElements["adc-toggle"] & JSXBase.HTMLAttributes<HTMLAdcToggleElement>;
+            "adc-toggle-badge": LocalJSX.IntrinsicElements["adc-toggle-badge"] & JSXBase.HTMLAttributes<HTMLAdcToggleBadgeElement>;
             /**
              * Componente YouTube Facade para carga perezosa de videos
              * Muestra una thumbnail clickeable en lugar de cargar el iframe inmediatamente
              * Mejora performance al evitar cargar el player de YouTube hasta que sea necesario
              */
-            "adc-youtube-facade": LocalJSX.AdcYoutubeFacade & JSXBase.HTMLAttributes<HTMLAdcYoutubeFacadeElement>;
+            "adc-youtube-facade": LocalJSX.IntrinsicElements["adc-youtube-facade"] & JSXBase.HTMLAttributes<HTMLAdcYoutubeFacadeElement>;
         }
     }
 }

@@ -1,30 +1,11 @@
 import { randomBytes } from "node:crypto";
 import type { SessionData, AuthenticatedUser, SessionCookieConfig, TokenVerificationResult } from "../../types.js";
-
-/**
- * Interface del JWT Provider (duplicada para evitar imports circulares)
- */
-interface IJWTProvider {
-	encrypt(payload: SessionPayload): Promise<string>;
-	decrypt(token: string): Promise<{ valid: boolean; payload?: SessionPayload; error?: string }>;
-	verify(token: string): Promise<boolean>;
-}
-
-/**
- * Payload del JWT de sesión
- */
-interface SessionPayload {
-	userId: string;
-	permissions: string[];
-	metadata?: Record<string, unknown>;
-	iat?: number;
-	exp?: number;
-}
+import type { IJWTProvider, TokenPayload } from "../../../../../providers/security/jwt/types.d.ts";
 
 /**
  * Configuración del gestor de sesión
  */
-export interface SessionManagerConfig {
+interface SessionManagerConfig {
 	/** Provider JWT para cifrar/descifrar tokens */
 	jwtProvider: IJWTProvider;
 	/** Configuración de la cookie de sesión */
@@ -112,7 +93,7 @@ export class SessionManager {
 	 * Crea un token de sesión para el usuario
 	 */
 	async createSessionToken(user: AuthenticatedUser): Promise<string> {
-		const payload: SessionPayload = {
+		const payload: TokenPayload = {
 			userId: user.id,
 			permissions: user.permissions,
 			metadata: {

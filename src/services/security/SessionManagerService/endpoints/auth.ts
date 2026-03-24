@@ -20,7 +20,7 @@ import { User } from "@common/types/identity/User.js";
 const ACCESS_COOKIE_NAME = "access_token";
 const REFRESH_COOKIE_NAME = "refresh_token";
 
-export interface AuthEndpointsDeps {
+interface AuthEndpointsDeps {
 	keyStore: KeyStore;
 	tokenService: TokenService;
 	refreshTokenRepo: RefreshTokenRepository;

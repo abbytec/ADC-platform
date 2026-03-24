@@ -19,15 +19,15 @@ const TTL = {
 /**
  * Estado de bloqueo de un usuario
  */
-export interface UserBlockStatus {
+interface UserBlockStatus {
 	blocked: boolean;
 	blockedUntil: number | null;
 	permanent: boolean;
 	reason: string;
 }
 
-export type UpdateBlockStatusCallback = (userId: string, blocked: boolean | number) => Promise<void>;
-export type SendAlertEmailCallback = (userId: string, reason: string) => Promise<void>;
+type UpdateBlockStatusCallback = (userId: string, blocked: boolean | number) => Promise<void>;
+type SendAlertEmailCallback = (userId: string, reason: string) => Promise<void>;
 
 const NOT_BLOCKED: UserBlockStatus = { blocked: false, blockedUntil: null, permanent: false, reason: "" };
 

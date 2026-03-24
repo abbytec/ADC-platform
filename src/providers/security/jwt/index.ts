@@ -1,81 +1,6 @@
 import * as jose from "jose";
 import { BaseProvider } from "../../BaseProvider.js";
-
-/**
- * Payload del JWT de sesión
- */
-export interface SessionPayload extends jose.JWTPayload {
-	/** ID del usuario en la DB */
-	userId: string;
-	/** Permisos en formato [resource].[scope].action */
-	permissions: string[];
-	/** ID del dispositivo (para vincular con refresh token) */
-	deviceId?: string;
-	/** Metadatos adicionales (org, etc) */
-	metadata?: Record<string, unknown>;
-}
-
-/**
- * Opciones de configuración del JWT
- */
-export interface JWTProviderConfig {
-	/** Secreto para firmar JWTs (mínimo 32 caracteres) */
-	secret: string;
-	/** Algoritmo de encriptación (default: A256GCM) */
-	encryptionAlgorithm?: string;
-	/** Algoritmo de key encryption (default: dir) */
-	keyEncryptionAlgorithm?: string;
-	/** Tiempo de expiración (default: 7d) */
-	expiresIn?: string;
-	/** Issuer del token */
-	issuer?: string;
-	/** Audience del token */
-	audience?: string;
-}
-
-/**
- * Resultado de verificación de token
- */
-export interface TokenVerificationResult<T> {
-	valid: boolean;
-	payload?: T;
-	error?: string;
-}
-
-/**
- * Interface del JWT Provider (básica)
- */
-export interface IJWTProvider {
-	/**
-	 * Crea un JWT cifrado con el payload proporcionado
-	 */
-	encrypt(payload: SessionPayload): Promise<string>;
-
-	/**
-	 * Descifra y verifica un JWT
-	 */
-	decrypt(token: string): Promise<TokenVerificationResult<SessionPayload>>;
-
-	/**
-	 * Verifica si un token es válido sin descifrar el payload completo
-	 */
-	verify(token: string): Promise<boolean>;
-}
-
-/**
- * Interface extendida del JWT Provider con soporte multi-key
- */
-export interface IJWTProviderMultiKey extends IJWTProvider {
-	/**
-	 * Crea un JWT cifrado con una clave específica
-	 */
-	encryptWithKey(payload: SessionPayload, key: Uint8Array, expiresIn: string): Promise<string>;
-
-	/**
-	 * Descifra un JWT con una clave específica
-	 */
-	decryptWithKey(token: string, key: Uint8Array): Promise<TokenVerificationResult<SessionPayload>>;
-}
+import type { TokenPayload, IJWTProviderMultiKey, JWTProviderConfig, TokenVerificationResult } from "./types.d.ts";
 
 /**
  * JWTProvider - Cifrado y descifrado de tokens JWT usando jose
@@ -126,7 +51,7 @@ export default class JWTProvider extends BaseProvider implements IJWTProviderMul
 	 * Crea un JWT cifrado (JWE) con el payload proporcionado
 	 * Usa la clave por defecto del provider
 	 */
-	async encrypt(payload: SessionPayload): Promise<string> {
+	async encrypt(payload: TokenPayload): Promise<string> {
 		if (!this.#secretKey || this.#secretKey.length < 32) {
 			throw new Error("JWTProvider no está inicializado correctamente");
 		}
@@ -138,12 +63,12 @@ export default class JWTProvider extends BaseProvider implements IJWTProviderMul
 	 * Crea un JWT cifrado (JWE) con una clave específica
 	 * Permite usar claves del KeyStore para rotación
 	 */
-	async encryptWithKey(payload: SessionPayload, key: Uint8Array, expiresIn: string): Promise<string> {
+	async encryptWithKey(payload: TokenPayload, key: Uint8Array, expiresIn: string): Promise<string> {
 		const now = Math.floor(Date.now() / 1000);
 		const expiresInSeconds = this.#parseExpiration(expiresIn);
 
 		// Crear JWT cifrado (JWE)
-		const token = await new jose.EncryptJWT(payload as jose.JWTPayload)
+		const token = await new jose.EncryptJWT(payload as unknown as jose.JWTPayload)
 			.setProtectedHeader({
 				alg: this.#config.keyEncryptionAlgorithm as "dir",
 				enc: this.#config.encryptionAlgorithm as "A256GCM",
@@ -157,10 +82,8 @@ export default class JWTProvider extends BaseProvider implements IJWTProviderMul
 		return token;
 	}
 
-	/**
-	 * Descifra y verifica un JWT usando la clave por defecto
-	 */
-	async decrypt(token: string): Promise<TokenVerificationResult<SessionPayload>> {
+	// Descifra y verifica un JWT usando la clave por defecto
+	async decrypt(token: string): Promise<TokenVerificationResult> {
 		if (!this.#secretKey) {
 			return { valid: false, error: "JWTProvider no está inicializado" };
 		}
@@ -172,7 +95,7 @@ export default class JWTProvider extends BaseProvider implements IJWTProviderMul
 	 * Descifra y verifica un JWT usando una clave específica
 	 * Permite verificar con claves del KeyStore (current o previous)
 	 */
-	async decryptWithKey(token: string, key: Uint8Array): Promise<TokenVerificationResult<SessionPayload>> {
+	async decryptWithKey(token: string, key: Uint8Array): Promise<TokenVerificationResult> {
 		try {
 			const { payload } = await jose.jwtDecrypt(token, key, {
 				issuer: this.#config.issuer,
@@ -181,7 +104,7 @@ export default class JWTProvider extends BaseProvider implements IJWTProviderMul
 
 			return {
 				valid: true,
-				payload: payload as unknown as SessionPayload,
+				payload: payload as TokenPayload,
 			};
 		} catch (error: any) {
 			// Distinguir entre token expirado y otros errores
@@ -199,25 +122,19 @@ export default class JWTProvider extends BaseProvider implements IJWTProviderMul
 		}
 	}
 
-	/**
-	 * Verifica si un token es válido
-	 */
+	// Verifica si un token es válido
 	async verify(token: string): Promise<boolean> {
 		const result = await this.decrypt(token);
 		return result.valid;
 	}
 
-	/**
-	 * Verifica si un token es válido con una clave específica
-	 */
+	// Verifica si un token es válido con una clave específica
 	async verifyWithKey(token: string, key: Uint8Array): Promise<boolean> {
 		const result = await this.decryptWithKey(token, key);
 		return result.valid;
 	}
 
-	/**
-	 * Parsea string de expiración a segundos
-	 */
+	// Parsea string de expiración a segundos
 	#parseExpiration(exp: string): number {
 		const match = exp.match(/^(\d+)([smhdw])$/);
 		if (!match) return 7 * 24 * 60 * 60; // default 7 días

@@ -92,6 +92,8 @@ declare global {
     }
 }
 declare namespace LocalJSX {
+    type OneOf<K extends string, PropT, AttrT = PropT> = { [P in K]: PropT } & { [P in `attr:${K}` | `prop:${K}`]?: never } | { [P in `attr:${K}`]: AttrT } & { [P in K | `prop:${K}`]?: never } | { [P in `prop:${K}`]: PropT } & { [P in K | `attr:${K}`]?: never };
+
     interface AdcButton {
         /**
           * @default "button"
@@ -130,21 +132,42 @@ declare namespace LocalJSX {
         "description"?: string;
         "value": string | number;
     }
+
+    interface AdcButtonAttributes {
+        "disabled": boolean;
+        "buttonType": "button" | "submit" | "reset";
+        "variant": "primary" | "secondary";
+    }
+    interface AdcContainerAttributes {
+        "maxWidth": string;
+        "padding": string;
+    }
+    interface AdcHeaderAttributes {
+        "headerTitle": string;
+        "subtitle": string;
+    }
+    interface AdcStatCardAttributes {
+        "cardTitle": string;
+        "value": string;
+        "description": string;
+        "color": string;
+    }
+
     interface IntrinsicElements {
-        "adc-button": AdcButton;
-        "adc-container": AdcContainer;
-        "adc-header": AdcHeader;
-        "adc-stat-card": AdcStatCard;
+        "adc-button": Omit<AdcButton, keyof AdcButtonAttributes> & { [K in keyof AdcButton & keyof AdcButtonAttributes]?: AdcButton[K] } & { [K in keyof AdcButton & keyof AdcButtonAttributes as `attr:${K}`]?: AdcButtonAttributes[K] } & { [K in keyof AdcButton & keyof AdcButtonAttributes as `prop:${K}`]?: AdcButton[K] };
+        "adc-container": Omit<AdcContainer, keyof AdcContainerAttributes> & { [K in keyof AdcContainer & keyof AdcContainerAttributes]?: AdcContainer[K] } & { [K in keyof AdcContainer & keyof AdcContainerAttributes as `attr:${K}`]?: AdcContainerAttributes[K] } & { [K in keyof AdcContainer & keyof AdcContainerAttributes as `prop:${K}`]?: AdcContainer[K] };
+        "adc-header": Omit<AdcHeader, keyof AdcHeaderAttributes> & { [K in keyof AdcHeader & keyof AdcHeaderAttributes]?: AdcHeader[K] } & { [K in keyof AdcHeader & keyof AdcHeaderAttributes as `attr:${K}`]?: AdcHeaderAttributes[K] } & { [K in keyof AdcHeader & keyof AdcHeaderAttributes as `prop:${K}`]?: AdcHeader[K] } & OneOf<"headerTitle", AdcHeader["headerTitle"], AdcHeaderAttributes["headerTitle"]>;
+        "adc-stat-card": Omit<AdcStatCard, keyof AdcStatCardAttributes> & { [K in keyof AdcStatCard & keyof AdcStatCardAttributes]?: AdcStatCard[K] } & { [K in keyof AdcStatCard & keyof AdcStatCardAttributes as `attr:${K}`]?: AdcStatCardAttributes[K] } & { [K in keyof AdcStatCard & keyof AdcStatCardAttributes as `prop:${K}`]?: AdcStatCard[K] } & OneOf<"cardTitle", AdcStatCard["cardTitle"], AdcStatCardAttributes["cardTitle"]> & OneOf<"value", AdcStatCard["value"], AdcStatCardAttributes["value"]>;
     }
 }
 export { LocalJSX as JSX };
 declare module "@stencil/core" {
     export namespace JSX {
         interface IntrinsicElements {
-            "adc-button": LocalJSX.AdcButton & JSXBase.HTMLAttributes<HTMLAdcButtonElement>;
-            "adc-container": LocalJSX.AdcContainer & JSXBase.HTMLAttributes<HTMLAdcContainerElement>;
-            "adc-header": LocalJSX.AdcHeader & JSXBase.HTMLAttributes<HTMLAdcHeaderElement>;
-            "adc-stat-card": LocalJSX.AdcStatCard & JSXBase.HTMLAttributes<HTMLAdcStatCardElement>;
+            "adc-button": LocalJSX.IntrinsicElements["adc-button"] & JSXBase.HTMLAttributes<HTMLAdcButtonElement>;
+            "adc-container": LocalJSX.IntrinsicElements["adc-container"] & JSXBase.HTMLAttributes<HTMLAdcContainerElement>;
+            "adc-header": LocalJSX.IntrinsicElements["adc-header"] & JSXBase.HTMLAttributes<HTMLAdcHeaderElement>;
+            "adc-stat-card": LocalJSX.IntrinsicElements["adc-stat-card"] & JSXBase.HTMLAttributes<HTMLAdcStatCardElement>;
         }
     }
 }

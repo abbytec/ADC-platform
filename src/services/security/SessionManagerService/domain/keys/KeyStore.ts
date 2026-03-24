@@ -11,7 +11,7 @@ const REDIS_KEYS = {
 /**
  * Configuración del KeyStore
  */
-export interface KeyStoreConfig {
+interface KeyStoreConfig {
 	/** Intervalo de rotación en ms (default: 24h) */
 	rotationInterval: number;
 	/** Longitud de las claves en bytes (default: 32) */
@@ -28,7 +28,7 @@ export interface KeyStoreConfig {
 /**
  * Par de claves actual y anterior
  */
-export interface KeyPair {
+interface KeyPair {
 	current: Uint8Array;
 	previous: Uint8Array | null;
 	currentRaw: string;
@@ -39,7 +39,7 @@ export interface KeyPair {
 /**
  * Callback para notificar rotación de claves
  */
-export type KeyRotationCallback = (keys: KeyPair) => void | Promise<void>;
+type KeyRotationCallback = (keys: KeyPair) => void | Promise<void>;
 
 /**
  * KeyStore - Gestión de secretos con rotación automática

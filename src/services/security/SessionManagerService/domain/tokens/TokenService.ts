@@ -1,4 +1,4 @@
-import { TokenVerificationResult } from "../../../../../providers/security/jwt/index.ts";
+import type { TokenVerificationResult, IJWTProviderMultiKey, TokenPayload } from "../../../../../providers/security/jwt/types.d.ts";
 import type { AuthenticatedUser, SessionData } from "../../types.js";
 import type { KeyStore } from "../keys/KeyStore.js";
 import type { RefreshTokenRepository, StoredRefreshToken } from "./RefreshTokenRepository.js";
@@ -12,22 +12,9 @@ const isProd = process.env.NODE_ENV === "production";
 const useSecureCookies = isProd && process.env.PROD_PORT != "3000";
 
 /**
- * Payload del Access Token (JWT)
- * Extiende Record para ser compatible con jose.JWTPayload
- */
-export interface AccessTokenPayload extends Record<string, unknown> {
-	userId: string;
-	permissions: string[];
-	deviceId: string;
-	metadata?: Record<string, unknown>;
-	iat?: number;
-	exp?: number;
-}
-
-/**
  * Par de tokens retornado en login
  */
-export interface TokenPair {
+interface TokenPair {
 	accessToken: string;
 	refreshToken: StoredRefreshToken;
 }
@@ -35,7 +22,7 @@ export interface TokenPair {
 /**
  * Resultado de verificación de Access Token
  */
-export interface AccessTokenVerificationResult extends TokenVerificationResult<AccessTokenPayload> {
+interface AccessTokenVerificationResult extends TokenVerificationResult {
 	session?: SessionData;
 	/** True si el token fue verificado con la clave anterior (requiere refresh) */
 	usedPreviousKey?: boolean;
@@ -44,25 +31,16 @@ export interface AccessTokenVerificationResult extends TokenVerificationResult<A
 /**
  * Resultado de refresh
  */
-export interface RefreshResult {
+interface RefreshResult {
 	success: boolean;
 	tokens?: TokenPair;
 	error?: string;
 }
 
 /**
- * Interface del JWT Provider que usamos
- * Usa Record<string, unknown> para compatibilidad con jose.JWTPayload
- */
-export interface IJWTProviderMultiKey {
-	encryptWithKey(payload: Record<string, unknown>, key: Uint8Array, expiresIn: string): Promise<string>;
-	decryptWithKey(token: string, key: Uint8Array): Promise<{ valid: boolean; payload?: Record<string, unknown>; error?: string }>;
-}
-
-/**
  * Configuración del TokenService
  */
-export interface TokenServiceConfig {
+interface TokenServiceConfig {
 	/** Tiempo de expiración del Access Token (default: 15m) */
 	accessTokenTtl: string;
 	/** Tiempo de expiración del Refresh Token en segundos (default: 30 días) */
@@ -106,7 +84,7 @@ export class TokenService {
 		userAgent: string
 	): Promise<TokenPair> {
 		// Crear Access Token
-		const accessPayload: AccessTokenPayload = {
+		const accessPayload: TokenPayload = {
 			userId: user.id,
 			permissions: user.permissions,
 			deviceId,
@@ -152,7 +130,7 @@ export class TokenService {
 		let result = await this.#jwtProvider.decryptWithKey(token, currentKey);
 
 		if (result.valid && result.payload) {
-			const payload = result.payload as AccessTokenPayload;
+			const payload = result.payload as TokenPayload;
 			return {
 				valid: true,
 				payload,
@@ -166,7 +144,7 @@ export class TokenService {
 			result = await this.#jwtProvider.decryptWithKey(token, previousKey);
 
 			if (result.valid && result.payload) {
-				const payload = result.payload as AccessTokenPayload;
+				const payload = result.payload as TokenPayload;
 				return {
 					valid: true,
 					payload,
@@ -219,7 +197,7 @@ export class TokenService {
 		}
 
 		// Crear nuevo access token
-		const accessPayload: AccessTokenPayload = {
+		const accessPayload: TokenPayload = {
 			userId: user.id,
 			permissions: user.permissions,
 			deviceId: storedToken.deviceId,
@@ -308,7 +286,7 @@ export class TokenService {
 	/**
 	 * Convierte payload a SessionData
 	 */
-	#payloadToSession(payload: AccessTokenPayload): SessionData {
+	#payloadToSession(payload: TokenPayload): SessionData {
 		return {
 			user: {
 				id: payload.userId,

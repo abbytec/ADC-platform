@@ -1,2 +1,2 @@
-export { AuthEndpoints, type AuthEndpointsDeps } from "./auth.js";
-export { OAuthEndpoints, type OAuthEndpointsDeps } from "./oauth.js";
+export { AuthEndpoints } from "./auth.js";
+export { OAuthEndpoints } from "./oauth.js";

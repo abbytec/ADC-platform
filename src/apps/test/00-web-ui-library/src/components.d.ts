@@ -148,6 +148,8 @@ declare global {
     }
 }
 declare namespace LocalJSX {
+    type OneOf<K extends string, PropT, AttrT = PropT> = { [P in K]: PropT } & { [P in `attr:${K}` | `prop:${K}`]?: never } | { [P in `attr:${K}`]: AttrT } & { [P in K | `prop:${K}`]?: never } | { [P in `prop:${K}`]: PropT } & { [P in K | `attr:${K}`]?: never };
+
     /**
      * ADC Button - Componente de botón con Tailwind CSS
      * Usa clases de Tailwind via CSS personalizado con
@@ -222,12 +224,40 @@ declare namespace LocalJSX {
         "description"?: string;
         "value": string | number;
     }
+
+    interface AdcButtonAttributes {
+        "disabled": boolean;
+        "buttonType": "button" | "submit" | "reset";
+        "variant": "primary" | "secondary" | "success" | "warning" | "danger";
+        "size": "sm" | "md" | "lg";
+    }
+    interface AdcContainerAttributes {
+        "maxWidth": string;
+        "padding": string;
+    }
+    interface AdcErrorAttributes {
+        "httpError": number;
+        "errorTitle": string;
+        "errorDescription": string;
+        "color": string;
+    }
+    interface AdcHeaderAttributes {
+        "headerTitle": string;
+        "subtitle": string;
+    }
+    interface AdcStatCardAttributes {
+        "cardTitle": string;
+        "value": string;
+        "description": string;
+        "color": "primary" | "success" | "warning" | "danger" | "default";
+    }
+
     interface IntrinsicElements {
-        "adc-button": AdcButton;
-        "adc-container": AdcContainer;
-        "adc-error": AdcError;
-        "adc-header": AdcHeader;
-        "adc-stat-card": AdcStatCard;
+        "adc-button": Omit<AdcButton, keyof AdcButtonAttributes> & { [K in keyof AdcButton & keyof AdcButtonAttributes]?: AdcButton[K] } & { [K in keyof AdcButton & keyof AdcButtonAttributes as `attr:${K}`]?: AdcButtonAttributes[K] } & { [K in keyof AdcButton & keyof AdcButtonAttributes as `prop:${K}`]?: AdcButton[K] };
+        "adc-container": Omit<AdcContainer, keyof AdcContainerAttributes> & { [K in keyof AdcContainer & keyof AdcContainerAttributes]?: AdcContainer[K] } & { [K in keyof AdcContainer & keyof AdcContainerAttributes as `attr:${K}`]?: AdcContainerAttributes[K] } & { [K in keyof AdcContainer & keyof AdcContainerAttributes as `prop:${K}`]?: AdcContainer[K] };
+        "adc-error": Omit<AdcError, keyof AdcErrorAttributes> & { [K in keyof AdcError & keyof AdcErrorAttributes]?: AdcError[K] } & { [K in keyof AdcError & keyof AdcErrorAttributes as `attr:${K}`]?: AdcErrorAttributes[K] } & { [K in keyof AdcError & keyof AdcErrorAttributes as `prop:${K}`]?: AdcError[K] };
+        "adc-header": Omit<AdcHeader, keyof AdcHeaderAttributes> & { [K in keyof AdcHeader & keyof AdcHeaderAttributes]?: AdcHeader[K] } & { [K in keyof AdcHeader & keyof AdcHeaderAttributes as `attr:${K}`]?: AdcHeaderAttributes[K] } & { [K in keyof AdcHeader & keyof AdcHeaderAttributes as `prop:${K}`]?: AdcHeader[K] } & OneOf<"headerTitle", AdcHeader["headerTitle"], AdcHeaderAttributes["headerTitle"]>;
+        "adc-stat-card": Omit<AdcStatCard, keyof AdcStatCardAttributes> & { [K in keyof AdcStatCard & keyof AdcStatCardAttributes]?: AdcStatCard[K] } & { [K in keyof AdcStatCard & keyof AdcStatCardAttributes as `attr:${K}`]?: AdcStatCardAttributes[K] } & { [K in keyof AdcStatCard & keyof AdcStatCardAttributes as `prop:${K}`]?: AdcStatCard[K] } & OneOf<"cardTitle", AdcStatCard["cardTitle"], AdcStatCardAttributes["cardTitle"]> & OneOf<"value", AdcStatCard["value"], AdcStatCardAttributes["value"]>;
     }
 }
 export { LocalJSX as JSX };
@@ -239,19 +269,19 @@ declare module "@stencil/core" {
              * Usa clases de Tailwind via CSS personalizado con
              * @apply para mantener el encapsulamiento del Shadow DOM
              */
-            "adc-button": LocalJSX.AdcButton & JSXBase.HTMLAttributes<HTMLAdcButtonElement>;
-            "adc-container": LocalJSX.AdcContainer & JSXBase.HTMLAttributes<HTMLAdcContainerElement>;
+            "adc-button": LocalJSX.IntrinsicElements["adc-button"] & JSXBase.HTMLAttributes<HTMLAdcButtonElement>;
+            "adc-container": LocalJSX.IntrinsicElements["adc-container"] & JSXBase.HTMLAttributes<HTMLAdcContainerElement>;
             /**
              * Componente de error centrado para mostrar cuando una aplicación falla
              */
-            "adc-error": LocalJSX.AdcError & JSXBase.HTMLAttributes<HTMLAdcErrorElement>;
-            "adc-header": LocalJSX.AdcHeader & JSXBase.HTMLAttributes<HTMLAdcHeaderElement>;
+            "adc-error": LocalJSX.IntrinsicElements["adc-error"] & JSXBase.HTMLAttributes<HTMLAdcErrorElement>;
+            "adc-header": LocalJSX.IntrinsicElements["adc-header"] & JSXBase.HTMLAttributes<HTMLAdcHeaderElement>;
             /**
              * ADC Stat Card - Componente de tarjeta de estadísticas con Tailwind CSS
              * Usa clases de Tailwind via CSS personalizado con
              * @apply 
              */
-            "adc-stat-card": LocalJSX.AdcStatCard & JSXBase.HTMLAttributes<HTMLAdcStatCardElement>;
+            "adc-stat-card": LocalJSX.IntrinsicElements["adc-stat-card"] & JSXBase.HTMLAttributes<HTMLAdcStatCardElement>;
         }
     }
 }

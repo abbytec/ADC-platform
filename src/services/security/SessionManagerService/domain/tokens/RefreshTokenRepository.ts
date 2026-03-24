@@ -26,7 +26,7 @@ export interface StoredRefreshToken {
 /**
  * Opciones para crear un refresh token
  */
-export interface CreateRefreshTokenOptions {
+interface CreateRefreshTokenOptions {
 	userId: string;
 	deviceId: string;
 	ipAddress: string;
@@ -218,10 +218,7 @@ export class RefreshTokenRepository {
 	/**
 	 * Rota un refresh token (borra el viejo, crea uno nuevo)
 	 */
-	async rotate(
-		oldToken: string,
-		options: Omit<CreateRefreshTokenOptions, "userId" | "deviceId">
-	): Promise<StoredRefreshToken | null> {
+	async rotate(oldToken: string, options: Omit<CreateRefreshTokenOptions, "userId" | "deviceId">): Promise<StoredRefreshToken | null> {
 		const existing = await this.findByToken(oldToken);
 		if (!existing) return null;
 

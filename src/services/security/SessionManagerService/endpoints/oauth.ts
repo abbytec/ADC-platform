@@ -19,7 +19,7 @@ const RETURN_URL_COOKIE_NAME = "oauth_return_url";
 
 const isProd = process.env.NODE_ENV === "production";
 
-export interface OAuthEndpointsDeps {
+interface OAuthEndpointsDeps {
 	tokenService: TokenService;
 	geoValidator: GeoIPValidator;
 	sessionManager: SessionManager;

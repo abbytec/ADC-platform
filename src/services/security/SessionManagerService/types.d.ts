@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import type { TokenVerificationResult as JWTTokenVerificationResult } from "../../../providers/security/jwt/index.ts";
+import type { TokenVerificationResult as JWTTokenVerificationResult } from "../../../providers/security/jwt/types.d.ts";
 
 /**
  * Información del usuario autenticado
@@ -135,6 +135,8 @@ export interface AuthReply extends FastifyReply {
  * Resultado de verificación de token
  */
 export interface TokenVerificationResult extends JWTTokenVerificationResult<undefined> {
+	valid?: boolean;
+	error?: string;
 	session?: SessionData;
 	/** Si se verificó con clave anterior (requiere refresh) */
 	usedPreviousKey?: boolean;

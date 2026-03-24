@@ -2,7 +2,7 @@
 const CF_IPCOUNTRY_HEADER = "cf-ipcountry";
 
 /** Resultado de validación geográfica */
-export interface GeoValidationResult {
+interface GeoValidationResult {
 	valid: boolean;
 	currentCountry: string | null;
 	previousCountry: string | null;

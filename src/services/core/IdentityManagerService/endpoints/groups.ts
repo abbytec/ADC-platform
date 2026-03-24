@@ -13,9 +13,7 @@ async function assertGroupOrgAccess(identity: IdentityManagerService, groupId: s
 	if (group.orgId !== callerOrgId) throw new IdentityError(403, "ORG_ACCESS_DENIED", "No tienes acceso a este grupo");
 }
 
-/**
- * Verifica que un usuario pertenezca a la org del caller
- */
+// Verifica que un usuario pertenezca a la org del caller
 async function assertUserInOrg(identity: IdentityManagerService, userId: string, callerOrgId?: string): Promise<void> {
 	if (!callerOrgId) return;
 	const user = await identity.users.getUser(userId);
@@ -24,9 +22,7 @@ async function assertUserInOrg(identity: IdentityManagerService, userId: string,
 	if (!isMember) throw new IdentityError(403, "CROSS_ORG_USER", "El usuario no pertenece a tu organización");
 }
 
-/**
- * Endpoints HTTP para gestión de grupos
- */
+// Endpoints HTTP para gestión de grupos
 export class GroupEndpoints {
 	static #identity: IdentityManagerService;
 

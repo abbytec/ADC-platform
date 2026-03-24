@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { BaseService } from "../../BaseService.js";
 import type IdentityManagerService from "../../core/IdentityManagerService/index.js";
-import type { IJWTProviderMultiKey } from "../../../providers/security/jwt/index.js";
+import type { IJWTProviderMultiKey } from "../../../providers/security/jwt/types.d.ts";
 import type { IRedisProvider } from "../../../providers/queue/redis/index.js";
 import type { AuthenticatedUser, OAuthProviderConfig, TokenVerificationResult } from "./types.js";
 export type { AuthenticatedUser, TokenVerificationResult } from "./types.js";
