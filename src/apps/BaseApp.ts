@@ -17,9 +17,14 @@ export abstract class BaseApp extends BaseModule implements IApp {
 	protected readonly appDir: string;
 	private uiModuleRegistered = false;
 	private kernelKey?: symbol;
-	#kernel: Kernel;
+	readonly #kernel: Kernel;
 
-	constructor(kernel: Kernel, public readonly name: string = "", config?: IModuleConfig, _appFilePath?: string) {
+	constructor(
+		kernel: Kernel,
+		public readonly name: string = "",
+		config?: IModuleConfig,
+		_appFilePath?: string
+	) {
 		super(kernel, config);
 		this.#kernel = kernel;
 		if (_appFilePath) {
