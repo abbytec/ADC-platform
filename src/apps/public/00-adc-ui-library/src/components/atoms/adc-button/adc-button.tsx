@@ -35,11 +35,11 @@ export class AdcButton {
 		this.slotObserver?.disconnect();
 	}
 
-	private handleClick = (event: MouseEvent) => {
+	private readonly handleClick = (event: MouseEvent) => {
 		this.adcClick.emit(event);
 	};
 
-	private baseClass =
+	private readonly baseClass =
 		"rounded-3xl px-8 py-4 bg-primary text-tprimary shadow-cozy font-heading cursor-pointer hover:brightness-105 inline-block text-center font-semibold min-h-[44px] min-w-[44px] touch-manipulation";
 
 	render() {

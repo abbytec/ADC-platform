@@ -11,10 +11,7 @@ const INLINE_PATTERN = /\*\*[^*]+?\*\*|~~[^~]+?~~|`[^`]+?`|\*[^*]+?\*/g;
 // Decodifica secuencias \u003C, \u003E, \u0026 guardadas para evitar XSS
 function decodeEscapes(s?: string): string {
 	if (typeof s !== "string") return s ?? "";
-	return s
-		.replace(/\\u003C/g, "<")
-		.replace(/\\u003E/g, ">")
-		.replace(/\\u0026/g, "&");
+	return s.replaceAll("\\u003C", "<").replaceAll("\\u003E", ">").replaceAll("\\u0026", "&");
 }
 
 // Parsea texto con formato inline a tokens
@@ -66,21 +63,23 @@ export class AdcInlineTokens {
 			return <span style={{ display: "contents" }}>{this.fallback}</span>;
 		}
 
+		const uuid = crypto.randomUUID();
+
 		return (
 			<span style={{ display: "contents" }}>
 				{effectiveTokens.map((token, idx) => {
 					switch (token.type) {
 						case "bold":
-							return <strong key={idx}>{token.content}</strong>;
+							return <strong key={uuid + idx}>{token.content}</strong>;
 						case "italic":
-							return <em key={idx}>{token.content}</em>;
+							return <em key={uuid + idx}>{token.content}</em>;
 						case "strike":
-							return <s key={idx}>{token.content}</s>;
+							return <s key={uuid + idx}>{token.content}</s>;
 						case "code":
-							return <code key={idx}>{token.content}</code>;
+							return <code key={uuid + idx}>{token.content}</code>;
 						default:
 							return (
-								<span key={idx} style={{ display: "contents" }}>
+								<span key={uuid + idx} style={{ display: "contents" }}>
 									{token.content}
 								</span>
 							);

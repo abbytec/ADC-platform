@@ -13,7 +13,7 @@ export class AdcButtonRounded {
 
 	@Event() adcClick!: EventEmitter<MouseEvent>;
 
-	private handleClick = (event: MouseEvent) => {
+	private readonly handleClick = (event: MouseEvent) => {
 		this.adcClick.emit(event);
 	};
 
