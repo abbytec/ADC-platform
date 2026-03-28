@@ -7,6 +7,7 @@ import { DataTable, type Column } from "../components/DataTable.tsx";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal.tsx";
 import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
+import { RowActions } from "../components/RowActions.tsx";
 
 interface RegionsViewProps {
 	readonly scopes: Permission[];
@@ -189,28 +190,17 @@ export function RegionsView({ scopes }: RegionsViewProps) {
 				addLabel={t("regions.addRegion")}
 				keyExtractor={(r) => r.path}
 				emptyMessage={t("regions.noRegions")}
-				actions={
-					updatable || deletable
-						? (region) => (
-								<>
-									{updatable && (
-										<adc-button-rounded aria-label={t("common.edit")} onClick={() => openEditModal(region)}>
-											<adc-icon-edit />
-										</adc-button-rounded>
-									)}
-									{deletable && (
-										<adc-button-rounded
-											variant="danger"
-											aria-label={t("common.delete")}
-											onClick={() => setDeleteConfirm(region)}
-										>
-											<adc-icon-trash />
-										</adc-button-rounded>
-									)}
-								</>
-							)
-						: undefined
-				}
+				actions={(region) => (
+					<RowActions
+						item={region}
+						canEdit={updatable}
+						canDelete={deletable}
+						onEdit={openEditModal}
+						onDelete={setDeleteConfirm}
+						editLabel={t("common.edit")}
+						deleteLabel={t("common.delete")}
+					/>
+				)}
 			/>
 
 			{/* Create/Edit Modal */}

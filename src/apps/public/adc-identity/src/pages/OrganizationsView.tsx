@@ -8,6 +8,7 @@ import { DeleteConfirmModal } from "../components/DeleteConfirmModal.tsx";
 import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { MembersModal } from "../components/MembersModal.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
+import { RowActions } from "../components/RowActions.tsx";
 
 interface OrganizationsViewProps {
 	readonly scopes: Permission[];
@@ -165,33 +166,20 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 				addLabel={t("organizations.addOrganization")}
 				keyExtractor={(o) => o.orgId}
 				emptyMessage={t("organizations.noOrganizations")}
-				actions={
-					updatable || deletable
-						? (org) => (
-								<>
-									{updatable && (
-										<>
-											<adc-button-rounded aria-label={t("organizations.members")} onClick={() => setMembersModal(org)}>
-												<adc-icon-members />
-											</adc-button-rounded>
-											<adc-button-rounded aria-label={t("common.edit")} onClick={() => openEditModal(org)}>
-												<adc-icon-edit />
-											</adc-button-rounded>
-										</>
-									)}
-									{deletable && (
-										<adc-button-rounded
-											variant="danger"
-											aria-label={t("common.delete")}
-											onClick={() => setDeleteConfirm(org)}
-										>
-											<adc-icon-trash />
-										</adc-button-rounded>
-									)}
-								</>
-							)
-						: undefined
-				}
+				actions={(org) => (
+					<RowActions
+						item={org}
+						canEdit={updatable}
+						canDelete={deletable}
+						canManageMembers={updatable}
+						onEdit={openEditModal}
+						onDelete={setDeleteConfirm}
+						onManageMembers={setMembersModal}
+						editLabel={t("common.edit")}
+						deleteLabel={t("common.delete")}
+						membersLabel={t("organizations.members")}
+					/>
+				)}
 			/>
 
 			{/* Create/Edit Modal */}

@@ -24,7 +24,7 @@ export class AdcSearchInput {
 		this.innerValue = this.value;
 	}
 
-	private handleInput = (event: Event) => {
+	private readonly handleInput = (event: Event) => {
 		const target = event.target as HTMLInputElement;
 		this.innerValue = target.value;
 

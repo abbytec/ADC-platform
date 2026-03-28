@@ -9,6 +9,7 @@ import { DeleteConfirmModal } from "../components/DeleteConfirmModal.tsx";
 import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { RolePicker } from "../components/RolePicker.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
+import { RowActions } from "../components/RowActions.tsx";
 
 interface UsersViewProps {
 	readonly scopes: Permission[];
@@ -215,28 +216,17 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 				addLabel={t("users.addUser")}
 				keyExtractor={(u) => u.id}
 				emptyMessage={t("users.noUsers")}
-				actions={
-					updatable || deletable
-						? (user) => (
-								<>
-									{updatable && (
-										<adc-button-rounded aria-label={t("common.edit")} onClick={() => openEditModal(user)}>
-											<adc-icon-edit />
-										</adc-button-rounded>
-									)}
-									{deletable && (
-										<adc-button-rounded
-											variant="danger"
-											aria-label={t("common.delete")}
-											onClick={() => setDeleteConfirm(user)}
-										>
-											<adc-icon-trash />
-										</adc-button-rounded>
-									)}
-								</>
-							)
-						: undefined
-				}
+				actions={(user) => (
+					<RowActions
+						item={user}
+						canEdit={updatable}
+						canDelete={deletable}
+						onEdit={openEditModal}
+						onDelete={setDeleteConfirm}
+						editLabel={t("common.edit")}
+						deleteLabel={t("common.delete")}
+					/>
+				)}
 			/>
 
 			{/* Create/Edit Modal */}

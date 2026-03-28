@@ -10,6 +10,7 @@ import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { RolePicker } from "../components/RolePicker.tsx";
 import { MembersModal } from "../components/MembersModal.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
+import { RowActions } from "../components/RowActions.tsx";
 
 interface GroupsViewProps {
 	readonly scopes: Permission[];
@@ -193,33 +194,20 @@ export function GroupsView({ scopes, orgId, isAdmin }: GroupsViewProps) {
 				addLabel={t("groups.addGroup")}
 				keyExtractor={(g) => g.id}
 				emptyMessage={t("groups.noGroups")}
-				actions={
-					updatable || deletable
-						? (group) => (
-								<>
-									{updatable && (
-										<>
-											<adc-button-rounded aria-label={t("groups.members")} onClick={() => setMembersModal(group)}>
-												<adc-icon-members />
-											</adc-button-rounded>
-											<adc-button-rounded aria-label={t("common.edit")} onClick={() => openEditModal(group)}>
-												<adc-icon-edit />
-											</adc-button-rounded>
-										</>
-									)}
-									{deletable && (
-										<adc-button-rounded
-											variant="danger"
-											aria-label={t("common.delete")}
-											onClick={() => setDeleteConfirm(group)}
-										>
-											<adc-icon-trash />
-										</adc-button-rounded>
-									)}
-								</>
-							)
-						: undefined
-				}
+				actions={(group) => (
+					<RowActions
+						item={group}
+						canEdit={updatable}
+						canDelete={deletable}
+						canManageMembers={updatable}
+						onEdit={openEditModal}
+						onDelete={setDeleteConfirm}
+						onManageMembers={setMembersModal}
+						editLabel={t("common.edit")}
+						deleteLabel={t("common.delete")}
+						membersLabel={t("groups.members")}
+					/>
+				)}
 			/>
 
 			{/* Create/Edit Modal */}

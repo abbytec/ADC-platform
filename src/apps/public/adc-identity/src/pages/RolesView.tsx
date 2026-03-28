@@ -8,6 +8,7 @@ import { PermissionEditor } from "../components/PermissionEditor/index.ts";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal.tsx";
 import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
+import { RowActions } from "../components/RowActions.tsx";
 
 interface RolesViewProps {
 	readonly scopes: Permission[];
@@ -173,28 +174,17 @@ export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
 				addLabel={t("roles.addRole")}
 				keyExtractor={(r) => r.id}
 				emptyMessage={t("roles.noRoles")}
-				actions={
-					updatable || deletable
-						? (role) => (
-								<>
-									{updatable && role.isCustom && (
-										<adc-button-rounded aria-label={t("common.edit")} onClick={() => openEditModal(role)}>
-											<adc-icon-edit />
-										</adc-button-rounded>
-									)}
-									{deletable && role.isCustom && (
-										<adc-button-rounded
-											variant="danger"
-											aria-label={t("common.delete")}
-											onClick={() => setDeleteConfirm(role)}
-										>
-											<adc-icon-trash />
-										</adc-button-rounded>
-									)}
-								</>
-							)
-						: undefined
-				}
+				actions={(role) => (
+					<RowActions
+						item={role}
+						canEdit={updatable && role.isCustom}
+						canDelete={deletable && role.isCustom}
+						onEdit={openEditModal}
+						onDelete={setDeleteConfirm}
+						editLabel={t("common.edit")}
+						deleteLabel={t("common.delete")}
+					/>
+				)}
 			/>
 
 			{/* Create/Edit Modal */}

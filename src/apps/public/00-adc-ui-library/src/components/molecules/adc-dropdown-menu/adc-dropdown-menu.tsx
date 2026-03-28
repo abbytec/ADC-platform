@@ -77,11 +77,13 @@ export class AdcDropdownMenu {
 	render() {
 		const alignClass = this.alignState === "right" ? "right-0" : "left-0";
 
+		const uuid = crypto.randomUUID();
+
 		return (
 			<div class="relative inline-block" role="group">
 				<button
 					type="button"
-					class="group inline-flex items-center !bg-transparent"
+					class="group inline-flex items-center bg-transparent!"
 					aria-haspopup="menu"
 					aria-expanded={this.isOpen ? "true" : "false"}
 					onClick={this.handleToggle}
@@ -99,27 +101,27 @@ export class AdcDropdownMenu {
 							if (item.to) {
 								return (
 									<a
-										key={index}
+										key={uuid + "-item-" + index}
 										href={item.to}
-										class="flex w-full items-start gap-2 px-4 py-2 text-left hover:bg-accent whitespace-normal break-words"
+										class="flex w-full items-start gap-2 px-4 py-2 text-left hover:bg-accent whitespace-normal wrap-break-word"
 										role="menuitem"
 										tabindex={-1}
 										onClick={() => this.handleItemClick(item)}
 									>
-										<span class="flex-1 min-w-0 leading-snug break-words">{item.label}</span>
+										<span class="flex-1 min-w-0 leading-snug wrap-break-word">{item.label}</span>
 									</a>
 								);
 							}
 							return (
 								<button
-									key={index}
+									key={uuid + "-item-" + index}
 									type="button"
-									class="flex w-full items-start gap-2 px-4 py-2 text-left hover:bg-accent whitespace-normal break-words"
+									class="flex w-full items-start gap-2 px-4 py-2 text-left hover:bg-accent whitespace-normal wrap-break-word"
 									role="menuitem"
 									tabindex={-1}
 									onClick={() => this.handleItemClick(item)}
 								>
-									<span class="flex-1 min-w-0 leading-snug break-words">{item.label}</span>
+									<span class="flex-1 min-w-0 leading-snug wrap-break-word">{item.label}</span>
 								</button>
 							);
 						})}

@@ -65,6 +65,7 @@ export class AdcSelect {
 								type="button"
 								class="px-3 py-1 cursor-pointer hover:bg-surface w-full text-left"
 								role="menuitem"
+								key={`select-${option.value}`}
 								onClick={() => this.handleSelect(option)}
 							>
 								{option.label}

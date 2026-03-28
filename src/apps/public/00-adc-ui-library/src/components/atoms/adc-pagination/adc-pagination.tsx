@@ -85,7 +85,11 @@ export class AdcPagination {
 				{/* Page buttons */}
 				{pages.map((page) => {
 					if (page === "...") {
-						return <span class={`${btnBase} text-muted`}>…</span>;
+						return (
+							<span key={`page-${page}`} class={`${btnBase} text-muted`}>
+								…
+							</span>
+						);
 					}
 
 					const isActive = page === this.currentPage;

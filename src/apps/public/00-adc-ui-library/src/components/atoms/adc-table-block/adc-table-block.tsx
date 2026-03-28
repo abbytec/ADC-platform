@@ -18,6 +18,7 @@ export class AdcTableBlock {
 	}
 
 	render() {
+		const uuid = crypto.randomUUID();
 		return (
 			<div class="overflow-x-auto my-3">
 				<table class="min-w-[50vw] ml-8 border-collapse xl:max-w-[80vw]">
@@ -25,7 +26,10 @@ export class AdcTableBlock {
 					<thead>
 						<tr>
 							{this.header.map((headerCell, i) => (
-								<th key={i} class={`border-b border-surface px-2 py-1 text-left ${this.getAlignClass(this.columnAlign?.[i])}`}>
+								<th
+									key={uuid + "-header-" + i}
+									class={`border-b border-surface px-2 py-1 text-left ${this.getAlignClass(this.columnAlign?.[i])}`}
+								>
 									<adc-inline-tokens tokens={[]} fallback={headerCell}></adc-inline-tokens>
 								</th>
 							))}
@@ -33,17 +37,24 @@ export class AdcTableBlock {
 					</thead>
 					<tbody>
 						{this.rows.map((row, ri) => (
-							<tr key={ri} class={ri % 2 === 0 ? "odd:bg-primary" : "even:bg-white/60"}>
+							<tr key={uuid + "-row-" + ri} class={ri % 2 === 0 ? "odd:bg-primary" : "even:bg-white/60"}>
 								{row.map((cell, ci) => {
 									if (this.rowHeaders && ci === 0) {
 										return (
-											<th key={ci} scope="row" class="border-b border-surface px-2 py-1 text-left font-medium">
+											<th
+												key={uuid + "-row-" + ri + "-cell-" + ci}
+												scope="row"
+												class="border-b border-surface px-2 py-1 text-left font-medium"
+											>
 												<adc-inline-tokens tokens={[]} fallback={cell}></adc-inline-tokens>
 											</th>
 										);
 									}
 									return (
-										<td key={ci} class={`border-b border-surface px-2 py-1 ${this.getAlignClass(this.columnAlign?.[ci])}`}>
+										<td
+											key={uuid + "-row-" + ri + "-cell-" + ci}
+											class={`border-b border-surface px-2 py-1 ${this.getAlignClass(this.columnAlign?.[ci])}`}
+										>
 											<adc-inline-tokens tokens={[]} fallback={cell}></adc-inline-tokens>
 										</td>
 									);

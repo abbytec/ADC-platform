@@ -34,7 +34,9 @@ export class AdcSkeleton {
 	@Prop() rounded?: string;
 
 	private getBaseClasses(): string {
-		const animationClass = this.animation === "pulse" ? "animate-pulse" : this.animation === "wave" ? "animate-shimmer" : "";
+		let animationClass = "";
+		if (this.animation === "pulse") animationClass = "animate-pulse";
+		else if (this.animation === "wave") animationClass = "animate-shimmer";
 
 		return `bg-surface-alt ${animationClass}`;
 	}
@@ -101,12 +103,14 @@ export class AdcSkeleton {
 	render() {
 		const { classes, style } = this.getVariantStyles();
 
+		const uuid = crypto.randomUUID();
+
 		if (this.variant === "text" && this.lines > 1) {
 			return (
 				<Host class="flex flex-col gap-2">
 					{Array.from({ length: this.lines }).map((_, index) => (
 						<div
-							key={index}
+							key={uuid + index}
 							class={classes}
 							style={{
 								...style,
