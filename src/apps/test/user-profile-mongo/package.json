@@ -1,5 +1,4 @@
 {
 	"name": "@adc-platform/user-profile-mongo",
-	"type": "module",
-	"dependencies": {}
+	"type": "module"
 }

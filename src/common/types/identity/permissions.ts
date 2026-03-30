@@ -14,7 +14,7 @@ export const RESOURCE_NAME = "identity" as const;
  * Áreas de alcance en el sistema de identidad (bitfield).
  * Permite combinaciones: USERS | GROUPS = 10
  */
-export const IdentityScope = {
+export const IdentityScopes = {
 	NONE: 0,
 	SELF: 1, // 1
 	USERS: 1 << 1, // 2
@@ -25,8 +25,6 @@ export const IdentityScope = {
 	STATS: 1 << 6, // 64
 	ALL: 1 | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6), // 127
 } as const;
-
-export type IdentityScope = (typeof IdentityScope)[keyof typeof IdentityScope];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -44,7 +42,7 @@ export function hasFlags(value: number, required: number): boolean {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Mapa inverso de valor numérico de scope a nombre legible */
-const SCOPE_NAMES: Record<number, string> = Object.fromEntries(Object.entries(IdentityScope).map(([k, v]) => [v, k]));
+const SCOPE_NAMES: Record<number, string> = Object.fromEntries(Object.entries(IdentityScopes).map(([k, v]) => [v, k]));
 
 /** Mapa inverso de valor numérico de action a nombre legible */
 const ACTION_NAMES: Record<number, string> = Object.fromEntries(Object.entries(CRUDXAction).map(([k, v]) => [v, k]));

@@ -100,8 +100,7 @@ export class VanillaViteStrategy extends ViteBaseStrategy {
 		const plugins: any[] = [];
 
 		if (isDev) {
-			plugins.push(this.createImportMapPlugin(context));
-			plugins.push(this.createFederationResolverPlugin(context));
+			plugins.push(this.createImportMapPlugin(context), this.createFederationResolverPlugin(context));
 		}
 
 		return plugins;

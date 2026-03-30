@@ -3,7 +3,7 @@ import type { Group, User } from "@common/types/identity/index.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "../utils/crypto.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
-import { IdentityScope } from "@common/types/identity/permissions.js";
+import { IdentityScopes } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.js";
 
 export class GroupManager {
@@ -25,7 +25,7 @@ export class GroupManager {
 	 */
 	async createGroup(name: string, description: string, roleIds?: string[], token?: string, orgId?: string): Promise<Group> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScope.GROUPS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.GROUPS);
 		}
 
 		try {
@@ -55,7 +55,7 @@ export class GroupManager {
 	 */
 	async getGroup(groupId: string, token?: string): Promise<Group | null> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.GROUPS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS);
 		}
 
 		try {
@@ -73,7 +73,7 @@ export class GroupManager {
 	 */
 	async updateGroup(groupId: string, updates: Partial<Group>, token?: string): Promise<Group> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScope.GROUPS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.GROUPS);
 		}
 
 		try {
@@ -94,7 +94,7 @@ export class GroupManager {
 	 */
 	async deleteGroup(groupId: string, token?: string): Promise<void> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScope.GROUPS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.GROUPS);
 		}
 
 		try {
@@ -116,7 +116,7 @@ export class GroupManager {
 	 */
 	async getAllGroups(token?: string, orgId?: string): Promise<Group[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.GROUPS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS);
 		}
 
 		try {
@@ -137,7 +137,7 @@ export class GroupManager {
 	 */
 	async addUserToGroup(userId: string, groupId: string, token?: string): Promise<void> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScope.GROUPS | IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.GROUPS | IdentityScopes.USERS);
 		}
 
 		try {
@@ -161,7 +161,7 @@ export class GroupManager {
 	 */
 	async removeUserFromGroup(userId: string, groupId: string, token?: string): Promise<void> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScope.GROUPS | IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.GROUPS | IdentityScopes.USERS);
 		}
 
 		try {
@@ -182,7 +182,7 @@ export class GroupManager {
 	 */
 	async getGroupUsers(groupId: string, token?: string): Promise<User[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.GROUPS | IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS | IdentityScopes.USERS);
 		}
 
 		try {

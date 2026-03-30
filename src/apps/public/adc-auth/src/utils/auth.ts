@@ -1,5 +1,5 @@
 export { AuthError } from "@common/types/custom-errors/AuthError.js";
-import { createAdcApi, type AdcFetchResult, type RequestOptions } from "@ui-library/utils/adc-fetch";
+import { createAdcApi, type RequestOptions } from "@ui-library/utils/adc-fetch";
 
 export interface AuthUser {
 	id: string;
@@ -56,12 +56,7 @@ export const authApi = {
 	 * En ese caso, llamar de nuevo con orgId para completar el login.
 	 * @param options - Request options (e.g., translateParams for blocked time formatting)
 	 */
-	login: (
-		username: string,
-		password: string,
-		options?: Pick<RequestOptions<BlockedErrorData>, "translateParams">,
-		orgId?: string | null
-	): Promise<AdcFetchResult<AuthResponse>> =>
+	login: (username: string, password: string, options?: Pick<RequestOptions<BlockedErrorData>, "translateParams">, orgId?: string | null) =>
 		api.post<AuthResponse, BlockedErrorData>("/login", {
 			body: { username, password, ...(orgId !== undefined ? { orgId } : {}) },
 			...options,
@@ -70,33 +65,32 @@ export const authApi = {
 	/**
 	 * Registro de nuevo usuario
 	 */
-	register: (username: string, email: string, password: string): Promise<AdcFetchResult<AuthResponse>> =>
+	register: (username: string, email: string, password: string) =>
 		api.post<AuthResponse>("/register", { body: { username, email, password } }),
 
 	/**
 	 * Obtener sesión actual
 	 */
-	getSession: (): Promise<AdcFetchResult<SessionResponse>> => api.get<SessionResponse>("/session"),
+	getSession: () => api.get<SessionResponse>("/session"),
 
 	/**
 	 * Cerrar sesión
 	 */
-	logout: (): Promise<AdcFetchResult<{ success: boolean }>> => api.post<{ success: boolean }>("/logout"),
+	logout: () => api.post("/logout"),
 
 	/**
 	 * Refrescar tokens
 	 */
-	refresh: (): Promise<AdcFetchResult<{ success: boolean }>> => api.post<{ success: boolean }>("/refresh"),
+	refresh: () => api.post("/refresh"),
 
 	/**
 	 * Cambiar contexto de organización (re-emite tokens)
 	 * @param orgId - ID de la organización o undefined para acceso personal
 	 */
-	switchOrg: (orgId?: string): Promise<AdcFetchResult<AuthResponse>> => api.post<AuthResponse>("/switch-org", { body: { orgId } }),
+	switchOrg: (orgId?: string) => api.post<AuthResponse>("/switch-org", { body: { orgId } }),
 
 	/**
 	 * Obtener organizaciones del usuario autenticado
 	 */
-	getUserOrgs: (): Promise<AdcFetchResult<{ orgs: OrgOption[]; currentOrgId?: string }>> =>
-		api.get<{ orgs: OrgOption[]; currentOrgId?: string }>("/user-orgs"),
+	getUserOrgs: () => api.get<{ orgs: OrgOption[]; currentOrgId?: string }>("/user-orgs"),
 };

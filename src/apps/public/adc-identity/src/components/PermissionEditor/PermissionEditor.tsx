@@ -114,7 +114,7 @@ export function PermissionEditor({ permissions, onChange, disabled }: Permission
 				onChange([...bitfieldMapToPermissions(permMap), ...next]);
 			} else {
 				const updated = new Map(permMap);
-				for (const key of [...updated.keys()]) {
+				for (const key of updated.keys()) {
 					if (key.startsWith(`${resource}:`)) updated.delete(key);
 				}
 				rebuildAll(updated);

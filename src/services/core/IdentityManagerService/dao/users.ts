@@ -3,7 +3,7 @@ import type { User } from "@common/types/identity/User.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId, hashPassword, verifyPassword } from "../utils/crypto.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
-import { IdentityScope } from "@common/types/identity/permissions.js";
+import { IdentityScopes } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
 
 export type UserAuthenticationResult = Partial<User> | { id: string; isActive: boolean } | { id: string; wrongPassword: boolean } | null;
@@ -51,7 +51,7 @@ export class UserManager {
 	 */
 	async createUser(username: string, password: string, roleIds?: string[], token?: string): Promise<User> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.USERS);
 		}
 
 		try {
@@ -84,7 +84,7 @@ export class UserManager {
 	 */
 	async getUser(userId: string, token?: string): Promise<User | null> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 		}
 
 		try {
@@ -102,7 +102,7 @@ export class UserManager {
 	 */
 	async getUserByUsername(username: string, token?: string): Promise<User | null> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 		}
 
 		try {
@@ -120,7 +120,7 @@ export class UserManager {
 	 */
 	async getUserByEmail(email: string, token?: string): Promise<User | null> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 		}
 
 		try {
@@ -138,7 +138,7 @@ export class UserManager {
 	 */
 	async existsByUsernameOrEmail(username: string, email: string, token?: string): Promise<{ exists: boolean; field?: "username" | "email" }> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 		}
 
 		try {
@@ -160,7 +160,7 @@ export class UserManager {
 	 */
 	async findByProviderIdOrEmail(providerIdField: string, providerId: string, email?: string, token?: string): Promise<User | null> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 		}
 
 		try {
@@ -182,7 +182,7 @@ export class UserManager {
 	 */
 	async updateUser(userId: string, updates: Partial<User>, token?: string): Promise<User> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
 		}
 
 		try {
@@ -202,7 +202,7 @@ export class UserManager {
 	 */
 	async deleteUser(userId: string, token?: string): Promise<void> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.USERS);
 		}
 
 		try {
@@ -221,7 +221,7 @@ export class UserManager {
 	 */
 	async getAllUsers(token?: string, orgId?: string): Promise<User[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 		}
 
 		try {
@@ -243,7 +243,7 @@ export class UserManager {
 	 */
 	async searchUsers(query: string, limit: number = 10, token?: string, orgId?: string): Promise<User[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 		}
 
 		try {
@@ -269,7 +269,12 @@ export class UserManager {
 	 */
 	async addOrgMembership(userId: string, orgId: string, roleIds: string[] = [], token?: string): Promise<User> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScope.USERS | IdentityScope.ORGANIZATIONS, orgId);
+			await this.#permissionChecker.requirePermission(
+				token,
+				CRUDXAction.WRITE,
+				IdentityScopes.USERS | IdentityScopes.ORGANIZATIONS,
+				orgId
+			);
 		}
 
 		try {
@@ -298,7 +303,12 @@ export class UserManager {
 	 */
 	async removeOrgMembership(userId: string, orgId: string, token?: string): Promise<User> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScope.USERS | IdentityScope.ORGANIZATIONS, orgId);
+			await this.#permissionChecker.requirePermission(
+				token,
+				CRUDXAction.DELETE,
+				IdentityScopes.USERS | IdentityScopes.ORGANIZATIONS,
+				orgId
+			);
 		}
 
 		try {
@@ -325,7 +335,7 @@ export class UserManager {
 	 */
 	async getUserOrganizations(userId: string, token?: string): Promise<string[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScope.USERS | IdentityScope.ORGANIZATIONS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS | IdentityScopes.ORGANIZATIONS);
 		}
 
 		try {

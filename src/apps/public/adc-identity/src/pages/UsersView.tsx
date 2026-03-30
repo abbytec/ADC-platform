@@ -83,7 +83,7 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 
 	const getRoleName = (roleId: string) => {
 		const role = roles.find((r) => r.id === roleId);
-		return role?.name || roleId;
+		return role?.name || "Role not found";
 	};
 
 	const openCreateModal = () => {

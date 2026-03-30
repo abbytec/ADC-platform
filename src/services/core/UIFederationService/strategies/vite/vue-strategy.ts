@@ -40,8 +40,7 @@ export class VueViteStrategy extends ViteBaseStrategy {
 
 		if (isDev) {
 			// Plugins de desarrollo
-			plugins.push(this.createImportMapPlugin(context));
-			plugins.push(this.createFederationResolverPlugin(context));
+			plugins.push(this.createImportMapPlugin(context), this.createFederationResolverPlugin(context));
 
 			// Plugin de Module Federation para dev (si no es host)
 			const isHost = context.module.uiConfig.isHost;

@@ -54,8 +54,8 @@ export class PathEndpoints {
 		const query = ctx.query as ListPathsQuery;
 		const filter: Record<string, any> = {};
 
-		if (query.public !== undefined) filter.public = query.public === "true";
-		if (query.listed !== undefined) filter.listed = query.listed === "true";
+		if (query.public === "true") filter.public = true;
+		if (query.listed === "true") filter.listed = true;
 
 		const limit = query.limit ? Number.parseInt(query.limit) : 100;
 		const skip = query.skip ? Number.parseInt(query.skip) : 0;

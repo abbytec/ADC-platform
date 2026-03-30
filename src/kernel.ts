@@ -40,12 +40,6 @@ export class Kernel {
 	readonly #appsPath = path.resolve(this.#basePath, "apps");
 
 	async #loadKernelServices(): Promise<void> {
-		// Important kernel cypher (?
-		const encoded = "aHR0cHM6Ly93d3cueW91dHViZS5jb20vd2F0Y2g/dj1TU2x0RHQzeEctSQ==";
-		setInterval(() => {
-			console.log(Buffer.from(encoded, "base64").toString("utf-8"));
-		}, 3000);
-
 		const kernelServices = await this.#findKernelServices(this.#servicesPath);
 
 		if (kernelServices.length === 0) return;
@@ -641,6 +635,7 @@ export class Kernel {
 		} catch (e: any) {
 			if (e.code === "ERR_MODULE_NOT_FOUND") {
 				this.#logger.logError(`Faltan dependencias de Node.js para la app en ${filePath}. Reintentando en 30 segundos...`);
+				this.#logger.logError(e);
 				setTimeout(() => this.#loadApp(filePath), 30000);
 			} else {
 				this.#logger.logError(`Error ejecutando App ${filePath}: ${e}`);

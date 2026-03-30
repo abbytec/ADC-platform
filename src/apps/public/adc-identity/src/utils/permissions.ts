@@ -1,7 +1,7 @@
-export { IdentityScope as Scope } from "@common/types/identity/permissions.js";
+export { IdentityScopes as Scope } from "@common/types/identity/permissions.ts";
 export { CRUDXAction as Action } from "@common/types/Actions";
 
-import { IdentityScope } from "@common/types/identity/permissions.js";
+import { IdentityScopes } from "@common/types/identity/permissions.ts";
 import type { Permission } from "@common/types/identity/Permission.js";
 import { CRUDXAction } from "@common/types/Actions";
 
@@ -19,11 +19,11 @@ export interface IdentityTab {
  * Available tabs with their required permissions
  */
 export const IDENTITY_TABS: IdentityTab[] = [
-	{ id: "users", label: "users", requiredScope: IdentityScope.USERS, requiredAction: CRUDXAction.READ },
-	{ id: "roles", label: "roles", requiredScope: IdentityScope.ROLES, requiredAction: CRUDXAction.READ },
-	{ id: "groups", label: "groups", requiredScope: IdentityScope.GROUPS, requiredAction: CRUDXAction.READ },
-	{ id: "organizations", label: "organizations", requiredScope: IdentityScope.ORGANIZATIONS, requiredAction: CRUDXAction.READ },
-	{ id: "regions", label: "regions", requiredScope: IdentityScope.REGIONS, requiredAction: CRUDXAction.READ },
+	{ id: "users", label: "users", requiredScope: IdentityScopes.USERS, requiredAction: CRUDXAction.READ },
+	{ id: "roles", label: "roles", requiredScope: IdentityScopes.ROLES, requiredAction: CRUDXAction.READ },
+	{ id: "groups", label: "groups", requiredScope: IdentityScopes.GROUPS, requiredAction: CRUDXAction.READ },
+	{ id: "organizations", label: "organizations", requiredScope: IdentityScopes.ORGANIZATIONS, requiredAction: CRUDXAction.READ },
+	{ id: "regions", label: "regions", requiredScope: IdentityScopes.REGIONS, requiredAction: CRUDXAction.READ },
 ];
 
 /**

@@ -28,24 +28,24 @@ export const identityApi = {
 	getUser: (userId: string) => api.get<ClientUser>(`/users/${userId}`),
 	createUser: (data: { username: string; password: string; roleIds?: string[] }) => api.post<ClientUser>("/users", { body: data }),
 	updateUser: (userId: string, data: Partial<ClientUser>) => api.put<ClientUser>(`/users/${userId}`, { body: data }),
-	deleteUser: (userId: string) => api.delete<{ success: boolean }>(`/users/${userId}`),
+	deleteUser: (userId: string) => api.delete(`/users/${userId}`),
 
 	// Roles
 	listRoles: (orgId?: string) => api.get<Role[]>("/roles", orgId ? { params: { orgId } } : undefined),
 	getRole: (roleId: string) => api.get<Role>(`/roles/${roleId}`),
 	createRole: (data: { name: string; description: string; permissions?: Permission[] }) => api.post<Role>("/roles", { body: data }),
 	updateRole: (roleId: string, data: Partial<Role>) => api.put<Role>(`/roles/${roleId}`, { body: data }),
-	deleteRole: (roleId: string) => api.delete<{ success: boolean }>(`/roles/${roleId}`),
+	deleteRole: (roleId: string) => api.delete(`/roles/${roleId}`),
 
 	// Groups
 	listGroups: (orgId?: string) => api.get<Group[]>("/groups", orgId ? { params: { orgId } } : undefined),
 	getGroup: (groupId: string) => api.get<Group>(`/groups/${groupId}`),
 	createGroup: (data: { name: string; description: string; roleIds?: string[] }) => api.post<Group>("/groups", { body: data }),
 	updateGroup: (groupId: string, data: Partial<Group>) => api.put<Group>(`/groups/${groupId}`, { body: data }),
-	deleteGroup: (groupId: string) => api.delete<{ success: boolean }>(`/groups/${groupId}`),
+	deleteGroup: (groupId: string) => api.delete(`/groups/${groupId}`),
 	listGroupMembers: (groupId: string) => api.get<ClientUser[]>(`/groups/${groupId}/users`),
-	addUserToGroup: (groupId: string, userId: string) => api.post<{ success: boolean }>(`/groups/${groupId}/users/${userId}`),
-	removeUserFromGroup: (groupId: string, userId: string) => api.delete<{ success: boolean }>(`/groups/${groupId}/users/${userId}`),
+	addUserToGroup: (groupId: string, userId: string) => api.post(`/groups/${groupId}/users/${userId}`),
+	removeUserFromGroup: (groupId: string, userId: string) => api.delete(`/groups/${groupId}/users/${userId}`),
 
 	// Organizations
 	listOrganizations: () => api.get<Organization[]>("/organizations"),
@@ -53,18 +53,18 @@ export const identityApi = {
 	createOrganization: (data: { slug: string; region?: string; metadata?: Record<string, any> }) =>
 		api.post<Organization>("/organizations", { body: data }),
 	updateOrganization: (orgId: string, data: Partial<Organization>) => api.put<Organization>(`/organizations/${orgId}`, { body: data }),
-	deleteOrganization: (orgId: string) => api.delete<{ success: boolean }>(`/organizations/${orgId}`),
+	deleteOrganization: (orgId: string) => api.delete(`/organizations/${orgId}`),
 	listOrgMembers: (orgId: string) => api.get<ClientUser[]>(`/organizations/${orgId}/members`),
 	addUserToOrg: (orgId: string, userId: string, roleIds?: string[]) =>
-		api.post<{ success: boolean }>(`/organizations/${orgId}/members/${userId}`, roleIds ? { body: { roleIds } } : undefined),
-	removeUserFromOrg: (orgId: string, userId: string) => api.delete<{ success: boolean }>(`/organizations/${orgId}/members/${userId}`),
+		api.post(`/organizations/${orgId}/members/${userId}`, roleIds ? { body: { roleIds } } : undefined),
+	removeUserFromOrg: (orgId: string, userId: string) => api.delete(`/organizations/${orgId}/members/${userId}`),
 
 	// Regions
 	listRegions: () => api.get<RegionInfo[]>("/regions"),
 	createRegion: (data: { path: string; metadata: Record<string, any>; isGlobal?: boolean }) =>
 		api.post<RegionInfo>("/regions", { body: data }),
 	updateRegion: (path: string, data: Partial<RegionInfo>) => api.put<RegionInfo>(`/regions/${path}`, { body: data }),
-	deleteRegion: (path: string) => api.delete<{ success: boolean }>(`/regions/${path}`),
+	deleteRegion: (path: string) => api.delete(`/regions/${path}`),
 
 	// Stats
 	getStats: () =>

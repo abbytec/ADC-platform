@@ -331,7 +331,7 @@ export class AdcAccessButton {
 								{this.menuItems.map((item, idx) => (
 									<a
 										href={item.href}
-										key={`adc-access-button-item-${idx}`}
+										key={`adc-access-button-item-${item.href}-${idx}`}
 										class="flex items-center gap-2 px-4 py-2 hover:bg-accent text-tprimary transition-colors"
 										role="menuitem"
 									>
