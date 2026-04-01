@@ -145,6 +145,7 @@ export class AdcBlocksRenderer {
 	}
 
 	render() {
+		void h;
 		return <div>{this.blocks.map((block, index) => this.renderBlock(block, index))}</div>;
 	}
 }

@@ -75,6 +75,7 @@ export class AdcDropdownMenu {
 	}
 
 	render() {
+		void h;
 		const alignClass = this.alignState === "right" ? "right-0" : "left-0";
 
 		const uuid = crypto.randomUUID();

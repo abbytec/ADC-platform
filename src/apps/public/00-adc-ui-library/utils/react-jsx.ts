@@ -6,6 +6,7 @@
  */
 
 import "react";
+import { SidebarItem } from "../src/components";
 
 type WebComponentProps<T = Record<string, unknown>> = T & {
 	children?: React.ReactNode;
@@ -19,12 +20,21 @@ type WebComponentProps<T = Record<string, unknown>> = T & {
 
 interface AdcIntrinsicElements {
 	"adc-blocks-renderer": WebComponentProps<{ blocks?: unknown[] }>;
+	"adc-burger-button": WebComponentProps<{
+		isOpen?: boolean;
+		ariaLabel?: string;
+	}>;
 	"adc-button": WebComponentProps<{
 		ariaLabel?: string;
 		href?: string;
 		type?: "button" | "submit" | "reset";
 		disabled?: boolean;
 		variant?: "primary" | "accent";
+	}>;
+	"adc-button-expand": WebComponentProps<{
+		isExpanded?: boolean;
+		ariaLabel?: string;
+		ariaControls?: string;
 	}>;
 	"adc-button-rounded": WebComponentProps<{
 		ariaLabel?: string;
@@ -61,6 +71,7 @@ interface AdcIntrinsicElements {
 	"adc-icon-members": WebComponentProps<{ size?: string }>;
 	"adc-icon-nitro": WebComponentProps<{ size?: string }>;
 	"adc-icon-opensource": WebComponentProps<{ size?: string }>;
+	"adc-icon-arrow-line-right": WebComponentProps<{ size?: string }>;
 	"adc-icon-pencil": WebComponentProps<{ size?: string }>;
 	"adc-icon-trash": WebComponentProps<{ size?: string }>;
 	"adc-icon-vip": WebComponentProps<{ size?: string }>;
@@ -102,6 +113,10 @@ interface AdcIntrinsicElements {
 	}>;
 	"adc-select": WebComponentProps<{ options?: unknown[]; placeholder?: string; value?: string }>;
 	"adc-share-buttons": WebComponentProps<{ description?: string; title?: string; url?: string }>;
+	"adc-sidebar": WebComponentProps<{
+		items?: SidebarItem[];
+		collapsed?: boolean;
+	}>;
 	"adc-site-footer": WebComponentProps<{
 		brandName?: string;
 		brandSlogan?: string;

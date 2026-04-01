@@ -68,6 +68,7 @@ export class AdcTabs {
 	};
 
 	render() {
+		void h;
 		const isUnderline = this.variant === "underline";
 
 		const containerClass = isUnderline ? "flex border-b border-surface gap-1" : "flex gap-1 bg-surface/30 rounded-xxl p-1";

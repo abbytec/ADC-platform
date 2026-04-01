@@ -10,6 +10,7 @@ import { Block } from "./components/organisms/adc-blocks-renderer/adc-blocks-ren
 import { DropdownMenuItem } from "./components/molecules/adc-dropdown-menu/adc-dropdown-menu";
 import { InlineToken } from "./components/atoms/adc-inline-tokens/adc-inline-tokens";
 import { SelectOption } from "./components/atoms/adc-select/adc-select";
+import { SidebarItem } from "./components/molecules/adc-sidebar/adc-sidebar";
 import { AccessMenuItem as AccessMenuItem1 } from "./components/molecules/adc-access-button/adc-access-button.js";
 import { TabItem } from "./components/atoms/adc-tabs/adc-tabs";
 export { AccessMenuItem } from "./components/molecules/adc-access-button/adc-access-button";
@@ -17,6 +18,7 @@ export { Block } from "./components/organisms/adc-blocks-renderer/adc-blocks-ren
 export { DropdownMenuItem } from "./components/molecules/adc-dropdown-menu/adc-dropdown-menu";
 export { InlineToken } from "./components/atoms/adc-inline-tokens/adc-inline-tokens";
 export { SelectOption } from "./components/atoms/adc-select/adc-select";
+export { SidebarItem } from "./components/molecules/adc-sidebar/adc-sidebar";
 export { AccessMenuItem as AccessMenuItem1 } from "./components/molecules/adc-access-button/adc-access-button.js";
 export { TabItem } from "./components/atoms/adc-tabs/adc-tabs";
 export namespace Components {
@@ -148,6 +150,27 @@ export namespace Components {
           * @default "primary"
          */
         "variant": "primary" | "accent";
+    }
+    interface AdcButtonBurger {
+        /**
+          * @default "Toggle menu"
+         */
+        "ariaLabel": string;
+        /**
+          * @default false
+         */
+        "isOpen": boolean;
+    }
+    interface AdcButtonExpand {
+        "ariaControls"?: string;
+        /**
+          * @default "Expandir menú"
+         */
+        "ariaLabel": string;
+        /**
+          * @default false
+         */
+        "isExpanded": boolean;
     }
     interface AdcButtonRounded {
         "ariaLabel"?: string;
@@ -284,6 +307,12 @@ export namespace Components {
     interface AdcIconLeftArrow {
         /**
           * @default "1rem"
+         */
+        "size": string;
+    }
+    interface AdcIconLineArrowRight {
+        /**
+          * @default "2rem"
          */
         "size": string;
     }
@@ -545,6 +574,16 @@ export namespace Components {
          */
         "url": string;
     }
+    interface AdcSidebar {
+        /**
+          * @default false
+         */
+        "collapsed": boolean;
+        /**
+          * @default []
+         */
+        "items": SidebarItem[];
+    }
     interface AdcSiteFooter {
         /**
           * @default ""
@@ -768,6 +807,14 @@ export interface AdcButtonCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcButtonElement;
 }
+export interface AdcButtonBurgerCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcButtonBurgerElement;
+}
+export interface AdcButtonExpandCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcButtonExpandElement;
+}
 export interface AdcButtonRoundedCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcButtonRoundedElement;
@@ -799,6 +846,10 @@ export interface AdcSearchInputCustomEvent<T> extends CustomEvent<T> {
 export interface AdcSelectCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcSelectElement;
+}
+export interface AdcSidebarCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcSidebarElement;
 }
 export interface AdcStarRatingCustomEvent<T> extends CustomEvent<T> {
     detail: T;
@@ -885,6 +936,40 @@ declare global {
     var HTMLAdcButtonElement: {
         prototype: HTMLAdcButtonElement;
         new (): HTMLAdcButtonElement;
+    };
+    interface HTMLAdcButtonBurgerElementEventMap {
+        "adcBurgerToggle": boolean;
+    }
+    interface HTMLAdcButtonBurgerElement extends Components.AdcButtonBurger, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcButtonBurgerElementEventMap>(type: K, listener: (this: HTMLAdcButtonBurgerElement, ev: AdcButtonBurgerCustomEvent<HTMLAdcButtonBurgerElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcButtonBurgerElementEventMap>(type: K, listener: (this: HTMLAdcButtonBurgerElement, ev: AdcButtonBurgerCustomEvent<HTMLAdcButtonBurgerElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcButtonBurgerElement: {
+        prototype: HTMLAdcButtonBurgerElement;
+        new (): HTMLAdcButtonBurgerElement;
+    };
+    interface HTMLAdcButtonExpandElementEventMap {
+        "adcExpandToggle": boolean;
+    }
+    interface HTMLAdcButtonExpandElement extends Components.AdcButtonExpand, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcButtonExpandElementEventMap>(type: K, listener: (this: HTMLAdcButtonExpandElement, ev: AdcButtonExpandCustomEvent<HTMLAdcButtonExpandElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcButtonExpandElementEventMap>(type: K, listener: (this: HTMLAdcButtonExpandElement, ev: AdcButtonExpandCustomEvent<HTMLAdcButtonExpandElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcButtonExpandElement: {
+        prototype: HTMLAdcButtonExpandElement;
+        new (): HTMLAdcButtonExpandElement;
     };
     interface HTMLAdcButtonRoundedElementEventMap {
         "adcClick": MouseEvent;
@@ -1002,6 +1087,12 @@ declare global {
     var HTMLAdcIconLeftArrowElement: {
         prototype: HTMLAdcIconLeftArrowElement;
         new (): HTMLAdcIconLeftArrowElement;
+    };
+    interface HTMLAdcIconLineArrowRightElement extends Components.AdcIconLineArrowRight, HTMLStencilElement {
+    }
+    var HTMLAdcIconLineArrowRightElement: {
+        prototype: HTMLAdcIconLineArrowRightElement;
+        new (): HTMLAdcIconLineArrowRightElement;
     };
     interface HTMLAdcIconLogoutElement extends Components.AdcIconLogout, HTMLStencilElement {
     }
@@ -1166,6 +1257,23 @@ declare global {
         prototype: HTMLAdcShareButtonsElement;
         new (): HTMLAdcShareButtonsElement;
     };
+    interface HTMLAdcSidebarElementEventMap {
+        "adcSidebarItemClick": SidebarItem;
+    }
+    interface HTMLAdcSidebarElement extends Components.AdcSidebar, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcSidebarElementEventMap>(type: K, listener: (this: HTMLAdcSidebarElement, ev: AdcSidebarCustomEvent<HTMLAdcSidebarElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcSidebarElementEventMap>(type: K, listener: (this: HTMLAdcSidebarElement, ev: AdcSidebarCustomEvent<HTMLAdcSidebarElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcSidebarElement: {
+        prototype: HTMLAdcSidebarElement;
+        new (): HTMLAdcSidebarElement;
+    };
     interface HTMLAdcSiteFooterElement extends Components.AdcSiteFooter, HTMLStencilElement {
     }
     var HTMLAdcSiteFooterElement: {
@@ -1296,6 +1404,8 @@ declare global {
         "adc-blocks-renderer": HTMLAdcBlocksRendererElement;
         "adc-blur-panel": HTMLAdcBlurPanelElement;
         "adc-button": HTMLAdcButtonElement;
+        "adc-button-burger": HTMLAdcButtonBurgerElement;
+        "adc-button-expand": HTMLAdcButtonExpandElement;
         "adc-button-rounded": HTMLAdcButtonRoundedElement;
         "adc-callout": HTMLAdcCalloutElement;
         "adc-code-block": HTMLAdcCodeBlockElement;
@@ -1310,6 +1420,7 @@ declare global {
         "adc-icon-edit": HTMLAdcIconEditElement;
         "adc-icon-learning": HTMLAdcIconLearningElement;
         "adc-icon-left-arrow": HTMLAdcIconLeftArrowElement;
+        "adc-icon-line-arrow-right": HTMLAdcIconLineArrowRightElement;
         "adc-icon-logout": HTMLAdcIconLogoutElement;
         "adc-icon-members": HTMLAdcIconMembersElement;
         "adc-icon-nitro": HTMLAdcIconNitroElement;
@@ -1328,6 +1439,7 @@ declare global {
         "adc-search-input": HTMLAdcSearchInputElement;
         "adc-select": HTMLAdcSelectElement;
         "adc-share-buttons": HTMLAdcShareButtonsElement;
+        "adc-sidebar": HTMLAdcSidebarElement;
         "adc-site-footer": HTMLAdcSiteFooterElement;
         "adc-site-header": HTMLAdcSiteHeaderElement;
         "adc-skeleton": HTMLAdcSkeletonElement;
@@ -1486,6 +1598,29 @@ declare namespace LocalJSX {
          */
         "variant"?: "primary" | "accent";
     }
+    interface AdcButtonBurger {
+        /**
+          * @default "Toggle menu"
+         */
+        "ariaLabel"?: string;
+        /**
+          * @default false
+         */
+        "isOpen"?: boolean;
+        "onAdcBurgerToggle"?: (event: AdcButtonBurgerCustomEvent<boolean>) => void;
+    }
+    interface AdcButtonExpand {
+        "ariaControls"?: string;
+        /**
+          * @default "Expandir menú"
+         */
+        "ariaLabel"?: string;
+        /**
+          * @default false
+         */
+        "isExpanded"?: boolean;
+        "onAdcExpandToggle"?: (event: AdcButtonExpandCustomEvent<boolean>) => void;
+    }
     interface AdcButtonRounded {
         "ariaLabel"?: string;
         "href"?: string;
@@ -1624,6 +1759,12 @@ declare namespace LocalJSX {
     interface AdcIconLeftArrow {
         /**
           * @default "1rem"
+         */
+        "size"?: string;
+    }
+    interface AdcIconLineArrowRight {
+        /**
+          * @default "2rem"
          */
         "size"?: string;
     }
@@ -1890,6 +2031,17 @@ declare namespace LocalJSX {
          */
         "url"?: string;
     }
+    interface AdcSidebar {
+        /**
+          * @default false
+         */
+        "collapsed"?: boolean;
+        /**
+          * @default []
+         */
+        "items"?: SidebarItem[];
+        "onAdcSidebarItemClick"?: (event: AdcSidebarCustomEvent<SidebarItem>) => void;
+    }
     interface AdcSiteFooter {
         /**
           * @default ""
@@ -2145,6 +2297,15 @@ declare namespace LocalJSX {
         "ariaLabel": string;
         "label": string;
     }
+    interface AdcButtonBurgerAttributes {
+        "isOpen": boolean;
+        "ariaLabel": string;
+    }
+    interface AdcButtonExpandAttributes {
+        "isExpanded": boolean;
+        "ariaLabel": string;
+        "ariaControls": string;
+    }
     interface AdcButtonRoundedAttributes {
         "type": "button" | "submit" | "reset";
         "href": string;
@@ -2200,6 +2361,9 @@ declare namespace LocalJSX {
         "size": string;
     }
     interface AdcIconLeftArrowAttributes {
+        "size": string;
+    }
+    interface AdcIconLineArrowRightAttributes {
         "size": string;
     }
     interface AdcIconLogoutAttributes {
@@ -2293,6 +2457,9 @@ declare namespace LocalJSX {
         "description": string;
         "url": string;
     }
+    interface AdcSidebarAttributes {
+        "collapsed": boolean;
+    }
     interface AdcSiteFooterAttributes {
         "brandName": string;
         "brandSlogan": string;
@@ -2364,6 +2531,8 @@ declare namespace LocalJSX {
         "adc-blocks-renderer": AdcBlocksRenderer;
         "adc-blur-panel": Omit<AdcBlurPanel, keyof AdcBlurPanelAttributes> & { [K in keyof AdcBlurPanel & keyof AdcBlurPanelAttributes]?: AdcBlurPanel[K] } & { [K in keyof AdcBlurPanel & keyof AdcBlurPanelAttributes as `attr:${K}`]?: AdcBlurPanelAttributes[K] } & { [K in keyof AdcBlurPanel & keyof AdcBlurPanelAttributes as `prop:${K}`]?: AdcBlurPanel[K] };
         "adc-button": Omit<AdcButton, keyof AdcButtonAttributes> & { [K in keyof AdcButton & keyof AdcButtonAttributes]?: AdcButton[K] } & { [K in keyof AdcButton & keyof AdcButtonAttributes as `attr:${K}`]?: AdcButtonAttributes[K] } & { [K in keyof AdcButton & keyof AdcButtonAttributes as `prop:${K}`]?: AdcButton[K] };
+        "adc-button-burger": Omit<AdcButtonBurger, keyof AdcButtonBurgerAttributes> & { [K in keyof AdcButtonBurger & keyof AdcButtonBurgerAttributes]?: AdcButtonBurger[K] } & { [K in keyof AdcButtonBurger & keyof AdcButtonBurgerAttributes as `attr:${K}`]?: AdcButtonBurgerAttributes[K] } & { [K in keyof AdcButtonBurger & keyof AdcButtonBurgerAttributes as `prop:${K}`]?: AdcButtonBurger[K] };
+        "adc-button-expand": Omit<AdcButtonExpand, keyof AdcButtonExpandAttributes> & { [K in keyof AdcButtonExpand & keyof AdcButtonExpandAttributes]?: AdcButtonExpand[K] } & { [K in keyof AdcButtonExpand & keyof AdcButtonExpandAttributes as `attr:${K}`]?: AdcButtonExpandAttributes[K] } & { [K in keyof AdcButtonExpand & keyof AdcButtonExpandAttributes as `prop:${K}`]?: AdcButtonExpand[K] };
         "adc-button-rounded": Omit<AdcButtonRounded, keyof AdcButtonRoundedAttributes> & { [K in keyof AdcButtonRounded & keyof AdcButtonRoundedAttributes]?: AdcButtonRounded[K] } & { [K in keyof AdcButtonRounded & keyof AdcButtonRoundedAttributes as `attr:${K}`]?: AdcButtonRoundedAttributes[K] } & { [K in keyof AdcButtonRounded & keyof AdcButtonRoundedAttributes as `prop:${K}`]?: AdcButtonRounded[K] };
         "adc-callout": Omit<AdcCallout, keyof AdcCalloutAttributes> & { [K in keyof AdcCallout & keyof AdcCalloutAttributes]?: AdcCallout[K] } & { [K in keyof AdcCallout & keyof AdcCalloutAttributes as `attr:${K}`]?: AdcCalloutAttributes[K] } & { [K in keyof AdcCallout & keyof AdcCalloutAttributes as `prop:${K}`]?: AdcCallout[K] };
         "adc-code-block": Omit<AdcCodeBlock, keyof AdcCodeBlockAttributes> & { [K in keyof AdcCodeBlock & keyof AdcCodeBlockAttributes]?: AdcCodeBlock[K] } & { [K in keyof AdcCodeBlock & keyof AdcCodeBlockAttributes as `attr:${K}`]?: AdcCodeBlockAttributes[K] } & { [K in keyof AdcCodeBlock & keyof AdcCodeBlockAttributes as `prop:${K}`]?: AdcCodeBlock[K] };
@@ -2378,6 +2547,7 @@ declare namespace LocalJSX {
         "adc-icon-edit": Omit<AdcIconEdit, keyof AdcIconEditAttributes> & { [K in keyof AdcIconEdit & keyof AdcIconEditAttributes]?: AdcIconEdit[K] } & { [K in keyof AdcIconEdit & keyof AdcIconEditAttributes as `attr:${K}`]?: AdcIconEditAttributes[K] } & { [K in keyof AdcIconEdit & keyof AdcIconEditAttributes as `prop:${K}`]?: AdcIconEdit[K] };
         "adc-icon-learning": Omit<AdcIconLearning, keyof AdcIconLearningAttributes> & { [K in keyof AdcIconLearning & keyof AdcIconLearningAttributes]?: AdcIconLearning[K] } & { [K in keyof AdcIconLearning & keyof AdcIconLearningAttributes as `attr:${K}`]?: AdcIconLearningAttributes[K] } & { [K in keyof AdcIconLearning & keyof AdcIconLearningAttributes as `prop:${K}`]?: AdcIconLearning[K] };
         "adc-icon-left-arrow": Omit<AdcIconLeftArrow, keyof AdcIconLeftArrowAttributes> & { [K in keyof AdcIconLeftArrow & keyof AdcIconLeftArrowAttributes]?: AdcIconLeftArrow[K] } & { [K in keyof AdcIconLeftArrow & keyof AdcIconLeftArrowAttributes as `attr:${K}`]?: AdcIconLeftArrowAttributes[K] } & { [K in keyof AdcIconLeftArrow & keyof AdcIconLeftArrowAttributes as `prop:${K}`]?: AdcIconLeftArrow[K] };
+        "adc-icon-line-arrow-right": Omit<AdcIconLineArrowRight, keyof AdcIconLineArrowRightAttributes> & { [K in keyof AdcIconLineArrowRight & keyof AdcIconLineArrowRightAttributes]?: AdcIconLineArrowRight[K] } & { [K in keyof AdcIconLineArrowRight & keyof AdcIconLineArrowRightAttributes as `attr:${K}`]?: AdcIconLineArrowRightAttributes[K] } & { [K in keyof AdcIconLineArrowRight & keyof AdcIconLineArrowRightAttributes as `prop:${K}`]?: AdcIconLineArrowRight[K] };
         "adc-icon-logout": Omit<AdcIconLogout, keyof AdcIconLogoutAttributes> & { [K in keyof AdcIconLogout & keyof AdcIconLogoutAttributes]?: AdcIconLogout[K] } & { [K in keyof AdcIconLogout & keyof AdcIconLogoutAttributes as `attr:${K}`]?: AdcIconLogoutAttributes[K] } & { [K in keyof AdcIconLogout & keyof AdcIconLogoutAttributes as `prop:${K}`]?: AdcIconLogout[K] };
         "adc-icon-members": Omit<AdcIconMembers, keyof AdcIconMembersAttributes> & { [K in keyof AdcIconMembers & keyof AdcIconMembersAttributes]?: AdcIconMembers[K] } & { [K in keyof AdcIconMembers & keyof AdcIconMembersAttributes as `attr:${K}`]?: AdcIconMembersAttributes[K] } & { [K in keyof AdcIconMembers & keyof AdcIconMembersAttributes as `prop:${K}`]?: AdcIconMembers[K] };
         "adc-icon-nitro": Omit<AdcIconNitro, keyof AdcIconNitroAttributes> & { [K in keyof AdcIconNitro & keyof AdcIconNitroAttributes]?: AdcIconNitro[K] } & { [K in keyof AdcIconNitro & keyof AdcIconNitroAttributes as `attr:${K}`]?: AdcIconNitroAttributes[K] } & { [K in keyof AdcIconNitro & keyof AdcIconNitroAttributes as `prop:${K}`]?: AdcIconNitro[K] };
@@ -2396,6 +2566,7 @@ declare namespace LocalJSX {
         "adc-search-input": Omit<AdcSearchInput, keyof AdcSearchInputAttributes> & { [K in keyof AdcSearchInput & keyof AdcSearchInputAttributes]?: AdcSearchInput[K] } & { [K in keyof AdcSearchInput & keyof AdcSearchInputAttributes as `attr:${K}`]?: AdcSearchInputAttributes[K] } & { [K in keyof AdcSearchInput & keyof AdcSearchInputAttributes as `prop:${K}`]?: AdcSearchInput[K] };
         "adc-select": Omit<AdcSelect, keyof AdcSelectAttributes> & { [K in keyof AdcSelect & keyof AdcSelectAttributes]?: AdcSelect[K] } & { [K in keyof AdcSelect & keyof AdcSelectAttributes as `attr:${K}`]?: AdcSelectAttributes[K] } & { [K in keyof AdcSelect & keyof AdcSelectAttributes as `prop:${K}`]?: AdcSelect[K] };
         "adc-share-buttons": Omit<AdcShareButtons, keyof AdcShareButtonsAttributes> & { [K in keyof AdcShareButtons & keyof AdcShareButtonsAttributes]?: AdcShareButtons[K] } & { [K in keyof AdcShareButtons & keyof AdcShareButtonsAttributes as `attr:${K}`]?: AdcShareButtonsAttributes[K] } & { [K in keyof AdcShareButtons & keyof AdcShareButtonsAttributes as `prop:${K}`]?: AdcShareButtons[K] };
+        "adc-sidebar": Omit<AdcSidebar, keyof AdcSidebarAttributes> & { [K in keyof AdcSidebar & keyof AdcSidebarAttributes]?: AdcSidebar[K] } & { [K in keyof AdcSidebar & keyof AdcSidebarAttributes as `attr:${K}`]?: AdcSidebarAttributes[K] } & { [K in keyof AdcSidebar & keyof AdcSidebarAttributes as `prop:${K}`]?: AdcSidebar[K] };
         "adc-site-footer": Omit<AdcSiteFooter, keyof AdcSiteFooterAttributes> & { [K in keyof AdcSiteFooter & keyof AdcSiteFooterAttributes]?: AdcSiteFooter[K] } & { [K in keyof AdcSiteFooter & keyof AdcSiteFooterAttributes as `attr:${K}`]?: AdcSiteFooterAttributes[K] } & { [K in keyof AdcSiteFooter & keyof AdcSiteFooterAttributes as `prop:${K}`]?: AdcSiteFooter[K] };
         "adc-site-header": Omit<AdcSiteHeader, keyof AdcSiteHeaderAttributes> & { [K in keyof AdcSiteHeader & keyof AdcSiteHeaderAttributes]?: AdcSiteHeader[K] } & { [K in keyof AdcSiteHeader & keyof AdcSiteHeaderAttributes as `attr:${K}`]?: AdcSiteHeaderAttributes[K] } & { [K in keyof AdcSiteHeader & keyof AdcSiteHeaderAttributes as `prop:${K}`]?: AdcSiteHeader[K] };
         "adc-skeleton": Omit<AdcSkeleton, keyof AdcSkeletonAttributes> & { [K in keyof AdcSkeleton & keyof AdcSkeletonAttributes]?: AdcSkeleton[K] } & { [K in keyof AdcSkeleton & keyof AdcSkeletonAttributes as `attr:${K}`]?: AdcSkeletonAttributes[K] } & { [K in keyof AdcSkeleton & keyof AdcSkeletonAttributes as `prop:${K}`]?: AdcSkeleton[K] };
@@ -2428,6 +2599,8 @@ declare module "@stencil/core" {
              */
             "adc-blur-panel": LocalJSX.IntrinsicElements["adc-blur-panel"] & JSXBase.HTMLAttributes<HTMLAdcBlurPanelElement>;
             "adc-button": LocalJSX.IntrinsicElements["adc-button"] & JSXBase.HTMLAttributes<HTMLAdcButtonElement>;
+            "adc-button-burger": LocalJSX.IntrinsicElements["adc-button-burger"] & JSXBase.HTMLAttributes<HTMLAdcButtonBurgerElement>;
+            "adc-button-expand": LocalJSX.IntrinsicElements["adc-button-expand"] & JSXBase.HTMLAttributes<HTMLAdcButtonExpandElement>;
             "adc-button-rounded": LocalJSX.IntrinsicElements["adc-button-rounded"] & JSXBase.HTMLAttributes<HTMLAdcButtonRoundedElement>;
             "adc-callout": LocalJSX.IntrinsicElements["adc-callout"] & JSXBase.HTMLAttributes<HTMLAdcCalloutElement>;
             "adc-code-block": LocalJSX.IntrinsicElements["adc-code-block"] & JSXBase.HTMLAttributes<HTMLAdcCodeBlockElement>;
@@ -2442,6 +2615,7 @@ declare module "@stencil/core" {
             "adc-icon-edit": LocalJSX.IntrinsicElements["adc-icon-edit"] & JSXBase.HTMLAttributes<HTMLAdcIconEditElement>;
             "adc-icon-learning": LocalJSX.IntrinsicElements["adc-icon-learning"] & JSXBase.HTMLAttributes<HTMLAdcIconLearningElement>;
             "adc-icon-left-arrow": LocalJSX.IntrinsicElements["adc-icon-left-arrow"] & JSXBase.HTMLAttributes<HTMLAdcIconLeftArrowElement>;
+            "adc-icon-line-arrow-right": LocalJSX.IntrinsicElements["adc-icon-line-arrow-right"] & JSXBase.HTMLAttributes<HTMLAdcIconLineArrowRightElement>;
             "adc-icon-logout": LocalJSX.IntrinsicElements["adc-icon-logout"] & JSXBase.HTMLAttributes<HTMLAdcIconLogoutElement>;
             "adc-icon-members": LocalJSX.IntrinsicElements["adc-icon-members"] & JSXBase.HTMLAttributes<HTMLAdcIconMembersElement>;
             "adc-icon-nitro": LocalJSX.IntrinsicElements["adc-icon-nitro"] & JSXBase.HTMLAttributes<HTMLAdcIconNitroElement>;
@@ -2460,6 +2634,7 @@ declare module "@stencil/core" {
             "adc-search-input": LocalJSX.IntrinsicElements["adc-search-input"] & JSXBase.HTMLAttributes<HTMLAdcSearchInputElement>;
             "adc-select": LocalJSX.IntrinsicElements["adc-select"] & JSXBase.HTMLAttributes<HTMLAdcSelectElement>;
             "adc-share-buttons": LocalJSX.IntrinsicElements["adc-share-buttons"] & JSXBase.HTMLAttributes<HTMLAdcShareButtonsElement>;
+            "adc-sidebar": LocalJSX.IntrinsicElements["adc-sidebar"] & JSXBase.HTMLAttributes<HTMLAdcSidebarElement>;
             "adc-site-footer": LocalJSX.IntrinsicElements["adc-site-footer"] & JSXBase.HTMLAttributes<HTMLAdcSiteFooterElement>;
             "adc-site-header": LocalJSX.IntrinsicElements["adc-site-header"] & JSXBase.HTMLAttributes<HTMLAdcSiteHeaderElement>;
             /**

@@ -257,6 +257,7 @@ export class AdcAccessButton {
 	}
 
 	render() {
+		void h;
 		if (this.loading) {
 			return (
 				<div class="w-10 h-10 rounded-full bg-muted animate-pulse" aria-live="polite" role="status">

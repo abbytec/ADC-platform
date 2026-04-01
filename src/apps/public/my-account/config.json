@@ -1,0 +1,28 @@
+{
+	"uiModule": {
+		"name": "my-account",
+		"uiNamespace": "adc-platform",
+		"framework": "react",
+		"outputDir": "dist-ui",
+		"isHost": true,
+		"isRemote": false,
+		"serviceWorker": true,
+		"uiDependencies": ["adc-ui-library"],
+		"devPort": 3016,
+		"sharedLibs": ["react", "tailwind"],
+		"i18n": true,
+		"hosting": [
+			{
+				"domains": ["adigitalcafe.com"],
+				"subdomains": ["*"]
+			}
+		]
+	},
+	"services": [
+		{
+			"name": "data/content-service",
+			"version": "latest",
+			"language": "typescript"
+		}
+	]
+}

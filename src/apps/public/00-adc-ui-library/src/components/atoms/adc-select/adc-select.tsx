@@ -39,6 +39,7 @@ export class AdcSelect {
 	};
 
 	render() {
+		void h;
 		return (
 			<div class="w-full">
 				<button
