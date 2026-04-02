@@ -6,7 +6,7 @@ import { Component, Prop, h } from "@stencil/core";
 })
 export class AdcBadge {
 	/** Badge color */
-	@Prop() color: "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "purple" | "pink" = "gray";
+	@Prop() color: "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "indigo" | "purple" | "pink" = "gray";
 
 	/** Badge size */
 	@Prop() size: "sm" | "md" = "md";
@@ -23,6 +23,7 @@ export class AdcBadge {
 			green: "bg-success/15 text-tsuccess",
 			teal: "bg-success/20 text-tsuccess",
 			blue: "bg-info/15 text-tinfo",
+			indigo: "bg-[#6366f1]/15 text-[#6366f1]",
 			purple: "bg-[#8b5cf6]/15 text-[#8b5cf6]",
 			pink: "bg-[#ec4899]/15 text-[#ec4899]",
 		};
@@ -38,6 +39,7 @@ export class AdcBadge {
 			green: "bg-tsuccess",
 			teal: "bg-tsuccess",
 			blue: "bg-tinfo",
+			indigo: "bg-[#6366f1]",
 			purple: "bg-[#8b5cf6]",
 			pink: "bg-[#ec4899]",
 		};

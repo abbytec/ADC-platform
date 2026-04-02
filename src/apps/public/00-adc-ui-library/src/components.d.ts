@@ -85,7 +85,7 @@ export namespace Components {
           * Badge color
           * @default "gray"
          */
-        "color": "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "purple" | "pink";
+        "color": "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "indigo" | "purple" | "pink";
         /**
           * Whether to show a dot indicator
           * @default false
@@ -1531,7 +1531,7 @@ declare namespace LocalJSX {
           * Badge color
           * @default "gray"
          */
-        "color"?: "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "purple" | "pink";
+        "color"?: "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "indigo" | "purple" | "pink";
         /**
           * Whether to show a dot indicator
           * @default false
@@ -2278,7 +2278,7 @@ declare namespace LocalJSX {
         "apps": string;
     }
     interface AdcBadgeAttributes {
-        "color": "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "purple" | "pink";
+        "color": "gray" | "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "indigo" | "purple" | "pink";
         "size": "sm" | "md";
         "dot": boolean;
     }

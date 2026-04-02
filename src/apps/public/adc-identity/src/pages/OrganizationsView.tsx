@@ -16,7 +16,7 @@ interface OrganizationsViewProps {
 
 const ORG_STATUSES = ["active", "inactive", "blocked"] as const;
 
-const statusColors: Record<string, string> = {
+const statusColors: Record<string, "green" | "gray" | "red"> = {
 	active: "green",
 	inactive: "gray",
 	blocked: "red",

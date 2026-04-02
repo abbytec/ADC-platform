@@ -163,7 +163,7 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 	 */
 	async connect(): Promise<void> {
 		if (this.connection?.readyState === 1) {
-			Logger.info(`[MongoProvider] Ya conectado a ${this.config.uri}`);
+			Logger.info(`[MongoProvider] Ya conectado a ${this.connection.db.databaseName}`);
 			return;
 		}
 
@@ -181,7 +181,7 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 				})
 				.asPromise();
 
-			Logger.info(`[MongoProvider] Conectado a ${this.connection.db.databaseName}...`);
+			Logger.info(`[MongoProvider] Conectado a ${this.connection.name}...`);
 
 			// Registrar en el mapa de conexiones
 			this.#connections.set(this.config.uri, this.connection);
@@ -229,7 +229,7 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		});
 
 		this.connection.on("disconnected", () => {
-			if (!this.isDisconnecting) Logger.warn(`[MongoProvider] Desconectado de MongoDB`);
+			if (!this.isDisconnecting) Logger.warn(`[MongoProvider] Desconectado de ${this.connection?.name ?? "MongoDB"}`);
 
 			if (this.config.autoReconnect && !this.isDisconnecting) {
 				this.#scheduleReconnect();
@@ -242,7 +242,7 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		});
 
 		this.connection.on("reconnected", () => {
-			Logger.ok(`[MongoProvider] Reconectado a MongoDB`);
+			Logger.ok(`[MongoProvider] Reconectado a ${this.connection?.name ?? "MongoDB"}`);
 			this.retryCount = 0;
 		});
 	}
@@ -335,7 +335,7 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 			.asPromise();
 
 		this.#connections.set(uri, connection);
-		Logger.ok(`[MongoProvider] Nueva conexión establecida: ${uri}`);
+		Logger.ok(`[MongoProvider] Nueva conexión establecida: ${connection.name ?? "MongoDB"}`);
 
 		return connection;
 	}
@@ -388,7 +388,7 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 
 			await connection.close();
 			this.#connections.delete(uri);
-			Logger.ok(`[MongoProvider] Conexión cerrada: ${uri}`);
+			Logger.ok(`[MongoProvider] Conexión cerrada: ${connection.name ?? "MongoDB"}`);
 		}
 	}
 
