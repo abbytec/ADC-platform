@@ -31,7 +31,7 @@ ${JSON.stringify({ imports: importMap }, null, 2)}
 		if (content.includes('<script type="importmap">')) {
 			content = content.replace(/<script type="importmap">[\s\S]*?<\/script>/, importMapScript);
 		} else {
-			content = content.replace("</head>", `${importMapScript}\n</head>`);
+			content = content.replaceAll("</head>", `${importMapScript}\n</head>`);
 		}
 
 		await fs.writeFile(htmlPath, content, "utf-8");
@@ -44,7 +44,7 @@ ${JSON.stringify({ imports: importMap }, null, 2)}
  * Genera el contenido HTML para host apps
  */
 export function generateIndexHtml(name: string, framework: string): string {
-	const title = name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, " ");
+	const title = name.charAt(0).toUpperCase() + name.slice(1).replaceAll(/-/g, " ");
 	const mainExt = framework === "react" ? ".tsx" : ".ts";
 
 	const darkModeScript = getDarkModeScript();

@@ -94,7 +94,7 @@ export class ModuleLoader {
 	 */
 	public interpolateEnvVars(obj: any, envVars?: Record<string, string>): any {
 		if (typeof obj === "string") {
-			return obj.replace(/\$\{([^}]+)\}/g, (_, varName) => {
+			return obj.replaceAll(/\$\{([^}]+)\}/g, (_, varName) => {
 				// Priorizar variables del módulo, luego process.env
 				return envVars?.[varName] || process.env[varName] || "";
 			});

@@ -26,7 +26,7 @@ export class JavaHighlighter implements HighlighterStrategy {
 		// Comments
 		const lineCommentRegex = /\/\/[^\n]*/g;
 		const blockCommentRegex = /\/\*[\s\S]*?\*\//g;
-		const neutralizeInsideComment = (text: string): string => text.replace(/__STR_\d+__/g, (ph) => rawByPlaceholder.get(ph) ?? ph);
+		const neutralizeInsideComment = (text: string): string => text.replaceAll(/__STR_\d+__/g, (ph) => rawByPlaceholder.get(ph) ?? ph);
 
 		escaped = escaped.replace(lineCommentRegex, (match) => {
 			const placeholder = `__COMMENT_${placeholderIndex++}__`;

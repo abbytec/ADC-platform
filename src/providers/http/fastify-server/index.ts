@@ -38,7 +38,7 @@ interface PathMatchResult {
  * "cloud.local.com" -> /^cloud\.local\.com$/
  */
 function hostPatternToRegex(pattern: string): RegExp {
-	const escaped = pattern.replace(/\./g, "\\.").replace(/\*/g, "(.+)");
+	const escaped = pattern.replaceAll(/\./g, "\\.").replaceAll(/\*/g, "(.+)");
 	return new RegExp(`^${escaped}$`, "i");
 }
 
@@ -307,7 +307,7 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 				paramNames.push(paramName);
 				return "([^/]+)";
 			})
-			.replace(/\*/g, ".*");
+			.replaceAll(/\*/g, ".*");
 
 		const regex = new RegExp(`^${regexPattern}$`);
 		const match = urlPath.match(regex);

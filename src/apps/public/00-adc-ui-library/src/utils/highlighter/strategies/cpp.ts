@@ -13,12 +13,12 @@ export class CppHighlighter implements HighlighterStrategy {
 		// Comments
 		const lineCommentRegex = /\/\/.*$/gm;
 		const blockCommentRegex = /\/\*[\s\S]*?\*\//g;
-		escaped = escaped.replace(lineCommentRegex, (match) => {
+		escaped = escaped.replaceAll(lineCommentRegex, (match) => {
 			const placeholder = `__COMMENT_${placeholderIndex++}__`;
 			replacements.set(placeholder, `<span class="token comment">${match}</span>`);
 			return placeholder;
 		});
-		escaped = escaped.replace(blockCommentRegex, (match) => {
+		escaped = escaped.replaceAll(blockCommentRegex, (match) => {
 			const placeholder = `__COMMENT_${placeholderIndex++}__`;
 			replacements.set(placeholder, `<span class="token comment">${match}</span>`);
 			return placeholder;
@@ -26,7 +26,7 @@ export class CppHighlighter implements HighlighterStrategy {
 
 		// Functions
 		const functionRegex = /\b(main|printf|scanf|cout|cin|endl|malloc|free|strlen|strcpy|strcmp|sizeof)\b(?=\s*\()/g;
-		escaped = escaped.replace(functionRegex, (_, func) => {
+		escaped = escaped.replaceAll(functionRegex, (_, func) => {
 			const placeholder = `__FUNC_${placeholderIndex++}__`;
 			replacements.set(placeholder, `<span class="token function">${func}</span>`);
 			return placeholder;
@@ -48,7 +48,7 @@ export class CppHighlighter implements HighlighterStrategy {
 		// Types
 		const typeRegex =
 			/\b(bool|char|double|float|int|long|short|signed|unsigned|wchar_t|string|vector|map|set|list|queue|stack|array|pair)\b/g;
-		escaped = escaped.replace(typeRegex, (_, type) => {
+		escaped = escaped.replaceAll(typeRegex, (_, type) => {
 			const placeholder = `__TYPE_${placeholderIndex++}__`;
 			replacements.set(placeholder, `<span class="token type">${type}</span>`);
 			return placeholder;
@@ -56,7 +56,7 @@ export class CppHighlighter implements HighlighterStrategy {
 
 		// Preprocessor
 		const preprocessorRegex = /^#include\b|^#define\b/gm;
-		escaped = escaped.replace(preprocessorRegex, (match) => {
+		escaped = escaped.replaceAll(preprocessorRegex, (match) => {
 			const placeholder = `__PREPROC_${placeholderIndex++}__`;
 			replacements.set(placeholder, `<span class="token preprocessor">${match}</span>`);
 			return placeholder;
@@ -64,7 +64,7 @@ export class CppHighlighter implements HighlighterStrategy {
 
 		// Operators
 		const operatorRegex = /(&lt;&lt;|&gt;&gt;|::)/g;
-		escaped = escaped.replace(operatorRegex, (match) => {
+		escaped = escaped.replaceAll(operatorRegex, (match) => {
 			const placeholder = `__OP_${placeholderIndex++}__`;
 			replacements.set(placeholder, `<span class="token operator">${match}</span>`);
 			return placeholder;

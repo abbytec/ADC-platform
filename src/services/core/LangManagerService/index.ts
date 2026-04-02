@@ -258,7 +258,7 @@ export default class LangManagerService extends BaseService implements ILangMana
 	}
 
 	#interpolate(text: string, params: Record<string, string>): string {
-		return text.replace(/\{\{(\w+)\}\}/g, (_, key) => params[key] ?? `{{${key}}}`);
+		return text.replaceAll(/\{\{(\w+)\}\}/g, (_, key) => params[key] ?? `{{${key}}}`);
 	}
 
 	#countKeys(obj: TranslationDict): number {

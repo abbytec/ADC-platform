@@ -44,7 +44,7 @@ const { ModuleFederationPlugin } = rspack.container;
                         loader: 'postcss-loader',
                         options: {
                             postcssOptions: {
-                                config: '${postcssConfigPath.replace(/\\/g, "/")}',
+                                config: '${postcssConfigPath.replaceAll(/\\/g, "/")}',
                             },
                         },
                     },

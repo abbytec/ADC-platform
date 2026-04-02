@@ -84,7 +84,7 @@ export class ArticleEndpoints {
 		if (query.listed !== undefined) where.listed = query.listed === "true";
 
 		if (query.q) {
-			const safe = query.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+			const safe = query.q.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 			where.title = { $regex: safe, $options: "i" };
 		}
 
