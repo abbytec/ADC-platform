@@ -4,10 +4,11 @@ import type IdentityManagerService from "../index.js";
 
 /**
  * Verifica que el usuario target pertenezca a la org del caller.
- * Admin global (sin orgId) puede operar en cualquier usuario.
+ * Admin global (sin orgId) opera sobre usuarios sin restricción de org.
+ * Admin de org (con orgId) solo opera sobre usuarios miembros de su org.
  */
 async function assertUserOrgAccess(identity: IdentityManagerService, targetUserId: string, callerOrgId?: string): Promise<void> {
-	if (!callerOrgId) return;
+	if (!callerOrgId) return; // Admin global: sin restricción de membresía
 	const user = await identity.users.getUser(targetUserId);
 	if (!user) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
 	const isMember = user.orgMemberships?.some((m) => m.orgId === callerOrgId);
@@ -15,15 +16,23 @@ async function assertUserOrgAccess(identity: IdentityManagerService, targetUserI
 }
 
 /**
- * Valida que todos los roleIds sean predefinidos o de la org del caller
+ * Valida que todos los roleIds sean accesibles para el caller.
+ * Admin global: acceso irrestricto a cualquier rol.
+ * Admin de org: solo roles predefinidos globales + roles de su org.
  */
-async function validateRoleIdsOrg(identity: IdentityManagerService, roleIds: string[], callerOrgId?: string): Promise<void> {
-	if (!callerOrgId || !roleIds?.length) return;
+async function validateRoleIdsContext(identity: IdentityManagerService, roleIds: string[], callerOrgId?: string): Promise<void> {
+	if (!roleIds?.length) return;
+	// Global admin: puede asignar cualquier rol
+	if (!callerOrgId) return;
+	// Org admin: validación restringida
 	for (const rid of roleIds) {
 		const role = await identity.roles.getRole(rid);
 		if (!role) throw new IdentityError(400, "INVALID_ROLE", `Rol ${rid} no encontrado`);
-		if (role.isCustom && role.orgId !== callerOrgId) {
-			throw new IdentityError(403, "CROSS_ORG_ROLE", `No puedes asignar el rol ${role.name} de otra organización`);
+
+		const isGlobalPredefined = !role.orgId && !role.isCustom;
+		const isOwnOrg = role.orgId === callerOrgId;
+		if (!isGlobalPredefined && !isOwnOrg) {
+			throw new IdentityError(403, "CROSS_ORG_ROLE", `No puedes asignar el rol ${role.name} de otro contexto`);
 		}
 	}
 }
@@ -45,11 +54,23 @@ export class UserEndpoints {
 		permissions: ["identity.2.1"],
 	})
 	static async listUsers(ctx: EndpointCtx) {
-		const orgId = ctx.user?.orgId;
+		// Org admin usa orgId del token; global admin puede filtrar por query param
+		const orgId = ctx.user?.orgId || ctx.query?.orgId || undefined;
 		const users = await UserEndpoints.#identity.users.getAllUsers(ctx.token!, orgId);
 
-		// Strip passwordHash from response
-		return users.map(({ passwordHash, ...user }) => user);
+		// Recoger todos los roleIds referenciados por los usuarios (incluidos orgMemberships)
+		const roleIdSet = new Set<string>();
+		for (const user of users) {
+			user.roleIds?.forEach((rid: string) => roleIdSet.add(rid));
+			user.orgMemberships?.forEach((m: any) => m.roleIds?.forEach((rid: string) => roleIdSet.add(rid)));
+		}
+
+		const roles = await UserEndpoints.#identity.roles.getRolesByIds([...roleIdSet], ctx.token!);
+
+		return {
+			users: users.map(({ passwordHash, ...user }) => user),
+			roles,
+		};
 	}
 
 	@RegisterEndpoint({
@@ -84,14 +105,17 @@ export class UserEndpoints {
 		url: "/api/identity/users",
 		permissions: ["identity.2.2"],
 	})
-	static async createUser(ctx: EndpointCtx<Record<string, string>, { username: string; password: string; roleIds?: string[] }>) {
+	static async createUser(
+		ctx: EndpointCtx<Record<string, string>, { username: string; password: string; roleIds?: string[]; orgId?: string }>
+	) {
 		if (!ctx.data?.username || !ctx.data?.password) {
 			throw new IdentityError(400, "MISSING_FIELDS", "username y password son requeridos");
 		}
-		const callerOrgId = ctx.user?.orgId;
-		// Validar que los roleIds asignados sean accesibles para esta org
+		// Org admin usa orgId del token; global admin puede especificar en body
+		const callerOrgId = ctx.user?.orgId || ctx.data?.orgId;
+		// Validar que los roleIds asignados sean del contexto correcto
 		if (ctx.data.roleIds?.length) {
-			await validateRoleIdsOrg(UserEndpoints.#identity, ctx.data.roleIds, callerOrgId);
+			await validateRoleIdsContext(UserEndpoints.#identity, ctx.data.roleIds, callerOrgId);
 		}
 		const user = await UserEndpoints.#identity.users.createUser(ctx.data.username, ctx.data.password, ctx.data.roleIds, ctx.token!);
 		// Si se crea desde modo org, asociar automáticamente a la organización
@@ -126,9 +150,9 @@ export class UserEndpoints {
 		// Prevent updating sensitive fields via API
 		delete (updates as any).passwordHash;
 		delete (updates as any).id;
-		// Validar que los roleIds asignados sean accesibles para esta org
+		// Validar que los roleIds asignados sean del contexto correcto
 		if (updates.roleIds?.length) {
-			await validateRoleIdsOrg(UserEndpoints.#identity, updates.roleIds, callerOrgId);
+			await validateRoleIdsContext(UserEndpoints.#identity, updates.roleIds, callerOrgId);
 		}
 		const user = await UserEndpoints.#identity.users.updateUser(ctx.params.userId, updates, ctx.token!);
 		const { passwordHash, ...safeUser } = user;

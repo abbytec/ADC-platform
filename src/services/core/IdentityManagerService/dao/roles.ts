@@ -5,7 +5,7 @@ import { IdentityScopes } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
 import type { Permission, Role } from "@common/types/identity/index.ts";
-import { PREDEFINED_ROLES } from "../defaults/systemRoles.ts";
+import { PREDEFINED_ROLES, ORG_PREDEFINED_ROLES } from "../defaults/systemRoles.ts";
 
 export class RoleManager {
 	#permissionChecker: PermissionChecker;
@@ -19,28 +19,33 @@ export class RoleManager {
 	}
 
 	/**
-	 * Inicializa roles predefinidos del sistema
-	 * No requiere token (es proceso de inicialización)
+	 * Inicializa roles predefinidos del sistema o de una organización.
+	 * Sin orgId: crea roles globales (PREDEFINED_ROLES).
+	 * Con orgId: crea roles de organización (ORG_PREDEFINED_ROLES, sin SYSTEM).
+	 * No requiere token (es proceso de inicialización).
 	 */
-	async initializePredefinedRoles(): Promise<void> {
-		for (const roleData of PREDEFINED_ROLES) {
-			try {
-				const roleId = generateId();
-				const role: Role = {
-					id: roleId,
-					name: roleData.name,
-					description: roleData.description,
-					permissions: roleData.permissions,
-					isCustom: false,
-					createdAt: new Date(),
-				};
+	async initializePredefinedRoles(orgId?: string): Promise<void> {
+		const roles = orgId ? ORG_PREDEFINED_ROLES : PREDEFINED_ROLES;
 
-				const existing = await this.roleModel.findOne({ name: role.name });
+		for (const roleData of roles) {
+			try {
+				// Chequeo de duplicado incluye orgId para evitar colisiones de nombre entre contextos
+				const filter = orgId ? { name: roleData.name, orgId } : { name: roleData.name, orgId: null };
+
+				const existing = await this.roleModel.findOne(filter);
 				if (!existing) {
-					await this.roleModel.create(role);
+					await this.roleModel.create({
+						id: generateId(),
+						name: roleData.name,
+						description: roleData.description,
+						permissions: roleData.permissions,
+						isCustom: false,
+						orgId: orgId || null,
+						createdAt: new Date(),
+					});
 				}
 
-				this.logger.logDebug(`Rol predefinido disponible: ${role.name}`);
+				this.logger.logDebug(`Rol predefinido disponible: ${roleData.name}${orgId ? ` [org: ${orgId}]` : " [global]"}`);
 			} catch (error) {
 				this.logger.logError(`Error inicializando rol ${roleData.name}: ${error}`);
 			}
@@ -65,7 +70,7 @@ export class RoleManager {
 				description,
 				permissions: permissions || [],
 				isCustom: true,
-				orgId: orgId || undefined,
+				orgId: orgId || null,
 				createdAt: new Date(),
 			};
 
@@ -93,6 +98,23 @@ export class RoleManager {
 		} catch (error) {
 			this.logger.logError(`Error obteniendo rol: ${error}`);
 			return null;
+		}
+	}
+
+	/**
+	 * Obtiene múltiples roles por sus IDs en una sola consulta
+	 */
+	async getRolesByIds(roleIds: string[], token?: string): Promise<Role[]> {
+		if (!roleIds.length) return [];
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES);
+		}
+		try {
+			const docs = await this.roleModel.find({ id: { $in: roleIds } });
+			return docs.map((d: any) => d.toObject?.() || d);
+		} catch (error) {
+			this.logger.logError(`Error obteniendo roles por IDs: ${error}`);
+			return [];
 		}
 	}
 
@@ -159,9 +181,11 @@ export class RoleManager {
 	}
 
 	/**
-	 * Obtiene todos los roles, opcionalmente filtrados por orgId
+	 * Obtiene todos los roles, separados por contexto.
+	 * - Con orgId: roles predefinidos de la org + custom de la org + predefinidos globales (como referencia)
+	 * - Sin orgId (admin global): solo roles globales (orgId === null)
 	 * @param token Token de autenticación (requerido para verificar permisos)
-	 * @param orgId Si se proporciona, retorna roles globales (sin orgId) + roles de esta org
+	 * @param orgId Si se proporciona, retorna roles de esta org + globales predefinidos
 	 */
 	async getAllRoles(token?: string, orgId?: string): Promise<Role[]> {
 		if (token) {
@@ -169,9 +193,14 @@ export class RoleManager {
 		}
 
 		try {
-			// Con orgId: roles predefinidos (isCustom: false) + roles custom de esta org
-			// Sin orgId (admin): todos
-			const filter = orgId ? { $or: [{ isCustom: false }, { orgId }] } : {};
+			const filter = orgId
+				? {
+						$or: [
+							{ orgId }, // Roles de esta org (predefinidos + custom)
+							{ orgId: null, isCustom: false }, // Predefinidos globales (referencia readonly)
+						],
+					}
+				: { orgId: null }; // Solo roles globales
 			const docs = await this.roleModel.find(filter);
 			return docs.map((d: any) => d.toObject?.() || d);
 		} catch (error) {

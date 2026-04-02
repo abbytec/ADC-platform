@@ -53,7 +53,12 @@ export class OrgEndpoints {
 		if (!ctx.data?.slug) {
 			throw new IdentityError(400, "MISSING_FIELDS", "slug es requerido");
 		}
-		return OrgEndpoints.#identity.organizations.createOrganization(ctx.data.slug, ctx.data.region, ctx.data.metadata);
+		const org = await OrgEndpoints.#identity.organizations.createOrganization(ctx.data.slug, ctx.data.region, ctx.data.metadata);
+
+		// Auto-crear roles predefinidos para la nueva organización
+		await OrgEndpoints.#identity.roles.initializePredefinedRoles(org.orgId);
+
+		return org;
 	}
 
 	@RegisterEndpoint({

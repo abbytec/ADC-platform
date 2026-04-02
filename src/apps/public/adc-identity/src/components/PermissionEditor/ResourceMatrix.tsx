@@ -59,12 +59,10 @@ export function ResourceMatrix({ resource, scopes, permMap, onToggle, onToggleRo
 								</td>
 								{ACTIONS.map((action) => (
 									<td key={action.key} className="px-3 py-2 text-center">
-										<input
-											type="checkbox"
+										<adc-checkbox
 											checked={((permMap.get(key) ?? 0) & action.value) === action.value}
-											onChange={() => onToggle(resource, scope.value, action.value)}
 											disabled={disabled}
-											className="w-4 h-4 accent-primary cursor-pointer"
+											onChange={() => onToggle(resource, scope.value, action.value)}
 										/>
 									</td>
 								))}

@@ -71,3 +71,12 @@ export const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; pe
 		permissions: [{ resource: RESOURCE_NAME, action: CRUDXAction.READ, scope: IdentityScopes.SELF }],
 	},
 ];
+
+/**
+ * Roles predefinidos para organizaciones.
+ * Mismos nombres que los globales pero con alcance limitado a la organización.
+ * Excluye SYSTEM (siempre global) — los roles globales cascadean a orgs.
+ */
+export const ORG_PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; permissions: Permission[] }> = PREDEFINED_ROLES.filter(
+	(r) => r.name !== SystemRole.SYSTEM
+);

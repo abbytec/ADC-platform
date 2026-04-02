@@ -17,7 +17,9 @@ export default {
 		active: "Activo",
 		inactive: "Inactivo",
 		loading: "Cargando...",
-		organization: "Organización"
+		organization: "Organización",
+		orgFilter: "Filtrar por organización",
+		globalView: "Global (sin organización)"
 	},
 	tabs: {
 		users: "Usuarios",
@@ -61,7 +63,10 @@ export default {
 		deleteConfirm: "¿Estás seguro de eliminar el rol \"{{name}}\"? Los usuarios con este rol perderán los permisos asociados.",
 		noRoles: "No se encontraron roles",
 		namePlaceholder: "Nombre del rol",
-		descriptionPlaceholder: "Descripción del rol"
+		descriptionPlaceholder: "Descripción del rol",
+		scope: "Alcance",
+		globalScope: "Global",
+		orgScope: "Organización"
 	},
 	groups: {
 		name: "Nombre",
@@ -78,7 +83,10 @@ export default {
 		descriptionPlaceholder: "Descripción del grupo",
 		manageMembers: "Miembros de {{name}}",
 		searchUserPlaceholder: "Buscar usuarios por nombre o email...",
-		noMembers: "No hay miembros en este grupo"
+		noMembers: "No hay miembros en este grupo",
+		scope: "Alcance",
+		globalScope: "Global",
+		orgScope: "Organización"
 	},
 	organizations: {
 		slug: "Slug",
@@ -156,6 +164,7 @@ export default {
 		GLOBAL_ONLY: "Esta operación requiere acceso global (modo personal)",
 		CROSS_ORG_ROLE: "No puedes asignar un rol de otra organización",
 		CROSS_ORG_USER: "El usuario no pertenece a tu organización",
+		SCOPE_MISMATCH: "No puedes modificar recursos de un contexto de alcance diferente",
 		CANNOT_MODIFY_PREDEFINED: "Los roles predefinidos no se pueden modificar",
 		CANNOT_DELETE_PREDEFINED: "Los roles predefinidos no se pueden eliminar",
 		// No encontrado

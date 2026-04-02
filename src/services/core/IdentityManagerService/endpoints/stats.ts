@@ -23,7 +23,7 @@ export class StatsEndpoints {
 
 	/**
 	 * Retorna los permisos del usuario autenticado sobre el recurso identity.
-	 * Incluye orgId del contexto actual e indicador de admin.
+	 * Incluye orgId del contexto actual, indicador de admin global e indicador de admin de org.
 	 * Usado por el frontend para determinar qué tabs mostrar y filtrar datos.
 	 */
 	@RegisterEndpoint({
@@ -33,7 +33,7 @@ export class StatsEndpoints {
 	})
 	static async getMyPermissions(ctx: EndpointCtx) {
 		if (!ctx.user) {
-			return { scopes: [], orgId: null, isAdmin: false };
+			return { scopes: [], orgId: null, isAdmin: false, isOrgAdmin: false };
 		}
 
 		try {
@@ -42,15 +42,31 @@ export class StatsEndpoints {
 			// Filtrar solo permisos del recurso "identity"
 			const identityPerms = resolved.filter((p) => p.resource === "identity" && p.granted);
 
-			// Determinar si el usuario es admin (tiene rol admin global)
 			const user = await StatsEndpoints.#identity.users.getUser(ctx.user.id);
+
+			// Determinar si el usuario es admin global (tiene rol Admin en roleIds globales)
 			let isAdmin = false;
 			if (user?.roleIds?.length) {
 				for (const roleId of user.roleIds) {
 					const role = await StatsEndpoints.#identity.roles.getRole(roleId);
-					if (role?.name === SystemRole.ADMIN) {
+					if (role?.name === SystemRole.ADMIN && !role.orgId) {
 						isAdmin = true;
 						break;
+					}
+				}
+			}
+
+			// Determinar si es admin dentro de la org actual (rol Admin en orgMemberships)
+			let isOrgAdmin = false;
+			if (orgId && user?.orgMemberships?.length) {
+				const membership = user.orgMemberships.find((m) => m.orgId === orgId);
+				if (membership?.roleIds?.length) {
+					for (const roleId of membership.roleIds) {
+						const role = await StatsEndpoints.#identity.roles.getRole(roleId);
+						if (role?.name === SystemRole.ADMIN) {
+							isOrgAdmin = true;
+							break;
+						}
 					}
 				}
 			}
@@ -63,9 +79,10 @@ export class StatsEndpoints {
 				})),
 				orgId,
 				isAdmin,
+				isOrgAdmin,
 			};
 		} catch {
-			return { scopes: [], orgId: null, isAdmin: false };
+			return { scopes: [], orgId: null, isAdmin: false, isOrgAdmin: false };
 		}
 	}
 }

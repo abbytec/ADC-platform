@@ -10,6 +10,6 @@ export interface Role {
 	permissions: Permission[];
 	isCustom: boolean;
 	/** Organización a la que pertenece (null = global/predefinido) */
-	orgId?: string;
+	orgId?: string | null;
 	createdAt: Date;
 }

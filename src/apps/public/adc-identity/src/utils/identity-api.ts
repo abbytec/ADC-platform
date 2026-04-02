@@ -20,27 +20,29 @@ const api = createAdcApi({
 
 export const identityApi = {
 	// My Permissions
-	getMyPermissions: () => api.get<{ scopes: Permission[]; orgId?: string; isAdmin?: boolean }>("/my-permissions"),
+	getMyPermissions: () => api.get<{ scopes: Permission[]; orgId?: string; isAdmin?: boolean; isOrgAdmin?: boolean }>("/my-permissions"),
 
 	// Users
-	listUsers: (orgId?: string) => api.get<ClientUser[]>("/users", orgId ? { params: { orgId } } : undefined),
+	listUsers: (orgId?: string) => api.get<{ users: ClientUser[]; roles: Role[] }>("/users", orgId ? { params: { orgId } } : undefined),
 	searchUsers: (q: string) => api.get<ClientUser[]>("/users/search", { params: { q } }),
 	getUser: (userId: string) => api.get<ClientUser>(`/users/${userId}`),
-	createUser: (data: { username: string; password: string; roleIds?: string[] }) => api.post<ClientUser>("/users", { body: data }),
+	createUser: (data: { username: string; password: string; roleIds?: string[]; orgId?: string }) =>
+		api.post<ClientUser>("/users", { body: data }),
 	updateUser: (userId: string, data: Partial<ClientUser>) => api.put<ClientUser>(`/users/${userId}`, { body: data }),
 	deleteUser: (userId: string) => api.delete(`/users/${userId}`),
 
 	// Roles
 	listRoles: (orgId?: string) => api.get<Role[]>("/roles", orgId ? { params: { orgId } } : undefined),
 	getRole: (roleId: string) => api.get<Role>(`/roles/${roleId}`),
-	createRole: (data: { name: string; description: string; permissions?: Permission[] }) => api.post<Role>("/roles", { body: data }),
+	createRole: (data: { name: string; description: string; permissions?: Permission[]; orgId?: string }) =>
+		api.post<Role>("/roles", { body: data }),
 	updateRole: (roleId: string, data: Partial<Role>) => api.put<Role>(`/roles/${roleId}`, { body: data }),
 	deleteRole: (roleId: string) => api.delete(`/roles/${roleId}`),
 
 	// Groups
 	listGroups: (orgId?: string) => api.get<Group[]>("/groups", orgId ? { params: { orgId } } : undefined),
 	getGroup: (groupId: string) => api.get<Group>(`/groups/${groupId}`),
-	createGroup: (data: { name: string; description: string; roleIds?: string[] }) => api.post<Group>("/groups", { body: data }),
+	createGroup: (data: { name: string; description: string; roleIds?: string[]; orgId?: string }) => api.post<Group>("/groups", { body: data }),
 	updateGroup: (groupId: string, data: Partial<Group>) => api.put<Group>(`/groups/${groupId}`, { body: data }),
 	deleteGroup: (groupId: string) => api.delete(`/groups/${groupId}`),
 	listGroupMembers: (groupId: string) => api.get<ClientUser[]>(`/groups/${groupId}/users`),

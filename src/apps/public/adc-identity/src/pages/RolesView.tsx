@@ -43,7 +43,7 @@ export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
 	const loadData = useCallback(async () => {
 		setLoading(true);
 		const promises: Promise<any>[] = [identityApi.listRoles(orgId)];
-		if (isAdmin && !orgId) promises.push(identityApi.listOrganizations());
+		if (isAdmin) promises.push(identityApi.listOrganizations());
 		const [result, orgsRes] = await Promise.all(promises);
 		if (result.success && result.data) {
 			setRoles(result.data);
@@ -104,6 +104,7 @@ export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
 				name: formName,
 				description: formDescription,
 				permissions: formPermissions,
+				orgId,
 			});
 			if (result.success) {
 				setModalOpen(false);
@@ -136,6 +137,20 @@ export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
 			),
 		},
 		{
+			key: "orgId" as keyof Role,
+			label: t("roles.scope"),
+			render: (r: Role) =>
+				r.orgId ? (
+					<adc-badge color="indigo" size="sm">
+						{orgMap.get(r.orgId) || t("roles.orgScope")}
+					</adc-badge>
+				) : (
+					<adc-badge color="gray" size="sm">
+						{t("roles.globalScope")}
+					</adc-badge>
+				),
+		},
+		{
 			key: "permissions",
 			label: t("roles.permissions"),
 			render: (r) => (
@@ -144,22 +159,6 @@ export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
 				</span>
 			),
 		},
-		...(isAdmin && !orgId
-			? [
-					{
-						key: "orgId" as keyof Role,
-						label: t("common.organization"),
-						render: (r: Role) =>
-							r.orgId ? (
-								<adc-badge color="indigo" size="sm">
-									{orgMap.get(r.orgId) || r.orgId}
-								</adc-badge>
-							) : (
-								<span className="text-muted text-xs">—</span>
-							),
-					} as Column<Role>,
-				]
-			: []),
 	];
 
 	return (
@@ -174,17 +173,23 @@ export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
 				addLabel={t("roles.addRole")}
 				keyExtractor={(r) => r.id}
 				emptyMessage={t("roles.noRoles")}
-				actions={(role) => (
-					<RowActions
-						item={role}
-						canEdit={updatable && role.isCustom}
-						canDelete={deletable && role.isCustom}
-						onEdit={openEditModal}
-						onDelete={setDeleteConfirm}
-						editLabel={t("common.edit")}
-						deleteLabel={t("common.delete")}
-					/>
-				)}
+				actions={(role) => {
+					// Editable solo si es custom Y pertenece al contexto correcto
+					const isOwnContext = orgId ? role.orgId === orgId : !role.orgId;
+					const canEditRole = updatable && role.isCustom && isOwnContext;
+					const canDeleteRole = deletable && role.isCustom && isOwnContext;
+					return (
+						<RowActions
+							item={role}
+							canEdit={canEditRole}
+							canDelete={canDeleteRole}
+							onEdit={openEditModal}
+							onDelete={setDeleteConfirm}
+							editLabel={t("common.edit")}
+							deleteLabel={t("common.delete")}
+						/>
+					);
+				}}
 			/>
 
 			{/* Create/Edit Modal */}

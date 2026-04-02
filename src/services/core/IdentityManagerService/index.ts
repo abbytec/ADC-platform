@@ -279,7 +279,7 @@ export default class IdentityManagerService extends BaseService {
 
 			// Inicializa la base de datos de la org (roles predefinidos, etc.)
 			initialize: async () => {
-				await orgRoleManager.initializePredefinedRoles();
+				await orgRoleManager.initializePredefinedRoles(org.orgId);
 				this.logger.logOk(`[IdentityManager] Base de datos inicializada para org: ${org.slug}`);
 			},
 		};

@@ -3,14 +3,19 @@ import { IdentityError } from "@common/types/custom-errors/IdentityError.js";
 import type IdentityManagerService from "../index.js";
 
 /**
- * Verifica que un grupo pertenezca a la org del usuario.
- * Admin global (sin orgId) puede operar en cualquier grupo.
+ * Verifica que un grupo sea accesible para el caller.
+ * Admin global (sin orgId) puede operar en grupos de cualquier org.
+ * Admin de org (con orgId) solo opera en grupos de su org.
  */
 async function assertGroupOrgAccess(identity: IdentityManagerService, groupId: string, callerOrgId?: string): Promise<void> {
-	if (!callerOrgId) return;
 	const group = await identity.groups.getGroup(groupId);
 	if (!group) throw new IdentityError(404, "GROUP_NOT_FOUND", "Grupo no encontrado");
-	if (group.orgId !== callerOrgId) throw new IdentityError(403, "ORG_ACCESS_DENIED", "No tienes acceso a este grupo");
+
+	// Org admin: restringido a su propia org
+	if (callerOrgId && group.orgId !== callerOrgId) {
+		throw new IdentityError(403, "ORG_ACCESS_DENIED", "No tienes acceso a este grupo");
+	}
+	// Global admin (sin callerOrgId): acceso irrestricto
 }
 
 // Verifica que un usuario pertenezca a la org del caller
@@ -36,7 +41,8 @@ export class GroupEndpoints {
 		permissions: ["identity.8.1"],
 	})
 	static async listGroups(ctx: EndpointCtx) {
-		const orgId = ctx.user?.orgId;
+		// Org admin usa orgId del token; global admin puede filtrar por query param
+		const orgId = ctx.user?.orgId || ctx.query?.orgId || undefined;
 		return GroupEndpoints.#identity.groups.getAllGroups(ctx.token!, orgId);
 	}
 
@@ -60,11 +66,14 @@ export class GroupEndpoints {
 		url: "/api/identity/groups",
 		permissions: ["identity.8.2"],
 	})
-	static async createGroup(ctx: EndpointCtx<Record<string, string>, { name: string; description: string; roleIds?: string[] }>) {
+	static async createGroup(
+		ctx: EndpointCtx<Record<string, string>, { name: string; description: string; roleIds?: string[]; orgId?: string }>
+	) {
 		if (!ctx.data?.name) {
 			throw new IdentityError(400, "MISSING_FIELDS", "name es requerido");
 		}
-		const orgId = ctx.user?.orgId;
+		// Org admin usa orgId del token; global admin puede especificar en body
+		const orgId = ctx.user?.orgId || ctx.data?.orgId;
 		return GroupEndpoints.#identity.groups.createGroup(ctx.data.name, ctx.data.description || "", ctx.data.roleIds, ctx.token!, orgId);
 	}
 
