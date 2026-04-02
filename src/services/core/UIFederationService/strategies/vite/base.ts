@@ -343,7 +343,8 @@ export abstract class ViteBaseStrategy extends BaseFrameworkStrategy {
 				handler(html: string) {
 					const importMap = generateCompleteImportMap(registeredModules, port);
 
-					const importMapScript = `    <script type="importmap">\n${JSON.stringify({ imports: importMap }, null, 6).replaceAll(/\n/g,
+					const importMapScript = `    <script type="importmap">\n${JSON.stringify({ imports: importMap }, null, 6).replaceAll(
+						"\n",
 						"\n    "
 					)}\n    </script>`;
 

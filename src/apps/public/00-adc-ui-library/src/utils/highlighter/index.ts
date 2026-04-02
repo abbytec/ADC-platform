@@ -16,10 +16,7 @@ import {
  */
 export function decodeEscapes(s?: string): string {
 	if (typeof s !== "string") return s ?? "";
-	return s
-		.replaceAll(/\\u003C/g, "<")
-		.replaceAll(/\\u003E/g, ">")
-		.replaceAll(/\\u0026/g, "&");
+	return s.replaceAll("\\u003C", "<").replaceAll("\\u003E", ">").replaceAll("\\u0026", "&");
 }
 
 // =============================================================================

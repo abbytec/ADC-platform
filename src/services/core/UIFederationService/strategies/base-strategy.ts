@@ -58,7 +58,7 @@ export abstract class BaseFrameworkStrategy implements IFrameworkStrategy {
 
 	/** Obtiene el nombre safe para Module Federation (sin guiones) */
 	protected getSafeName(name: string): string {
-		return name.replaceAll(/-/g, "_");
+		return name.replaceAll("-", "_");
 	}
 
 	/** Verifica si el módulo es un layout (shell app que carga remotes) */

@@ -85,7 +85,7 @@ export default {
 		}
 
 		const aliasEntries = Object.entries(aliases)
-			.map(([key, value]) => `            '${key}': '${value.replaceAll(/\\/g, "\\\\")}'`)
+			.map(([key, value]) => `            '${key}': '${value.replaceAll("\\", "\\\\")}'`)
 			.join(",\n");
 
 		return `{\n${aliasEntries}\n        }`;

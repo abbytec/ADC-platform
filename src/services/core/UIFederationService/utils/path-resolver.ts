@@ -11,7 +11,7 @@ export const getLogsDir = () => path.resolve(process.cwd(), "temp", "logs", "app
 export const getBinPath = (binary: string) => path.join(process.cwd(), "node_modules", ".bin", binary);
 
 /** Normaliza un path para usarlo en configuraciones (escapa backslashes en Windows) */
-export const normalizeForConfig = (filePath: string) => filePath.replaceAll(/\\/g, "\\\\");
+export const normalizeForConfig = (filePath: string) => filePath.replaceAll("\\", "\\\\");
 
 /** Obtiene el directorio public/ común (fallback para assets compartidos como favicon) */
 export const getCommonPublicDir = () => path.resolve(process.cwd(), "src", "common", "public");

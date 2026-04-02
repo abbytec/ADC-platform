@@ -130,7 +130,7 @@ export async function generateTailwindConfig(
 	if (uiLibraryPresetPath) {
 		// Importar el preset de la UI library
 		themeContent = `/** @type {import('tailwindcss').Config} */
-import uiLibraryPreset from '${uiLibraryPresetPath.replaceAll(/\\/g, "/")}';
+import uiLibraryPreset from '${uiLibraryPresetPath.replaceAll("\\", "/")}';
 
 export default {
 	presets: [uiLibraryPreset],
@@ -150,7 +150,7 @@ export default ${JSON.stringify(themeConfig, null, 2)};
 	await fs.writeFile(themeConfigPath, themeContent, "utf-8");
 
 	// Generar CSS de entrada con @source directives (Tailwind v4)
-	const sourceDirectives = sourcePaths.map((p) => `@source "${p.replaceAll(/\\/g, "/")}";`).join("\n");
+	const sourceDirectives = sourcePaths.map((p) => `@source "${p.replaceAll("\\", "/")}";`).join("\n");
 
 	// Buscar el archivo tailwind.css original del usuario para importar sus extensiones
 	const userTailwindCss = path.join(module.appDir, "src", "styles", "tailwind.css");
@@ -182,7 +182,7 @@ export default ${JSON.stringify(themeConfig, null, 2)};
 ${sourceDirectives}
 
 /* Configuración de tema */
-@config "${themeConfigPath.replaceAll(/\\/g, "/")}";
+@config "${themeConfigPath.replaceAll("\\", "/")}";
 ${userCssImport}
 `;
 

@@ -44,7 +44,7 @@ ${JSON.stringify({ imports: importMap }, null, 2)}
  * Genera el contenido HTML para host apps
  */
 export function generateIndexHtml(name: string, framework: string): string {
-	const title = name.charAt(0).toUpperCase() + name.slice(1).replaceAll(/-/g, " ");
+	const title = name.charAt(0).toUpperCase() + name.slice(1).replaceAll("-", " ");
 	const mainExt = framework === "react" ? ".tsx" : ".ts";
 
 	const darkModeScript = getDarkModeScript();
