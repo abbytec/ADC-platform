@@ -29,6 +29,16 @@ export namespace Components {
      */
     interface AdcAccessButton {
         /**
+          * Texto del botón de mi cuenta
+          * @default "Mi cuenta"
+         */
+        "accountText": string;
+        /**
+          * URL del botón de mi cuenta
+          * @default ""
+         */
+        "accountUrl": string;
+        /**
           * URL base de la API (en dev: http://hostname:3000, en prod: vacío para usar relativo)
           * @default isPrivateHost(globalThis.location?.hostname ?? "") 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
@@ -63,6 +73,10 @@ export namespace Components {
           * @default "Acceso personal"
          */
         "personalAccessText": string;
+        /**
+          * @default true
+         */
+        "redirectAfterLogin": boolean;
         /**
           * URL de la API de sesión
           * @default "/api/auth/session"
@@ -1463,6 +1477,16 @@ declare namespace LocalJSX {
      */
     interface AdcAccessButton {
         /**
+          * Texto del botón de mi cuenta
+          * @default "Mi cuenta"
+         */
+        "accountText"?: string;
+        /**
+          * URL del botón de mi cuenta
+          * @default ""
+         */
+        "accountUrl"?: string;
+        /**
           * URL base de la API (en dev: http://hostname:3000, en prod: vacío para usar relativo)
           * @default isPrivateHost(globalThis.location?.hostname ?? "") 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
@@ -1509,6 +1533,10 @@ declare namespace LocalJSX {
           * @default "Acceso personal"
          */
         "personalAccessText"?: string;
+        /**
+          * @default true
+         */
+        "redirectAfterLogin"?: boolean;
         /**
           * URL de la API de sesión
           * @default "/api/auth/session"
@@ -2269,6 +2297,9 @@ declare namespace LocalJSX {
         "apiBaseUrl": string;
         "sessionApiUrl": string;
         "logoutApiUrl": string;
+        "accountText": string;
+        "accountUrl": string;
+        "redirectAfterLogin": boolean;
         "loginText": string;
         "logoutText": string;
         "switchOrgText": string;

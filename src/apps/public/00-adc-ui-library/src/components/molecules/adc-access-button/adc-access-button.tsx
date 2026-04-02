@@ -51,6 +51,14 @@ export class AdcAccessButton {
 	/** URL de logout */
 	@Prop() logoutApiUrl: string = "/api/auth/logout";
 
+	/** Texto del botón de mi cuenta */
+	@Prop() accountText: string = "Mi cuenta";
+
+	/** URL del botón de mi cuenta */
+	@Prop() accountUrl: string = "";
+
+	@Prop() redirectAfterLogin: boolean = true;
+
 	/** Texto del botón cuando no está logueado */
 	@Prop() loginText: string = "Ingresar";
 
@@ -144,6 +152,12 @@ export class AdcAccessButton {
 	/** Construye URL completa para la API */
 	private getApiUrl(path: string): string {
 		return `${this.apiBaseUrl}${path}`;
+	}
+
+	private getDefaultAccountUrl(): string {
+		return isPrivateHost(globalThis.location?.hostname ?? "")
+			? "http://localhost:3016"
+			: "https://my-account.adigitalcafe.com";
 	}
 
 	private async checkSession() {
@@ -424,7 +438,23 @@ export class AdcAccessButton {
 								</div>
 							)}
 						</div>
-
+						{/* Mi cuenta */}
+						<div class="border-t border-divider">
+							<a
+								href={this.accountUrl || this.getDefaultAccountUrl()}
+								class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/10 hover:cursor-pointer transition-colors"
+								role="menuitem"
+							>
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+									/>
+								</svg>
+								{this.accountText}
+							</a>
+						</div>
 						{/* Separador y logout */}
 						<div class="border-t border-divider">
 							<button
