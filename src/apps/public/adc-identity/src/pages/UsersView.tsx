@@ -15,13 +15,15 @@ interface UsersViewProps {
 	readonly scopes: Permission[];
 	readonly orgId?: string;
 	readonly isAdmin?: boolean;
+	readonly isTokenOrgContext?: boolean;
 }
 
-export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
+export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext }: UsersViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [users, setUsers] = useState<User[]>([]);
 	const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
 	const [roles, setRoles] = useState<Role[]>([]);
+	const [pickerRoles, setPickerRoles] = useState<Role[]>([]);
 	const [orgMap, setOrgMap] = useState<Map<string, string>>(new Map());
 	const [loading, setLoading] = useState(true);
 	const [modalOpen, setModalOpen] = useState(false);
@@ -51,16 +53,14 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 
 	const loadData = useCallback(async () => {
 		setLoading(true);
-		const promises: Promise<any>[] = [identityApi.listUsers(orgId), identityApi.listRoles(orgId)];
+		const promises: Promise<any>[] = [identityApi.listUsers(orgId)];
 		if (isAdmin && !orgId) promises.push(identityApi.listOrganizations());
-		const [usersRes, rolesRes, orgsRes] = await Promise.all(promises);
+		const [usersRes, orgsRes] = await Promise.all(promises);
 
 		if (usersRes.success && usersRes.data) {
-			setUsers(usersRes.data);
-			setFilteredUsers(usersRes.data);
-		}
-		if (rolesRes.success && rolesRes.data) {
-			setRoles(rolesRes.data);
+			setUsers(usersRes.data.users ?? []);
+			setFilteredUsers(usersRes.data.users ?? []);
+			setRoles(usersRes.data.roles ?? []);
 		}
 		if (orgsRes?.success && orgsRes.data) {
 			setOrgMap(new Map((orgsRes.data as Organization[]).map((o) => [o.orgId, o.slug])));
@@ -83,10 +83,36 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 
 	const getRoleName = (roleId: string) => {
 		const role = roles.find((r) => r.id === roleId);
-		return role?.name || "Role not found";
+		return role?.name || t("errors.ROLE_NOT_FOUND");
 	};
 
-	const openCreateModal = () => {
+	/** Determina si un rol es global o de org para mostrar badge */
+	const getRoleScope = (roleId: string): "global" | "org" | null => {
+		const role = roles.find((r) => r.id === roleId);
+		if (!role) return null;
+		return role.orgId ? "org" : "global";
+	};
+
+	const getVisibleRoleIds = (user: User): string[] => {
+		if (!orgId) return user.roleIds;
+		const membership = user.orgMemberships?.find((item) => item.orgId === orgId);
+		return Array.from(new Set([...(user.roleIds || []), ...(membership?.roleIds || [])]));
+	};
+
+	const getEditableRoleIds = (user: User): string[] => {
+		if (!orgId) return user.roleIds;
+		const membership = user.orgMemberships?.find((item) => item.orgId === orgId);
+		return membership?.roleIds || [];
+	};
+
+	const loadPickerRoles = useCallback(async () => {
+		const rolesRes = await identityApi.listRoles(orgId);
+		if (rolesRes.success && rolesRes.data) {
+			setPickerRoles(rolesRes.data);
+		}
+	}, [orgId]);
+
+	const openCreateModal = async () => {
 		setEditingUser(null);
 		setFormUsername("");
 		setFormPassword("");
@@ -94,17 +120,19 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 		setFormRoleIds([]);
 		setFormIsActive(true);
 		setFormPermissions([]);
+		await loadPickerRoles();
 		setModalOpen(true);
 	};
 
-	const openEditModal = (user: User) => {
+	const openEditModal = async (user: User) => {
 		setEditingUser(user);
 		setFormUsername(user.username);
 		setFormPassword("");
 		setFormEmail(user.email || "");
-		setFormRoleIds(user.roleIds);
+		setFormRoleIds(getEditableRoleIds(user));
 		setFormIsActive(user.isActive);
 		setFormPermissions(user.permissions ? [...user.permissions] : []);
+		await loadPickerRoles();
 		setModalOpen(true);
 	};
 
@@ -114,13 +142,20 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 		setSubmitting(true);
 
 		if (editingUser) {
-			const result = await identityApi.updateUser(editingUser.id, {
-				username: formUsername,
-				email: formEmail || undefined,
-				roleIds: formRoleIds,
-				isActive: formIsActive,
-				permissions: formPermissions,
-			});
+			const result = await identityApi.updateUser(
+				editingUser.id,
+				orgId
+					? {
+							roleIds: formRoleIds,
+						}
+					: {
+							username: formUsername,
+							email: formEmail || undefined,
+							roleIds: formRoleIds,
+							isActive: formIsActive,
+							permissions: formPermissions,
+						}
+			);
 			if (result.success) {
 				setModalOpen(false);
 				loadData();
@@ -130,6 +165,7 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 				username: formUsername,
 				password: formPassword,
 				roleIds: formRoleIds,
+				orgId,
 			});
 			if (result.success) {
 				setModalOpen(false);
@@ -161,12 +197,15 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 			label: t("users.roles"),
 			render: (u) => (
 				<div className="flex flex-wrap gap-1">
-					{u.roleIds.map((rid) => (
-						<adc-badge key={rid} color="blue" size="sm">
-							{getRoleName(rid)}
-						</adc-badge>
-					))}
-					{u.roleIds.length === 0 && <span className="text-muted text-xs">—</span>}
+					{getVisibleRoleIds(u).map((rid) => {
+						const scope = getRoleScope(rid);
+						return (
+							<adc-badge key={rid} color={scope === "org" ? "indigo" : "blue"} size="sm">
+								{getRoleName(rid)}
+							</adc-badge>
+						);
+					})}
+					{getVisibleRoleIds(u).length === 0 && <span className="text-muted text-xs">—</span>}
 				</div>
 			),
 		},
@@ -233,15 +272,17 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 			{modalOpen && (
 				<adc-modal ref={editModalRef} open modalTitle={editingUser ? t("users.editUser") : t("users.addUser")} size="lg">
 					<form onSubmit={handleSubmit} className="space-y-4">
-						<div>
-							<label className="block text-sm font-medium mb-1 text-text">{t("users.username")}</label>
-							<adc-input
-								inputId="username"
-								value={formUsername}
-								placeholder={t("users.usernamePlaceholder")}
-								onInput={(e: any) => setFormUsername(e.target.value)}
-							/>
-						</div>
+						{(!isTokenOrgContext || !editingUser) && (
+							<div>
+								<label className="block text-sm font-medium mb-1 text-text">{t("users.username")}</label>
+								<adc-input
+									inputId="username"
+									value={formUsername}
+									placeholder={t("users.usernamePlaceholder")}
+									onInput={(e: any) => setFormUsername(e.target.value)}
+								/>
+							</div>
+						)}
 
 						{!editingUser && (
 							<div>
@@ -256,18 +297,20 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 							</div>
 						)}
 
-						<div>
-							<label className="block text-sm font-medium mb-1 text-text">{t("users.email")}</label>
-							<adc-input
-								inputId="email"
-								type="email"
-								value={formEmail}
-								placeholder="user@example.com"
-								onInput={(e: any) => setFormEmail(e.target.value)}
-							/>
-						</div>
+						{!isTokenOrgContext && (
+							<div>
+								<label className="block text-sm font-medium mb-1 text-text">{t("users.email")}</label>
+								<adc-input
+									inputId="email"
+									type="email"
+									value={formEmail}
+									placeholder="user@example.com"
+									onInput={(e: any) => setFormEmail(e.target.value)}
+								/>
+							</div>
+						)}
 
-						{editingUser && (
+						{editingUser && !isTokenOrgContext && (
 							<div>
 								<label className="block text-sm font-medium mb-1 text-text">{t("users.status")}</label>
 								<adc-toggle
@@ -280,10 +323,10 @@ export function UsersView({ scopes, orgId, isAdmin }: UsersViewProps) {
 
 						<div>
 							<label className="block text-sm font-medium mb-1 text-text">{t("users.roles")}</label>
-							<RolePicker roles={roles} selectedIds={formRoleIds} onToggle={toggleRoleId} />
+							<RolePicker roles={pickerRoles} selectedIds={formRoleIds} onToggle={toggleRoleId} />
 						</div>
 
-						{editingUser && (
+						{editingUser && !isTokenOrgContext && (
 							<div>
 								<label className="block text-sm font-medium mb-1 text-text">{t("permissions.directTitle")}</label>
 								<p className="text-xs text-muted mb-2">{t("permissions.directHint")}</p>

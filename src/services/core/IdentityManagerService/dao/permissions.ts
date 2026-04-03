@@ -91,6 +91,22 @@ export class PermissionManager {
 		// Permisos finales por recurso: { resource -> { action, scope, source } }
 		const finalPerms = new Map<string, { action: number; scope: number; source: ResolvedPermission["source"] }>();
 
+		const isGroupInContext = (group: { orgId?: string | null } | null): boolean => {
+			if (!group) return false;
+			if (!orgId) return !group.orgId;
+			return !group.orgId || group.orgId === orgId;
+		};
+
+		const isDirectRoleInContext = (role: { orgId?: string | null } | null): boolean => {
+			if (!role) return false;
+			return !role.orgId;
+		};
+
+		const isMembershipRoleInContext = (role: { orgId?: string | null } | null): boolean => {
+			if (!role || !orgId) return false;
+			return role.orgId === orgId;
+		};
+
 		// Helper: acumula permisos de un nivel (OR dentro del nivel, override entre niveles)
 		const applyLevel = (permissions: Permission[], source: ResolvedPermission["source"]) => {
 			// Primero acumulamos todos los permisos de este nivel por recurso
@@ -126,7 +142,7 @@ export class PermissionManager {
 
 		// Pre-cargar grupos para evitar queries duplicadas
 		const groups = await Promise.all((user.groupIds || []).map((gid) => this.groupManager.getGroup(gid)));
-		const validGroups = groups.filter((g) => g !== null);
+		const validGroups = groups.filter((g): g is NonNullable<typeof g> => isGroupInContext(g));
 
 		// 4. Group roles (acumulamos todos los roles de todos los grupos)
 		const groupRolePerms: Permission[] = [];
@@ -162,7 +178,7 @@ export class PermissionManager {
 			if (orgMembership) {
 				for (const roleId of orgMembership.roleIds || []) {
 					const role = await this.roleManager.getRole(roleId);
-					if (role) {
+					if (role && isMembershipRoleInContext(role)) {
 						userRolePerms.push(...role.permissions);
 					}
 				}
@@ -172,7 +188,7 @@ export class PermissionManager {
 		// 2a. User roles directos
 		for (const roleId of user.roleIds || []) {
 			const role = await this.roleManager.getRole(roleId);
-			if (role) {
+			if (role && isDirectRoleInContext(role)) {
 				userRolePerms.push(...role.permissions);
 			}
 		}

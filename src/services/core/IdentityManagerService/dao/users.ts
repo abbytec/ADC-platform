@@ -221,7 +221,7 @@ export class UserManager {
 	 */
 	async getAllUsers(token?: string, orgId?: string): Promise<User[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS, orgId);
 		}
 
 		try {
@@ -243,7 +243,7 @@ export class UserManager {
 	 */
 	async searchUsers(query: string, limit: number = 10, token?: string, orgId?: string): Promise<User[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS, orgId);
 		}
 
 		try {

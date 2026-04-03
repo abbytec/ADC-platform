@@ -18,6 +18,7 @@ export default {
 				theader: "var(--c-theader)",
 				background: "var(--c-background)",
 				text: "var(--c-text)",
+				muted: "var(--c-muted)",
 				negativeText: "var(--c-negative-text)",
 				surface: "var(--c-surface)",
 				tsurface: "var(--c-tsurface)",

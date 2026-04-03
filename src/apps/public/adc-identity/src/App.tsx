@@ -4,6 +4,7 @@ import { useTranslation } from "@ui-library/utils/i18n-react";
 import { router } from "@common/utils/router";
 import { identityApi } from "./utils/identity-api.ts";
 import type { Permission } from "@common/types/identity/Permission.ts";
+import type { Organization } from "@common/types/identity/Organization.ts";
 import { getVisibleTabs, type IdentityTab } from "./utils/permissions.ts";
 import { UsersView } from "./pages/UsersView.tsx";
 import { RolesView } from "./pages/RolesView.tsx";
@@ -26,8 +27,15 @@ export default function App() {
 	const [unauthorized, setUnauthorized] = useState(false);
 
 	// Contexto de organización
-	const [orgId, setOrgId] = useState<string | undefined>(undefined);
+	const [tokenOrgId, setTokenOrgId] = useState<string | undefined>(undefined);
 	const [isAdmin, setIsAdmin] = useState(false);
+
+	// Filtro de org para admin global
+	const [organizations, setOrganizations] = useState<Organization[]>([]);
+	const [selectedOrgFilter, setSelectedOrgFilter] = useState<string | undefined>(undefined);
+
+	// orgId efectivo: viene del token (org admin) o del filtro (global admin)
+	const effectiveOrgId = selectedOrgFilter || tokenOrgId;
 
 	const loadPermissions = useCallback(async () => {
 		setLoading(true);
@@ -39,7 +47,7 @@ export default function App() {
 			const userScopes = result.data.scopes;
 			setScopes(userScopes);
 			const currentOrgId = result.data.orgId || undefined;
-			setOrgId(currentOrgId);
+			setTokenOrgId(currentOrgId);
 			setIsAdmin(result.data.isAdmin ?? false);
 
 			const tabs = getVisibleTabs(userScopes, currentOrgId);
@@ -70,11 +78,32 @@ export default function App() {
 		loadPermissions();
 	}, [loadPermissions]);
 
+	// Cargar lista de organizaciones para el filtro (solo admin global)
+	useEffect(() => {
+		if (isAdmin && !tokenOrgId) {
+			identityApi.listOrganizations().then((res) => {
+				if (res.success && res.data) setOrganizations(res.data);
+			});
+		}
+	}, [isAdmin, tokenOrgId]);
+
 	const handleTabChange = useCallback((tabId: string) => {
 		setActiveTab(tabId);
 		clearErrors();
 		router.navigate("/" + tabId);
 	}, []);
+
+	const handleOrgFilterChange = useCallback((value: string) => {
+		setSelectedOrgFilter(value || undefined);
+		clearErrors();
+	}, []);
+
+	const comboboxRef = useCallback(
+		(el: HTMLElement | null) => {
+			if (el) el.addEventListener("adcChange", (e: Event) => handleOrgFilterChange((e as CustomEvent<string>).detail));
+		},
+		[handleOrgFilterChange]
+	);
 
 	// Sync tabs with browser back/forward navigation
 	useEffect(() => {
@@ -125,11 +154,11 @@ export default function App() {
 	const renderActiveView = () => {
 		switch (activeTab) {
 			case "users":
-				return <UsersView scopes={scopes} orgId={orgId} isAdmin={isAdmin} />;
+				return <UsersView scopes={scopes} orgId={effectiveOrgId} isAdmin={isAdmin} isTokenOrgContext={Boolean(tokenOrgId)} />;
 			case "roles":
-				return <RolesView scopes={scopes} orgId={orgId} isAdmin={isAdmin} />;
+				return <RolesView scopes={scopes} orgId={effectiveOrgId} isAdmin={isAdmin} />;
 			case "groups":
-				return <GroupsView scopes={scopes} orgId={orgId} isAdmin={isAdmin} />;
+				return <GroupsView scopes={scopes} orgId={effectiveOrgId} isAdmin={isAdmin} />;
 			case "organizations":
 				return <OrganizationsView scopes={scopes} />;
 			case "regions":
@@ -142,6 +171,25 @@ export default function App() {
 	return (
 		<div className="max-w-6xl mx-auto px-4 py-8">
 			<h1 className="font-heading text-2xl font-bold text-text mb-6">{t("common.title")}</h1>
+
+			{/* Filtro de organización para admin global */}
+			{isAdmin && !tokenOrgId && organizations.length > 0 && (
+				<div className="mb-4 flex items-center gap-3">
+					<label className="text-sm font-medium text-text whitespace-nowrap">{t("common.orgFilter")}:</label>
+					<adc-combobox
+						ref={comboboxRef}
+						value={selectedOrgFilter || ""}
+						placeholder={t("common.globalView")}
+						options={JSON.stringify(organizations.map((org) => ({ label: org.slug, value: org.orgId })))}
+						class="min-w-50"
+					/>
+					{selectedOrgFilter && (
+						<adc-badge color="indigo" size="sm">
+							{organizations.find((o) => o.orgId === selectedOrgFilter)?.slug}
+						</adc-badge>
+					)}
+				</div>
+			)}
 
 			<adc-tabs ref={tabsRef} tabs={JSON.stringify(tabItems)} activeTab={activeTab} variant="underline" />
 

@@ -18,9 +18,7 @@ export class AdcToggleBadge {
 	};
 
 	render() {
-		const cls = this.active
-			? "bg-primary text-tprimary border-primary"
-			: "bg-surface text-muted border-border hover:border-primary hover:text-text";
+		const cls = this.active ? "bg-primary text-tprimary border-muted" : "bg-surface text-text border-muted hover:border-primary";
 
 		const label = this.el.textContent?.trim() || "";
 

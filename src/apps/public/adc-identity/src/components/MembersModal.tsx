@@ -108,15 +108,7 @@ export function MembersModal({
 												<span className="text-sm font-medium text-text">{user.username}</span>
 												{user.email && <span className="text-xs text-muted ml-2">{user.email}</span>}
 											</div>
-											<svg
-												className="w-4 h-4 text-primary shrink-0"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="2"
-											>
-												<path d="M12 5v14M5 12h14" />
-											</svg>
+											<adc-icon-plus size="1rem" />
 										</button>
 									))
 							)}
@@ -143,9 +135,7 @@ export function MembersModal({
 									aria-label={t("common.delete")}
 									onClick={() => handleRemoveMember(member.id)}
 								>
-									<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-										<path d="M18 6L6 18M6 6l12 12" />
-									</svg>
+									<adc-icon-close size="0.875rem" />
 								</adc-button-rounded>
 							</li>
 						))}

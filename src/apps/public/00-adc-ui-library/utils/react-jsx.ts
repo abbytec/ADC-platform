@@ -33,7 +33,15 @@ interface AdcIntrinsicElements {
 		variant?: "default" | "danger";
 	}>;
 	"adc-callout": WebComponentProps<{ role?: "note" | "status" | "alert"; tone?: "info" | "warning" | "success" | "error" }>;
+	"adc-checkbox": WebComponentProps<{ ariaLabel?: string; checked?: boolean; disabled?: boolean; label?: string }>;
 	"adc-code-block": WebComponentProps<{ ariaLabel?: string; content?: string; language?: string }>;
+	"adc-combobox": WebComponentProps<{
+		debounce?: number;
+		disabled?: boolean;
+		options?: unknown[] | string;
+		placeholder?: string;
+		value?: string;
+	}>;
 	"adc-content-card": WebComponentProps<{
 		bannerAlt?: string;
 		bannerUrl?: string;
@@ -53,6 +61,7 @@ interface AdcIntrinsicElements {
 	"adc-divider": WebComponentProps;
 	"adc-dropdown-menu": WebComponentProps<{ items?: unknown[]; alignState?: "left" | "right"; openOnHover?: boolean }>;
 	"adc-feature-card": WebComponentProps<{ staticRender?: boolean; title?: string }>;
+	"adc-icon-close": WebComponentProps<{ size?: string }>;
 	"adc-icon-community": WebComponentProps<{ size?: string }>;
 	"adc-icon-edit": WebComponentProps<{ size?: string }>;
 	"adc-icon-learning": WebComponentProps<{ size?: string }>;
@@ -62,6 +71,7 @@ interface AdcIntrinsicElements {
 	"adc-icon-nitro": WebComponentProps<{ size?: string }>;
 	"adc-icon-opensource": WebComponentProps<{ size?: string }>;
 	"adc-icon-pencil": WebComponentProps<{ size?: string }>;
+	"adc-icon-plus": WebComponentProps<{ size?: string }>;
 	"adc-icon-trash": WebComponentProps<{ size?: string }>;
 	"adc-icon-vip": WebComponentProps<{ size?: string }>;
 	"adc-layout": WebComponentProps<{
@@ -100,7 +110,7 @@ interface AdcIntrinsicElements {
 		type?: string;
 		value?: string;
 	}>;
-	"adc-select": WebComponentProps<{ options?: unknown[]; placeholder?: string; value?: string }>;
+	"adc-select": WebComponentProps<{ options?: unknown[] | string; placeholder?: string; value?: string }>;
 	"adc-share-buttons": WebComponentProps<{ description?: string; title?: string; url?: string }>;
 	"adc-site-footer": WebComponentProps<{
 		brandName?: string;

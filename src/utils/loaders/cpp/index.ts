@@ -148,16 +148,18 @@ export default class CppLoader implements IModuleLoader {
 		Logger.debug(`[CppLoader] Iniciando proceso C++: ${indexFile}`);
 		Logger.debug(`[CppLoader] CPPPATH: ${cppPath}`);
 
-		const cmakeProcess = spawn("/usr/bin/cmake", [
-			modulePath,
-			"-B",
-			`../../../../temp/builds/${moduleType}/${moduleName}`,
-		], { stdio: "pipe" });
+		const cmakeProcess = spawn("/usr/bin/cmake", [modulePath, "-B", `../../../../temp/builds/${moduleType}/${moduleName}`], {
+			stdio: "pipe",
+		});
 
 		let cmakeOutput = "";
 		let cmakeError = "";
-		cmakeProcess.stdout?.on("data", (data: Buffer) => { cmakeOutput += data.toString(); });
-		cmakeProcess.stderr?.on("data", (data: Buffer) => { cmakeError += data.toString(); });
+		cmakeProcess.stdout?.on("data", (data: Buffer) => {
+			cmakeOutput += data.toString();
+		});
+		cmakeProcess.stderr?.on("data", (data: Buffer) => {
+			cmakeError += data.toString();
+		});
 
 		await new Promise<void>((resolve, reject) => {
 			cmakeProcess.on("exit", (code) => {

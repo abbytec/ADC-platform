@@ -157,7 +157,7 @@ export default class IdentityManagerService extends BaseService {
 					return { valid: false, error: result.error || "Token inválido" };
 				}
 
-				return { valid: true, userId: result.session.user.id };
+				return { valid: true, userId: result.session.user.id, orgId: result.session.user.orgId };
 			},
 
 			hasPermission: async (userId: string, action: number, scope: number, orgId?: string) => {
@@ -279,7 +279,7 @@ export default class IdentityManagerService extends BaseService {
 
 			// Inicializa la base de datos de la org (roles predefinidos, etc.)
 			initialize: async () => {
-				await orgRoleManager.initializePredefinedRoles();
+				await orgRoleManager.initializePredefinedRoles(org.orgId);
 				this.logger.logOk(`[IdentityManager] Base de datos inicializada para org: ${org.slug}`);
 			},
 		};

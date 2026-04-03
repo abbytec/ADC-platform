@@ -120,7 +120,7 @@ export function GroupsView({ scopes, orgId, isAdmin }: GroupsViewProps) {
 				loadData();
 			}
 		} else {
-			const result = await identityApi.createGroup(payload);
+			const result = await identityApi.createGroup({ ...payload, orgId });
 			if (result.success) {
 				setModalOpen(false);
 				loadData();
@@ -164,22 +164,20 @@ export function GroupsView({ scopes, orgId, isAdmin }: GroupsViewProps) {
 				</div>
 			),
 		},
-		...(isAdmin && !orgId
-			? [
-					{
-						key: "orgId" as keyof Group,
-						label: t("common.organization"),
-						render: (g: Group) =>
-							g.orgId ? (
-								<adc-badge color="indigo" size="sm">
-									{orgMap.get(g.orgId) || g.orgId}
-								</adc-badge>
-							) : (
-								<span className="text-muted text-xs">—</span>
-							),
-					} as Column<Group>,
-				]
-			: []),
+		{
+			key: "orgId" as keyof Group,
+			label: t("groups.scope"),
+			render: (g: Group) =>
+				g.orgId ? (
+					<adc-badge color="indigo" size="sm">
+						{orgMap.get(g.orgId) || t("groups.orgScope")}
+					</adc-badge>
+				) : (
+					<adc-badge color="gray" size="sm">
+						{t("groups.globalScope")}
+					</adc-badge>
+				),
+		},
 	];
 
 	return (
@@ -194,20 +192,23 @@ export function GroupsView({ scopes, orgId, isAdmin }: GroupsViewProps) {
 				addLabel={t("groups.addGroup")}
 				keyExtractor={(g) => g.id}
 				emptyMessage={t("groups.noGroups")}
-				actions={(group) => (
-					<RowActions
-						item={group}
-						canEdit={updatable}
-						canDelete={deletable}
-						canManageMembers={updatable}
-						onEdit={openEditModal}
-						onDelete={setDeleteConfirm}
-						onManageMembers={setMembersModal}
-						editLabel={t("common.edit")}
-						deleteLabel={t("common.delete")}
-						membersLabel={t("groups.members")}
-					/>
-				)}
+				actions={(group) => {
+					const isOwnContext = orgId ? group.orgId === orgId : !group.orgId;
+					return (
+						<RowActions
+							item={group}
+							canEdit={updatable && isOwnContext}
+							canDelete={deletable && isOwnContext}
+							canManageMembers={updatable && isOwnContext}
+							onEdit={openEditModal}
+							onDelete={setDeleteConfirm}
+							onManageMembers={setMembersModal}
+							editLabel={t("common.edit")}
+							deleteLabel={t("common.delete")}
+							membersLabel={t("groups.members")}
+						/>
+					);
+				}}
 			/>
 
 			{/* Create/Edit Modal */}

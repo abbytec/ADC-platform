@@ -25,7 +25,7 @@ export class GroupManager {
 	 */
 	async createGroup(name: string, description: string, roleIds?: string[], token?: string, orgId?: string): Promise<Group> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.GROUPS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.GROUPS, orgId);
 		}
 
 		try {
@@ -35,7 +35,7 @@ export class GroupManager {
 				name,
 				description,
 				roleIds: roleIds || [],
-				orgId: orgId || undefined,
+				orgId: orgId || null,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
@@ -110,19 +110,19 @@ export class GroupManager {
 	}
 
 	/**
-	 * Obtiene todos los grupos, opcionalmente filtrados por orgId
+	 * Obtiene todos los grupos, separados por contexto.
+	 * - Con orgId: solo grupos de esta org
+	 * - Sin orgId (admin global): solo grupos globales (orgId === null)
 	 * @param token Token de autenticación (requerido para verificar permisos)
-	 * @param orgId Si se proporciona, retorna grupos globales (sin orgId) + grupos de esta org
+	 * @param orgId Si se proporciona, retorna solo grupos de esta org
 	 */
 	async getAllGroups(token?: string, orgId?: string): Promise<Group[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS, orgId);
 		}
 
 		try {
-			// Con orgId: solo grupos de esta org (no hay grupos "predefinidos")
-			// Sin orgId (admin): todos
-			const filter = orgId ? { orgId } : {};
+			const filter = orgId ? { orgId } : { $or: [{ orgId: null }, { orgId: { $exists: false } }] };
 			const docs = await this.groupModel.find(filter);
 			return docs.map((d: any) => d.toObject?.() || d);
 		} catch (error) {

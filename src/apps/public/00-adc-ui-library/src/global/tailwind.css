@@ -17,6 +17,7 @@
         --palette-tone-2: var(--custom-tone-2);
 
         --c-text: #111111;
+        --c-muted: oklch(52% 0.015 var(--palette-tone-1));
         --c-negative-text: #fefefe;
 
         --c-header: oklch(36% 0.063 var(--palette-tone-2));
@@ -53,6 +54,7 @@
         --c-accent: oklch(78% 0.129 var(--palette-tone-2));
 
         --c-text: oklch(97% 0.046 var(--palette-tone-2));
+        --c-muted: oklch(60% 0.02 var(--palette-tone-1));
         --c-negative-text: oklch(18% 0 var(--palette-tone-2));
 
         --c-warn: oklch(0.22 0.04 95);
@@ -71,6 +73,7 @@
         --palette-tone-2: var(--custom-tone-2);
 
         --c-text: #111111;
+        --c-muted: oklch(52% 0.02 var(--palette-tone-1));
         --c-negative-text: #fefefe;
 
         --c-header: oklch(94% 0.04 var(--palette-tone-2) / 55%);
@@ -108,6 +111,7 @@
         --c-accent: oklch(76% 0.22 var(--palette-tone-2));
 
         --c-text: oklch(93% 0.03 var(--palette-tone-1));
+        --c-muted: oklch(60% 0.025 var(--palette-tone-1));
         --c-negative-text: oklch(16% 0.04 var(--palette-tone-2));
 
         --shadow: 0 4px 32px rgba(0, 0, 0, 0.35), 0 0 1px rgba(140, 160, 255, 0.2);
