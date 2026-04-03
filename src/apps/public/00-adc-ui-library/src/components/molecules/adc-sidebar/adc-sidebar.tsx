@@ -2,7 +2,7 @@ import { Component, Prop, h, Event, EventEmitter, State, Element } from "@stenci
 
 export interface SidebarItem {
 	label: string;
-	icon?: any;
+	iconSvg?: string;
 	to?: string;
 	action?: string;
 	children?: SidebarItem[];
@@ -16,78 +16,56 @@ export interface SidebarItem {
 export class AdcSidebar {
 	@Prop() items: SidebarItem[] = [];
 	@Prop() collapsed: boolean = false;
+	@Prop() activeItem: string | null = null;
 
-	@State() activeItem: string | null = null;
+	@State() internalActiveItem: string | null = null;
 
 	@Element() el!: HTMLElement;
 
 	@Event() adcSidebarItemClick!: EventEmitter<SidebarItem>;
 
 	private handleItemClick = (item: SidebarItem) => {
-		this.activeItem = item.label;
 		this.adcSidebarItemClick.emit(item);
 	};
 
 	render() {
-		void h;
-		const sidebarClass = this.collapsed ? "w-20" : "w-64";
-		const uuid = crypto.randomUUID();
+		const sidebarClass = this.collapsed ? "w-17 lg:w-64" : "w-64";
 
 		return (
 			<aside
-				class={`fixed left-0 top-0 h-screen bg-primary text-tprimary transition-all duration-300 shadow-lg z-40 ${sidebarClass}`}
+				class={`fixed pt-5 left-0 top-auto h-full bg-background text-primary transition-all duration-300 shadow-[0_5px_20px_rgba(0,0,0,0.15)] overflow-hidden ${sidebarClass}`}
 				role="complementary"
 			>
-				{/* Header */}
-				<div class="px-4 py-6 border-b border-accent">{!this.collapsed && <h2 class="text-lg font-bold">Menu</h2>}</div>
-
-				{/* Items */}
-				<nav class="flex flex-col gap-2 p-4">
-					{this.items.map((item, index) => (
-						<div key={uuid + "-item-" + index}>
-							{item.to ? (
+				<nav class="flex flex-col gap-4 p-2">
+					{this.items.map((item) => {
+						return (
+							<div key={item.label}>
 								<a
 									href={item.to}
-									class={`flex items-center gap-3 px-4 py-3 rounded transition-colors ${
-										this.activeItem === item.label
-											? "bg-accent text-accent-content"
-											: "hover:bg-accent hover:text-accent-content"
-									}`}
-									role="menuitem"
+									class={`flex gap-2 transition-all duration-300 py-3 rounded w-full items-center ${
+										this.collapsed ? "justify-center px-0" : "justify-start gap-3 px-3"
+									} ${this.activeItem === item.action ? "bg-primary text-tprimary" : "hover:bg-primary hover:text-tprimary"}`}
 									onClick={() => this.handleItemClick(item)}
 									title={this.collapsed ? item.label : ""}
 								>
-									{item.icon && <span class="flex-shrink-0">{item.icon}</span>}
-									{!this.collapsed && (
-										<span class="flex-1 flex items-center justify-between">
-											{item.label}
-											{item.badge && <span class="badge badge-sm">{item.badge}</span>}
-										</span>
+									{item.iconSvg && (
+										<span
+											class="flex items-center justify-center flex-shrink-0 w-adc-xl h-adc-xl"
+											innerHTML={item.iconSvg}
+										></span>
 									)}
+
+									<span
+										class={`flex-1 overflow-hidden transition-all duration-300 ${this.collapsed ? "max-w-0 opacity-0" : "max-w-[160px] opacity-100"} lg:max-w-[160px] lg:opacity-100`}
+									>
+										<span class="text-left whitespace-nowrap">{item.label}</span>
+
+										{item.badge && <span class="ml-auto badge badge-sm">{item.badge}</span>}
+									</span>
 								</a>
-							) : (
-								<button
-									type="button"
-									class={`flex w-full items-center gap-3 px-4 py-3 rounded transition-colors ${
-										this.activeItem === item.label
-											? "bg-accent text-accent-content"
-											: "hover:bg-accent hover:text-accent-content"
-									}`}
-									role="menuitem"
-									onClick={() => this.handleItemClick(item)}
-									title={this.collapsed ? item.label : ""}
-								>
-									{item.icon && <span class="flex-shrink-0">{item.icon}</span>}
-									{!this.collapsed && (
-										<span class="flex-1 flex items-center justify-between">
-											{item.label}
-											{item.badge && <span class="badge badge-sm">{item.badge}</span>}
-										</span>
-									)}
-								</button>
-							)}
-						</div>
-					))}
+							</div>
+						);
+					})}
 				</nav>
 			</aside>
 		);

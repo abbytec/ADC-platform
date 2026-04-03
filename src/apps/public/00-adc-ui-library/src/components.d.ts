@@ -590,6 +590,10 @@ export namespace Components {
     }
     interface AdcSidebar {
         /**
+          * @default null
+         */
+        "activeItem": string | null;
+        /**
           * @default false
          */
         "collapsed": boolean;
@@ -2061,6 +2065,10 @@ declare namespace LocalJSX {
     }
     interface AdcSidebar {
         /**
+          * @default null
+         */
+        "activeItem"?: string | null;
+        /**
           * @default false
          */
         "collapsed"?: boolean;
@@ -2490,6 +2498,7 @@ declare namespace LocalJSX {
     }
     interface AdcSidebarAttributes {
         "collapsed": boolean;
+        "activeItem": string | null;
     }
     interface AdcSiteFooterAttributes {
         "brandName": string;
