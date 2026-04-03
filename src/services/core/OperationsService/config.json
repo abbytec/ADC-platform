@@ -1,0 +1,29 @@
+{
+	"name": "OperationsService",
+	"version": "1.0.0",
+	"kernelMode": 45,
+	"providers": [
+		{
+			"name": "queue/redis",
+			"version": "latest",
+			"language": "typescript",
+			"custom": {
+				"host": "${REDIS_HOST:-localhost}",
+				"port": "${REDIS_PORT:-6380}",
+				"password": "${REDIS_PASSWORD}",
+				"db": 0,
+				"keyPrefix": "adc:ops:"
+			}
+		},
+		{
+			"name": "object/mongo",
+			"version": "latest",
+			"language": "typescript",
+			"custom": {
+				"uri": "mongodb://admin:password@localhost:27017/adc-core?authSource=admin",
+				"maxRetries": 5,
+				"retryDelay": 5000
+			}
+		}
+	]
+}

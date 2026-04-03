@@ -22,6 +22,9 @@ export default {
 		NO_REFRESH_TOKEN: "No refresh token",
 		INVALID_REFRESH_TOKEN: "Invalid refresh token",
 		LOCATION_CHANGE: "Session invalidated due to location change",
-		REFRESH_FAILED: "Error refreshing tokens"
+		REFRESH_FAILED: "Error refreshing tokens",
+		// Idempotency errors
+		IDEMPOTENCY_RUNNING: "This operation is already being processed. Please wait up to 2 minutes before trying again.",
+		IDEMPOTENCY_KEY_MISSING: "An idempotency key is required for this operation."
 	}
 };

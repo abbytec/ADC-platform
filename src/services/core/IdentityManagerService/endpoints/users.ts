@@ -1,5 +1,6 @@
 import { RegisterEndpoint, type EndpointCtx } from "../../EndpointManagerService/index.js";
 import { IdentityError } from "@common/types/custom-errors/IdentityError.js";
+import { P } from "@common/types/Permissions.ts";
 import type IdentityManagerService from "../index.js";
 
 /**
@@ -75,7 +76,7 @@ export class UserEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/users",
-		permissions: ["identity.2.1"],
+		permissions: [P.IDENTITY.USERS.READ],
 	})
 	static async listUsers(ctx: EndpointCtx) {
 		// Org admin usa orgId del token; global admin puede filtrar por query param
@@ -101,7 +102,7 @@ export class UserEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/users/search",
-		permissions: ["identity.2.1"],
+		permissions: [P.IDENTITY.USERS.READ],
 	})
 	static async searchUsers(ctx: EndpointCtx) {
 		const q = ctx.query?.q?.trim();
@@ -115,7 +116,7 @@ export class UserEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/users/:userId",
-		permissions: ["identity.2.1"],
+		permissions: [P.IDENTITY.USERS.READ],
 	})
 	static async getUser(ctx: EndpointCtx<{ userId: string }>) {
 		const callerOrgId = ctx.user?.orgId;
@@ -128,7 +129,7 @@ export class UserEndpoints {
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/identity/users",
-		permissions: ["identity.2.2"],
+		permissions: [P.IDENTITY.USERS.WRITE],
 	})
 	static async createUser(
 		ctx: EndpointCtx<Record<string, string>, { username: string; password: string; roleIds?: string[]; orgId?: string }>
@@ -157,7 +158,7 @@ export class UserEndpoints {
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/identity/users/:userId",
-		permissions: ["identity.2.4"],
+		permissions: [P.IDENTITY.USERS.UPDATE],
 	})
 	static async updateUser(
 		ctx: EndpointCtx<
@@ -209,7 +210,7 @@ export class UserEndpoints {
 	@RegisterEndpoint({
 		method: "DELETE",
 		url: "/api/identity/users/:userId",
-		permissions: ["identity.2.8"],
+		permissions: [P.IDENTITY.USERS.DELETE],
 	})
 	static async deleteUser(ctx: EndpointCtx<{ userId: string }>) {
 		const callerOrgId = ctx.user?.orgId;

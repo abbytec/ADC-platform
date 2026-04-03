@@ -1,13 +1,14 @@
 import type { FastifyRequest, FastifyReply } from "../../../../interfaces/modules/providers/IHttpServer.js";
-import { UncommonResponse, type RegisteredEndpoint, type EndpointCtx, type AuthenticatedUserInfo } from "../types.js";
+import { UncommonResponse, type RegisteredEndpoint, type EndpointCtx, type AuthenticatedUserInfo, type HttpMethod } from "../types.js";
 import ADCCustomError from "@common/types/ADCCustomError.js";
+import { IdempotencyError } from "@common/types/custom-errors/IdempotencyError.ts";
 import type SessionManagerService from "../../../security/SessionManagerService/index.ts";
+import type OperationsService from "../../OperationsService/index.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.d.ts";
 
-function extractToken(
-	req: FastifyRequest<any>,
-	getSessionManager: () => SessionManagerService | null,
-): string | null {
+const MUTATIVE_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function extractToken(req: FastifyRequest<any>, getSessionManager: () => SessionManagerService | null): string | null {
 	// 1. Intentar desde cookie via SessionManager
 	const sessionManager = getSessionManager();
 	if (sessionManager) {
@@ -33,8 +34,11 @@ function extractToken(
 export function createHttpWrapper(
 	endpoint: RegisteredEndpoint,
 	getSessionManager: () => SessionManagerService | null,
-	logger: ILogger,
+	operationsService: OperationsService,
+	logger: ILogger
 ): (req: FastifyRequest<any>, reply: FastifyReply<any>) => Promise<void> {
+	const requiresIdempotency = MUTATIVE_METHODS.has(endpoint.method) && endpoint.options?.skipIdempotency !== true;
+
 	return async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
 		// Extraer token si existe
 		const token = extractToken(req, getSessionManager);
@@ -62,8 +66,20 @@ export function createHttpWrapper(
 		};
 
 		try {
-			// Llamar al handler (ya incluye validación de permisos en el decorator)
-			const result = await endpoint.handler(ctx);
+			let result: unknown;
+
+			if (requiresIdempotency) {
+				const idempotencyKey = req.headers["idempotency-key"] as string | undefined;
+
+				if (!idempotencyKey) {
+					throw new IdempotencyError(400, "IDEMPOTENCY_KEY_MISSING", "Header Idempotency-Key is required for this operation");
+				}
+
+				const cmd = `${endpoint.method}:${endpoint.url}`;
+				result = await operationsService.httpCheck(cmd, idempotencyKey, () => endpoint.handler(ctx));
+			} else {
+				result = await endpoint.handler(ctx);
+			}
 
 			// El handler devuelve datos, nosotros manejamos la respuesta HTTP
 			if (result === undefined || result === null) {
@@ -96,7 +112,7 @@ export function createHttpWrapper(
 				return;
 			}
 
-			// Capturar ADCCustomError (HttpError y otros) para errores de negocio
+			// Capturar ADCCustomError (HttpError, IdempotencyError y otros) para errores de negocio
 			else if (error instanceof ADCCustomError) {
 				reply.status(error.status).send(error.toJSON());
 				return;

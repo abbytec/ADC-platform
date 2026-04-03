@@ -22,6 +22,9 @@ export default {
 		NO_REFRESH_TOKEN: "No hay token de refresco",
 		INVALID_REFRESH_TOKEN: "Token de refresco inválido",
 		LOCATION_CHANGE: "Sesión invalidada por cambio de ubicación",
-		REFRESH_FAILED: "Error al refrescar tokens"
+		REFRESH_FAILED: "Error al refrescar tokens",
+		// Errores de idempotencia
+		IDEMPOTENCY_RUNNING: "Esta operación ya está siendo procesada. Espere hasta 2 minutos antes de intentar nuevamente.",
+		IDEMPOTENCY_KEY_MISSING: "Se requiere una clave de idempotencia para esta operación."
 	}
 };

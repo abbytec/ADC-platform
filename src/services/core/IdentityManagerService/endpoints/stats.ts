@@ -1,5 +1,6 @@
 import { RegisterEndpoint, type EndpointCtx } from "../../EndpointManagerService/index.js";
 import { IdentityError } from "@common/types/custom-errors/IdentityError.js";
+import { P } from "@common/types/Permissions.ts";
 import type IdentityManagerService from "../index.js";
 import { SystemRole } from "../defaults/systemRoles.js";
 
@@ -59,7 +60,7 @@ export class StatsEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/stats",
-		permissions: ["identity.64.1"],
+		permissions: [P.IDENTITY.STATS.READ],
 	})
 	static async getStats(ctx: EndpointCtx) {
 		if (ctx.user?.orgId) {

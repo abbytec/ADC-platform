@@ -20,6 +20,8 @@ export interface EndpointOptions {
 		querystring?: Record<string, unknown>;
 		params?: Record<string, unknown>;
 	};
+	/** Skip automatic idempotency check for this endpoint (default: false). */
+	skipIdempotency?: boolean;
 	[key: string]: unknown;
 }
 

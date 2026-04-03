@@ -37,6 +37,8 @@ export interface AdcApiConfig {
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
+const MUTATIVE_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
 export interface RequestOptions<TData = Record<string, unknown>> {
 	/** Query parameters */
 	params?: Record<string, string | number | boolean | undefined | null>;
@@ -46,6 +48,12 @@ export interface RequestOptions<TData = Record<string, unknown>> {
 	headers?: HeadersInit;
 	/** Translation params generator for error handling */
 	translateParams?: (data: TData) => Record<string, string>;
+	/**
+	 * Idempotency key for mutative requests (POST/PUT/PATCH/DELETE).
+	 * Generate once per logical operation and reuse on retries.
+	 * Use `crypto.randomUUID()` at the call site, not here.
+	 */
+	idempotencyKey?: string;
 }
 
 /**
@@ -116,7 +124,7 @@ export function createAdcApi(config: AdcApiConfig) {
 		path: string,
 		options: RequestOptions<TData> = {}
 	): Promise<AdcFetchResult<T>> {
-		const { params, body, headers, translateParams } = options;
+		const { params, body, headers, translateParams, idempotencyKey } = options;
 
 		const url = `${baseUrl}${path}${buildQueryString(params)}`;
 
@@ -126,6 +134,7 @@ export function createAdcApi(config: AdcApiConfig) {
 			headers: {
 				...defaultHeaders,
 				...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+				...(MUTATIVE_METHODS.has(method) && idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
 				...headers,
 			},
 			...(body !== undefined ? { body: JSON.stringify(body) } : {}),

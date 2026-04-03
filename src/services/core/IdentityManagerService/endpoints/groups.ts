@@ -1,5 +1,8 @@
 import { RegisterEndpoint, type EndpointCtx } from "../../EndpointManagerService/index.js";
 import { IdentityError } from "@common/types/custom-errors/IdentityError.js";
+import { P } from "@common/types/Permissions.ts";
+import { IdentityScopes } from "@common/types/identity/permissions.ts";
+import { CRUDXAction } from "@common/types/Actions.ts";
 import type IdentityManagerService from "../index.js";
 
 /**
@@ -54,7 +57,7 @@ export class GroupEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/groups",
-		permissions: ["identity.8.1"],
+		permissions: [P.IDENTITY.GROUPS.READ],
 	})
 	static async listGroups(ctx: EndpointCtx) {
 		// Org admin usa orgId del token; global admin puede filtrar por query param
@@ -65,7 +68,7 @@ export class GroupEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/groups/:groupId",
-		permissions: ["identity.8.1"],
+		permissions: [P.IDENTITY.GROUPS.READ],
 	})
 	static async getGroup(ctx: EndpointCtx<{ groupId: string }>) {
 		const group = await GroupEndpoints.#identity.groups.getGroup(ctx.params.groupId, ctx.token!);
@@ -80,7 +83,7 @@ export class GroupEndpoints {
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/identity/groups",
-		permissions: ["identity.8.2"],
+		permissions: [P.IDENTITY.GROUPS.WRITE],
 	})
 	static async createGroup(
 		ctx: EndpointCtx<Record<string, string>, { name: string; description: string; roleIds?: string[]; orgId?: string }>
@@ -107,7 +110,7 @@ export class GroupEndpoints {
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/identity/groups/:groupId",
-		permissions: ["identity.8.4"],
+		permissions: [P.IDENTITY.GROUPS.UPDATE],
 	})
 	static async updateGroup(
 		ctx: EndpointCtx<
@@ -128,7 +131,7 @@ export class GroupEndpoints {
 	@RegisterEndpoint({
 		method: "DELETE",
 		url: "/api/identity/groups/:groupId",
-		permissions: ["identity.8.8"],
+		permissions: [P.IDENTITY.GROUPS.DELETE],
 	})
 	static async deleteGroup(ctx: EndpointCtx<{ groupId: string }>) {
 		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, ctx.user?.orgId);
@@ -140,7 +143,7 @@ export class GroupEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/groups/:groupId/users",
-		permissions: ["identity.8.1"],
+		permissions: [P.IDENTITY.GROUPS.READ],
 	})
 	static async listGroupMembers(ctx: EndpointCtx<{ groupId: string }>) {
 		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, ctx.user?.orgId);
@@ -150,7 +153,7 @@ export class GroupEndpoints {
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/identity/groups/:groupId/users/:userId",
-		permissions: ["identity.10.2"],
+		permissions: [`identity.${IdentityScopes.GROUPS | IdentityScopes.USERS}.${CRUDXAction.WRITE}`],
 	})
 	static async addUserToGroup(ctx: EndpointCtx<{ groupId: string; userId: string }>) {
 		const callerOrgId = ctx.user?.orgId;
@@ -164,7 +167,7 @@ export class GroupEndpoints {
 	@RegisterEndpoint({
 		method: "DELETE",
 		url: "/api/identity/groups/:groupId/users/:userId",
-		permissions: ["identity.10.8"],
+		permissions: [`identity.${IdentityScopes.GROUPS | IdentityScopes.USERS}.${CRUDXAction.DELETE}`],
 	})
 	static async removeUserFromGroup(ctx: EndpointCtx<{ groupId: string; userId: string }>) {
 		const callerOrgId = ctx.user?.orgId;
