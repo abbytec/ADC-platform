@@ -20,7 +20,7 @@ const api = createAdcApi({
 function hashBody(data: unknown): string {
 	const str = JSON.stringify(data);
 	let h = 5381;
-	for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
+	for (const ch of str) h = ((h << 5) + h + ch.codePointAt(0)!) >>> 0;
 	return h.toString(36);
 }
 
