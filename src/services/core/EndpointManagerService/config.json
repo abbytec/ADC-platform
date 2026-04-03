@@ -14,6 +14,10 @@
 			"name": "SessionManagerService",
 			"version": "latest",
 			"optional": true
+		},
+		{
+			"name": "OperationsService",
+			"version": "latest"
 		}
 	]
 }

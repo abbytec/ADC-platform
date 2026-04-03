@@ -1,5 +1,6 @@
 import { RegisterEndpoint, type EndpointCtx } from "../../EndpointManagerService/index.js";
 import { IdentityError } from "@common/types/custom-errors/IdentityError.js";
+import { P } from "@common/types/Permissions.ts";
 import type IdentityManagerService from "../index.js";
 
 /** Region management is global-only. Users in org mode cannot manage these. */
@@ -22,7 +23,7 @@ export class RegionEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/regions",
-		permissions: ["identity.32.1"],
+		permissions: [P.IDENTITY.REGIONS.READ],
 	})
 	static async listRegions(ctx: EndpointCtx) {
 		requireGlobalAccess(ctx);
@@ -32,7 +33,7 @@ export class RegionEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/regions/:path",
-		permissions: ["identity.32.1"],
+		permissions: [P.IDENTITY.REGIONS.READ],
 	})
 	static async getRegion(ctx: EndpointCtx<{ path: string }>) {
 		requireGlobalAccess(ctx);
@@ -44,7 +45,7 @@ export class RegionEndpoints {
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/identity/regions",
-		permissions: ["identity.32.2"],
+		permissions: [P.IDENTITY.REGIONS.WRITE],
 	})
 	static async createRegion(ctx: EndpointCtx<Record<string, string>, { path: string; metadata: any; isGlobal?: boolean }>) {
 		requireGlobalAccess(ctx);
@@ -57,7 +58,7 @@ export class RegionEndpoints {
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/identity/regions/:path",
-		permissions: ["identity.32.4"],
+		permissions: [P.IDENTITY.REGIONS.UPDATE],
 	})
 	static async updateRegion(ctx: EndpointCtx<{ path: string }, Partial<{ metadata: any; isGlobal: boolean; isActive: boolean }>>) {
 		requireGlobalAccess(ctx);
@@ -67,7 +68,7 @@ export class RegionEndpoints {
 	@RegisterEndpoint({
 		method: "DELETE",
 		url: "/api/identity/regions/:path",
-		permissions: ["identity.32.8"],
+		permissions: [P.IDENTITY.REGIONS.DELETE],
 	})
 	static async deleteRegion(ctx: EndpointCtx<{ path: string }>) {
 		requireGlobalAccess(ctx);

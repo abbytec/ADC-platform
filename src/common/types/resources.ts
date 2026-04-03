@@ -55,10 +55,16 @@ export const RESOURCES: ResourceDef[] = [
 	{ id: "content", label: "resources.content", scopes: [], simple: true },
 ];
 
-/** Lookup by resource id */
+/**
+ * Lookup by resource id
+ * @public
+ */
 export const RESOURCE_MAP: ReadonlyMap<string, ResourceDef> = new Map(RESOURCES.map((r) => [r.id, r]));
 
-/** Get scopes for a resource (falls back to empty) */
+/**
+ * Get scopes for a resource (falls back to empty)
+ * @public
+ */
 export function getResourceScopes(resourceId: string): ScopeDef[] {
 	return RESOURCE_MAP.get(resourceId)?.scopes ?? [];
 }

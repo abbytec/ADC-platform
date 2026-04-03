@@ -2,6 +2,7 @@ import type { Model, PipelineStage } from "mongoose";
 import type { Article, LearningPath, PathItem, Block } from "../../../../common/ADC/types/learning.js";
 import { RegisterEndpoint, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
 import { HttpError } from "@common/types/ADCCustomError.ts";
+import { P } from "@common/types/Permissions.ts";
 
 interface ListArticlesQuery {
 	pathSlug?: string;
@@ -141,7 +142,7 @@ export class ArticleEndpoints {
 		return { article: doc as Article };
 	}
 
-	@RegisterEndpoint({ method: "POST", url: "/api/learning/articles", permissions: ["content.write"] })
+	@RegisterEndpoint({ method: "POST", url: "/api/learning/articles", permissions: [P.CONTENT.WRITE] })
 	static async create(ctx: EndpointCtx<Record<string, string>, CreateArticleBody>): Promise<{ article: Article }> {
 		const data = ctx.data;
 
@@ -155,7 +156,7 @@ export class ArticleEndpoints {
 		return { article: doc.toObject() as Article };
 	}
 
-	@RegisterEndpoint({ method: "PUT", url: "/api/learning/articles/:slug", permissions: ["content.write"] })
+	@RegisterEndpoint({ method: "PUT", url: "/api/learning/articles/:slug", permissions: [P.CONTENT.WRITE] })
 	static async update(ctx: EndpointCtx<SlugParams, UpdateArticleBody>): Promise<{ article: Article }> {
 		const { slug } = ctx.params;
 		const updateData = ctx.data;
@@ -173,7 +174,7 @@ export class ArticleEndpoints {
 		return { article: doc as Article };
 	}
 
-	@RegisterEndpoint({ method: "DELETE", url: "/api/learning/articles/:slug", permissions: ["content.delete"] })
+	@RegisterEndpoint({ method: "DELETE", url: "/api/learning/articles/:slug", permissions: [P.CONTENT.DELETE] })
 	static async delete(ctx: EndpointCtx<SlugParams>): Promise<{ success: boolean }> {
 		const { slug } = ctx.params;
 		const result = await ArticleEndpoints.model.deleteOne({ slug });

@@ -64,6 +64,7 @@ export class AuthEndpoints {
 		method: "POST",
 		url: "/api/auth/login",
 		permissions: [],
+		options: { skipIdempotency: true },
 	})
 	static async handleNativeLogin(ctx: EndpointCtx<Record<string, string>, LoginBody>): Promise<unknown> {
 		const { username, password, orgId } = ctx.data || {};
@@ -291,6 +292,7 @@ export class AuthEndpoints {
 		method: "POST",
 		url: "/api/auth/refresh",
 		permissions: [],
+		options: { skipIdempotency: true },
 	})
 	static async handleRefresh(ctx: EndpointCtx): Promise<never> {
 		const refreshToken = ctx.cookies?.[REFRESH_COOKIE_NAME];
@@ -361,6 +363,7 @@ export class AuthEndpoints {
 		method: "POST",
 		url: "/api/auth/switch-org",
 		permissions: [],
+		options: { skipIdempotency: true },
 	})
 	static async handleSwitchOrg(ctx: EndpointCtx<Record<string, string>, { orgId?: string }>): Promise<never> {
 		const token = ctx.cookies?.[ACCESS_COOKIE_NAME];
@@ -455,6 +458,7 @@ export class AuthEndpoints {
 		method: "POST",
 		url: "/api/auth/logout",
 		permissions: [],
+		options: { skipIdempotency: true },
 	})
 	static async handleLogout(ctx: EndpointCtx): Promise<never> {
 		const refreshToken = ctx.cookies?.[REFRESH_COOKIE_NAME];

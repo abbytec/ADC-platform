@@ -1,5 +1,6 @@
 import { RegisterEndpoint, type EndpointCtx } from "../../EndpointManagerService/index.js";
 import { IdentityError } from "@common/types/custom-errors/IdentityError.js";
+import { P } from "@common/types/Permissions.ts";
 import type IdentityManagerService from "../index.js";
 
 /**
@@ -32,7 +33,7 @@ export class RoleEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/roles",
-		permissions: ["identity.4.1"],
+		permissions: [P.IDENTITY.ROLES.READ],
 	})
 	static async listRoles(ctx: EndpointCtx) {
 		// Org admin usa orgId del token; global admin puede filtrar por query param
@@ -43,7 +44,7 @@ export class RoleEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/roles/:roleId",
-		permissions: ["identity.4.1"],
+		permissions: [P.IDENTITY.ROLES.READ],
 	})
 	static async getRole(ctx: EndpointCtx<{ roleId: string }>) {
 		const role = await RoleEndpoints.#identity.roles.getRole(ctx.params.roleId, ctx.token!);
@@ -59,7 +60,7 @@ export class RoleEndpoints {
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/identity/roles",
-		permissions: ["identity.4.2"],
+		permissions: [P.IDENTITY.ROLES.WRITE],
 	})
 	static async createRole(
 		ctx: EndpointCtx<Record<string, string>, { name: string; description: string; permissions?: any[]; orgId?: string }>
@@ -83,7 +84,7 @@ export class RoleEndpoints {
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/identity/roles/:roleId",
-		permissions: ["identity.4.4"],
+		permissions: [P.IDENTITY.ROLES.UPDATE],
 	})
 	static async updateRole(ctx: EndpointCtx<{ roleId: string }, Partial<{ name: string; description: string; permissions: any[] }>>) {
 		await assertRoleOrgAccess(RoleEndpoints.#identity, ctx.params.roleId, ctx.user?.orgId);
@@ -95,7 +96,7 @@ export class RoleEndpoints {
 	@RegisterEndpoint({
 		method: "DELETE",
 		url: "/api/identity/roles/:roleId",
-		permissions: ["identity.4.8"],
+		permissions: [P.IDENTITY.ROLES.DELETE],
 	})
 	static async deleteRole(ctx: EndpointCtx<{ roleId: string }>) {
 		try {

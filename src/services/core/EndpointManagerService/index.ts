@@ -3,6 +3,7 @@ import type { IHostBasedHttpProvider } from "../../../interfaces/modules/provide
 import { type HttpMethod, type EndpointConfig, type EndpointHandler, type ServiceCallRequest } from "./types.js";
 import { setPermissionValidator } from "./decorators.js";
 import SessionManagerService from "../../security/SessionManagerService/index.ts";
+import OperationsService from "../OperationsService/index.ts";
 import { EndpointRegistry } from "./parts/EndpointRegistry.js";
 import { createPermissionValidator } from "./parts/validator.js";
 import { createHttpWrapper } from "./parts/http.js";
@@ -35,12 +36,13 @@ export default class EndpointManagerService extends BaseService {
 	#httpProvider: IHostBasedHttpProvider | null = null;
 	// SessionManager se carga con lazy-load pattern en #getSessionManager()
 	#sessionManager: SessionManagerService | null = null;
+	#operationsService: OperationsService | null = null;
 	#registry = new EndpointRegistry(this.logger);
 
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
-		// Obtener HTTP provider
 		this.#httpProvider = this.getMyProvider<IHostBasedHttpProvider>("fastify-server");
+		this.#operationsService = this.getMyService<OperationsService>("OperationsService");
 		this.logger.logOk("EndpointManagerService iniciado");
 	}
 
@@ -84,7 +86,7 @@ export default class EndpointManagerService extends BaseService {
 		setPermissionValidator(config.instance, createPermissionValidator(this.#getSessionManager.bind(this)));
 
 		// Crear wrapper HTTP que construye ctx y maneja HttpError
-		const wrappedHandler = createHttpWrapper(endpoint, this.#getSessionManager.bind(this), this.logger);
+		const wrappedHandler = createHttpWrapper(endpoint, this.#getSessionManager.bind(this), this.#operationsService!, this.logger);
 
 		// Registrar en Fastify
 		this.#httpProvider.registerRoute(config.method, config.url, wrappedHandler);
@@ -116,6 +118,7 @@ export default class EndpointManagerService extends BaseService {
 
 		this.#httpProvider = null;
 		this.#sessionManager = null;
+		this.#operationsService = null;
 
 		await super.stop(kernelKey);
 		this.logger.logDebug("EndpointManagerService detenido");

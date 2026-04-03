@@ -1,5 +1,6 @@
 import { RegisterEndpoint, type EndpointCtx } from "../../EndpointManagerService/index.js";
 import { IdentityError } from "@common/types/custom-errors/IdentityError.js";
+import { P } from "@common/types/Permissions.ts";
 import type IdentityManagerService from "../index.js";
 
 import type { Organization } from "@common/types/identity/Organization.js";
@@ -30,7 +31,7 @@ export class OrgEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/organizations",
-		permissions: ["identity.16.1"],
+		permissions: [P.IDENTITY.ORGANIZATIONS.READ],
 	})
 	static async listOrganizations(ctx: EndpointCtx) {
 		requireGlobalAccess(ctx);
@@ -40,7 +41,7 @@ export class OrgEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/organizations/:orgId",
-		permissions: ["identity.16.1"],
+		permissions: [P.IDENTITY.ORGANIZATIONS.READ],
 	})
 	static async getOrganization(ctx: EndpointCtx<{ orgId: string }>) {
 		const org = await OrgEndpoints.#identity.organizations.getOrganization(ctx.params.orgId);
@@ -52,7 +53,7 @@ export class OrgEndpoints {
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/identity/organizations",
-		permissions: ["identity.16.2"],
+		permissions: [P.IDENTITY.ORGANIZATIONS.WRITE],
 	})
 	static async createOrganization(
 		ctx: EndpointCtx<Record<string, string>, { slug: string; region?: string; metadata?: Record<string, any> }>
@@ -73,7 +74,7 @@ export class OrgEndpoints {
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/identity/organizations/:orgId",
-		permissions: ["identity.16.4"],
+		permissions: [P.IDENTITY.ORGANIZATIONS.UPDATE],
 	})
 	static async updateOrganization(
 		ctx: EndpointCtx<{ orgId: string }, Partial<Pick<Organization, "slug" | "region" | "status" | "metadata">>>
@@ -87,7 +88,7 @@ export class OrgEndpoints {
 	@RegisterEndpoint({
 		method: "DELETE",
 		url: "/api/identity/organizations/:orgId",
-		permissions: ["identity.16.8"],
+		permissions: [P.IDENTITY.ORGANIZATIONS.DELETE],
 	})
 	static async deleteOrganization(ctx: EndpointCtx<{ orgId: string }>) {
 		requireGlobalAccess(ctx);
@@ -101,7 +102,7 @@ export class OrgEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/organizations/:orgId/members",
-		permissions: ["identity.16.1"],
+		permissions: [P.IDENTITY.ORGANIZATIONS.READ],
 	})
 	static async listOrgMembers(ctx: EndpointCtx<{ orgId: string }>) {
 		const org = await OrgEndpoints.#identity.organizations.getOrganization(ctx.params.orgId);
@@ -118,7 +119,7 @@ export class OrgEndpoints {
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/identity/organizations/:orgId/members/:userId",
-		permissions: ["identity.16.4"],
+		permissions: [P.IDENTITY.ORGANIZATIONS.UPDATE],
 	})
 	static async addOrgMember(ctx: EndpointCtx<{ orgId: string; userId: string }, { roleIds?: string[] }>) {
 		requireGlobalAccess(ctx);
@@ -133,7 +134,7 @@ export class OrgEndpoints {
 	@RegisterEndpoint({
 		method: "DELETE",
 		url: "/api/identity/organizations/:orgId/members/:userId",
-		permissions: ["identity.16.8"],
+		permissions: [P.IDENTITY.ORGANIZATIONS.DELETE],
 	})
 	static async removeOrgMember(ctx: EndpointCtx<{ orgId: string; userId: string }>) {
 		requireGlobalAccess(ctx);
