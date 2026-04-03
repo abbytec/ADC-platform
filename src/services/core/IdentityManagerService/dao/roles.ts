@@ -59,7 +59,7 @@ export class RoleManager {
 	 */
 	async createRole(name: string, description: string, permissions?: Permission[], token?: string, orgId?: string): Promise<Role> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.ROLES);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.ROLES, orgId);
 		}
 
 		try {
@@ -104,10 +104,10 @@ export class RoleManager {
 	/**
 	 * Obtiene múltiples roles por sus IDs en una sola consulta
 	 */
-	async getRolesByIds(roleIds: string[], token?: string): Promise<Role[]> {
+	async getRolesByIds(roleIds: string[], token?: string, orgId?: string): Promise<Role[]> {
 		if (!roleIds.length) return [];
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES, orgId);
 		}
 		try {
 			const docs = await this.roleModel.find({ id: { $in: roleIds } });
@@ -189,7 +189,7 @@ export class RoleManager {
 	 */
 	async getAllRoles(token?: string, orgId?: string): Promise<Role[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES, orgId);
 		}
 
 		try {

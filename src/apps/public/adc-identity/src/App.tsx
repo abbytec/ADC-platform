@@ -154,7 +154,7 @@ export default function App() {
 	const renderActiveView = () => {
 		switch (activeTab) {
 			case "users":
-				return <UsersView scopes={scopes} orgId={effectiveOrgId} isAdmin={isAdmin} />;
+				return <UsersView scopes={scopes} orgId={effectiveOrgId} isAdmin={isAdmin} isTokenOrgContext={Boolean(tokenOrgId)} />;
 			case "roles":
 				return <RolesView scopes={scopes} orgId={effectiveOrgId} isAdmin={isAdmin} />;
 			case "groups":

@@ -37,6 +37,30 @@ async function validateRoleIdsContext(identity: IdentityManagerService, roleIds:
 	}
 }
 
+function getScopedMembership(user: Awaited<ReturnType<IdentityManagerService["users"]["getUser"]>>, callerOrgId?: string) {
+	if (!callerOrgId || !user?.orgMemberships?.length) return undefined;
+	return user.orgMemberships.find((membership) => membership.orgId === callerOrgId);
+}
+
+function getContextRoleIds(user: NonNullable<Awaited<ReturnType<IdentityManagerService["users"]["getUser"]>>>, callerOrgId?: string): string[] {
+	if (!callerOrgId) {
+		return [...(user.roleIds || []), ...(user.orgMemberships || []).flatMap((membership) => membership.roleIds || [])];
+	}
+
+	const scopedMembership = getScopedMembership(user, callerOrgId);
+	return [...(user.roleIds || []), ...(scopedMembership?.roleIds || [])];
+}
+
+function sanitizeUserForContext(user: NonNullable<Awaited<ReturnType<IdentityManagerService["users"]["getUser"]>>>, callerOrgId?: string) {
+	const { passwordHash, ...safeUser } = user;
+	if (!callerOrgId) return safeUser;
+
+	return {
+		...safeUser,
+		orgMemberships: safeUser.orgMemberships?.filter((membership) => membership.orgId === callerOrgId) || [],
+	};
+}
+
 /**
  * Endpoints HTTP para gestión de usuarios
  * Registrados automáticamente por @EnableEndpoints en IdentityManagerService
@@ -61,14 +85,15 @@ export class UserEndpoints {
 		// Recoger todos los roleIds referenciados por los usuarios (incluidos orgMemberships)
 		const roleIdSet = new Set<string>();
 		for (const user of users) {
-			user.roleIds?.forEach((rid: string) => roleIdSet.add(rid));
-			user.orgMemberships?.forEach((m: any) => m.roleIds?.forEach((rid: string) => roleIdSet.add(rid)));
+			for (const roleId of getContextRoleIds(user, orgId)) {
+				roleIdSet.add(roleId);
+			}
 		}
 
-		const roles = await UserEndpoints.#identity.roles.getRolesByIds([...roleIdSet], ctx.token!);
+		const roles = await UserEndpoints.#identity.roles.getRolesByIds([...roleIdSet], ctx.token!, orgId);
 
 		return {
-			users: users.map(({ passwordHash, ...user }) => user),
+			users: users.map((user) => sanitizeUserForContext(user, orgId)),
 			roles,
 		};
 	}
@@ -84,7 +109,7 @@ export class UserEndpoints {
 		const orgId = ctx.user?.orgId;
 		const users = await UserEndpoints.#identity.users.searchUsers(q, 10, ctx.token!, orgId);
 
-		return users.map(({ passwordHash, ...user }) => user);
+		return users.map((user) => sanitizeUserForContext(user, orgId));
 	}
 
 	@RegisterEndpoint({
@@ -93,11 +118,11 @@ export class UserEndpoints {
 		permissions: ["identity.2.1"],
 	})
 	static async getUser(ctx: EndpointCtx<{ userId: string }>) {
-		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, ctx.user?.orgId);
+		const callerOrgId = ctx.user?.orgId;
+		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId);
 		const user = await UserEndpoints.#identity.users.getUser(ctx.params.userId, ctx.token!);
 		if (!user) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
-		const { passwordHash, ...safeUser } = user;
-		return safeUser;
+		return sanitizeUserForContext(user, callerOrgId);
 	}
 
 	@RegisterEndpoint({
@@ -117,13 +142,16 @@ export class UserEndpoints {
 		if (ctx.data.roleIds?.length) {
 			await validateRoleIdsContext(UserEndpoints.#identity, ctx.data.roleIds, callerOrgId);
 		}
-		const user = await UserEndpoints.#identity.users.createUser(ctx.data.username, ctx.data.password, ctx.data.roleIds, ctx.token!);
+		const globalRoleIds = callerOrgId ? [] : ctx.data.roleIds;
+		const user = await UserEndpoints.#identity.users.createUser(ctx.data.username, ctx.data.password, globalRoleIds, ctx.token!);
 		// Si se crea desde modo org, asociar automáticamente a la organización
 		if (callerOrgId) {
-			await UserEndpoints.#identity.users.addOrgMembership(user.id, callerOrgId, [], ctx.token!);
+			await UserEndpoints.#identity.users.addOrgMembership(user.id, callerOrgId, ctx.data.roleIds || [], ctx.token!);
 		}
-		const { passwordHash, ...safeUser } = user;
-		return safeUser;
+		const createdUser = callerOrgId ? await UserEndpoints.#identity.users.getUser(user.id, ctx.token!) : user;
+		if (!createdUser) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+		UserEndpoints.#identity.permissions.invalidateUser(createdUser.id);
+		return sanitizeUserForContext(createdUser, callerOrgId);
 	}
 
 	@RegisterEndpoint({
@@ -154,9 +182,28 @@ export class UserEndpoints {
 		if (updates.roleIds?.length) {
 			await validateRoleIdsContext(UserEndpoints.#identity, updates.roleIds, callerOrgId);
 		}
+
+		if (callerOrgId) {
+			const currentUser = await UserEndpoints.#identity.users.getUser(ctx.params.userId, ctx.token!);
+			if (!currentUser) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+
+			const scopedMembership = getScopedMembership(currentUser, callerOrgId);
+			if (!scopedMembership) {
+				throw new IdentityError(403, "ORG_ACCESS_DENIED", "No tienes acceso a este usuario");
+			}
+
+			const nextMemberships = (currentUser.orgMemberships || []).map((membership) =>
+				membership.orgId === callerOrgId ? { ...membership, roleIds: updates.roleIds || membership.roleIds } : membership
+			);
+
+			const user = await UserEndpoints.#identity.users.updateUser(ctx.params.userId, { orgMemberships: nextMemberships }, ctx.token!);
+			UserEndpoints.#identity.permissions.invalidateUser(user.id);
+			return sanitizeUserForContext(user, callerOrgId);
+		}
+
 		const user = await UserEndpoints.#identity.users.updateUser(ctx.params.userId, updates, ctx.token!);
-		const { passwordHash, ...safeUser } = user;
-		return safeUser;
+		UserEndpoints.#identity.permissions.invalidateUser(user.id);
+		return sanitizeUserForContext(user);
 	}
 
 	@RegisterEndpoint({
@@ -165,8 +212,15 @@ export class UserEndpoints {
 		permissions: ["identity.2.8"],
 	})
 	static async deleteUser(ctx: EndpointCtx<{ userId: string }>) {
-		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, ctx.user?.orgId);
+		const callerOrgId = ctx.user?.orgId;
+		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId);
+		if (callerOrgId) {
+			await UserEndpoints.#identity.users.removeOrgMembership(ctx.params.userId, callerOrgId, ctx.token!);
+			UserEndpoints.#identity.permissions.invalidateUser(ctx.params.userId);
+			return { success: true };
+		}
 		await UserEndpoints.#identity.users.deleteUser(ctx.params.userId, ctx.token!);
+		UserEndpoints.#identity.permissions.invalidateUser(ctx.params.userId);
 		return { success: true };
 	}
 }

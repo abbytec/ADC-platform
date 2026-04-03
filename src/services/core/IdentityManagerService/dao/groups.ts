@@ -25,7 +25,7 @@ export class GroupManager {
 	 */
 	async createGroup(name: string, description: string, roleIds?: string[], token?: string, orgId?: string): Promise<Group> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.GROUPS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.GROUPS, orgId);
 		}
 
 		try {
@@ -118,7 +118,7 @@ export class GroupManager {
 	 */
 	async getAllGroups(token?: string, orgId?: string): Promise<Group[]> {
 		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS);
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS, orgId);
 		}
 
 		try {

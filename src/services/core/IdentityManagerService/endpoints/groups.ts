@@ -27,6 +27,22 @@ async function assertUserInOrg(identity: IdentityManagerService, userId: string,
 	if (!isMember) throw new IdentityError(403, "CROSS_ORG_USER", "El usuario no pertenece a tu organización");
 }
 
+async function validateRoleIdsContext(identity: IdentityManagerService, roleIds: string[], callerOrgId?: string): Promise<void> {
+	if (!roleIds?.length) return;
+	if (!callerOrgId) return;
+
+	for (const rid of roleIds) {
+		const role = await identity.roles.getRole(rid);
+		if (!role) throw new IdentityError(400, "INVALID_ROLE", `Rol ${rid} no encontrado`);
+
+		const isGlobalPredefined = !role.orgId && !role.isCustom;
+		const isOwnOrg = role.orgId === callerOrgId;
+		if (!isGlobalPredefined && !isOwnOrg) {
+			throw new IdentityError(403, "CROSS_ORG_ROLE", `No puedes asignar el rol ${role.name} de otro contexto`);
+		}
+	}
+}
+
 // Endpoints HTTP para gestión de grupos
 export class GroupEndpoints {
 	static #identity: IdentityManagerService;
@@ -74,7 +90,18 @@ export class GroupEndpoints {
 		}
 		// Org admin usa orgId del token; global admin puede especificar en body
 		const orgId = ctx.user?.orgId || ctx.data?.orgId;
-		return GroupEndpoints.#identity.groups.createGroup(ctx.data.name, ctx.data.description || "", ctx.data.roleIds, ctx.token!, orgId);
+		if (ctx.data.roleIds?.length) {
+			await validateRoleIdsContext(GroupEndpoints.#identity, ctx.data.roleIds, orgId);
+		}
+		const group = await GroupEndpoints.#identity.groups.createGroup(
+			ctx.data.name,
+			ctx.data.description || "",
+			ctx.data.roleIds,
+			ctx.token!,
+			orgId
+		);
+		GroupEndpoints.#identity.permissions.invalidateGroup(group.id);
+		return group;
 	}
 
 	@RegisterEndpoint({
@@ -88,8 +115,14 @@ export class GroupEndpoints {
 			Partial<{ name: string; description: string; roleIds: string[]; permissions: { resource: string; action: number; scope: number }[] }>
 		>
 	) {
-		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, ctx.user?.orgId);
-		return GroupEndpoints.#identity.groups.updateGroup(ctx.params.groupId, ctx.data || {}, ctx.token!);
+		const callerOrgId = ctx.user?.orgId;
+		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId);
+		if (ctx.data?.roleIds?.length) {
+			await validateRoleIdsContext(GroupEndpoints.#identity, ctx.data.roleIds, callerOrgId);
+		}
+		const group = await GroupEndpoints.#identity.groups.updateGroup(ctx.params.groupId, ctx.data || {}, ctx.token!);
+		GroupEndpoints.#identity.permissions.invalidateGroup(ctx.params.groupId);
+		return group;
 	}
 
 	@RegisterEndpoint({
@@ -100,6 +133,7 @@ export class GroupEndpoints {
 	static async deleteGroup(ctx: EndpointCtx<{ groupId: string }>) {
 		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, ctx.user?.orgId);
 		await GroupEndpoints.#identity.groups.deleteGroup(ctx.params.groupId, ctx.token!);
+		GroupEndpoints.#identity.permissions.invalidateGroup(ctx.params.groupId);
 		return { success: true };
 	}
 
@@ -123,6 +157,7 @@ export class GroupEndpoints {
 		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId);
 		await assertUserInOrg(GroupEndpoints.#identity, ctx.params.userId, callerOrgId);
 		await GroupEndpoints.#identity.groups.addUserToGroup(ctx.params.userId, ctx.params.groupId, ctx.token!);
+		GroupEndpoints.#identity.permissions.invalidateUser(ctx.params.userId);
 		return { success: true };
 	}
 
@@ -132,7 +167,11 @@ export class GroupEndpoints {
 		permissions: ["identity.10.8"],
 	})
 	static async removeUserFromGroup(ctx: EndpointCtx<{ groupId: string; userId: string }>) {
+		const callerOrgId = ctx.user?.orgId;
+		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId);
+		await assertUserInOrg(GroupEndpoints.#identity, ctx.params.userId, callerOrgId);
 		await GroupEndpoints.#identity.groups.removeUserFromGroup(ctx.params.userId, ctx.params.groupId, ctx.token!);
+		GroupEndpoints.#identity.permissions.invalidateUser(ctx.params.userId);
 		return { success: true };
 	}
 }

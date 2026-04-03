@@ -69,7 +69,15 @@ export class RoleEndpoints {
 		}
 		// Org admin usa orgId del token; global admin puede especificar en body
 		const orgId = ctx.user?.orgId || ctx.data?.orgId;
-		return RoleEndpoints.#identity.roles.createRole(ctx.data.name, ctx.data.description || "", ctx.data.permissions, ctx.token!, orgId);
+		const role = await RoleEndpoints.#identity.roles.createRole(
+			ctx.data.name,
+			ctx.data.description || "",
+			ctx.data.permissions,
+			ctx.token!,
+			orgId
+		);
+		RoleEndpoints.#identity.permissions.invalidateRole(role.id);
+		return role;
 	}
 
 	@RegisterEndpoint({
@@ -79,7 +87,9 @@ export class RoleEndpoints {
 	})
 	static async updateRole(ctx: EndpointCtx<{ roleId: string }, Partial<{ name: string; description: string; permissions: any[] }>>) {
 		await assertRoleOrgAccess(RoleEndpoints.#identity, ctx.params.roleId, ctx.user?.orgId);
-		return RoleEndpoints.#identity.roles.updateRole(ctx.params.roleId, ctx.data || {}, ctx.token!);
+		const role = await RoleEndpoints.#identity.roles.updateRole(ctx.params.roleId, ctx.data || {}, ctx.token!);
+		RoleEndpoints.#identity.permissions.invalidateRole(ctx.params.roleId);
+		return role;
 	}
 
 	@RegisterEndpoint({
@@ -91,6 +101,7 @@ export class RoleEndpoints {
 		try {
 			await assertRoleOrgAccess(RoleEndpoints.#identity, ctx.params.roleId, ctx.user?.orgId);
 			await RoleEndpoints.#identity.roles.deleteRole(ctx.params.roleId, ctx.token!);
+			RoleEndpoints.#identity.permissions.invalidateRole(ctx.params.roleId);
 			return { success: true };
 		} catch (error: any) {
 			if (error.message?.includes("no encontrado")) {

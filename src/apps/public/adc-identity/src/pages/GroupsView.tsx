@@ -48,7 +48,7 @@ export function GroupsView({ scopes, orgId, isAdmin }: GroupsViewProps) {
 	const loadData = useCallback(async () => {
 		setLoading(true);
 		const promises: Promise<any>[] = [identityApi.listGroups(orgId), identityApi.listRoles(orgId)];
-		if (isAdmin) promises.push(identityApi.listOrganizations());
+		if (isAdmin && !orgId) promises.push(identityApi.listOrganizations());
 		const [groupsRes, rolesRes, orgsRes] = await Promise.all(promises);
 		if (groupsRes.success && groupsRes.data) {
 			setGroups(groupsRes.data);

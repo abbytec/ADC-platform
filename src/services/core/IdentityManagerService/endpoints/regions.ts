@@ -24,7 +24,8 @@ export class RegionEndpoints {
 		url: "/api/identity/regions",
 		permissions: ["identity.32.1"],
 	})
-	static async listRegions(_ctx: EndpointCtx) {
+	static async listRegions(ctx: EndpointCtx) {
+		requireGlobalAccess(ctx);
 		return RegionEndpoints.#identity.regions.getAllRegions();
 	}
 
@@ -34,6 +35,7 @@ export class RegionEndpoints {
 		permissions: ["identity.32.1"],
 	})
 	static async getRegion(ctx: EndpointCtx<{ path: string }>) {
+		requireGlobalAccess(ctx);
 		const region = await RegionEndpoints.#identity.regions.getRegion(ctx.params.path);
 		if (!region) throw new IdentityError(404, "REGION_NOT_FOUND", "Región no encontrada");
 		return region;

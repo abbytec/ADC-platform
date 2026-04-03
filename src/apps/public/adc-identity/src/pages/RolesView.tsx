@@ -43,7 +43,7 @@ export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
 	const loadData = useCallback(async () => {
 		setLoading(true);
 		const promises: Promise<any>[] = [identityApi.listRoles(orgId)];
-		if (isAdmin) promises.push(identityApi.listOrganizations());
+		if (isAdmin && !orgId) promises.push(identityApi.listOrganizations());
 		const [result, orgsRes] = await Promise.all(promises);
 		if (result.success && result.data) {
 			setRoles(result.data);
