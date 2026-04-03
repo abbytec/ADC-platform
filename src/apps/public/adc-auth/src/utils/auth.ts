@@ -66,7 +66,7 @@ export const authApi = {
 	 * Registro de nuevo usuario
 	 */
 	register: (username: string, email: string, password: string) =>
-		api.post<AuthResponse>("/register", { body: { username, email, password } }),
+		api.post<AuthResponse>("/register", { body: { username, email, password }, idempotencyKey: username }),
 
 	/**
 	 * Obtener sesión actual

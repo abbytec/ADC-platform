@@ -14,7 +14,7 @@ export const roleSchema = new Schema<Role>(
 			},
 		],
 		isCustom: { type: Boolean, default: false },
-		orgId: { type: String, default: null },
+		orgId: { type: String, default: null, index: true },
 		createdAt: { type: Date, default: Date.now },
 	},
 	{ id: false } // Disable Mongoose virtual id getter to avoid conflicts with custom id field

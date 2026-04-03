@@ -7,6 +7,7 @@
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
 import { AccessMenuItem } from "./components/molecules/adc-access-button/adc-access-button";
 import { Block } from "./components/organisms/adc-blocks-renderer/adc-blocks-renderer";
+import { ComboboxOption } from "./components/atoms/adc-combobox/adc-combobox";
 import { DropdownMenuItem } from "./components/molecules/adc-dropdown-menu/adc-dropdown-menu";
 import { InlineToken } from "./components/atoms/adc-inline-tokens/adc-inline-tokens";
 import { SelectOption } from "./components/atoms/adc-select/adc-select";
@@ -15,6 +16,7 @@ import { AccessMenuItem as AccessMenuItem1 } from "./components/molecules/adc-ac
 import { TabItem } from "./components/atoms/adc-tabs/adc-tabs";
 export { AccessMenuItem } from "./components/molecules/adc-access-button/adc-access-button";
 export { Block } from "./components/organisms/adc-blocks-renderer/adc-blocks-renderer";
+export { ComboboxOption } from "./components/atoms/adc-combobox/adc-combobox";
 export { DropdownMenuItem } from "./components/molecules/adc-dropdown-menu/adc-dropdown-menu";
 export { InlineToken } from "./components/atoms/adc-inline-tokens/adc-inline-tokens";
 export { SelectOption } from "./components/atoms/adc-select/adc-select";
@@ -209,6 +211,26 @@ export namespace Components {
          */
         "tone": "info" | "warning" | "success" | "error";
     }
+    interface AdcCheckbox {
+        /**
+          * Accessible name
+         */
+        "ariaLabel"?: string;
+        /**
+          * Whether the checkbox is checked
+          * @default false
+         */
+        "checked": boolean;
+        /**
+          * Whether the checkbox is disabled
+          * @default false
+         */
+        "disabled": boolean;
+        /**
+          * Label text
+         */
+        "label"?: string;
+    }
     interface AdcCodeBlock {
         "ariaLabel"?: string;
         /**
@@ -216,6 +238,33 @@ export namespace Components {
          */
         "content": string;
         "language"?: string;
+    }
+    interface AdcCombobox {
+        /**
+          * Debounce delay in ms for search input
+          * @default 200
+         */
+        "debounce": number;
+        /**
+          * Whether the combobox is disabled
+          * @default false
+         */
+        "disabled": boolean;
+        /**
+          * Available options — accepts an array or a JSON string
+          * @default []
+         */
+        "options": ComboboxOption[] | string;
+        /**
+          * Placeholder text when nothing is selected
+          * @default ""
+         */
+        "placeholder": string;
+        /**
+          * Currently selected value
+          * @default ""
+         */
+        "value": string;
     }
     interface AdcContentCard {
         "bannerAlt"?: string;
@@ -300,6 +349,12 @@ export namespace Components {
          */
         "size": string;
     }
+    interface AdcIconClose {
+        /**
+          * @default "1rem"
+         */
+        "size": string;
+    }
     interface AdcIconCommunity {
         /**
           * @default "2rem"
@@ -355,6 +410,12 @@ export namespace Components {
         "size": string;
     }
     interface AdcIconPencil {
+        /**
+          * @default "1rem"
+         */
+        "size": string;
+    }
+    interface AdcIconPlus {
         /**
           * @default "1rem"
          */
@@ -564,7 +625,7 @@ export namespace Components {
         /**
           * @default []
          */
-        "options": SelectOption[];
+        "options": SelectOption[] | string;
         /**
           * @default "Seleccione"
          */
@@ -837,6 +898,14 @@ export interface AdcButtonRoundedCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcButtonRoundedElement;
 }
+export interface AdcCheckboxCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcCheckboxElement;
+}
+export interface AdcComboboxCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdcComboboxElement;
+}
 export interface AdcContentCardCustomEvent<T> extends CustomEvent<T> {
     detail: T;
     target: HTMLAdcContentCardElement;
@@ -1012,11 +1081,45 @@ declare global {
         prototype: HTMLAdcCalloutElement;
         new (): HTMLAdcCalloutElement;
     };
+    interface HTMLAdcCheckboxElementEventMap {
+        "adcChange": boolean;
+    }
+    interface HTMLAdcCheckboxElement extends Components.AdcCheckbox, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcCheckboxElementEventMap>(type: K, listener: (this: HTMLAdcCheckboxElement, ev: AdcCheckboxCustomEvent<HTMLAdcCheckboxElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcCheckboxElementEventMap>(type: K, listener: (this: HTMLAdcCheckboxElement, ev: AdcCheckboxCustomEvent<HTMLAdcCheckboxElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcCheckboxElement: {
+        prototype: HTMLAdcCheckboxElement;
+        new (): HTMLAdcCheckboxElement;
+    };
     interface HTMLAdcCodeBlockElement extends Components.AdcCodeBlock, HTMLStencilElement {
     }
     var HTMLAdcCodeBlockElement: {
         prototype: HTMLAdcCodeBlockElement;
         new (): HTMLAdcCodeBlockElement;
+    };
+    interface HTMLAdcComboboxElementEventMap {
+        "adcChange": string;
+    }
+    interface HTMLAdcComboboxElement extends Components.AdcCombobox, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdcComboboxElementEventMap>(type: K, listener: (this: HTMLAdcComboboxElement, ev: AdcComboboxCustomEvent<HTMLAdcComboboxElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdcComboboxElementEventMap>(type: K, listener: (this: HTMLAdcComboboxElement, ev: AdcComboboxCustomEvent<HTMLAdcComboboxElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLAdcComboboxElement: {
+        prototype: HTMLAdcComboboxElement;
+        new (): HTMLAdcComboboxElement;
     };
     interface HTMLAdcContentCardElementEventMap {
         "cardClick": MouseEvent;
@@ -1082,6 +1185,12 @@ declare global {
         prototype: HTMLAdcIconAppIdentityElement;
         new (): HTMLAdcIconAppIdentityElement;
     };
+    interface HTMLAdcIconCloseElement extends Components.AdcIconClose, HTMLStencilElement {
+    }
+    var HTMLAdcIconCloseElement: {
+        prototype: HTMLAdcIconCloseElement;
+        new (): HTMLAdcIconCloseElement;
+    };
     interface HTMLAdcIconCommunityElement extends Components.AdcIconCommunity, HTMLStencilElement {
     }
     var HTMLAdcIconCommunityElement: {
@@ -1141,6 +1250,12 @@ declare global {
     var HTMLAdcIconPencilElement: {
         prototype: HTMLAdcIconPencilElement;
         new (): HTMLAdcIconPencilElement;
+    };
+    interface HTMLAdcIconPlusElement extends Components.AdcIconPlus, HTMLStencilElement {
+    }
+    var HTMLAdcIconPlusElement: {
+        prototype: HTMLAdcIconPlusElement;
+        new (): HTMLAdcIconPlusElement;
     };
     interface HTMLAdcIconTrashElement extends Components.AdcIconTrash, HTMLStencilElement {
     }
@@ -1426,7 +1541,9 @@ declare global {
         "adc-button-expand": HTMLAdcButtonExpandElement;
         "adc-button-rounded": HTMLAdcButtonRoundedElement;
         "adc-callout": HTMLAdcCalloutElement;
+        "adc-checkbox": HTMLAdcCheckboxElement;
         "adc-code-block": HTMLAdcCodeBlockElement;
+        "adc-combobox": HTMLAdcComboboxElement;
         "adc-content-card": HTMLAdcContentCardElement;
         "adc-custom-error": HTMLAdcCustomErrorElement;
         "adc-divider": HTMLAdcDividerElement;
@@ -1434,6 +1551,7 @@ declare global {
         "adc-feature-card": HTMLAdcFeatureCardElement;
         "adc-icon-app-community": HTMLAdcIconAppCommunityElement;
         "adc-icon-app-identity": HTMLAdcIconAppIdentityElement;
+        "adc-icon-close": HTMLAdcIconCloseElement;
         "adc-icon-community": HTMLAdcIconCommunityElement;
         "adc-icon-edit": HTMLAdcIconEditElement;
         "adc-icon-learning": HTMLAdcIconLearningElement;
@@ -1444,6 +1562,7 @@ declare global {
         "adc-icon-nitro": HTMLAdcIconNitroElement;
         "adc-icon-opensource": HTMLAdcIconOpensourceElement;
         "adc-icon-pencil": HTMLAdcIconPencilElement;
+        "adc-icon-plus": HTMLAdcIconPlusElement;
         "adc-icon-trash": HTMLAdcIconTrashElement;
         "adc-icon-vip": HTMLAdcIconVipElement;
         "adc-inline-tokens": HTMLAdcInlineTokensElement;
@@ -1677,6 +1796,27 @@ declare namespace LocalJSX {
          */
         "tone"?: "info" | "warning" | "success" | "error";
     }
+    interface AdcCheckbox {
+        /**
+          * Accessible name
+         */
+        "ariaLabel"?: string;
+        /**
+          * Whether the checkbox is checked
+          * @default false
+         */
+        "checked"?: boolean;
+        /**
+          * Whether the checkbox is disabled
+          * @default false
+         */
+        "disabled"?: boolean;
+        /**
+          * Label text
+         */
+        "label"?: string;
+        "onAdcChange"?: (event: AdcCheckboxCustomEvent<boolean>) => void;
+    }
     interface AdcCodeBlock {
         "ariaLabel"?: string;
         /**
@@ -1684,6 +1824,34 @@ declare namespace LocalJSX {
          */
         "content"?: string;
         "language"?: string;
+    }
+    interface AdcCombobox {
+        /**
+          * Debounce delay in ms for search input
+          * @default 200
+         */
+        "debounce"?: number;
+        /**
+          * Whether the combobox is disabled
+          * @default false
+         */
+        "disabled"?: boolean;
+        "onAdcChange"?: (event: AdcComboboxCustomEvent<string>) => void;
+        /**
+          * Available options — accepts an array or a JSON string
+          * @default []
+         */
+        "options"?: ComboboxOption[] | string;
+        /**
+          * Placeholder text when nothing is selected
+          * @default ""
+         */
+        "placeholder"?: string;
+        /**
+          * Currently selected value
+          * @default ""
+         */
+        "value"?: string;
     }
     interface AdcContentCard {
         "bannerAlt"?: string;
@@ -1770,6 +1938,12 @@ declare namespace LocalJSX {
          */
         "size"?: string;
     }
+    interface AdcIconClose {
+        /**
+          * @default "1rem"
+         */
+        "size"?: string;
+    }
     interface AdcIconCommunity {
         /**
           * @default "2rem"
@@ -1825,6 +1999,12 @@ declare namespace LocalJSX {
         "size"?: string;
     }
     interface AdcIconPencil {
+        /**
+          * @default "1rem"
+         */
+        "size"?: string;
+    }
+    interface AdcIconPlus {
         /**
           * @default "1rem"
          */
@@ -2039,7 +2219,7 @@ declare namespace LocalJSX {
         /**
           * @default []
          */
-        "options"?: SelectOption[];
+        "options"?: SelectOption[] | string;
         /**
           * @default "Seleccione"
          */
@@ -2355,10 +2535,23 @@ declare namespace LocalJSX {
         "tone": "info" | "warning" | "success" | "error";
         "role": "note" | "status" | "alert";
     }
+    interface AdcCheckboxAttributes {
+        "checked": boolean;
+        "disabled": boolean;
+        "label": string;
+        "ariaLabel": string;
+    }
     interface AdcCodeBlockAttributes {
         "language": string;
         "content": string;
         "ariaLabel": string;
+    }
+    interface AdcComboboxAttributes {
+        "value": string;
+        "options": ComboboxOption[] | string;
+        "placeholder": string;
+        "debounce": number;
+        "disabled": boolean;
     }
     interface AdcContentCardAttributes {
         "title": string;
@@ -2390,6 +2583,9 @@ declare namespace LocalJSX {
     interface AdcIconAppIdentityAttributes {
         "size": string;
     }
+    interface AdcIconCloseAttributes {
+        "size": string;
+    }
     interface AdcIconCommunityAttributes {
         "size": string;
     }
@@ -2418,6 +2614,9 @@ declare namespace LocalJSX {
         "size": string;
     }
     interface AdcIconPencilAttributes {
+        "size": string;
+    }
+    interface AdcIconPlusAttributes {
         "size": string;
     }
     interface AdcIconTrashAttributes {
@@ -2489,6 +2688,7 @@ declare namespace LocalJSX {
     }
     interface AdcSelectAttributes {
         "value": string;
+        "options": SelectOption[] | string;
         "placeholder": string;
     }
     interface AdcShareButtonsAttributes {
@@ -2575,7 +2775,9 @@ declare namespace LocalJSX {
         "adc-button-expand": Omit<AdcButtonExpand, keyof AdcButtonExpandAttributes> & { [K in keyof AdcButtonExpand & keyof AdcButtonExpandAttributes]?: AdcButtonExpand[K] } & { [K in keyof AdcButtonExpand & keyof AdcButtonExpandAttributes as `attr:${K}`]?: AdcButtonExpandAttributes[K] } & { [K in keyof AdcButtonExpand & keyof AdcButtonExpandAttributes as `prop:${K}`]?: AdcButtonExpand[K] };
         "adc-button-rounded": Omit<AdcButtonRounded, keyof AdcButtonRoundedAttributes> & { [K in keyof AdcButtonRounded & keyof AdcButtonRoundedAttributes]?: AdcButtonRounded[K] } & { [K in keyof AdcButtonRounded & keyof AdcButtonRoundedAttributes as `attr:${K}`]?: AdcButtonRoundedAttributes[K] } & { [K in keyof AdcButtonRounded & keyof AdcButtonRoundedAttributes as `prop:${K}`]?: AdcButtonRounded[K] };
         "adc-callout": Omit<AdcCallout, keyof AdcCalloutAttributes> & { [K in keyof AdcCallout & keyof AdcCalloutAttributes]?: AdcCallout[K] } & { [K in keyof AdcCallout & keyof AdcCalloutAttributes as `attr:${K}`]?: AdcCalloutAttributes[K] } & { [K in keyof AdcCallout & keyof AdcCalloutAttributes as `prop:${K}`]?: AdcCallout[K] };
+        "adc-checkbox": Omit<AdcCheckbox, keyof AdcCheckboxAttributes> & { [K in keyof AdcCheckbox & keyof AdcCheckboxAttributes]?: AdcCheckbox[K] } & { [K in keyof AdcCheckbox & keyof AdcCheckboxAttributes as `attr:${K}`]?: AdcCheckboxAttributes[K] } & { [K in keyof AdcCheckbox & keyof AdcCheckboxAttributes as `prop:${K}`]?: AdcCheckbox[K] };
         "adc-code-block": Omit<AdcCodeBlock, keyof AdcCodeBlockAttributes> & { [K in keyof AdcCodeBlock & keyof AdcCodeBlockAttributes]?: AdcCodeBlock[K] } & { [K in keyof AdcCodeBlock & keyof AdcCodeBlockAttributes as `attr:${K}`]?: AdcCodeBlockAttributes[K] } & { [K in keyof AdcCodeBlock & keyof AdcCodeBlockAttributes as `prop:${K}`]?: AdcCodeBlock[K] };
+        "adc-combobox": Omit<AdcCombobox, keyof AdcComboboxAttributes> & { [K in keyof AdcCombobox & keyof AdcComboboxAttributes]?: AdcCombobox[K] } & { [K in keyof AdcCombobox & keyof AdcComboboxAttributes as `attr:${K}`]?: AdcComboboxAttributes[K] } & { [K in keyof AdcCombobox & keyof AdcComboboxAttributes as `prop:${K}`]?: AdcCombobox[K] };
         "adc-content-card": Omit<AdcContentCard, keyof AdcContentCardAttributes> & { [K in keyof AdcContentCard & keyof AdcContentCardAttributes]?: AdcContentCard[K] } & { [K in keyof AdcContentCard & keyof AdcContentCardAttributes as `attr:${K}`]?: AdcContentCardAttributes[K] } & { [K in keyof AdcContentCard & keyof AdcContentCardAttributes as `prop:${K}`]?: AdcContentCard[K] };
         "adc-custom-error": Omit<AdcCustomError, keyof AdcCustomErrorAttributes> & { [K in keyof AdcCustomError & keyof AdcCustomErrorAttributes]?: AdcCustomError[K] } & { [K in keyof AdcCustomError & keyof AdcCustomErrorAttributes as `attr:${K}`]?: AdcCustomErrorAttributes[K] } & { [K in keyof AdcCustomError & keyof AdcCustomErrorAttributes as `prop:${K}`]?: AdcCustomError[K] };
         "adc-divider": AdcDivider;
@@ -2583,6 +2785,7 @@ declare namespace LocalJSX {
         "adc-feature-card": Omit<AdcFeatureCard, keyof AdcFeatureCardAttributes> & { [K in keyof AdcFeatureCard & keyof AdcFeatureCardAttributes]?: AdcFeatureCard[K] } & { [K in keyof AdcFeatureCard & keyof AdcFeatureCardAttributes as `attr:${K}`]?: AdcFeatureCardAttributes[K] } & { [K in keyof AdcFeatureCard & keyof AdcFeatureCardAttributes as `prop:${K}`]?: AdcFeatureCard[K] };
         "adc-icon-app-community": Omit<AdcIconAppCommunity, keyof AdcIconAppCommunityAttributes> & { [K in keyof AdcIconAppCommunity & keyof AdcIconAppCommunityAttributes]?: AdcIconAppCommunity[K] } & { [K in keyof AdcIconAppCommunity & keyof AdcIconAppCommunityAttributes as `attr:${K}`]?: AdcIconAppCommunityAttributes[K] } & { [K in keyof AdcIconAppCommunity & keyof AdcIconAppCommunityAttributes as `prop:${K}`]?: AdcIconAppCommunity[K] };
         "adc-icon-app-identity": Omit<AdcIconAppIdentity, keyof AdcIconAppIdentityAttributes> & { [K in keyof AdcIconAppIdentity & keyof AdcIconAppIdentityAttributes]?: AdcIconAppIdentity[K] } & { [K in keyof AdcIconAppIdentity & keyof AdcIconAppIdentityAttributes as `attr:${K}`]?: AdcIconAppIdentityAttributes[K] } & { [K in keyof AdcIconAppIdentity & keyof AdcIconAppIdentityAttributes as `prop:${K}`]?: AdcIconAppIdentity[K] };
+        "adc-icon-close": Omit<AdcIconClose, keyof AdcIconCloseAttributes> & { [K in keyof AdcIconClose & keyof AdcIconCloseAttributes]?: AdcIconClose[K] } & { [K in keyof AdcIconClose & keyof AdcIconCloseAttributes as `attr:${K}`]?: AdcIconCloseAttributes[K] } & { [K in keyof AdcIconClose & keyof AdcIconCloseAttributes as `prop:${K}`]?: AdcIconClose[K] };
         "adc-icon-community": Omit<AdcIconCommunity, keyof AdcIconCommunityAttributes> & { [K in keyof AdcIconCommunity & keyof AdcIconCommunityAttributes]?: AdcIconCommunity[K] } & { [K in keyof AdcIconCommunity & keyof AdcIconCommunityAttributes as `attr:${K}`]?: AdcIconCommunityAttributes[K] } & { [K in keyof AdcIconCommunity & keyof AdcIconCommunityAttributes as `prop:${K}`]?: AdcIconCommunity[K] };
         "adc-icon-edit": Omit<AdcIconEdit, keyof AdcIconEditAttributes> & { [K in keyof AdcIconEdit & keyof AdcIconEditAttributes]?: AdcIconEdit[K] } & { [K in keyof AdcIconEdit & keyof AdcIconEditAttributes as `attr:${K}`]?: AdcIconEditAttributes[K] } & { [K in keyof AdcIconEdit & keyof AdcIconEditAttributes as `prop:${K}`]?: AdcIconEdit[K] };
         "adc-icon-learning": Omit<AdcIconLearning, keyof AdcIconLearningAttributes> & { [K in keyof AdcIconLearning & keyof AdcIconLearningAttributes]?: AdcIconLearning[K] } & { [K in keyof AdcIconLearning & keyof AdcIconLearningAttributes as `attr:${K}`]?: AdcIconLearningAttributes[K] } & { [K in keyof AdcIconLearning & keyof AdcIconLearningAttributes as `prop:${K}`]?: AdcIconLearning[K] };
@@ -2593,6 +2796,7 @@ declare namespace LocalJSX {
         "adc-icon-nitro": Omit<AdcIconNitro, keyof AdcIconNitroAttributes> & { [K in keyof AdcIconNitro & keyof AdcIconNitroAttributes]?: AdcIconNitro[K] } & { [K in keyof AdcIconNitro & keyof AdcIconNitroAttributes as `attr:${K}`]?: AdcIconNitroAttributes[K] } & { [K in keyof AdcIconNitro & keyof AdcIconNitroAttributes as `prop:${K}`]?: AdcIconNitro[K] };
         "adc-icon-opensource": Omit<AdcIconOpensource, keyof AdcIconOpensourceAttributes> & { [K in keyof AdcIconOpensource & keyof AdcIconOpensourceAttributes]?: AdcIconOpensource[K] } & { [K in keyof AdcIconOpensource & keyof AdcIconOpensourceAttributes as `attr:${K}`]?: AdcIconOpensourceAttributes[K] } & { [K in keyof AdcIconOpensource & keyof AdcIconOpensourceAttributes as `prop:${K}`]?: AdcIconOpensource[K] };
         "adc-icon-pencil": Omit<AdcIconPencil, keyof AdcIconPencilAttributes> & { [K in keyof AdcIconPencil & keyof AdcIconPencilAttributes]?: AdcIconPencil[K] } & { [K in keyof AdcIconPencil & keyof AdcIconPencilAttributes as `attr:${K}`]?: AdcIconPencilAttributes[K] } & { [K in keyof AdcIconPencil & keyof AdcIconPencilAttributes as `prop:${K}`]?: AdcIconPencil[K] };
+        "adc-icon-plus": Omit<AdcIconPlus, keyof AdcIconPlusAttributes> & { [K in keyof AdcIconPlus & keyof AdcIconPlusAttributes]?: AdcIconPlus[K] } & { [K in keyof AdcIconPlus & keyof AdcIconPlusAttributes as `attr:${K}`]?: AdcIconPlusAttributes[K] } & { [K in keyof AdcIconPlus & keyof AdcIconPlusAttributes as `prop:${K}`]?: AdcIconPlus[K] };
         "adc-icon-trash": Omit<AdcIconTrash, keyof AdcIconTrashAttributes> & { [K in keyof AdcIconTrash & keyof AdcIconTrashAttributes]?: AdcIconTrash[K] } & { [K in keyof AdcIconTrash & keyof AdcIconTrashAttributes as `attr:${K}`]?: AdcIconTrashAttributes[K] } & { [K in keyof AdcIconTrash & keyof AdcIconTrashAttributes as `prop:${K}`]?: AdcIconTrash[K] };
         "adc-icon-vip": Omit<AdcIconVip, keyof AdcIconVipAttributes> & { [K in keyof AdcIconVip & keyof AdcIconVipAttributes]?: AdcIconVip[K] } & { [K in keyof AdcIconVip & keyof AdcIconVipAttributes as `attr:${K}`]?: AdcIconVipAttributes[K] } & { [K in keyof AdcIconVip & keyof AdcIconVipAttributes as `prop:${K}`]?: AdcIconVip[K] };
         "adc-inline-tokens": Omit<AdcInlineTokens, keyof AdcInlineTokensAttributes> & { [K in keyof AdcInlineTokens & keyof AdcInlineTokensAttributes]?: AdcInlineTokens[K] } & { [K in keyof AdcInlineTokens & keyof AdcInlineTokensAttributes as `attr:${K}`]?: AdcInlineTokensAttributes[K] } & { [K in keyof AdcInlineTokens & keyof AdcInlineTokensAttributes as `prop:${K}`]?: AdcInlineTokens[K] };
@@ -2643,7 +2847,9 @@ declare module "@stencil/core" {
             "adc-button-expand": LocalJSX.IntrinsicElements["adc-button-expand"] & JSXBase.HTMLAttributes<HTMLAdcButtonExpandElement>;
             "adc-button-rounded": LocalJSX.IntrinsicElements["adc-button-rounded"] & JSXBase.HTMLAttributes<HTMLAdcButtonRoundedElement>;
             "adc-callout": LocalJSX.IntrinsicElements["adc-callout"] & JSXBase.HTMLAttributes<HTMLAdcCalloutElement>;
+            "adc-checkbox": LocalJSX.IntrinsicElements["adc-checkbox"] & JSXBase.HTMLAttributes<HTMLAdcCheckboxElement>;
             "adc-code-block": LocalJSX.IntrinsicElements["adc-code-block"] & JSXBase.HTMLAttributes<HTMLAdcCodeBlockElement>;
+            "adc-combobox": LocalJSX.IntrinsicElements["adc-combobox"] & JSXBase.HTMLAttributes<HTMLAdcComboboxElement>;
             "adc-content-card": LocalJSX.IntrinsicElements["adc-content-card"] & JSXBase.HTMLAttributes<HTMLAdcContentCardElement>;
             "adc-custom-error": LocalJSX.IntrinsicElements["adc-custom-error"] & JSXBase.HTMLAttributes<HTMLAdcCustomErrorElement>;
             "adc-divider": LocalJSX.IntrinsicElements["adc-divider"] & JSXBase.HTMLAttributes<HTMLAdcDividerElement>;
@@ -2651,6 +2857,7 @@ declare module "@stencil/core" {
             "adc-feature-card": LocalJSX.IntrinsicElements["adc-feature-card"] & JSXBase.HTMLAttributes<HTMLAdcFeatureCardElement>;
             "adc-icon-app-community": LocalJSX.IntrinsicElements["adc-icon-app-community"] & JSXBase.HTMLAttributes<HTMLAdcIconAppCommunityElement>;
             "adc-icon-app-identity": LocalJSX.IntrinsicElements["adc-icon-app-identity"] & JSXBase.HTMLAttributes<HTMLAdcIconAppIdentityElement>;
+            "adc-icon-close": LocalJSX.IntrinsicElements["adc-icon-close"] & JSXBase.HTMLAttributes<HTMLAdcIconCloseElement>;
             "adc-icon-community": LocalJSX.IntrinsicElements["adc-icon-community"] & JSXBase.HTMLAttributes<HTMLAdcIconCommunityElement>;
             "adc-icon-edit": LocalJSX.IntrinsicElements["adc-icon-edit"] & JSXBase.HTMLAttributes<HTMLAdcIconEditElement>;
             "adc-icon-learning": LocalJSX.IntrinsicElements["adc-icon-learning"] & JSXBase.HTMLAttributes<HTMLAdcIconLearningElement>;
@@ -2661,6 +2868,7 @@ declare module "@stencil/core" {
             "adc-icon-nitro": LocalJSX.IntrinsicElements["adc-icon-nitro"] & JSXBase.HTMLAttributes<HTMLAdcIconNitroElement>;
             "adc-icon-opensource": LocalJSX.IntrinsicElements["adc-icon-opensource"] & JSXBase.HTMLAttributes<HTMLAdcIconOpensourceElement>;
             "adc-icon-pencil": LocalJSX.IntrinsicElements["adc-icon-pencil"] & JSXBase.HTMLAttributes<HTMLAdcIconPencilElement>;
+            "adc-icon-plus": LocalJSX.IntrinsicElements["adc-icon-plus"] & JSXBase.HTMLAttributes<HTMLAdcIconPlusElement>;
             "adc-icon-trash": LocalJSX.IntrinsicElements["adc-icon-trash"] & JSXBase.HTMLAttributes<HTMLAdcIconTrashElement>;
             "adc-icon-vip": LocalJSX.IntrinsicElements["adc-icon-vip"] & JSXBase.HTMLAttributes<HTMLAdcIconVipElement>;
             "adc-inline-tokens": LocalJSX.IntrinsicElements["adc-inline-tokens"] & JSXBase.HTMLAttributes<HTMLAdcInlineTokensElement>;

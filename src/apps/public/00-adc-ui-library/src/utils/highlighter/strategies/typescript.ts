@@ -16,10 +16,10 @@ function applyTSTokenReplacements(input: string): string {
 		protectedSpans.push([ph, `<span class="token keyword">${kw}</span> <span class="token type">${name}</span>`]);
 		return ph;
 	});
-	out = out.replace(keywordPatternA, '<span class="token keyword">$1</span>');
-	out = out.replace(keywordPatternB, '<span class="token keyword">$1</span>');
-	out = out.replace(typePattern, '<span class="token type">$1</span>');
-	out = out.replace(functionPattern, '<span class="token function">$1</span>');
+	out = out.replaceAll(keywordPatternA, '<span class="token keyword">$1</span>');
+	out = out.replaceAll(keywordPatternB, '<span class="token keyword">$1</span>');
+	out = out.replaceAll(typePattern, '<span class="token type">$1</span>');
+	out = out.replaceAll(functionPattern, '<span class="token function">$1</span>');
 	for (const [ph, html] of protectedSpans) {
 		out = out.replaceAll(ph, html);
 	}

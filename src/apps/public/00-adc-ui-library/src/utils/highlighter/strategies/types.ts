@@ -9,5 +9,5 @@ export interface HighlighterStrategy {
  * Escapes HTML special characters to prevent XSS
  */
 export function escapeHtml(code: string): string {
-	return code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	return code.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }

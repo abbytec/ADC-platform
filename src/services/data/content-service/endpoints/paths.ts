@@ -2,6 +2,7 @@ import type { Model } from "mongoose";
 import type { LearningPath, Article, PathItem } from "../../../../common/ADC/types/learning.js";
 import { RegisterEndpoint, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
 import { HttpError } from "@common/types/ADCCustomError.ts";
+import { P } from "@common/types/Permissions.ts";
 
 interface ListPathsQuery {
 	public?: string;
@@ -109,7 +110,7 @@ export class PathEndpoints {
 		return { path: { ...doc, items: populatedItems } };
 	}
 
-	@RegisterEndpoint({ method: "POST", url: "/api/learning/paths", permissions: ["content.write"] })
+	@RegisterEndpoint({ method: "POST", url: "/api/learning/paths", permissions: [P.CONTENT.WRITE] })
 	static async create(ctx: EndpointCtx<Record<string, string>, CreatePathBody>): Promise<{ path: LearningPath }> {
 		const data = ctx.data;
 
@@ -125,7 +126,7 @@ export class PathEndpoints {
 		return { path: doc.toObject() as LearningPath };
 	}
 
-	@RegisterEndpoint({ method: "PUT", url: "/api/learning/paths/:slug", permissions: ["content.write"] })
+	@RegisterEndpoint({ method: "PUT", url: "/api/learning/paths/:slug", permissions: [P.CONTENT.WRITE] })
 	static async update(ctx: EndpointCtx<SlugParams, UpdatePathBody>): Promise<{ path: LearningPath }> {
 		const { slug } = ctx.params;
 		const updateData = ctx.data;
@@ -143,7 +144,7 @@ export class PathEndpoints {
 		return { path: doc as LearningPath };
 	}
 
-	@RegisterEndpoint({ method: "DELETE", url: "/api/learning/paths/:slug", permissions: ["content.delete"] })
+	@RegisterEndpoint({ method: "DELETE", url: "/api/learning/paths/:slug", permissions: [P.CONTENT.DELETE] })
 	static async delete(ctx: EndpointCtx<SlugParams>): Promise<{ success: boolean }> {
 		const { slug } = ctx.params;
 		const result = await PathEndpoints.model.deleteOne({ slug });

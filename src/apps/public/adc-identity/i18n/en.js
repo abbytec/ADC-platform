@@ -17,7 +17,9 @@ export default {
 		active: "Active",
 		inactive: "Inactive",
 		loading: "Loading...",
-		organization: "Organization"
+		organization: "Organization",
+		orgFilter: "Filter by organization",
+		globalView: "Global (no organization)"
 	},
 	tabs: {
 		users: "Users",
@@ -61,7 +63,10 @@ export default {
 		deleteConfirm: "Are you sure you want to delete role \"{{name}}\"? Users with this role will lose associated permissions.",
 		noRoles: "No roles found",
 		namePlaceholder: "Role name",
-		descriptionPlaceholder: "Role description"
+		descriptionPlaceholder: "Role description",
+		scope: "Scope",
+		globalScope: "Global",
+		orgScope: "Organization"
 	},
 	groups: {
 		name: "Name",
@@ -78,7 +83,10 @@ export default {
 		descriptionPlaceholder: "Group description",
 		manageMembers: "Members of {{name}}",
 		searchUserPlaceholder: "Search users by name or email...",
-		noMembers: "No members in this group"
+		noMembers: "No members in this group",
+		scope: "Scope",
+		globalScope: "Global",
+		orgScope: "Organization"
 	},
 	organizations: {
 		slug: "Slug",
@@ -156,6 +164,7 @@ export default {
 		GLOBAL_ONLY: "This operation requires global access (personal mode)",
 		CROSS_ORG_ROLE: "You cannot assign a role from another organization",
 		CROSS_ORG_USER: "The user does not belong to your organization",
+		SCOPE_MISMATCH: "You cannot modify resources from a different scope context",
 		CANNOT_MODIFY_PREDEFINED: "Predefined roles cannot be modified",
 		CANNOT_DELETE_PREDEFINED: "Predefined roles cannot be deleted",
 		// Not found

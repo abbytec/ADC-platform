@@ -14,7 +14,7 @@ export const groupSchema = new Schema<Group>(
 				scope: { type: Number, required: true }, // Bitfield
 			},
 		],
-		orgId: { type: String, default: null },
+		orgId: { type: String, default: null, index: true },
 		metadata: Schema.Types.Mixed,
 		createdAt: { type: Date, default: Date.now },
 		updatedAt: { type: Date, default: Date.now },

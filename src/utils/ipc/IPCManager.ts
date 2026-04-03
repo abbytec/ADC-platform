@@ -49,7 +49,7 @@ class IPCManager {
 	 */
 	static getPipePath(moduleName: string, moduleVersion: string, language: string): string {
 		// Sanitizar el nombre del módulo (reemplazar / y \ por -)
-		const safeModuleName = moduleName.replace(/[/\\]/g, "-");
+		const safeModuleName = moduleName.replaceAll(/[/\\]/g, "-");
 		const pipeName = `${safeModuleName}-${moduleVersion}-${language}`;
 		if (os.platform() === "win32") {
 			return `${IPCManager.PIPE_BASE_PATH}${pipeName}`;

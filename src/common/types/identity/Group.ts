@@ -10,7 +10,7 @@ export interface Group {
 	roleIds: string[];
 	permissions?: Permission[];
 	/** Organización a la que pertenece (null = global) */
-	orgId?: string;
+	orgId?: string | null;
 	metadata?: Record<string, any>;
 	createdAt: Date;
 	updatedAt: Date;

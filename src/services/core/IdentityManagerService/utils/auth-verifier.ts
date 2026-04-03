@@ -6,7 +6,7 @@ export interface IAuthVerifier {
 	/**
 	 * Verifica un token y retorna el userId si es válido
 	 */
-	verifyToken(token: string): Promise<{ valid: boolean; userId?: string; error?: string }>;
+	verifyToken(token: string): Promise<{ valid: boolean; userId?: string; orgId?: string; error?: string }>;
 
 	/**
 	 * Verifica si un usuario tiene un permiso específico
@@ -58,7 +58,8 @@ export class PermissionChecker {
 			throw new AuthorizationError(result.error || "Token inválido", "INVALID_TOKEN");
 		}
 
-		const hasPermission = await authVerifier.hasPermission(result.userId, action, scope, orgId);
+		const effectiveOrgId = orgId ?? result.orgId;
+		const hasPermission = await authVerifier.hasPermission(result.userId, action, scope, effectiveOrgId);
 		if (!hasPermission) {
 			throw new AuthorizationError(
 				`Usuario ${result.userId} no tiene permisos (action=${action}, scope=${scope})`,

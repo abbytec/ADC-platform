@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
-import { spawn, ChildProcess, exec, ExecException } from "node:child_process";
+import { spawn, ChildProcess } from "node:child_process";
 import { IModuleLoader } from "../../../interfaces/modules/IModuleLoader.js";
 import { IModule, IModuleConfig } from "../../../interfaces/modules/IModule.js";
 import { IProvider } from "../../../providers/BaseProvider.js";
@@ -148,13 +148,30 @@ export default class CppLoader implements IModuleLoader {
 		Logger.debug(`[CppLoader] Iniciando proceso C++: ${indexFile}`);
 		Logger.debug(`[CppLoader] CPPPATH: ${cppPath}`);
 
-		exec(
-			`/usr/bin/cmake ${modulePath} -B ../../../../temp/builds/${moduleType}/${moduleName}`,
-			(error: ExecException | null, stdout: string, _stderr: string) => {
-				if (error) return Logger.error("Error:", error);
-				Logger.debug("Salida:", stdout);
-			}
-		);
+		const cmakeProcess = spawn("/usr/bin/cmake", [modulePath, "-B", `../../../../temp/builds/${moduleType}/${moduleName}`], {
+			stdio: "pipe",
+		});
+
+		let cmakeOutput = "";
+		let cmakeError = "";
+		cmakeProcess.stdout?.on("data", (data: Buffer) => {
+			cmakeOutput += data.toString();
+		});
+		cmakeProcess.stderr?.on("data", (data: Buffer) => {
+			cmakeError += data.toString();
+		});
+
+		await new Promise<void>((resolve, reject) => {
+			cmakeProcess.on("exit", (code) => {
+				if (code !== 0) {
+					Logger.error(`[CppLoader] CMake falló (código ${code}):`, cmakeError.trim());
+					reject(new Error(`CMake falló con código ${code}`));
+				} else {
+					if (cmakeOutput.trim()) Logger.debug("[CppLoader] CMake:", cmakeOutput.trim());
+					resolve();
+				}
+			});
+		});
 
 		const cppProcess = spawn(`../../../../temp/builds/${moduleType}/${moduleName}/index`, [], {
 			env,

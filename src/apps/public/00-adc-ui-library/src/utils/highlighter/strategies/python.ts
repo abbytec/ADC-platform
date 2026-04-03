@@ -38,16 +38,16 @@ export class PythonHighlighter implements HighlighterStrategy {
 
 		// Line comments
 		const lineCommentRegex = /#.*$/gm;
-		escaped = escaped.replace(lineCommentRegex, (match) => {
+		escaped = escaped.replaceAll(lineCommentRegex, (match) => {
 			const ph = `__COMMENT_${placeholderIndex++}__`;
 			replacements.set(ph, `<span class="token comment">${match}</span>`);
 			return ph;
 		});
 
 		// Apply token replacements
-		escaped = escaped.replace(keywordPattern, '<span class="token keyword">$1</span>');
-		escaped = escaped.replace(typePattern, '<span class="token type">$1</span>');
-		escaped = escaped.replace(functionPattern, '<span class="token function">$1</span>');
+		escaped = escaped.replaceAll(keywordPattern, '<span class="token keyword">$1</span>');
+		escaped = escaped.replaceAll(typePattern, '<span class="token type">$1</span>');
+		escaped = escaped.replaceAll(functionPattern, '<span class="token function">$1</span>');
 
 		// Restore placeholders
 		if (replacements.size) {

@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { BaseService } from "../../BaseService.js";
 import type IdentityManagerService from "../../core/IdentityManagerService/index.js";
 import type { IJWTProviderMultiKey } from "../../../providers/security/jwt/types.d.ts";
@@ -34,6 +34,7 @@ interface SessionManagerConfig {
 /** Nombre de las cookies */
 const ACCESS_COOKIE_NAME = "access_token";
 const IS_DEV = process.env.NODE_ENV !== "production";
+const PERMISSION_FINGERPRINT_TTL_SECONDS = 60;
 
 /**
  * SessionManagerService - Orquestador de autenticación y sesiones
@@ -206,12 +207,76 @@ export default class SessionManagerService extends BaseService {
 		}
 
 		const result = await this.#tokenService.verifyAccessToken(token);
+		if (process.env.NODE_ENV !== "production") {
+			this.logger.logDebug(
+				`[verifyToken] valid=${result.valid} user=${result.session?.user.id || "-"} org=${result.session?.user.orgId || "-"} perms=${result.session?.user.permissions?.length || 0}`
+			);
+		}
+
+		if (result.valid && result.session && this.#identityService) {
+			const tokenFingerprint = this.#hashPermissions(result.session.user.permissions || []);
+			const currentPermissions = await this.#getCurrentPermissionStrings(result.session.user.id, result.session.user.orgId);
+			const currentFingerprint = currentPermissions ? this.#hashPermissions(currentPermissions) : null;
+
+			if (process.env.NODE_ENV !== "production") {
+				this.logger.logDebug(
+					`[verifyToken] compare user=${result.session.user.id} org=${result.session.user.orgId || "-"} tokenFp=${tokenFingerprint.slice(0, 8)} currentFp=${currentFingerprint?.slice(0, 8) || "-"} currentPerms=${currentPermissions?.length || 0}`
+				);
+			}
+
+			if (currentFingerprint && currentFingerprint !== tokenFingerprint) {
+				result.session.user.permissions = currentPermissions || [];
+				if (process.env.NODE_ENV !== "production") {
+					this.logger.logWarn(
+						`[verifyToken] permissions refreshed for user=${result.session.user.id} org=${result.session.user.orgId || "-"}`
+					);
+				}
+			}
+		}
+
 		return {
 			valid: result.valid,
 			session: result.session,
 			error: result.error,
 			usedPreviousKey: result.usedPreviousKey,
 		};
+	}
+
+	#hashPermissions(permissions: string[]): string {
+		return createHash("sha256")
+			.update([...permissions].sort((left, right) => left.localeCompare(right)).join("|"))
+			.digest("hex");
+	}
+
+	async #getCurrentPermissionStrings(userId: string, orgId?: string): Promise<string[] | null> {
+		if (!this.#identityService) return null;
+
+		const cacheKey = `session:permfp:${userId}:${orgId || "global"}`;
+		if (this.#redis) {
+			try {
+				const cached = await this.#redis.get(cacheKey);
+				if (cached) return JSON.parse(cached) as string[];
+			} catch {
+				/* cache best-effort */
+			}
+		}
+
+		try {
+			const resolved = await this.#identityService.permissions.resolvePermissions(userId, orgId);
+			const permissionStrings = resolved.map((permission) => `${permission.resource}.${permission.scope}.${permission.action}`);
+
+			if (this.#redis) {
+				try {
+					await this.#redis.set(cacheKey, JSON.stringify(permissionStrings), PERMISSION_FINGERPRINT_TTL_SECONDS);
+				} catch {
+					/* cache best-effort */
+				}
+			}
+
+			return permissionStrings;
+		} catch {
+			return null;
+		}
 	}
 
 	/**

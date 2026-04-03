@@ -26,14 +26,14 @@ export class JavaHighlighter implements HighlighterStrategy {
 		// Comments
 		const lineCommentRegex = /\/\/[^\n]*/g;
 		const blockCommentRegex = /\/\*[\s\S]*?\*\//g;
-		const neutralizeInsideComment = (text: string): string => text.replace(/__STR_\d+__/g, (ph) => rawByPlaceholder.get(ph) ?? ph);
+		const neutralizeInsideComment = (text: string): string => text.replaceAll(/__STR_\d+__/g, (ph) => rawByPlaceholder.get(ph) ?? ph);
 
-		escaped = escaped.replace(lineCommentRegex, (match) => {
+		escaped = escaped.replaceAll(lineCommentRegex, (match) => {
 			const placeholder = `__COMMENT_${placeholderIndex++}__`;
 			replacements.set(placeholder, `<span class="token comment">${neutralizeInsideComment(match)}</span>`);
 			return placeholder;
 		});
-		escaped = escaped.replace(blockCommentRegex, (match) => {
+		escaped = escaped.replaceAll(blockCommentRegex, (match) => {
 			const placeholder = `__COMMENT_${placeholderIndex++}__`;
 			replacements.set(placeholder, `<span class="token comment">${neutralizeInsideComment(match)}</span>`);
 			return placeholder;
@@ -41,7 +41,7 @@ export class JavaHighlighter implements HighlighterStrategy {
 
 		// new ClassName
 		const newClassRegex = /\bnew\s+([A-Za-z_]\w*)\s*(?=\(|&lt;)/g;
-		escaped = escaped.replace(newClassRegex, (_, className) => {
+		escaped = escaped.replaceAll(newClassRegex, (_, className) => {
 			const placeholder = `__NEWCLASS_${placeholderIndex++}__`;
 			replacements.set(placeholder, `<span class="token keyword">new</span> <span class="token type">${className}</span>`);
 			return placeholder;
@@ -49,7 +49,7 @@ export class JavaHighlighter implements HighlighterStrategy {
 
 		// Functions
 		const functionRegex = /\b(?!if\b|else\b|for\b|while\b|do\b|switch\b|catch\b|new\b|__)([A-Za-z_]\w*)\s*(?=\()/g;
-		escaped = escaped.replace(functionRegex, (_, func) => {
+		escaped = escaped.replaceAll(functionRegex, (_, func) => {
 			const placeholder = `__FUNC_${placeholderIndex++}__`;
 			replacements.set(placeholder, `<span class="token function">${func}</span>`);
 			return placeholder;

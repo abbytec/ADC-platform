@@ -25,7 +25,7 @@ export class AdcInput {
 				autocomplete={this.autocomplete}
 				disabled={this.disabled}
 				aria-label={this.ariaLabel || this.placeholder || this.name}
-				class="w-full px-3 py-2 rounded-xxl border border-surface bg-white font-text text-[12px] text-black disabled:opacity-50 disabled:cursor-not-allowed"
+				class="w-full px-3 py-2 rounded-xxl border border-text/15 bg-surface font-text text-[12px] text-text disabled:opacity-50 disabled:cursor-not-allowed"
 			/>
 		);
 	}

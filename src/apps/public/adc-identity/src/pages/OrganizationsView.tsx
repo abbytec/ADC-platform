@@ -201,18 +201,16 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 						</div>
 						<div>
 							<label className="block text-sm font-medium mb-1 text-text">{t("organizations.region")}</label>
-							<select
+							<adc-select
 								value={formRegion}
-								onChange={(e) => setFormRegion(e.target.value)}
-								className="w-full rounded-lg border border-border bg-surface text-text px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-							>
-								{allRegions.map((r) => (
-									<option key={r.path} value={r.path}>
-										{r.path}
-										{r.isGlobal ? ` (${t("regions.global")})` : ""}
-									</option>
-								))}
-							</select>
+								onChange={(e: any) => setFormRegion(e.target.value)}
+								options={JSON.stringify(
+									allRegions.map((r) => ({
+										label: r.path + (r.isGlobal ? ` (${t("regions.global")})` : ""),
+										value: r.path,
+									}))
+								)}
+							/>
 						</div>
 						<div>
 							<label className="block text-sm font-medium mb-1 text-text">{t("organizations.tier")}</label>
@@ -224,17 +222,16 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 						</div>
 						<div>
 							<label className="block text-sm font-medium mb-1 text-text">{t("organizations.status")}</label>
-							<select
+							<adc-select
 								value={formStatus}
-								onChange={(e) => setFormStatus(e.target.value)}
-								className="w-full rounded-lg border border-border bg-surface text-text px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-							>
-								{ORG_STATUSES.map((s) => (
-									<option key={s} value={s}>
-										{t(`organizations.statuses.${s}`)}
-									</option>
-								))}
-							</select>
+								onChange={(e: any) => setFormStatus(e.target.value)}
+								options={JSON.stringify(
+									ORG_STATUSES.map((s) => ({
+										label: t(`organizations.statuses.${s}`),
+										value: s,
+									}))
+								)}
+							/>
 						</div>
 						<FormModalFooter onCancel={() => setModalOpen(false)} submitting={submitting} />
 					</form>

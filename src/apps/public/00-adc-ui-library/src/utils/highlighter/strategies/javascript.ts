@@ -16,7 +16,7 @@ export function highlightJSFamily(
 
 	// Template literals with ${} interpolation
 	const tplRegex = /`(?:\\.|[\s\S])*?`/g;
-	escaped = escaped.replace(tplRegex, (match) => {
+	escaped = escaped.replaceAll(tplRegex, (match) => {
 		const inner = match.slice(1, -1);
 		const exprRe = /\$\{([\s\S]*?)\}/g;
 		let out = '<span class="token string">`</span>';
@@ -55,12 +55,12 @@ export function highlightJSFamily(
 	const neutralizeInsideComment = (text: string): string =>
 		text.replaceAll(/__TPL_\d+__|__STR_\d+__/g, (ph) => rawByPlaceholder.get(ph) ?? ph);
 
-	escaped = escaped.replace(lineCommentRegex, (match) => {
+	escaped = escaped.replaceAll(lineCommentRegex, (match) => {
 		const placeholder = `__COMMENT_${placeholderIndex++}__`;
 		replacements.set(placeholder, `<span class="token comment">${neutralizeInsideComment(match)}</span>`);
 		return placeholder;
 	});
-	escaped = escaped.replace(blockCommentRegex, (match) => {
+	escaped = escaped.replaceAll(blockCommentRegex, (match) => {
 		const placeholder = `__COMMENT_${placeholderIndex++}__`;
 		replacements.set(placeholder, `<span class="token comment">${neutralizeInsideComment(match)}</span>`);
 		return placeholder;
@@ -107,10 +107,10 @@ const functionPattern = /\b(?!if\b|for\b|while\b|switch\b|catch\b)([A-Za-z_]\w*)
 
 function applyJSTokenReplacements(input: string): string {
 	let out = input;
-	out = out.replace(keywordPatternA, '<span class="token keyword">$1</span>');
-	out = out.replace(keywordPatternB, '<span class="token keyword">$1</span>');
-	out = out.replace(typePattern, '<span class="token type">$1</span>');
-	out = out.replace(functionPattern, '<span class="token function">$1</span>');
+	out = out.replaceAll(keywordPatternA, '<span class="token keyword">$1</span>');
+	out = out.replaceAll(keywordPatternB, '<span class="token keyword">$1</span>');
+	out = out.replaceAll(typePattern, '<span class="token type">$1</span>');
+	out = out.replaceAll(functionPattern, '<span class="token function">$1</span>');
 	return out;
 }
 

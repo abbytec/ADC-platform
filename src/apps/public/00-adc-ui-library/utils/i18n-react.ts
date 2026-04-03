@@ -113,7 +113,7 @@ export function useTranslation(options: UseTranslationOptions = {}): UseTranslat
 
 			// Interpolation
 			if (params) {
-				return value.replace(/\{\{(\w+)\}\}/g, (_, p) => params[p] ?? `{{${p}}}`);
+				return value.replaceAll(/\{\{(\w+)\}\}/g, (_, p) => params[p] ?? `{{${p}}}`);
 			}
 
 			return value;

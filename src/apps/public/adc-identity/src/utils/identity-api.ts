@@ -16,55 +16,73 @@ const api = createAdcApi({
 	credentials: process.env.NODE_ENV === "development" ? "include" : "same-origin",
 });
 
+/** Deterministic hash for idempotency keys on create operations */
+function hashBody(data: unknown): string {
+	const str = JSON.stringify(data);
+	let h = 5381;
+	for (const ch of str) h = ((h << 5) + h + ch.codePointAt(0)!) >>> 0;
+	return h.toString(36);
+}
+
 // ── API methods ──────────────────────────────────────────────────────────────
 
 export const identityApi = {
 	// My Permissions
-	getMyPermissions: () => api.get<{ scopes: Permission[]; orgId?: string; isAdmin?: boolean }>("/my-permissions"),
+	getMyPermissions: () => api.get<{ scopes: Permission[]; orgId?: string; isAdmin?: boolean; isOrgAdmin?: boolean }>("/my-permissions"),
 
 	// Users
-	listUsers: (orgId?: string) => api.get<ClientUser[]>("/users", orgId ? { params: { orgId } } : undefined),
+	listUsers: (orgId?: string) => api.get<{ users: ClientUser[]; roles: Role[] }>("/users", orgId ? { params: { orgId } } : undefined),
 	searchUsers: (q: string) => api.get<ClientUser[]>("/users/search", { params: { q } }),
 	getUser: (userId: string) => api.get<ClientUser>(`/users/${userId}`),
-	createUser: (data: { username: string; password: string; roleIds?: string[] }) => api.post<ClientUser>("/users", { body: data }),
-	updateUser: (userId: string, data: Partial<ClientUser>) => api.put<ClientUser>(`/users/${userId}`, { body: data }),
-	deleteUser: (userId: string) => api.delete(`/users/${userId}`),
+	createUser: (data: { username: string; password: string; roleIds?: string[]; orgId?: string }) =>
+		api.post<ClientUser>("/users", { body: data, idempotencyKey: hashBody(data) }),
+	updateUser: (userId: string, data: Partial<ClientUser>) => api.put<ClientUser>(`/users/${userId}`, { body: data, idempotencyKey: userId }),
+	deleteUser: (userId: string) => api.delete(`/users/${userId}`, { idempotencyKey: userId }),
 
 	// Roles
 	listRoles: (orgId?: string) => api.get<Role[]>("/roles", orgId ? { params: { orgId } } : undefined),
 	getRole: (roleId: string) => api.get<Role>(`/roles/${roleId}`),
-	createRole: (data: { name: string; description: string; permissions?: Permission[] }) => api.post<Role>("/roles", { body: data }),
-	updateRole: (roleId: string, data: Partial<Role>) => api.put<Role>(`/roles/${roleId}`, { body: data }),
-	deleteRole: (roleId: string) => api.delete(`/roles/${roleId}`),
+	createRole: (data: { name: string; description: string; permissions?: Permission[]; orgId?: string }) =>
+		api.post<Role>("/roles", { body: data, idempotencyKey: hashBody(data) }),
+	updateRole: (roleId: string, data: Partial<Role>) => api.put<Role>(`/roles/${roleId}`, { body: data, idempotencyKey: roleId }),
+	deleteRole: (roleId: string) => api.delete(`/roles/${roleId}`, { idempotencyKey: roleId }),
 
 	// Groups
 	listGroups: (orgId?: string) => api.get<Group[]>("/groups", orgId ? { params: { orgId } } : undefined),
 	getGroup: (groupId: string) => api.get<Group>(`/groups/${groupId}`),
-	createGroup: (data: { name: string; description: string; roleIds?: string[] }) => api.post<Group>("/groups", { body: data }),
-	updateGroup: (groupId: string, data: Partial<Group>) => api.put<Group>(`/groups/${groupId}`, { body: data }),
-	deleteGroup: (groupId: string) => api.delete(`/groups/${groupId}`),
+	createGroup: (data: { name: string; description: string; roleIds?: string[]; orgId?: string }) =>
+		api.post<Group>("/groups", { body: data, idempotencyKey: hashBody(data) }),
+	updateGroup: (groupId: string, data: Partial<Group>) => api.put<Group>(`/groups/${groupId}`, { body: data, idempotencyKey: groupId }),
+	deleteGroup: (groupId: string) => api.delete(`/groups/${groupId}`, { idempotencyKey: groupId }),
 	listGroupMembers: (groupId: string) => api.get<ClientUser[]>(`/groups/${groupId}/users`),
-	addUserToGroup: (groupId: string, userId: string) => api.post(`/groups/${groupId}/users/${userId}`),
-	removeUserFromGroup: (groupId: string, userId: string) => api.delete(`/groups/${groupId}/users/${userId}`),
+	addUserToGroup: (groupId: string, userId: string) =>
+		api.post(`/groups/${groupId}/users/${userId}`, { idempotencyKey: `${groupId}:${userId}` }),
+	removeUserFromGroup: (groupId: string, userId: string) =>
+		api.delete(`/groups/${groupId}/users/${userId}`, { idempotencyKey: `${groupId}:${userId}` }),
 
 	// Organizations
 	listOrganizations: () => api.get<Organization[]>("/organizations"),
 	getOrganization: (orgId: string) => api.get<Organization>(`/organizations/${orgId}`),
 	createOrganization: (data: { slug: string; region?: string; metadata?: Record<string, any> }) =>
-		api.post<Organization>("/organizations", { body: data }),
-	updateOrganization: (orgId: string, data: Partial<Organization>) => api.put<Organization>(`/organizations/${orgId}`, { body: data }),
-	deleteOrganization: (orgId: string) => api.delete(`/organizations/${orgId}`),
+		api.post<Organization>("/organizations", { body: data, idempotencyKey: hashBody(data) }),
+	updateOrganization: (orgId: string, data: Partial<Organization>) =>
+		api.put<Organization>(`/organizations/${orgId}`, { body: data, idempotencyKey: orgId }),
+	deleteOrganization: (orgId: string) => api.delete(`/organizations/${orgId}`, { idempotencyKey: orgId }),
 	listOrgMembers: (orgId: string) => api.get<ClientUser[]>(`/organizations/${orgId}/members`),
 	addUserToOrg: (orgId: string, userId: string, roleIds?: string[]) =>
-		api.post(`/organizations/${orgId}/members/${userId}`, roleIds ? { body: { roleIds } } : undefined),
-	removeUserFromOrg: (orgId: string, userId: string) => api.delete(`/organizations/${orgId}/members/${userId}`),
+		api.post(`/organizations/${orgId}/members/${userId}`, {
+			...(roleIds ? { body: { roleIds } } : {}),
+			idempotencyKey: `${orgId}:${userId}`,
+		}),
+	removeUserFromOrg: (orgId: string, userId: string) =>
+		api.delete(`/organizations/${orgId}/members/${userId}`, { idempotencyKey: `${orgId}:${userId}` }),
 
 	// Regions
 	listRegions: () => api.get<RegionInfo[]>("/regions"),
 	createRegion: (data: { path: string; metadata: Record<string, any>; isGlobal?: boolean }) =>
-		api.post<RegionInfo>("/regions", { body: data }),
-	updateRegion: (path: string, data: Partial<RegionInfo>) => api.put<RegionInfo>(`/regions/${path}`, { body: data }),
-	deleteRegion: (path: string) => api.delete(`/regions/${path}`),
+		api.post<RegionInfo>("/regions", { body: data, idempotencyKey: hashBody(data) }),
+	updateRegion: (path: string, data: Partial<RegionInfo>) => api.put<RegionInfo>(`/regions/${path}`, { body: data, idempotencyKey: path }),
+	deleteRegion: (path: string) => api.delete(`/regions/${path}`, { idempotencyKey: path }),
 
 	// Stats
 	getStats: () =>

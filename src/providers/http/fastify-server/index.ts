@@ -38,7 +38,7 @@ interface PathMatchResult {
  * "cloud.local.com" -> /^cloud\.local\.com$/
  */
 function hostPatternToRegex(pattern: string): RegExp {
-	const escaped = pattern.replace(/\./g, "\\.").replace(/\*/g, "(.+)");
+	const escaped = pattern.replaceAll(".", "\\.").replaceAll("*", "(.+)");
 	return new RegExp(`^${escaped}$`, "i");
 }
 
@@ -183,7 +183,7 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 				: true,
 			credentials: true,
 			methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-			allowedHeaders: ["Content-Type", "Authorization"],
+			allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
 		});
 
 		// Cookie parser - Necesario para setCookie/clearCookie en endpoints
@@ -303,11 +303,11 @@ export default class FastifyServerProvider extends BaseProvider implements IHost
 		// Extraer nombres de parámetros del patrón
 		const paramNames: string[] = [];
 		const regexPattern = pattern
-			.replace(/:([^/]+)/g, (_match, paramName) => {
+			.replaceAll(/:([^/]+)/g, (_match, paramName) => {
 				paramNames.push(paramName);
 				return "([^/]+)";
 			})
-			.replace(/\*/g, ".*");
+			.replaceAll("*", ".*");
 
 		const regex = new RegExp(`^${regexPattern}$`);
 		const match = urlPath.match(regex);

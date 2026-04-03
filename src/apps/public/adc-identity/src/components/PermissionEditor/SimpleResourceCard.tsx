@@ -16,16 +16,13 @@ export function SimpleResourceCard({ resource, activeActions, onToggle, onRemove
 			<ResourceHeader resource={resource} onRemove={onRemove} disabled={disabled} t={t} />
 			<div className="flex flex-wrap gap-4 px-4 py-3">
 				{ACTIONS.map((action) => (
-					<label key={action.key} className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
-						<input
-							type="checkbox"
-							checked={activeActions.has(action.key)}
-							onChange={() => onToggle(resource, action.key)}
-							disabled={disabled}
-							className="w-4 h-4 accent-primary cursor-pointer"
-						/>
-						<span className="text-text">{t(action.label)}</span>
-					</label>
+					<adc-checkbox
+						key={action.key}
+						checked={activeActions.has(action.key)}
+						disabled={disabled}
+						label={t(action.label)}
+						onChange={() => onToggle(resource, action.key)}
+					/>
 				))}
 			</div>
 		</div>

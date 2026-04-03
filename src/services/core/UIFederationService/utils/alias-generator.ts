@@ -85,7 +85,7 @@ export default {
 		}
 
 		const aliasEntries = Object.entries(aliases)
-			.map(([key, value]) => `            '${key}': '${value.replace(/\\/g, "\\\\")}'`)
+			.map(([key, value]) => `            '${key}': '${value.replaceAll("\\", "\\\\")}'`)
 			.join(",\n");
 
 		return `{\n${aliasEntries}\n        }`;
@@ -97,7 +97,7 @@ export default {
 		const framework = targetModule.uiConfig.framework || "vanilla";
 
 		if (framework !== "vanilla") {
-			const baseFramework = framework.startsWith("vite-") ? framework.replace("vite-", "") : framework;
+			const baseFramework = framework.startsWith("vite-") ? framework.replaceAll("vite-", "") : framework;
 			if (baseFramework !== "vanilla") {
 				usedFrameworks.add(baseFramework);
 			}
@@ -113,7 +113,7 @@ export default {
 			const depModule = registeredModules.get(depName);
 			if (depModule) {
 				const depFramework = depModule.uiConfig.framework || "vanilla";
-				const baseDepFramework = depFramework.startsWith("vite-") ? depFramework.replace("vite-", "") : depFramework;
+				const baseDepFramework = depFramework.startsWith("vite-") ? depFramework.replaceAll("vite-", "") : depFramework;
 				if (baseDepFramework !== "vanilla" && baseDepFramework !== "stencil") {
 					usedFrameworks.add(baseDepFramework);
 				}
@@ -133,7 +133,7 @@ export default {
 				// Solo incluir módulos que tengan devPort, estén en el mismo namespace, y no sean layouts ni el módulo actual
 				if (!isLayoutModule && !isCurrentModule && mod.uiConfig.devPort && modNamespace === namespace) {
 					const remoteFramework = mod.uiConfig.framework || "vanilla";
-					const baseRemoteFramework = remoteFramework.startsWith("vite-") ? remoteFramework.replace("vite-", "") : remoteFramework;
+					const baseRemoteFramework = remoteFramework.startsWith("vite-") ? remoteFramework.replaceAll("vite-", "") : remoteFramework;
 					if (baseRemoteFramework !== "vanilla" && baseRemoteFramework !== "stencil") {
 						usedFrameworks.add(baseRemoteFramework);
 					}
