@@ -9,6 +9,49 @@ import { SystemRole } from "../defaults/systemRoles.js";
 export class StatsEndpoints {
 	static #identity: IdentityManagerService;
 
+	static #emptyPermissions() {
+		return { scopes: [], orgId: null, isAdmin: false, isOrgAdmin: false };
+	}
+
+	static #mapIdentityScopes(resolved: Awaited<ReturnType<IdentityManagerService["permissions"]["resolvePermissions"]>>) {
+		return resolved
+			.filter((permission) => permission.resource === "identity" && permission.granted)
+			.map((permission) => ({
+				action: permission.action,
+				scope: permission.scope,
+				source: permission.source,
+			}));
+	}
+
+	static async #hasGlobalAdminRole(user: Awaited<ReturnType<IdentityManagerService["users"]["getUser"]>>) {
+		if (!user?.roleIds?.length) return false;
+
+		for (const roleId of user.roleIds) {
+			const role = await StatsEndpoints.#identity.roles.getRole(roleId);
+			if (role?.name === SystemRole.ADMIN && !role.orgId) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	static async #isOrgAdmin(user: Awaited<ReturnType<IdentityManagerService["users"]["getUser"]>>, orgId: string | null) {
+		if (!orgId || !user?.orgMemberships?.length) return false;
+
+		const membership = user.orgMemberships.find((item) => item.orgId === orgId);
+		if (!membership?.roleIds?.length) return false;
+
+		for (const roleId of membership.roleIds) {
+			const role = await StatsEndpoints.#identity.roles.getRole(roleId);
+			if (role?.name === SystemRole.ADMIN) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	static init(identity: IdentityManagerService): void {
 		StatsEndpoints.#identity ??= identity;
 	}
@@ -37,56 +80,26 @@ export class StatsEndpoints {
 	})
 	static async getMyPermissions(ctx: EndpointCtx) {
 		if (!ctx.user) {
-			return { scopes: [], orgId: null, isAdmin: false, isOrgAdmin: false };
+			return StatsEndpoints.#emptyPermissions();
 		}
 
 		try {
 			const orgId = ctx.user.orgId || null;
 			const resolved = await StatsEndpoints.#identity.permissions.resolvePermissions(ctx.user.id, orgId || undefined);
-			// Filtrar solo permisos del recurso "identity"
-			const identityPerms = resolved.filter((p) => p.resource === "identity" && p.granted);
-
 			const user = await StatsEndpoints.#identity.users.getUser(ctx.user.id);
-
-			// Determinar si el usuario es admin global (tiene rol Admin en roleIds globales)
-			let hasGlobalAdminRole = false;
-			if (user?.roleIds?.length) {
-				for (const roleId of user.roleIds) {
-					const role = await StatsEndpoints.#identity.roles.getRole(roleId);
-					if (role?.name === SystemRole.ADMIN && !role.orgId) {
-						hasGlobalAdminRole = true;
-						break;
-					}
-				}
-			}
-
-			// Determinar si es admin dentro de la org actual (rol Admin en orgMemberships)
-			let isOrgAdmin = false;
-			if (orgId && user?.orgMemberships?.length) {
-				const membership = user.orgMemberships.find((m) => m.orgId === orgId);
-				if (membership?.roleIds?.length) {
-					for (const roleId of membership.roleIds) {
-						const role = await StatsEndpoints.#identity.roles.getRole(roleId);
-						if (role?.name === SystemRole.ADMIN) {
-							isOrgAdmin = true;
-							break;
-						}
-					}
-				}
-			}
+			const [hasGlobalAdminRole, isOrgAdmin] = await Promise.all([
+				StatsEndpoints.#hasGlobalAdminRole(user),
+				StatsEndpoints.#isOrgAdmin(user, orgId),
+			]);
 
 			return {
-				scopes: identityPerms.map((p) => ({
-					action: p.action,
-					scope: p.scope,
-					source: p.source,
-				})),
+				scopes: StatsEndpoints.#mapIdentityScopes(resolved),
 				orgId,
 				isAdmin: !orgId && hasGlobalAdminRole,
 				isOrgAdmin,
 			};
 		} catch {
-			return { scopes: [], orgId: null, isAdmin: false, isOrgAdmin: false };
+			return StatsEndpoints.#emptyPermissions();
 		}
 	}
 }

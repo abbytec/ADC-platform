@@ -244,7 +244,7 @@ export default class SessionManagerService extends BaseService {
 
 	#hashPermissions(permissions: string[]): string {
 		return createHash("sha256")
-			.update([...permissions].sort().join("|"))
+			.update([...permissions].sort((left, right) => left.localeCompare(right)).join("|"))
 			.digest("hex");
 	}
 

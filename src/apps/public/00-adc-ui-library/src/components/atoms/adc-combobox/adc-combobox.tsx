@@ -1,4 +1,4 @@
-import { Component, Prop, h, Event, EventEmitter, State, Element, Watch } from "@stencil/core";
+import { Component, Prop, h, Event, EventEmitter, State, Watch } from "@stencil/core";
 
 export interface ComboboxOption {
 	label: string;
@@ -37,140 +37,106 @@ export class AdcCombobox {
 		return this.options || [];
 	}
 
-	@State() isOpen: boolean = false;
-	@State() searchQuery: string = "";
-	@State() highlightedIndex: number = -1;
-
-	@Element() el!: HTMLElement;
-
-	@Event() adcChange!: EventEmitter<string>;
-
-	private debounceTimer?: ReturnType<typeof setTimeout>;
-	private inputEl?: HTMLInputElement;
-
-	@Watch("value")
-	onValueChange() {
-		// Sync display text when value changes externally
-		this.searchQuery = "";
-	}
-
-	connectedCallback() {
-		document.addEventListener("click", this.handleClickOutside);
-	}
-
-	disconnectedCallback() {
-		document.removeEventListener("click", this.handleClickOutside);
-		if (this.debounceTimer) clearTimeout(this.debounceTimer);
-	}
-
-	private readonly handleClickOutside = (e: MouseEvent) => {
-		if (!this.el.contains(e.target as Node)) {
-			this.isOpen = false;
-			this.searchQuery = "";
-		}
-	};
-
 	private get filteredOptions(): ComboboxOption[] {
 		if (!this.searchQuery) return this.parsedOptions;
 		const q = this.searchQuery.toLowerCase();
 		return this.parsedOptions.filter((opt) => opt.label.toLowerCase().includes(q));
 	}
 
+	@State() searchQuery: string = "";
+	@State() isOpen: boolean = false;
+
+	@Event() adcChange!: EventEmitter<string>;
+
+	@Watch("value")
+	onValueChange() {
+		this.searchQuery = "";
+		this.isOpen = false;
+	}
+
+	private debounceTimer?: ReturnType<typeof setTimeout>;
+
 	private get selectedLabel(): string {
 		const selected = this.parsedOptions.find((opt) => opt.value === this.value);
 		return selected ? selected.label : "";
 	}
 
-	private readonly handleInputFocus = () => {
-		if (this.disabled) return;
+	disconnectedCallback() {
+		if (this.debounceTimer) clearTimeout(this.debounceTimer);
+	}
+
+	private readonly handleFocus = () => {
 		this.isOpen = true;
-		this.highlightedIndex = -1;
+		this.searchQuery = "";
 	};
 
-	private readonly handleInput = (e: InputEvent) => {
-		const target = e.target as HTMLInputElement;
-		if (this.debounceTimer) clearTimeout(this.debounceTimer);
-		this.debounceTimer = setTimeout(() => {
-			this.searchQuery = target.value;
-			this.isOpen = true;
-			this.highlightedIndex = -1;
-		}, this.debounce);
+	private readonly handleInput = (event: InputEvent) => {
+		const target = event.target as HTMLInputElement;
+		this.searchQuery = target.value;
+		this.isOpen = true;
+	};
+
+	private readonly handleBlur = () => {
+		// Delay so mousedown on an option fires before the dropdown closes
+		setTimeout(() => {
+			this.isOpen = false;
+			this.searchQuery = "";
+		}, 150);
 	};
 
 	private readonly handleSelect = (option: ComboboxOption) => {
 		this.adcChange.emit(option.value);
-		this.searchQuery = "";
 		this.isOpen = false;
-		this.inputEl?.blur();
+		this.searchQuery = "";
 	};
 
-	private readonly handleClear = (e: MouseEvent) => {
-		e.stopPropagation();
+	private readonly handleClear = (event: MouseEvent) => {
+		event.stopPropagation();
 		this.adcChange.emit("");
 		this.searchQuery = "";
 		this.isOpen = false;
 	};
 
-	private readonly handleKeyDown = (e: KeyboardEvent) => {
-		const opts = this.filteredOptions;
-		switch (e.key) {
-			case "ArrowDown":
-				e.preventDefault();
-				this.isOpen = true;
-				this.highlightedIndex = Math.min(this.highlightedIndex + 1, opts.length - 1);
-				break;
-			case "ArrowUp":
-				e.preventDefault();
-				this.highlightedIndex = Math.max(this.highlightedIndex - 1, 0);
-				break;
-			case "Enter":
-				e.preventDefault();
-				if (this.highlightedIndex >= 0 && opts[this.highlightedIndex]) {
-					this.handleSelect(opts[this.highlightedIndex]);
-				}
-				break;
-			case "Escape":
-				this.isOpen = false;
-				this.searchQuery = "";
-				this.inputEl?.blur();
-				break;
-		}
-	};
-
-	// Unique ID for linking input ↔ listbox
-	private readonly listboxId = `adc-cb-list-${Math.random().toString(36).slice(2, 7)}`;
-	private readonly inputId = `adc-cb-input-${Math.random().toString(36).slice(2, 7)}`;
-
 	render() {
-		const filtered = this.filteredOptions;
-		const displayValue = this.isOpen || this.searchQuery ? undefined : this.selectedLabel || undefined;
+		const displayValue = this.isOpen ? this.searchQuery : this.selectedLabel;
+		const options = this.filteredOptions;
 
 		return (
 			<div class="relative w-full">
-				<div class="relative">
-					<input
-						ref={(el) => (this.inputEl = el)}
-						id={this.inputId}
-						type="text"
-						class="w-full px-3 py-2 pr-8 rounded-lg border border-border bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted disabled:opacity-40 disabled:cursor-not-allowed"
-						placeholder={displayValue || this.placeholder}
-						value={this.searchQuery}
-						onFocus={this.handleInputFocus}
-						onInput={this.handleInput}
-						onKeyDown={this.handleKeyDown}
-						disabled={this.disabled}
-						role="combobox"
-						aria-expanded={this.isOpen ? "true" : "false"}
-						aria-haspopup="listbox"
-						aria-autocomplete="list"
-						aria-controls={this.listboxId}
-						autocomplete="off"
-					/>
-					{/* Chevron or clear button */}
-					{this.value ? (
+				<input
+					type="text"
+					class="w-full px-3 py-2 pr-14 rounded-lg border border-border bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted disabled:opacity-40 disabled:cursor-not-allowed"
+					placeholder={this.placeholder}
+					value={displayValue}
+					onFocus={this.handleFocus}
+					onInput={this.handleInput}
+					onBlur={this.handleBlur}
+					disabled={this.disabled}
+					autocomplete="off"
+				/>
+
+				{this.isOpen && options.length > 0 && (
+					<ul class="absolute z-50 w-full mt-1 bg-background border border-text/15 rounded-xxl shadow-cozy max-h-60 overflow-auto">
+						{options.map((option) => (
+							<li
+								key={option.value}
+								class="px-3 py-1 text-[12px] font-text text-text cursor-pointer hover:bg-text/10 select-none"
+								onMouseDown={(e: MouseEvent) => {
+									e.preventDefault();
+									this.handleSelect(option);
+								}}
+							>
+								{option.label}
+							</li>
+						))}
+					</ul>
+				)}
+
+				<div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
+					{this.value && (
 						<button
 							type="button"
-							class="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-text transition-colors cursor-pointer"
+							class="pointer-events-auto text-muted hover:text-text transition-colors cursor-pointer"
 							onClick={this.handleClear}
 							aria-label="Clear"
 							tabindex={-1}
@@ -179,46 +145,17 @@ export class AdcCombobox {
 								<path d="M18 6L6 18M6 6l12 12" />
 							</svg>
 						</button>
-					) : (
-						<svg
-							class={`absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none transition-transform ${this.isOpen ? "rotate-180" : ""}`}
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path d="M6 9l6 6 6-6" />
-						</svg>
 					)}
-				</div>
-
-				{this.isOpen && (
-					<div
-						class="absolute z-20 left-0 right-0 mt-1 bg-background border border-surface rounded-xl shadow-lg max-h-48 overflow-y-auto"
-						role="listbox"
-						id={this.listboxId}
-						aria-labelledby={this.inputId}
+					<svg
+						class={`w-4 h-4 text-muted transition-transform ${this.isOpen ? "rotate-180" : ""}`}
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
 					>
-						{filtered.length === 0 ? (
-							<div class="px-3 py-2 text-sm text-muted">{this.placeholder || "—"}</div>
-						) : (
-							filtered.map((option, idx) => (
-								<button
-									type="button"
-									key={`cb-${option.value}`}
-									class={`w-full text-left px-3 py-2 text-sm cursor-pointer transition-colors ${
-										idx === this.highlightedIndex ? "bg-surface/80 text-primary" : "hover:bg-surface/50 text-text"
-									} ${option.value === this.value ? "font-semibold" : ""}`}
-									role="option"
-									aria-selected={option.value === this.value ? "true" : "false"}
-									onClick={() => this.handleSelect(option)}
-								>
-									{option.label}
-								</button>
-							))
-						)}
-					</div>
-				)}
+						<path d="M6 9l6 6 6-6" />
+					</svg>
+				</div>
 			</div>
 		);
 	}

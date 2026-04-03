@@ -26,6 +26,7 @@ export class RoleManager {
 	 */
 	async initializePredefinedRoles(orgId?: string): Promise<void> {
 		const roles = orgId ? ORG_PREDEFINED_ROLES : PREDEFINED_ROLES;
+		const scopeLabel = orgId ? ` [org: ${orgId}]` : " [global]";
 
 		for (const roleData of roles) {
 			try {
@@ -45,7 +46,7 @@ export class RoleManager {
 					});
 				}
 
-				this.logger.logDebug(`Rol predefinido disponible: ${roleData.name}${orgId ? ` [org: ${orgId}]` : " [global]"}`);
+				this.logger.logDebug(`Rol predefinido disponible: ${roleData.name}${scopeLabel}`);
 			} catch (error) {
 				this.logger.logError(`Error inicializando rol ${roleData.name}: ${error}`);
 			}

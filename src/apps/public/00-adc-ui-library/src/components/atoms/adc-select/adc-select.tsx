@@ -42,9 +42,7 @@ export class AdcSelect {
 		const nativeSelect = this.el.querySelector<HTMLSelectElement>("select[data-adc-hidden]");
 		if (nativeSelect) {
 			nativeSelect.value = option.value;
-			const ev = document.createEvent("Event");
-			ev.initEvent("change", true, false);
-			nativeSelect.dispatchEvent(ev);
+			nativeSelect.dispatchEvent(new globalThis.Event("change", { bubbles: true }));
 		}
 		this.isOpen = false;
 	};
