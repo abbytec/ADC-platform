@@ -662,6 +662,14 @@ export namespace Components {
           * @default []
          */
         "items": SidebarItem[];
+        /**
+          * @default ""
+         */
+        "subtitle": string;
+        /**
+          * @default ""
+         */
+        "title": string;
     }
     interface AdcSiteFooter {
         /**
@@ -2257,6 +2265,14 @@ declare namespace LocalJSX {
          */
         "items"?: SidebarItem[];
         "onAdcSidebarItemClick"?: (event: AdcSidebarCustomEvent<SidebarItem>) => void;
+        /**
+          * @default ""
+         */
+        "subtitle"?: string;
+        /**
+          * @default ""
+         */
+        "title"?: string;
     }
     interface AdcSiteFooter {
         /**
@@ -2699,6 +2715,8 @@ declare namespace LocalJSX {
     interface AdcSidebarAttributes {
         "collapsed": boolean;
         "activeItem": string | null;
+        "title": string;
+        "subtitle": string;
     }
     interface AdcSiteFooterAttributes {
         "brandName": string;
