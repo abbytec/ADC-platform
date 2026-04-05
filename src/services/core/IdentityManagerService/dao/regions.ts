@@ -1,15 +1,23 @@
 import type { Model } from "mongoose";
 import { RegionInfo, RegionMetadata } from "@common/types/identity/Region.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
+import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
+import { IdentityScopes } from "@common/types/identity/permissions.ts";
+import { CRUDXAction } from "@common/types/Actions.ts";
 
 export class RegionManager {
 	#regionsCache: Map<string, RegionInfo> = new Map();
 	#globalRegion: RegionInfo | null = null;
+	#permissionChecker: PermissionChecker;
 
 	constructor(
 		private readonly regionModel: Model<any>,
-		private readonly logger: ILogger
-	) {}
+		private readonly orgModel: Model<any>,
+		private readonly logger: ILogger,
+		getAuthVerifier: AuthVerifierGetter = () => null
+	) {
+		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "RegionManager");
+	}
 
 	/**
 	 * Precarga todas las regiones en memoria
@@ -59,7 +67,9 @@ export class RegionManager {
 	/**
 	 * Crea una nueva región
 	 */
-	async createRegion(path: string, metadata: RegionMetadata, isGlobal: boolean = false): Promise<RegionInfo> {
+	async createRegion(path: string, metadata: RegionMetadata, isGlobal: boolean = false, token?: string): Promise<RegionInfo> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.REGIONS);
+
 		if (!this.#validatePath(path)) {
 			throw new Error(`Formato de path inválido: ${path}. Esperado "region/subregion"`);
 		}
@@ -90,7 +100,9 @@ export class RegionManager {
 	/**
 	 * Obtiene una región por path
 	 */
-	async getRegion(path: string): Promise<RegionInfo | null> {
+	async getRegion(path: string, token?: string): Promise<RegionInfo | null> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.REGIONS);
+
 		// Primero revisar cache
 		if (this.#regionsCache.has(path)) {
 			return this.#regionsCache.get(path)!;
@@ -110,7 +122,9 @@ export class RegionManager {
 	/**
 	 * Obtiene la región global (para escrituras)
 	 */
-	async getGlobalRegion(): Promise<RegionInfo> {
+	async getGlobalRegion(token?: string): Promise<RegionInfo> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.REGIONS);
+
 		if (this.#globalRegion) {
 			return this.#globalRegion;
 		}
@@ -127,7 +141,9 @@ export class RegionManager {
 	/**
 	 * Actualiza una región
 	 */
-	async updateRegion(path: string, updates: Partial<RegionInfo>): Promise<RegionInfo> {
+	async updateRegion(path: string, updates: Partial<RegionInfo>, token?: string): Promise<RegionInfo> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.REGIONS);
+
 		// No permitir cambiar isGlobal si ya hay otra región global
 		if (updates.isGlobal && this.#globalRegion && this.#globalRegion.path !== path) {
 			throw new Error(`Ya existe una región global: ${this.#globalRegion.path}`);
@@ -150,7 +166,9 @@ export class RegionManager {
 	/**
 	 * Elimina una región
 	 */
-	async deleteRegion(path: string): Promise<void> {
+	async deleteRegion(path: string, token?: string): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.REGIONS);
+
 		if (path === "default/default") {
 			throw new Error("No se puede eliminar la región default");
 		}
@@ -158,6 +176,12 @@ export class RegionManager {
 		const region = await this.regionModel.findOne({ path });
 		if (region?.isGlobal) {
 			throw new Error("No se puede eliminar la región global");
+		}
+
+		// Validar que no hay organizaciones usando esta región
+		const orgsUsingRegion = await this.orgModel.countDocuments({ region: path });
+		if (orgsUsingRegion > 0) {
+			throw new Error(`No se puede eliminar la región ${path}: ${orgsUsingRegion} organización(es) la están usando`);
 		}
 
 		await this.regionModel.deleteOne({ path });
@@ -169,7 +193,9 @@ export class RegionManager {
 	/**
 	 * Obtiene todas las regiones activas
 	 */
-	async getAllRegions(): Promise<RegionInfo[]> {
+	async getAllRegions(token?: string): Promise<RegionInfo[]> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.REGIONS);
+
 		return Array.from(this.#regionsCache.values());
 	}
 

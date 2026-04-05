@@ -3,7 +3,7 @@ import { Permission } from "./Permission.ts";
 /**
  * Membresía por organización
  */
-interface OrgMembership {
+export interface OrgMembership {
 	orgId: string;
 	roleIds: string[];
 	joinedAt: Date;

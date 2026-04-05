@@ -8,8 +8,8 @@ import type IdentityManagerService from "../index.js";
  * Admin global (sin orgId) puede operar en roles de cualquier org.
  * Admin de org (con orgId) solo puede operar en roles de su org.
  */
-async function assertRoleOrgAccess(identity: IdentityManagerService, roleId: string, callerOrgId?: string): Promise<void> {
-	const role = await identity.roles.getRole(roleId);
+async function assertRoleOrgAccess(identity: IdentityManagerService, roleId: string, callerOrgId?: string, token?: string): Promise<void> {
+	const role = await identity.roles.getRole(roleId, token);
 	if (!role) throw new IdentityError(404, "ROLE_NOT_FOUND", "Rol no encontrado");
 	if (!role.isCustom) throw new IdentityError(403, "CANNOT_MODIFY_PREDEFINED", "No se pueden modificar roles predefinidos");
 
@@ -87,7 +87,7 @@ export class RoleEndpoints {
 		permissions: [P.IDENTITY.ROLES.UPDATE],
 	})
 	static async updateRole(ctx: EndpointCtx<{ roleId: string }, Partial<{ name: string; description: string; permissions: any[] }>>) {
-		await assertRoleOrgAccess(RoleEndpoints.#identity, ctx.params.roleId, ctx.user?.orgId);
+		await assertRoleOrgAccess(RoleEndpoints.#identity, ctx.params.roleId, ctx.user?.orgId, ctx.token!);
 		const role = await RoleEndpoints.#identity.roles.updateRole(ctx.params.roleId, ctx.data || {}, ctx.token!);
 		RoleEndpoints.#identity.permissions.invalidateRole(ctx.params.roleId);
 		return role;
@@ -100,7 +100,7 @@ export class RoleEndpoints {
 	})
 	static async deleteRole(ctx: EndpointCtx<{ roleId: string }>) {
 		try {
-			await assertRoleOrgAccess(RoleEndpoints.#identity, ctx.params.roleId, ctx.user?.orgId);
+			await assertRoleOrgAccess(RoleEndpoints.#identity, ctx.params.roleId, ctx.user?.orgId, ctx.token!);
 			await RoleEndpoints.#identity.roles.deleteRole(ctx.params.roleId, ctx.token!);
 			RoleEndpoints.#identity.permissions.invalidateRole(ctx.params.roleId);
 			return { success: true };

@@ -10,8 +10,8 @@ import type IdentityManagerService from "../index.js";
  * Admin global (sin orgId) puede operar en grupos de cualquier org.
  * Admin de org (con orgId) solo opera en grupos de su org.
  */
-async function assertGroupOrgAccess(identity: IdentityManagerService, groupId: string, callerOrgId?: string): Promise<void> {
-	const group = await identity.groups.getGroup(groupId);
+async function assertGroupOrgAccess(identity: IdentityManagerService, groupId: string, callerOrgId?: string, token?: string): Promise<void> {
+	const group = await identity.groups.getGroup(groupId, token);
 	if (!group) throw new IdentityError(404, "GROUP_NOT_FOUND", "Grupo no encontrado");
 
 	// Org admin: restringido a su propia org
@@ -22,20 +22,20 @@ async function assertGroupOrgAccess(identity: IdentityManagerService, groupId: s
 }
 
 // Verifica que un usuario pertenezca a la org del caller
-async function assertUserInOrg(identity: IdentityManagerService, userId: string, callerOrgId?: string): Promise<void> {
+async function assertUserInOrg(identity: IdentityManagerService, userId: string, callerOrgId?: string, token?: string): Promise<void> {
 	if (!callerOrgId) return;
-	const user = await identity.users.getUser(userId);
+	const user = await identity.users.getUser(userId, token);
 	if (!user) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
 	const isMember = user.orgMemberships?.some((m) => m.orgId === callerOrgId);
 	if (!isMember) throw new IdentityError(403, "CROSS_ORG_USER", "El usuario no pertenece a tu organización");
 }
 
-async function validateRoleIdsContext(identity: IdentityManagerService, roleIds: string[], callerOrgId?: string): Promise<void> {
+async function validateRoleIdsContext(identity: IdentityManagerService, roleIds: string[], callerOrgId?: string, token?: string): Promise<void> {
 	if (!roleIds?.length) return;
 	if (!callerOrgId) return;
 
 	for (const rid of roleIds) {
-		const role = await identity.roles.getRole(rid);
+		const role = await identity.roles.getRole(rid, token);
 		if (!role) throw new IdentityError(400, "INVALID_ROLE", `Rol ${rid} no encontrado`);
 
 		const isGlobalPredefined = !role.orgId && !role.isCustom;
@@ -94,7 +94,7 @@ export class GroupEndpoints {
 		// Org admin usa orgId del token; global admin puede especificar en body
 		const orgId = ctx.user?.orgId || ctx.data?.orgId;
 		if (ctx.data.roleIds?.length) {
-			await validateRoleIdsContext(GroupEndpoints.#identity, ctx.data.roleIds, orgId);
+			await validateRoleIdsContext(GroupEndpoints.#identity, ctx.data.roleIds, orgId, ctx.token!);
 		}
 		const group = await GroupEndpoints.#identity.groups.createGroup(
 			ctx.data.name,
@@ -119,9 +119,9 @@ export class GroupEndpoints {
 		>
 	) {
 		const callerOrgId = ctx.user?.orgId;
-		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId);
+		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId, ctx.token!);
 		if (ctx.data?.roleIds?.length) {
-			await validateRoleIdsContext(GroupEndpoints.#identity, ctx.data.roleIds, callerOrgId);
+			await validateRoleIdsContext(GroupEndpoints.#identity, ctx.data.roleIds, callerOrgId, ctx.token!);
 		}
 		const group = await GroupEndpoints.#identity.groups.updateGroup(ctx.params.groupId, ctx.data || {}, ctx.token!);
 		GroupEndpoints.#identity.permissions.invalidateGroup(ctx.params.groupId);
@@ -134,7 +134,7 @@ export class GroupEndpoints {
 		permissions: [P.IDENTITY.GROUPS.DELETE],
 	})
 	static async deleteGroup(ctx: EndpointCtx<{ groupId: string }>) {
-		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, ctx.user?.orgId);
+		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, ctx.user?.orgId, ctx.token!);
 		await GroupEndpoints.#identity.groups.deleteGroup(ctx.params.groupId, ctx.token!);
 		GroupEndpoints.#identity.permissions.invalidateGroup(ctx.params.groupId);
 		return { success: true };
@@ -146,7 +146,7 @@ export class GroupEndpoints {
 		permissions: [P.IDENTITY.GROUPS.READ],
 	})
 	static async listGroupMembers(ctx: EndpointCtx<{ groupId: string }>) {
-		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, ctx.user?.orgId);
+		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, ctx.user?.orgId, ctx.token!);
 		return GroupEndpoints.#identity.groups.getGroupUsers(ctx.params.groupId, ctx.token!);
 	}
 
@@ -157,8 +157,8 @@ export class GroupEndpoints {
 	})
 	static async addUserToGroup(ctx: EndpointCtx<{ groupId: string; userId: string }>) {
 		const callerOrgId = ctx.user?.orgId;
-		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId);
-		await assertUserInOrg(GroupEndpoints.#identity, ctx.params.userId, callerOrgId);
+		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId, ctx.token!);
+		await assertUserInOrg(GroupEndpoints.#identity, ctx.params.userId, callerOrgId, ctx.token!);
 		await GroupEndpoints.#identity.groups.addUserToGroup(ctx.params.userId, ctx.params.groupId, ctx.token!);
 		GroupEndpoints.#identity.permissions.invalidateUser(ctx.params.userId);
 		return { success: true };
@@ -171,8 +171,8 @@ export class GroupEndpoints {
 	})
 	static async removeUserFromGroup(ctx: EndpointCtx<{ groupId: string; userId: string }>) {
 		const callerOrgId = ctx.user?.orgId;
-		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId);
-		await assertUserInOrg(GroupEndpoints.#identity, ctx.params.userId, callerOrgId);
+		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId, ctx.token!);
+		await assertUserInOrg(GroupEndpoints.#identity, ctx.params.userId, callerOrgId, ctx.token!);
 		await GroupEndpoints.#identity.groups.removeUserFromGroup(ctx.params.userId, ctx.params.groupId, ctx.token!);
 		GroupEndpoints.#identity.permissions.invalidateUser(ctx.params.userId);
 		return { success: true };

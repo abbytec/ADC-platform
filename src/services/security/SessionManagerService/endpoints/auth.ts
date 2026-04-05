@@ -27,6 +27,7 @@ interface AuthEndpointsDeps {
 	loginTracker: LoginAttemptTracker;
 	geoValidator: GeoIPValidator;
 	identityService: IdentityManagerService | null;
+	internalIdentity: ReturnType<IdentityManagerService["_internal"]> | null;
 	cookieDomain: string;
 	defaultRedirectUrl: string;
 	logger: { logError: (msg: string) => void; logWarn: (msg: string) => void };
@@ -165,13 +166,13 @@ export class AuthEndpoints {
 			throw new AuthError(400, "INVALID_EMAIL", "El email no es válido");
 		}
 
-		if (!AuthEndpoints.deps.identityService) {
+		if (!AuthEndpoints.deps.internalIdentity) {
 			throw new AuthError(500, "SERVICE_UNAVAILABLE", "Servicio de identidad no disponible");
 		}
 
 		try {
 			// Verificar si el usuario o email ya existe (una sola query)
-			const users = AuthEndpoints.deps.identityService.users;
+			const users = AuthEndpoints.deps.internalIdentity.users;
 			const existing = await users.existsByUsernameOrEmail(username, email);
 
 			if (existing.exists) {
@@ -380,8 +381,8 @@ export class AuthEndpoints {
 		const newOrgId = ctx.data?.orgId || undefined;
 
 		// Validar que el usuario pertenece a la org (si se especificó)
-		if (newOrgId && AuthEndpoints.deps.identityService) {
-			const user = await AuthEndpoints.deps.identityService.users.getUser(userId);
+		if (newOrgId && AuthEndpoints.deps.internalIdentity) {
+			const user = await AuthEndpoints.deps.internalIdentity.users.getUser(userId);
 			if (!user) throw new AuthError(404, "USER_NOT_FOUND", "Usuario no encontrado");
 			const isMember = user.orgMemberships?.some((m) => m.orgId === newOrgId);
 			if (!isMember) {
@@ -437,11 +438,11 @@ export class AuthEndpoints {
 		}
 
 		const userId = result.session.user.id;
-		if (!AuthEndpoints.deps.identityService) {
+		if (!AuthEndpoints.deps.internalIdentity) {
 			return { orgs: [], currentOrgId: result.session.user.orgId };
 		}
 
-		const user = await AuthEndpoints.deps.identityService.users.getUser(userId);
+		const user = await AuthEndpoints.deps.internalIdentity.users.getUser(userId);
 		if (!user) return { orgs: [], currentOrgId: result.session.user.orgId };
 
 		const orgOptions = await AuthEndpoints.getUserOrgOptions(user);
@@ -536,11 +537,10 @@ export class AuthEndpoints {
 	}
 
 	private static async getUserById(userId: string): Promise<AuthenticatedUser | null> {
-		if (!AuthEndpoints.deps.identityService) return null;
+		if (!AuthEndpoints.deps.internalIdentity) return null;
 
 		try {
-			const users = AuthEndpoints.deps.identityService.users;
-			const user = await users.getUser(userId);
+			const user = await AuthEndpoints.deps.internalIdentity.users.getUser(userId);
 			if (!user) return null;
 
 			const permissions = await AuthEndpoints.getUserPermissions(userId);
@@ -596,9 +596,9 @@ export class AuthEndpoints {
 	 * Resuelve el slug de una organización a partir de su ID
 	 */
 	private static async resolveOrgSlug(orgId: string): Promise<string | undefined> {
-		if (!AuthEndpoints.deps.identityService) return undefined;
+		if (!AuthEndpoints.deps.internalIdentity) return undefined;
 		try {
-			const org = await AuthEndpoints.deps.identityService.organizations.getOrganization(orgId);
+			const org = await AuthEndpoints.deps.internalIdentity.organizations.getOrganization(orgId);
 			return org?.slug;
 		} catch {
 			return undefined;
@@ -609,12 +609,12 @@ export class AuthEndpoints {
 	 * Obtiene las opciones de organización para un usuario
 	 */
 	private static async getUserOrgOptions(user: User): Promise<{ orgId: string; slug: string }[]> {
-		if (!AuthEndpoints.deps.identityService || !user.orgMemberships?.length) return [];
+		if (!AuthEndpoints.deps.internalIdentity || !user.orgMemberships?.length) return [];
 
 		const orgOptions: { orgId: string; slug: string }[] = [];
 		for (const membership of user.orgMemberships) {
 			try {
-				const org = await AuthEndpoints.deps.identityService.organizations.getOrganization(membership.orgId);
+				const org = await AuthEndpoints.deps.internalIdentity.organizations.getOrganization(membership.orgId);
 				if (org?.status === "active") {
 					orgOptions.push({ orgId: org.orgId, slug: org.slug });
 				}

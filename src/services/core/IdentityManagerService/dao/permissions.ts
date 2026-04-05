@@ -1,5 +1,9 @@
+import type { Model } from "mongoose";
 import { Permission, ResolvedPermission } from "@common/types/identity/Permission.ts";
-import type { UserManager, RoleManager, GroupManager, OrgManager } from "./index.ts";
+import type { User, OrgMembership } from "@common/types/identity/User.ts";
+import type { Role } from "@common/types/identity/Role.ts";
+import type { Group } from "@common/types/identity/Group.ts";
+import type { Organization } from "@common/types/identity/Organization.ts";
 import LRUCache from "../../../../utils/performance/LRUCache.ts";
 import { RESOURCE_NAME, hasFlags } from "@common/types/identity/permissions.ts";
 
@@ -26,16 +30,20 @@ interface LevelPermission {
  *   (niveles superiores reemplazan a inferiores por recurso)
  * - Dentro del mismo nivel: permisos se suman (OR de bitfields)
  * - Actions y Scopes como bitfields numéricos
+ *
+ * Usa modelos Mongoose directamente para evitar recursión de auth
+ * (los DAOs ahora siempre requieren token, pero PermissionManager
+ * necesita leer datos internamente sin token para resolver permisos)
  */
 export class PermissionManager {
 	#cache: LRUCache<string, PermissionCacheEntry>;
 	#cacheTTL: number;
 
 	constructor(
-		private readonly userManager: UserManager,
-		private readonly roleManager: RoleManager,
-		private readonly groupManager: GroupManager,
-		private readonly orgManager?: OrgManager,
+		private readonly userModel: Model<User>,
+		private readonly roleModel: Model<Role>,
+		private readonly groupModel: Model<Group>,
+		private readonly orgModel?: Model<Organization>,
 		cacheSize: number = 1000,
 		cacheTTL: number = 60000 // 1 minuto por defecto
 	) {
@@ -129,26 +137,34 @@ export class PermissionManager {
 		};
 
 		// 5. Org permissions (base, menor prioridad)
-		if (orgId && this.orgManager) {
-			const org = await this.orgManager.getOrganization(orgId);
+		if (orgId && this.orgModel) {
+			const orgDoc = await this.orgModel.findOne({ $or: [{ orgId }, { slug: orgId.toLowerCase() }] });
+			const org = (orgDoc?.toObject?.() as Organization | undefined) ?? orgDoc ?? null;
 			if (org?.permissions?.length) {
 				applyLevel(org.permissions, "org");
 			}
 		}
 
 		// Obtener usuario
-		const user = await this.userManager.getUser(userId);
+		const userDoc = await this.userModel.findOne({ id: userId });
+		const user = (userDoc?.toObject?.() as User | undefined) ?? userDoc ?? null;
 		if (!user) return [];
 
 		// Pre-cargar grupos para evitar queries duplicadas
-		const groups = await Promise.all((user.groupIds || []).map((gid) => this.groupManager.getGroup(gid)));
+		const groupDocs = await this.groupModel.find({ id: { $in: user.groupIds || [] } });
+		const groups = groupDocs.map((d) => (d?.toObject?.() as Group) || d || null);
 		const validGroups = groups.filter((g): g is NonNullable<typeof g> => isGroupInContext(g));
+
+		// Recopilar todos los roleIds de grupos para una sola query
+		const groupRoleIds = validGroups.flatMap((g) => g.roleIds || []);
+		const groupRoleDocs = groupRoleIds.length ? await this.roleModel.find({ id: { $in: groupRoleIds } }) : [];
+		const groupRolesMap = new Map(groupRoleDocs.map((d) => [((d.toObject?.() as Role) || d).id, (d.toObject?.() as Role) || d]));
 
 		// 4. Group roles (acumulamos todos los roles de todos los grupos)
 		const groupRolePerms: Permission[] = [];
 		for (const group of validGroups) {
 			for (const roleId of group.roleIds || []) {
-				const role = await this.roleManager.getRole(roleId);
+				const role = groupRolesMap.get(roleId);
 				if (role) {
 					groupRolePerms.push(...role.permissions);
 				}
@@ -172,22 +188,28 @@ export class PermissionManager {
 		// 2. User roles (directos + orgMembership)
 		const userRolePerms: Permission[] = [];
 
+		// Pre-cargar todos los roles del usuario (directos + orgMembership) en una query
+		const allUserRoleIds = [...(user.roleIds || [])];
+		const orgMembership = orgId ? user.orgMemberships?.find((m: OrgMembership) => m.orgId === orgId) : null;
+		if (orgMembership) {
+			allUserRoleIds.push(...(orgMembership.roleIds || []));
+		}
+		const userRoleDocs = allUserRoleIds.length ? await this.roleModel.find({ id: { $in: allUserRoleIds } }) : [];
+		const userRolesMap = new Map(userRoleDocs.map((d) => [((d.toObject?.() as Role) || d).id, (d.toObject?.() as Role) || d]));
+
 		// 2b. Roles de orgMembership (si hay orgId)
-		if (orgId) {
-			const orgMembership = user.orgMemberships?.find((m) => m.orgId === orgId);
-			if (orgMembership) {
-				for (const roleId of orgMembership.roleIds || []) {
-					const role = await this.roleManager.getRole(roleId);
-					if (role && isMembershipRoleInContext(role)) {
-						userRolePerms.push(...role.permissions);
-					}
+		if (orgId && orgMembership) {
+			for (const roleId of orgMembership.roleIds || []) {
+				const role = userRolesMap.get(roleId);
+				if (role && isMembershipRoleInContext(role)) {
+					userRolePerms.push(...role.permissions);
 				}
 			}
 		}
 
 		// 2a. User roles directos
 		for (const roleId of user.roleIds || []) {
-			const role = await this.roleManager.getRole(roleId);
+			const role = userRolesMap.get(roleId);
 			if (role && isDirectRoleInContext(role)) {
 				userRolePerms.push(...role.permissions);
 			}

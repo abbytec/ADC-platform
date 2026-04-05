@@ -27,7 +27,7 @@ export class RegionEndpoints {
 	})
 	static async listRegions(ctx: EndpointCtx) {
 		requireGlobalAccess(ctx);
-		return RegionEndpoints.#identity.regions.getAllRegions();
+		return RegionEndpoints.#identity.regions.getAllRegions(ctx.token!);
 	}
 
 	@RegisterEndpoint({
@@ -37,7 +37,7 @@ export class RegionEndpoints {
 	})
 	static async getRegion(ctx: EndpointCtx<{ path: string }>) {
 		requireGlobalAccess(ctx);
-		const region = await RegionEndpoints.#identity.regions.getRegion(ctx.params.path);
+		const region = await RegionEndpoints.#identity.regions.getRegion(ctx.params.path, ctx.token!);
 		if (!region) throw new IdentityError(404, "REGION_NOT_FOUND", "Región no encontrada");
 		return region;
 	}
@@ -52,7 +52,7 @@ export class RegionEndpoints {
 		if (!ctx.data?.path) {
 			throw new IdentityError(400, "MISSING_FIELDS", "path es requerido");
 		}
-		return RegionEndpoints.#identity.regions.createRegion(ctx.data.path, ctx.data.metadata || {}, ctx.data.isGlobal);
+		return RegionEndpoints.#identity.regions.createRegion(ctx.data.path, ctx.data.metadata || {}, ctx.data.isGlobal, ctx.token!);
 	}
 
 	@RegisterEndpoint({
@@ -62,7 +62,7 @@ export class RegionEndpoints {
 	})
 	static async updateRegion(ctx: EndpointCtx<{ path: string }, Partial<{ metadata: any; isGlobal: boolean; isActive: boolean }>>) {
 		requireGlobalAccess(ctx);
-		return RegionEndpoints.#identity.regions.updateRegion(ctx.params.path, ctx.data || {});
+		return RegionEndpoints.#identity.regions.updateRegion(ctx.params.path, ctx.data || {}, ctx.token!);
 	}
 
 	@RegisterEndpoint({
@@ -72,7 +72,7 @@ export class RegionEndpoints {
 	})
 	static async deleteRegion(ctx: EndpointCtx<{ path: string }>) {
 		requireGlobalAccess(ctx);
-		await RegionEndpoints.#identity.regions.deleteRegion(ctx.params.path);
+		await RegionEndpoints.#identity.regions.deleteRegion(ctx.params.path, ctx.token!);
 		return { success: true };
 	}
 }

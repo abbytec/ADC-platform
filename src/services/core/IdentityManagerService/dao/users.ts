@@ -50,9 +50,7 @@ export class UserManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async createUser(username: string, password: string, roleIds?: string[], token?: string): Promise<User> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.USERS);
 
 		try {
 			const userId = generateId();
@@ -83,9 +81,7 @@ export class UserManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async getUser(userId: string, token?: string): Promise<User | null> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 
 		try {
 			const doc = await this.userModel.findOne({ id: userId });
@@ -101,9 +97,7 @@ export class UserManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async getUserByUsername(username: string, token?: string): Promise<User | null> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 
 		try {
 			const doc = await this.userModel.findOne({ username });
@@ -119,9 +113,7 @@ export class UserManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async getUserByEmail(email: string, token?: string): Promise<User | null> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 
 		try {
 			const doc = await this.userModel.findOne({ email });
@@ -137,9 +129,7 @@ export class UserManager {
 	 * Retorna cuál campo ya existe para dar feedback específico
 	 */
 	async existsByUsernameOrEmail(username: string, email: string, token?: string): Promise<{ exists: boolean; field?: "username" | "email" }> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 
 		try {
 			const doc = await this.userModel.findOne({ $or: [{ username }, { email }] });
@@ -159,9 +149,7 @@ export class UserManager {
 	 * Útil para login OAuth donde el usuario puede existir por provider previo o por email
 	 */
 	async findByProviderIdOrEmail(providerIdField: string, providerId: string, email?: string, token?: string): Promise<User | null> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
 
 		try {
 			const conditions: any[] = [{ [`metadata.${providerIdField}`]: providerId }];
@@ -181,9 +169,7 @@ export class UserManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async updateUser(userId: string, updates: Partial<User>, token?: string): Promise<User> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
 
 		try {
 			updates.updatedAt = new Date();
@@ -201,9 +187,7 @@ export class UserManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async deleteUser(userId: string, token?: string): Promise<void> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.USERS);
 
 		try {
 			await this.userModel.deleteOne({ id: userId });
@@ -220,9 +204,7 @@ export class UserManager {
 	 * @param orgId Si se proporciona, filtra usuarios que pertenecen a esta organización
 	 */
 	async getAllUsers(token?: string, orgId?: string): Promise<User[]> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS, orgId);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS, orgId);
 
 		try {
 			const filter = orgId ? { "orgMemberships.orgId": orgId } : {};
@@ -242,9 +224,7 @@ export class UserManager {
 	 * @param orgId Si se proporciona, filtra usuarios que pertenecen a esta organización
 	 */
 	async searchUsers(query: string, limit: number = 10, token?: string, orgId?: string): Promise<User[]> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS, orgId);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS, orgId);
 
 		try {
 			const escapedQuery = query.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
@@ -268,14 +248,7 @@ export class UserManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async addOrgMembership(userId: string, orgId: string, roleIds: string[] = [], token?: string): Promise<User> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(
-				token,
-				CRUDXAction.WRITE,
-				IdentityScopes.USERS | IdentityScopes.ORGANIZATIONS,
-				orgId
-			);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.USERS | IdentityScopes.ORGANIZATIONS, orgId);
 
 		try {
 			const updated = await this.userModel.findOneAndUpdate(
@@ -302,14 +275,7 @@ export class UserManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async removeOrgMembership(userId: string, orgId: string, token?: string): Promise<User> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(
-				token,
-				CRUDXAction.DELETE,
-				IdentityScopes.USERS | IdentityScopes.ORGANIZATIONS,
-				orgId
-			);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.USERS | IdentityScopes.ORGANIZATIONS, orgId);
 
 		try {
 			const updated = await this.userModel.findOneAndUpdate(
@@ -329,14 +295,84 @@ export class UserManager {
 		}
 	}
 
+	// ─────────────────────────────────────────────────────────────────────────────
+	// Operaciones bulk / cascade (usadas por otros managers vía delegación)
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * Remueve la membresía de una organización de TODOS los usuarios.
+	 * Usado por OrgManager al eliminar una organización.
+	 */
+	async removeAllOrgMemberships(orgId: string, token?: string): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
+
+		await this.userModel.updateMany({ "orgMemberships.orgId": orgId }, { $pull: { orgMemberships: { orgId } }, updatedAt: new Date() });
+	}
+
+	/**
+	 * Remueve un roleId de TODOS los usuarios (roleIds directos + orgMemberships).
+	 * Usado por RoleManager al eliminar un rol.
+	 */
+	async removeRoleFromAll(roleId: string, token?: string): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
+
+		await this.userModel.updateMany({ roleIds: roleId }, { $pull: { roleIds: roleId } });
+		await this.userModel.updateMany({ "orgMemberships.roleIds": roleId }, { $pull: { "orgMemberships.$[].roleIds": roleId } });
+	}
+
+	/**
+	 * Remueve un groupId de TODOS los usuarios.
+	 * Usado por GroupManager al eliminar un grupo.
+	 */
+	async removeGroupFromAll(groupId: string, token?: string): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
+
+		await this.userModel.updateMany({ groupIds: groupId }, { $pull: { groupIds: groupId } });
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// Operaciones de membresía a grupo (usadas por GroupManager vía delegación)
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * Agrega un groupId al array groupIds de un usuario.
+	 * Usado por GroupManager.addUserToGroup.
+	 */
+	async addToGroup(userId: string, groupId: string, token?: string): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
+
+		const result = await this.userModel.findOneAndUpdate({ id: userId }, { $addToSet: { groupIds: groupId }, updatedAt: new Date() });
+		if (!result) throw new Error(`Usuario ${userId} no encontrado`);
+	}
+
+	/**
+	 * Remueve un groupId del array groupIds de un usuario.
+	 * Usado por GroupManager.removeUserFromGroup.
+	 */
+	async removeFromGroup(userId: string, groupId: string, token?: string): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
+
+		const result = await this.userModel.findOneAndUpdate({ id: userId }, { $pull: { groupIds: groupId }, updatedAt: new Date() });
+		if (!result) throw new Error(`Usuario ${userId} no encontrado`);
+	}
+
+	/**
+	 * Obtiene todos los usuarios que pertenecen a un grupo.
+	 * Usado por GroupManager.getGroupUsers.
+	 */
+	async getUsersByGroup(groupId: string, token?: string): Promise<User[]> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
+
+		const docs = await this.userModel.find({ groupIds: groupId });
+		return docs.map((d: any) => d.toObject?.() || d);
+	}
+
 	/**
 	 * Obtiene las organizaciones de un usuario
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async getUserOrganizations(userId: string, token?: string): Promise<string[]> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS | IdentityScopes.ORGANIZATIONS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS | IdentityScopes.ORGANIZATIONS);
 
 		try {
 			const user = await this.userModel.findOne({ id: userId });

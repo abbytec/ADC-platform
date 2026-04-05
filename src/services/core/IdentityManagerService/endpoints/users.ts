@@ -8,9 +8,9 @@ import type IdentityManagerService from "../index.js";
  * Admin global (sin orgId) opera sobre usuarios sin restricción de org.
  * Admin de org (con orgId) solo opera sobre usuarios miembros de su org.
  */
-async function assertUserOrgAccess(identity: IdentityManagerService, targetUserId: string, callerOrgId?: string): Promise<void> {
+async function assertUserOrgAccess(identity: IdentityManagerService, targetUserId: string, callerOrgId?: string, token?: string): Promise<void> {
 	if (!callerOrgId) return; // Admin global: sin restricción de membresía
-	const user = await identity.users.getUser(targetUserId);
+	const user = await identity.users.getUser(targetUserId, token);
 	if (!user) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
 	const isMember = user.orgMemberships?.some((m) => m.orgId === callerOrgId);
 	if (!isMember) throw new IdentityError(403, "ORG_ACCESS_DENIED", "No tienes acceso a este usuario");
@@ -21,13 +21,13 @@ async function assertUserOrgAccess(identity: IdentityManagerService, targetUserI
  * Admin global: acceso irrestricto a cualquier rol.
  * Admin de org: solo roles predefinidos globales + roles de su org.
  */
-async function validateRoleIdsContext(identity: IdentityManagerService, roleIds: string[], callerOrgId?: string): Promise<void> {
+async function validateRoleIdsContext(identity: IdentityManagerService, roleIds: string[], callerOrgId?: string, token?: string): Promise<void> {
 	if (!roleIds?.length) return;
 	// Global admin: puede asignar cualquier rol
 	if (!callerOrgId) return;
 	// Org admin: validación restringida
 	for (const rid of roleIds) {
-		const role = await identity.roles.getRole(rid);
+		const role = await identity.roles.getRole(rid, token);
 		if (!role) throw new IdentityError(400, "INVALID_ROLE", `Rol ${rid} no encontrado`);
 
 		const isGlobalPredefined = !role.orgId && !role.isCustom;
@@ -120,7 +120,7 @@ export class UserEndpoints {
 	})
 	static async getUser(ctx: EndpointCtx<{ userId: string }>) {
 		const callerOrgId = ctx.user?.orgId;
-		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId);
+		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId, ctx.token!);
 		const user = await UserEndpoints.#identity.users.getUser(ctx.params.userId, ctx.token!);
 		if (!user) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
 		return sanitizeUserForContext(user, callerOrgId);
@@ -141,7 +141,7 @@ export class UserEndpoints {
 		const callerOrgId = ctx.user?.orgId || ctx.data?.orgId;
 		// Validar que los roleIds asignados sean del contexto correcto
 		if (ctx.data.roleIds?.length) {
-			await validateRoleIdsContext(UserEndpoints.#identity, ctx.data.roleIds, callerOrgId);
+			await validateRoleIdsContext(UserEndpoints.#identity, ctx.data.roleIds, callerOrgId, ctx.token!);
 		}
 		const globalRoleIds = callerOrgId ? [] : ctx.data.roleIds;
 		const user = await UserEndpoints.#identity.users.createUser(ctx.data.username, ctx.data.password, globalRoleIds, ctx.token!);
@@ -174,14 +174,14 @@ export class UserEndpoints {
 		>
 	) {
 		const callerOrgId = ctx.user?.orgId;
-		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId);
+		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId, ctx.token!);
 		const updates = { ...ctx.data };
 		// Prevent updating sensitive fields via API
 		delete (updates as any).passwordHash;
 		delete (updates as any).id;
 		// Validar que los roleIds asignados sean del contexto correcto
 		if (updates.roleIds?.length) {
-			await validateRoleIdsContext(UserEndpoints.#identity, updates.roleIds, callerOrgId);
+			await validateRoleIdsContext(UserEndpoints.#identity, updates.roleIds, callerOrgId, ctx.token!);
 		}
 
 		if (callerOrgId) {
@@ -214,7 +214,7 @@ export class UserEndpoints {
 	})
 	static async deleteUser(ctx: EndpointCtx<{ userId: string }>) {
 		const callerOrgId = ctx.user?.orgId;
-		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId);
+		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId, ctx.token!);
 		if (callerOrgId) {
 			await UserEndpoints.#identity.users.removeOrgMembership(ctx.params.userId, callerOrgId, ctx.token!);
 			UserEndpoints.#identity.permissions.invalidateUser(ctx.params.userId);
