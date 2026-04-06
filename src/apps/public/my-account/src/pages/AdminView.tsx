@@ -1,72 +1,57 @@
 export default function AdminView() {
 	return (
-		<div className="w-full flex flex-col pl-20 lg:pl-70">
+		<div className="w-full flex flex-col pl-25 lg:pl-70">
 			{/* Title */}
 			<div className="mb-4">
-				<h1 className="text-2xl font-bold text-text">
-					Administración
-				</h1>
-				<p className="text-muted">
-					Opciones avanzadas de gestión de cuenta
-				</p>
+				<h2 className="text-2xl font-bold text-text">Administración</h2>
+				<p className="text-muted">Opciones avanzadas de gestión de cuenta</p>
 			</div>
 
 			{/* Container */}
-			<div className="bg-surface p-8 pb-6 rounded-xxl border border-danger/40">
-
-				{/* Danger Zone Header */}
-				<div className="flex items-start gap-3 mb-6">
-					<div className="w-10 h-10 rounded-full bg-danger flex items-center justify-center">
+			<div className="bg-surface p-8 pb-6 rounded-xxl">
+				{/* Header */}
+				<div className="flex items-center gap-3">
+					<div className="w-10 h-10 rounded-full bg-danger/90 flex items-center justify-center shadow-sm">
 						<svg
-							className="w-5 h-5 text-twarn"
+							className="w-6 h-6 text-twarn"
+							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
-							viewBox="0 0 24 24"
+							strokeWidth="1.8"
+							strokeLinecap="round"
+							strokeLinejoin="round"
 						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth="2"
-								d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 
-								1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 
-								0L3.34 16c-.77 1.33.19 3 1.73 3z"
-							/>
+							<path d="M12 8v4" />
+							<path d="M12 16h.01" />
+							<path d="M4.5 19h15c1.1 0 1.8-1.2 1.2-2.1L13.2 5.3c-.6-1-2-1-2.6 0L3.3 16.9c-.6.9.1 2.1 1.2 2.1z" />
 						</svg>
 					</div>
-				</div>
-
-				{/* Delete Account Card */}
-				<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border border-danger/40 rounded-xl p-6 mb-6 bg-background">
 
 					<div>
-						<h3 className="text-base font-semibold text-text mb-1">
-							Eliminar Cuenta
-						</h3>
-						<p className="text-sm text-muted max-w-lg">
-							Elimina permanentemente tu cuenta y todos los datos asociados.
-							Esta acción no se puede deshacer.
+						<h3 className="text-base font-semibold text-text">Eliminar cuenta</h3>
+						<p className="text-sm text-muted">Esta acción eliminará permanentemente todos tus datos.</p>
+					</div>
+				</div>
+				<adc-divider />
+
+				{/* Content */}
+				<div className="flex flex-col gap-5">
+					{/* Warning */}
+					<div className="flex items-start gap-3 text-twarn bg-warn/30 border border-warn/30 p-3 rounded-lg">
+						<div className="w-6 h-6 flex items-center justify-center rounded-full bg-warn shrink-0">
+							<span className="text-xs font-bold">!</span>
+						</div>
+
+						<p className="text-sm leading-relaxed">
+							Asegúrate de descargar cualquier dato que quieras conservar. Una vez eliminada la cuenta, no podrás recuperarla.
 						</p>
 					</div>
 
-					<button className="bg-danger hover:opacity-90 transition text-tdanger text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 w-fit">
-						Eliminar Cuenta
-					</button>
-				</div>
-
-				{/* Warning Box */}
-				<div className="flex items-start gap-3 bg-warn border border-warn/60 rounded-xl p-4">
-					<div className="w-8 h-8 flex items-center justify-center rounded-full bg-warn">
-						<span className="text-twarn font-bold">!</span>
-					</div>
-
-					<div>
-						<p className="text-sm font-medium text-twarn">
-							Antes de eliminar tu cuenta
-						</p>
-						<p className="text-sm text-twarn/80">
-							Asegúrate de descargar cualquier dato que quieras conservar.
-							Una vez eliminada, no podemos recuperar tu cuenta.
-						</p>
+					{/* Action */}
+					<div className="flex items-center justify-end flex-wrap gap-3">
+						<button className="bg-danger hover:bg-danger/90 transition-all text-tdanger font-medium px-4 py-3 rounded-lg shadow-sm">
+							Eliminar cuenta
+						</button>
 					</div>
 				</div>
 			</div>

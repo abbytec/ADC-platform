@@ -96,7 +96,7 @@ export default function App() {
 				className={`
 					fixed top-1/2 z-50 lg:hidden
 					-translate-y-1/2 transition-all duration-300
-					${sidebarExpanded ? "left-78" : "left-24"}
+					${sidebarExpanded ? "left-70" : "left-22"}
 				`}
 			>
 				<adc-button-expand ref={buttonRef} isExpanded={sidebarExpanded} />
@@ -120,7 +120,7 @@ export default function App() {
 			<main
 				className={`
 					flex-1 transition-all duration-300
-					${sidebarExpanded ? "lg:ml-74" : "lg:ml-20"}
+					${sidebarExpanded ? "lg:ml-74" : "lg:mx-20"}
 				`}
 			>
 				<div className="w-full p-adc-lg">

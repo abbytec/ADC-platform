@@ -18,7 +18,7 @@ export class AdcButtonExpand {
 	};
 
 	private readonly baseClass =
-		"relative left-[-15px] text-tsurface cursor-pointer hover:brightness-105 inline-flex items-center min-h-[60px] touch-manipulation transition-transform duration-300";
+		"relative left-[-15px] text-primary cursor-pointer hover:brightness-105 inline-flex items-center min-h-[60px] touch-manipulation transition-transform duration-300";
 
 	render() {
 	
@@ -38,6 +38,7 @@ export class AdcButtonExpand {
 						transition: "transform 0.1s ease",
 					}}
 					aria-hidden="true"
+					
 				></adc-icon-line-arrow-right>
 			</button>
 		);

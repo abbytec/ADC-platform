@@ -15,25 +15,25 @@ export default function PrivacySecurityView() {
 	};
 
 	return (
-		<div className="w-full flex flex-col pl-20 lg:pl-70">
+		<div className="w-full flex flex-col pl-25 lg:pl-70">
 			{/* Title */}
 			<div className="mb-4">
-				<h1 className="text-2xl font-bold text-text">
+				<h2 className="text-2xl font-bold text-text">
 					Privacidad y Seguridad
-				</h1>
+				</h2>
 				<p className="text-muted">
 					Gestiona tu contraseña y configuración de seguridad
 				</p>
 			</div>
 
 			{/* Panel */}
-			<div className="bg-surface p-6 md:p-8 rounded-xxl">
+			<div className="bg-surface p-8 pb-6 rounded-xxl">
 
 				{/* Header */}
 				<div className="mb-6">
-					<h2 className="text-lg font-semibold text-text">
+					<h3 className="!mt-0 text-lg font-semibold text-text">
 						Cambiar Contraseña
-					</h2>
+					</h3>
 					<p className="text-sm text-muted">
 						Asegúrate de que tu cuenta use una contraseña segura
 					</p>

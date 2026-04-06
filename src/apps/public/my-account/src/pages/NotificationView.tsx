@@ -1,11 +1,11 @@
 export default function NotificationView() {
 	return (
-		<div className="w-full flex flex-col pl-20 lg:pl-70">
+		<div className="w-full flex flex-col pl-25 lg:pl-70">
 			{/* Title */}
 			<div className="mb-4">
-				<h1 className="text-2xl font-bold text-text">
+				<h2 className="font-bold text-text">
 					Notificaciones
-				</h1>
+				</h2>
 				<p className="text-muted">
 					Ver y gestionar tus notificaciones
 				</p>
@@ -16,9 +16,9 @@ export default function NotificationView() {
 
 				{/* Header */}
 				<div className="mb-6">
-					<h2 className="!mt-0 text-lg font-semibold text-text">
+					<h3 className="!mt-0 text-lg font-semibold text-text">
 						Todas las Notificaciones
-					</h2>
+					</h3>
 					<p className="text-sm text-muted">
 						Aquí verás todas tus notificaciones
 					</p>
@@ -54,9 +54,9 @@ export default function NotificationView() {
 					</div>
 
 					{/* Texto */}
-					<h3 className="text-lg font-semibold text-text mb-2">
+					<h4 className="text-lg font-semibold text-text mb-2">
 						No hay notificaciones todavía
-					</h3>
+					</h4>
 
 					<p className="text-muted max-w-md">
 						Cuando recibas notificaciones, aparecerán aquí.</p>

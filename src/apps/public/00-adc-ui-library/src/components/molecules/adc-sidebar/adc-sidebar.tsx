@@ -31,11 +31,11 @@ export class AdcSidebar {
 	};
 
 	render() {
-		const sidebarClass = this.collapsed ? "w-20 lg:w-74" : "w-74";
+		const sidebarClass = this.collapsed ? "w-25 lg:w-74" : "w-74";
 
 		return (
 			<aside
-				class={`z-20 fixed left-0 px-2 pt-5 bg-background text-primary transition-all duration-0 shadow-[0_5px_20px_rgba(0,0,0,0.15)] overflow-hidden ${sidebarClass}`}
+				class={`z-20 fixed left-0 px-2 pt-5 pr-6 bg-background text-primary transition-[width] duration-300 shadow-[0_5px_20px_rgba(0,0,0,0.15)] overflow-hidden ${sidebarClass}`}
 				style={{
 					top: "var(--header-offset)",
 					height: "calc(100vh - var(--header-offset))",

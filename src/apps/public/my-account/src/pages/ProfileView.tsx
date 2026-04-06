@@ -21,24 +21,24 @@ export default function ProfileView() {
 	};
 
 	return (
-		<div className="w-full flex flex-col pl-20 lg:pl-70">
+		<div className="w-full flex flex-col pl-25 lg:pl-70">
 			{/* Title */}
 			<div className="mb-4">
-				<h1 className="text-2xl font-bold text-text">
+				<h2 className="font-bold text-text">
 					Información Personal
-				</h1>
+				</h2>
 				<p className="text-muted">
 					Actualiza tu perfil y avatar
 				</p>
 			</div>
 
 			{/* Panel */}
-			<div className="bg-surface p-6 md:p-8 rounded-xxl">
+			<div className="bg-surface p-8 pb-6 rounded-xxl">
 				{/* Header */}
 				<div className="mb-6">
-					<h2 className="text-lg font-semibold text-text">
+					<h3 className="!mt-0 text-lg font-semibold text-text">
 						Datos del perfil
-					</h2>
+					</h3>
 					<p className="text-sm text-muted">
 						Puedes modificar tu información personal
 					</p>
