@@ -12,7 +12,7 @@ if (container) {
 	const root = createRoot(container);
 	root.render(
 		<React.StrictMode>
-			<adc-layout className="z-50">
+			<adc-layout>
 				<App />
 			</adc-layout>
 		</React.StrictMode>

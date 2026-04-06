@@ -699,12 +699,10 @@ export namespace Components {
     }
     interface AdcSiteHeader {
         /**
-          * URL base de la API (en dev: http://hostname:3000, en prod: vacío)
           * @default isPrivateHost(globalThis.location?.hostname ?? "") 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
         "apiBaseUrl": string;
         /**
-          * URL base para auth (dev vs prod)
           * @default `${globalThis.location?.protocol}//auth.adigitalcafe.com${globalThis.location?.port ? `:${globalThis.location?.port}` : ""}`
          */
         "authUrl": string;
@@ -721,12 +719,10 @@ export namespace Components {
          */
         "logoSrc": string;
         /**
-          * Mostrar botón de acceso/perfil
           * @default true
          */
         "showAccessButton": boolean;
         /**
-          * Items del menú de usuario (array de {label, href, icon?})
           * @default []
          */
         "userMenuItems": AccessMenuItem1[];
@@ -2302,12 +2298,10 @@ declare namespace LocalJSX {
     }
     interface AdcSiteHeader {
         /**
-          * URL base de la API (en dev: http://hostname:3000, en prod: vacío)
           * @default isPrivateHost(globalThis.location?.hostname ?? "") 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000` 		: ""
          */
         "apiBaseUrl"?: string;
         /**
-          * URL base para auth (dev vs prod)
           * @default `${globalThis.location?.protocol}//auth.adigitalcafe.com${globalThis.location?.port ? `:${globalThis.location?.port}` : ""}`
          */
         "authUrl"?: string;
@@ -2324,12 +2318,10 @@ declare namespace LocalJSX {
          */
         "logoSrc"?: string;
         /**
-          * Mostrar botón de acceso/perfil
           * @default true
          */
         "showAccessButton"?: boolean;
         /**
-          * Items del menú de usuario (array de {label, href, icon?})
           * @default []
          */
         "userMenuItems"?: AccessMenuItem1[];

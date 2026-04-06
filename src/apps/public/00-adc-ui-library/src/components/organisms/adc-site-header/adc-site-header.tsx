@@ -1,39 +1,52 @@
-import { Component, Prop, h } from "@stencil/core";
+import { Component, Prop, h, Element } from "@stencil/core";
 import type { AccessMenuItem } from "../../molecules/adc-access-button/adc-access-button.js";
 import { isPrivateHost } from "../../../utils/url.js";
-
-export interface NavItem {
-	label: string;
-	href: string;
-}
 
 @Component({
 	tag: "adc-site-header",
 	shadow: false,
 })
 export class AdcSiteHeader {
+	@Element() el!: HTMLElement;
+
 	@Prop() logoSrc: string = "";
 	@Prop() logoAlt: string = "";
 	@Prop() homeHref: string = "/";
 
-	/** URL base para auth (dev vs prod) */
 	@Prop() authUrl: string =
 		`${globalThis.location?.protocol}//auth.adigitalcafe.com${globalThis.location?.port ? `:${globalThis.location?.port}` : ""}`;
 
-	/** URL base de la API (en dev: http://hostname:3000, en prod: vacío) */
 	@Prop() apiBaseUrl: string = isPrivateHost(globalThis.location?.hostname ?? "")
 		? `${globalThis.location?.protocol}//${globalThis.location?.hostname}:3000`
 		: "";
 
-	/** Mostrar botón de acceso/perfil */
 	@Prop() showAccessButton: boolean = true;
-
-	/** Items del menú de usuario (array de {label, href, icon?}) */
 	@Prop() userMenuItems: AccessMenuItem[] = [];
+
+	componentDidLoad() {
+		this.updateVars();
+		window.addEventListener("resize", this.updateVars);
+		window.addEventListener("scroll", this.updateVars);
+	}
+
+	disconnectedCallback() {
+		window.removeEventListener("resize", this.updateVars);
+		window.removeEventListener("scroll", this.updateVars);
+	}
+
+	private updateVars = () => {
+		const rect = this.el.getBoundingClientRect();
+
+		const height = rect.height;
+		const offset = Math.max(rect.bottom, 0);
+
+		document.documentElement.style.setProperty("--header-h", `${height}px`);
+		document.documentElement.style.setProperty("--header-offset", `${offset}px`);
+	};
 
 	render() {
 		return (
-			<header class="flex items-center justify-between gap-6 px-8 py-6 shadow-cozy bg-header text-theader font-bold rounded-b-xxl">
+			<header class="flex items-center justify-between gap-6 px-8 py-6 shadow-cozy bg-header text-theader font-bold rounded-b-xxl z-50">
 				<a href={this.homeHref} aria-label="Inicio" class="ml-2">
 					{this.logoSrc && (
 						<img src={this.logoSrc} alt={this.logoAlt} height="36" width="36" style={{ minWidth: "36px" }} class="rounded-full" />
