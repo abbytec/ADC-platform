@@ -13,15 +13,15 @@ import type { Step } from "../../../core/OperationsService/types.ts";
 
 export class RoleManager {
 	#permissionChecker: PermissionChecker;
-	#operations: OperationsService;
+	readonly #operations: OperationsService;
 
 	constructor(
 		private readonly roleModel: Model<any>,
 		private readonly userManager: UserManager,
 		private readonly groupManager: GroupManager,
 		private readonly logger: ILogger,
-		getAuthVerifier: AuthVerifierGetter = () => null,
-		operations: OperationsService
+		operations: OperationsService,
+		getAuthVerifier: AuthVerifierGetter = () => null
 	) {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "RoleManager");
 		this.#operations = operations;

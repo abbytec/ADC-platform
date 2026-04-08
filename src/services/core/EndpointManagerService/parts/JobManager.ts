@@ -41,7 +41,7 @@ export class JobManager {
 
 	#rabbitmq: RabbitMQProvider | null;
 	#redis: IRedisProvider | null;
-	#consumers: Map<string, Consumer> = new Map();
+	readonly #consumers: Map<string, Consumer> = new Map();
 
 	constructor(deps: JobManagerDeps) {
 		this.#logger = deps.logger;
@@ -194,7 +194,7 @@ export class JobManager {
 				};
 
 				// Read stepper resume index from retry headers
-				const stepperIdx = msg.headers["x-stepper-idx"] ? parseInt(msg.headers["x-stepper-idx"], 10) : undefined;
+				const stepperIdx = msg.headers["x-stepper-idx"] ? Number.parseInt(msg.headers["x-stepper-idx"], 10) : undefined;
 				if (stepperIdx !== undefined) {
 					(ctx as any)._stepperResumeIdx = stepperIdx;
 				}

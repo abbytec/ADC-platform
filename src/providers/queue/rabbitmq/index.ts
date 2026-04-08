@@ -28,10 +28,10 @@ export default class RabbitMQProvider extends BaseProvider {
 	public readonly type = ProviderType.QUEUE_PROVIDER;
 
 	#connection: Connection | null = null;
-	#config: RabbitMQProviderConfig;
+	readonly #config: RabbitMQProviderConfig;
 	#publisher: Publisher | null = null;
-	#consumers: Map<string, Consumer> = new Map();
-	#declaredTopologies: Set<string> = new Set();
+	readonly #consumers: Map<string, Consumer> = new Map();
+	readonly #declaredTopologies: Set<string> = new Set();
 
 	constructor(config?: RabbitMQProviderConfig) {
 		super();

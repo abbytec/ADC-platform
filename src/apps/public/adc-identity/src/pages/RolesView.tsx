@@ -13,7 +13,6 @@ import { RowActions } from "../components/RowActions.tsx";
 interface RolesViewProps {
 	readonly scopes: Permission[];
 	readonly orgId?: string;
-	readonly isAdmin?: boolean;
 	readonly organizations?: Organization[];
 }
 

@@ -57,7 +57,7 @@ export default class EndpointManagerService extends BaseService {
 		this.#jobManager = new JobManager({
 			logger: this.logger,
 			getSessionManager: this.#getSessionManager.bind(this),
-			operationsService: this.#operationsService!,
+			operationsService: this.#operationsService,
 			rabbitmq,
 			redis,
 			httpProvider: this.#httpProvider,

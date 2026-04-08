@@ -14,7 +14,7 @@ import type { Step } from "../../../core/OperationsService/types.ts";
 
 export class OrgManager {
 	#permissionChecker: PermissionChecker;
-	#operations: OperationsService;
+	readonly #operations: OperationsService;
 
 	constructor(
 		private readonly orgModel: Model<any>,
@@ -23,8 +23,8 @@ export class OrgManager {
 		private readonly userManager: UserManager,
 		private readonly regionManager: RegionManager,
 		private readonly logger: ILogger,
-		getAuthVerifier: AuthVerifierGetter = () => null,
-		operations: OperationsService
+		operations: OperationsService,
+		getAuthVerifier: AuthVerifierGetter = () => null
 	) {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "OrgManager");
 		this.#operations = operations;

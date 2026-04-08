@@ -106,7 +106,7 @@ export function createHttpWrapper(
 						}
 
 						// Publish minimal payload to RabbitMQ
-						await rabbitmq!.publish(
+						await rabbitmq.publish(
 							endpoint.ownerName,
 							endpoint.methodName,
 							{

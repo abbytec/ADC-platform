@@ -1,8 +1,6 @@
-import type { Connection, Consumer } from "rabbitmq-client";
-import { ConsumerStatus } from "rabbitmq-client";
+import { ConsumerStatus, type Publisher, type Connection, type Consumer } from "rabbitmq-client";
 import type { RabbitMQProviderConfig, ConsumerOptions, OperationMessage } from "../types.js";
 import { publishToRetryQueue } from "./publisher.js";
-import type { Publisher } from "rabbitmq-client";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 
 interface CreateConsumerDeps {
@@ -45,7 +43,7 @@ export function createOperationConsumer(
 		},
 		async (msg: any) => {
 			const headers = (msg.headers ?? {}) as Record<string, string>;
-			const retryCount = parseInt(headers["x-retry-count"] || "0", 10);
+			const retryCount = Number.parseInt(headers["x-retry-count"] || "0", 10);
 			const body = (typeof msg.body === "object" && msg.body !== null ? msg.body : {}) as Record<string, unknown>;
 
 			const opMsg: OperationMessage = {

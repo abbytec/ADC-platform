@@ -62,10 +62,10 @@ export default class IdentityManagerService extends BaseService {
 	#sessionManager: SessionManagerService | null = null;
 
 	// MongoDB provider
-	#mongoProvider: IMongoProvider | null = null;
+	readonly #mongoProvider: IMongoProvider;
 
 	// OperationsService for stepper support in cascade DAOs
-	#operationsService: OperationsService;
+	readonly #operationsService: OperationsService;
 
 	// Cache de conexiones por organización
 	#orgConnectionCache: Map<string, { connection: Connection; managers: OrgScopedManagers }> = new Map();
@@ -92,11 +92,11 @@ export default class IdentityManagerService extends BaseService {
 			// Esperar a que MongoDB esté conectado (máximo 10 segundos)
 			const maxWaitTime = 10000;
 			const startTime = Date.now();
-			while (!this.#mongoProvider?.isConnected() && Date.now() - startTime < maxWaitTime) {
+			while (!this.#mongoProvider.isConnected() && Date.now() - startTime < maxWaitTime) {
 				await new Promise((resolve) => setTimeout(resolve, 500));
 			}
 
-			if (!this.#mongoProvider?.isConnected()) {
+			if (!this.#mongoProvider.isConnected()) {
 				throw new Error("MongoDB no pudo conectarse en el tiempo esperado");
 			}
 
@@ -120,8 +120,8 @@ export default class IdentityManagerService extends BaseService {
 				this.#userManager,
 				this.#groupManager,
 				this.logger,
-				this.#getAuthVerifier,
-				this.#operationsService
+				this.#operationsService,
+				this.#getAuthVerifier
 			);
 			this.#orgManager = new OrgManager(
 				OrganizationModel,
@@ -130,8 +130,8 @@ export default class IdentityManagerService extends BaseService {
 				this.#userManager,
 				this.#regionManager,
 				this.logger,
-				this.#getAuthVerifier,
-				this.#operationsService
+				this.#operationsService,
+				this.#getAuthVerifier
 			);
 			this.#systemManager = new SystemManager(UserModel, RoleModel, GroupModel, this.logger, kernelKey);
 
@@ -145,8 +145,8 @@ export default class IdentityManagerService extends BaseService {
 				this.#internalUserManager,
 				internalGroupManager,
 				this.logger,
-				noAuth,
-				this.#operationsService
+				this.#operationsService,
+				noAuth
 			);
 			this.#internalOrgManager = new OrgManager(
 				OrganizationModel,
@@ -155,8 +155,8 @@ export default class IdentityManagerService extends BaseService {
 				this.#internalUserManager,
 				this.#regionManager,
 				this.logger,
-				noAuth,
-				this.#operationsService
+				this.#operationsService,
+				noAuth
 			);
 
 			// Inicializar roles predefinidos y usuario SYSTEM en BD local
@@ -326,16 +326,16 @@ export default class IdentityManagerService extends BaseService {
 		}
 
 		// Obtener/crear conexión
-		const regionConnection = await this.#mongoProvider!.getOrCreateConnection(connectionUri);
+		const regionConnection = await this.#mongoProvider.getOrCreateConnection(connectionUri);
 
 		// Cambiar a la base de datos de la organización
 		const dbName = this.#orgManager!.getDbName(org);
-		const orgDbConnection = this.#mongoProvider!.useDb(regionConnection, dbName);
+		const orgDbConnection = this.#mongoProvider.useDb(regionConnection, dbName);
 
 		// Crear modelos para la base de datos de la organización
-		const OrgUserModel = this.#mongoProvider!.createModelForDb<User>(orgDbConnection, "User", userSchema);
-		const OrgRoleModel = this.#mongoProvider!.createModelForDb<Role>(orgDbConnection, "Role", roleSchema);
-		const OrgGroupModel = this.#mongoProvider!.createModelForDb<Group>(orgDbConnection, "Group", groupSchema);
+		const OrgUserModel = this.#mongoProvider.createModelForDb<User>(orgDbConnection, "User", userSchema);
+		const OrgRoleModel = this.#mongoProvider.createModelForDb<Role>(orgDbConnection, "Role", roleSchema);
+		const OrgGroupModel = this.#mongoProvider.createModelForDb<Group>(orgDbConnection, "Group", groupSchema);
 
 		// Crear managers con scope de organización (misma cadena de dependencia)
 		const orgUserManager = new UserManager(OrgUserModel, this.logger, this.#getAuthVerifier);
@@ -345,8 +345,8 @@ export default class IdentityManagerService extends BaseService {
 			orgUserManager,
 			orgGroupManager,
 			this.logger,
-			this.#getAuthVerifier,
-			this.#operationsService
+			this.#operationsService,
+			this.#getAuthVerifier
 		);
 
 		const managers: OrgScopedManagers = {

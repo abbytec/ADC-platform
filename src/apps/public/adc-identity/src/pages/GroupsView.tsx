@@ -15,7 +15,6 @@ import { RowActions } from "../components/RowActions.tsx";
 interface GroupsViewProps {
 	readonly scopes: Permission[];
 	readonly orgId?: string;
-	readonly isAdmin?: boolean;
 	readonly organizations?: Organization[];
 }
 
