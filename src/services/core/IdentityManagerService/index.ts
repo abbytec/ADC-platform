@@ -7,6 +7,7 @@ import type { User, Role, Group, Organization, RegionInfo } from "@common/types/
 import { UserManager, GroupManager, RoleManager, PermissionManager, SystemManager, RegionManager, OrgManager } from "./dao/index.js";
 import { type IAuthVerifier, type AuthVerifierGetter } from "./utils/auth-verifier.js";
 import type SessionManagerService from "../../security/SessionManagerService/index.js";
+import type OperationsService from "../OperationsService/index.ts";
 import { EnableEndpoints, DisableEndpoints } from "../../core/EndpointManagerService/index.js";
 import { UserEndpoints } from "./endpoints/users.js";
 import { RoleEndpoints } from "./endpoints/roles.js";
@@ -14,6 +15,7 @@ import { GroupEndpoints } from "./endpoints/groups.js";
 import { OrgEndpoints } from "./endpoints/organizations.js";
 import { RegionEndpoints } from "./endpoints/regions.js";
 import { StatsEndpoints } from "./endpoints/stats.js";
+import { Kernel } from "../../../kernel.ts";
 
 /**
  * IdentityManagerService - Gestión centralizada de identidades, usuarios, roles y grupos
@@ -62,11 +64,16 @@ export default class IdentityManagerService extends BaseService {
 	// MongoDB provider
 	#mongoProvider: IMongoProvider | null = null;
 
+	// OperationsService for stepper support in cascade DAOs
+	#operationsService: OperationsService;
+
 	// Cache de conexiones por organización
 	#orgConnectionCache: Map<string, { connection: Connection; managers: OrgScopedManagers }> = new Map();
 
-	constructor(kernel: any, options?: any) {
+	constructor(kernel: Kernel, options?: any) {
 		super(kernel, options);
+		this.#mongoProvider = this.getMyProvider<IMongoProvider>("object/mongo");
+		this.#operationsService = kernel.registry.getService<OperationsService>("OperationsService");
 	}
 
 	/**
@@ -82,8 +89,6 @@ export default class IdentityManagerService extends BaseService {
 		this.#kernelKey = kernelKey;
 
 		try {
-			this.#mongoProvider = this.getMyProvider<IMongoProvider>("object/mongo");
-
 			// Esperar a que MongoDB esté conectado (máximo 10 segundos)
 			const maxWaitTime = 10000;
 			const startTime = Date.now();
@@ -110,7 +115,14 @@ export default class IdentityManagerService extends BaseService {
 			// UserManager (independiente) → GroupManager (→ UserManager) → RoleManager (→ UserManager, GroupManager) → OrgManager (→ todos)
 			this.#userManager = new UserManager(UserModel, this.logger, this.#getAuthVerifier);
 			this.#groupManager = new GroupManager(GroupModel, this.#userManager, this.logger, this.#getAuthVerifier);
-			this.#roleManager = new RoleManager(RoleModel, this.#userManager, this.#groupManager, this.logger, this.#getAuthVerifier);
+			this.#roleManager = new RoleManager(
+				RoleModel,
+				this.#userManager,
+				this.#groupManager,
+				this.logger,
+				this.#getAuthVerifier,
+				this.#operationsService
+			);
 			this.#orgManager = new OrgManager(
 				OrganizationModel,
 				this.#roleManager,
@@ -118,7 +130,8 @@ export default class IdentityManagerService extends BaseService {
 				this.#userManager,
 				this.#regionManager,
 				this.logger,
-				this.#getAuthVerifier
+				this.#getAuthVerifier,
+				this.#operationsService
 			);
 			this.#systemManager = new SystemManager(UserModel, RoleModel, GroupModel, this.logger, kernelKey);
 
@@ -127,7 +140,14 @@ export default class IdentityManagerService extends BaseService {
 			const noAuth: () => null = () => null;
 			this.#internalUserManager = new UserManager(UserModel, this.logger, noAuth);
 			const internalGroupManager = new GroupManager(GroupModel, this.#internalUserManager, this.logger, noAuth);
-			const internalRoleManager = new RoleManager(RoleModel, this.#internalUserManager, internalGroupManager, this.logger, noAuth);
+			const internalRoleManager = new RoleManager(
+				RoleModel,
+				this.#internalUserManager,
+				internalGroupManager,
+				this.logger,
+				noAuth,
+				this.#operationsService
+			);
 			this.#internalOrgManager = new OrgManager(
 				OrganizationModel,
 				internalRoleManager,
@@ -135,7 +155,8 @@ export default class IdentityManagerService extends BaseService {
 				this.#internalUserManager,
 				this.#regionManager,
 				this.logger,
-				noAuth
+				noAuth,
+				this.#operationsService
 			);
 
 			// Inicializar roles predefinidos y usuario SYSTEM en BD local
@@ -176,15 +197,13 @@ export default class IdentityManagerService extends BaseService {
 	#createAuthVerifier(): IAuthVerifier {
 		return {
 			verifyToken: async (token: string) => {
-				// Lazy-load singleton pattern para SessionManagerService
-				if (!this.#sessionManager) {
+				// Lazy-load singleton pattern para SessionManagerService Opcional
+				if (!this.#sessionManager)
 					try {
-						// SessionManagerService está declarado como dependencia opcional en config.json
 						this.#sessionManager = this.getMyService<SessionManagerService>("SessionManagerService");
 					} catch {
 						return { valid: false, error: "SessionManagerService no disponible" };
 					}
-				}
 
 				const result = await this.#sessionManager.verifyToken(token);
 				if (!result.valid || !result.session) {
@@ -321,7 +340,14 @@ export default class IdentityManagerService extends BaseService {
 		// Crear managers con scope de organización (misma cadena de dependencia)
 		const orgUserManager = new UserManager(OrgUserModel, this.logger, this.#getAuthVerifier);
 		const orgGroupManager = new GroupManager(OrgGroupModel, orgUserManager, this.logger, this.#getAuthVerifier);
-		const orgRoleManager = new RoleManager(OrgRoleModel, orgUserManager, orgGroupManager, this.logger, this.#getAuthVerifier);
+		const orgRoleManager = new RoleManager(
+			OrgRoleModel,
+			orgUserManager,
+			orgGroupManager,
+			this.logger,
+			this.#getAuthVerifier,
+			this.#operationsService
+		);
 
 		const managers: OrgScopedManagers = {
 			org,

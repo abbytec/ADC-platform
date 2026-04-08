@@ -54,6 +54,7 @@ export class OrgEndpoints {
 		method: "POST",
 		url: "/api/identity/organizations",
 		permissions: [P.IDENTITY.ORGANIZATIONS.WRITE],
+		options: { enqueue: true, queueOptions: { maxRetries: 3 } },
 	})
 	static async createOrganization(
 		ctx: EndpointCtx<Record<string, string>, { slug: string; region?: string; metadata?: Record<string, any> }>
@@ -89,10 +90,12 @@ export class OrgEndpoints {
 		method: "DELETE",
 		url: "/api/identity/organizations/:orgId",
 		permissions: [P.IDENTITY.ORGANIZATIONS.DELETE],
+		options: { enqueue: true, queueOptions: { maxRetries: 4, jobTimeoutMs: 30_000 } },
 	})
 	static async deleteOrganization(ctx: EndpointCtx<{ orgId: string }>) {
 		requireGlobalAccess(ctx);
-		await OrgEndpoints.#identity.organizations.deleteOrganization(ctx.params.orgId, ctx.token!);
+		const resumeFromStep = (ctx as any)._stepperResumeIdx as number | undefined;
+		await OrgEndpoints.#identity.organizations.deleteOrganization(ctx.params.orgId, ctx.token!, resumeFromStep);
 		OrgEndpoints.#identity.permissions.invalidateAll();
 		return { success: true };
 	}

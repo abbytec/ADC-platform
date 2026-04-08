@@ -16,9 +16,10 @@ interface GroupsViewProps {
 	readonly scopes: Permission[];
 	readonly orgId?: string;
 	readonly isAdmin?: boolean;
+	readonly organizations?: Organization[];
 }
 
-export function GroupsView({ scopes, orgId, isAdmin }: GroupsViewProps) {
+export function GroupsView({ scopes, orgId, organizations = [] }: GroupsViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [groups, setGroups] = useState<Group[]>([]);
 	const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
@@ -28,7 +29,7 @@ export function GroupsView({ scopes, orgId, isAdmin }: GroupsViewProps) {
 	const [editingGroup, setEditingGroup] = useState<Group | null>(null);
 	const [deleteConfirm, setDeleteConfirm] = useState<Group | null>(null);
 	const [membersModal, setMembersModal] = useState<Group | null>(null);
-	const [orgMap, setOrgMap] = useState<Map<string, string>>(new Map());
+	const orgMap = React.useMemo(() => new Map(organizations.map((o) => [o.orgId, o.slug])), [organizations]);
 
 	// Form state
 	const [formName, setFormName] = useState("");
@@ -47,19 +48,14 @@ export function GroupsView({ scopes, orgId, isAdmin }: GroupsViewProps) {
 
 	const loadData = useCallback(async () => {
 		setLoading(true);
-		const promises: Promise<any>[] = [identityApi.listGroups(orgId), identityApi.listRoles(orgId)];
-		if (isAdmin && !orgId) promises.push(identityApi.listOrganizations());
-		const [groupsRes, rolesRes, orgsRes] = await Promise.all(promises);
+		const [groupsRes, rolesRes] = await Promise.all([identityApi.listGroups(orgId), identityApi.listRoles(orgId)]);
 		if (groupsRes.success && groupsRes.data) {
 			setGroups(groupsRes.data);
 			setFilteredGroups(groupsRes.data);
 		}
 		if (rolesRes.success && rolesRes.data) setAllRoles(rolesRes.data);
-		if (orgsRes?.success && orgsRes.data) {
-			setOrgMap(new Map((orgsRes.data as Organization[]).map((o) => [o.orgId, o.slug])));
-		}
 		setLoading(false);
-	}, [orgId, isAdmin]);
+	}, [orgId]);
 
 	useEffect(() => {
 		loadData();

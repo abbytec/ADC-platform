@@ -6,15 +6,25 @@ import { IdempotencyError } from "@common/types/custom-errors/IdempotencyError.t
 import { isSagaStep, type Step, type StepperDocument, type StepperResult } from "./types.js";
 import { stepperSchema } from "./domain/stepperSchema.js";
 import { executeSaga } from "./helpers/executeSaga.js";
+import { CircuitBreaker } from "./parts/CircuitBreaker.ts";
 
 export type { Step, SagaStep, StepFunction, StepperResult } from "./types.js";
+export { CircuitBreaker, CircuitState, type CircuitBreakerConfig } from "./parts/CircuitBreaker.ts";
 
 export const HTTP_CHECK_TTL_SECONDS = 120; // 2min
 export default class OperationsService extends BaseService {
 	public readonly name = "OperationsService";
 
+	/** Per-operation circuit breaker - used by consumers only */
+	public readonly circuitBreaker: CircuitBreaker;
+
 	#redis: IRedisProvider | null = null;
 	#stepperModel: Model<StepperDocument> | null = null;
+
+	constructor(kernel?: any, options?: any) {
+		super(kernel, options);
+		this.circuitBreaker = new CircuitBreaker();
+	}
 
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);

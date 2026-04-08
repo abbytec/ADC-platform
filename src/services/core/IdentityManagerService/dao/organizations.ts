@@ -9,9 +9,12 @@ import type { RoleManager } from "./roles.js";
 import type { GroupManager } from "./groups.js";
 import type { UserManager } from "./users.js";
 import type { Organization } from "@common/types/identity/Organization.ts";
+import type OperationsService from "../../../core/OperationsService/index.ts";
+import type { Step } from "../../../core/OperationsService/types.ts";
 
 export class OrgManager {
 	#permissionChecker: PermissionChecker;
+	#operations: OperationsService;
 
 	constructor(
 		private readonly orgModel: Model<any>,
@@ -20,9 +23,11 @@ export class OrgManager {
 		private readonly userManager: UserManager,
 		private readonly regionManager: RegionManager,
 		private readonly logger: ILogger,
-		getAuthVerifier: AuthVerifierGetter = () => null
+		getAuthVerifier: AuthVerifierGetter = () => null,
+		operations: OperationsService
 	) {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "OrgManager");
+		this.#operations = operations;
 	}
 
 	/** Crea una nueva organización */
@@ -98,23 +103,32 @@ export class OrgManager {
 	}
 
 	/** Elimina una organización y todas sus referencias (cascade a través de DAOs) */
-	async deleteOrganization(orgId: string, token?: string): Promise<void> {
+	async deleteOrganization(orgId: string, token?: string, resumeFromStep?: number): Promise<void> {
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.ORGANIZATIONS);
 
 		const org = await this.orgModel.findOne({ orgId });
 		if (!org) throw new Error(`Organización no encontrada: ${orgId}`);
 
-		// 1. Eliminar roles de la org (cascade → user.roleIds, orgMemberships.roleIds, group.roleIds)
-		await this.roleManager.deleteAllForOrg(orgId, token);
+		// Steps defined here in the DAO - the source of truth for cascade order
+		const steps: Step[] = [
+			// 0: Eliminar roles de la org (cascade → user.roleIds, orgMemberships.roleIds, group.roleIds)
+			() => this.roleManager.deleteAllForOrg(orgId, token),
+			// 1: Eliminar groups de la org (cascade → user.groupIds)
+			() => this.groupManager.deleteAllForOrg(orgId, token),
+			// 2: Limpiar orgMemberships de todos los users
+			() => this.userManager.removeAllOrgMemberships(orgId, token),
+			// 3: Eliminar el documento de la organización
+			() => this.orgModel.deleteOne({ orgId }).then(() => {}),
+		];
 
-		// 2. Eliminar groups de la org (cascade → user.groupIds)
-		await this.groupManager.deleteAllForOrg(orgId, token);
+		const startIdx = resumeFromStep ?? 0;
 
-		// 3. Limpiar orgMemberships de todos los users
-		await this.userManager.removeAllOrgMemberships(orgId, token);
-
-		// 4. Eliminar el documento de la organización
-		await this.orgModel.deleteOne({ orgId });
+		const failedStep = await this.#operations.stepper(startIdx, "delete-org", orgId, steps);
+		if (failedStep !== null) {
+			const err = new Error(`deleteOrganization failed at step ${failedStep}`);
+			(err as any).failedStep = failedStep;
+			throw err;
+		}
 
 		this.logger.logOk(`[OrgManager] Organización eliminada con cascade: ${orgId}`);
 	}

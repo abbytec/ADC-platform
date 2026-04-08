@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { identityApi } from "../utils/identity-api.ts";
-import type { Organization, Permission, Role, User } from "@common/types/identity/index.d.ts";
+import type { Organization, Permission, Role } from "@common/types/identity/index.d.ts";
 import { Scope, canWrite, canUpdate, canDelete } from "../utils/permissions.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { PermissionEditor } from "../components/PermissionEditor/index.ts";
@@ -10,25 +10,27 @@ import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { RolePicker } from "../components/RolePicker.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { RowActions } from "../components/RowActions.tsx";
+import { ClientUser } from "@common/types/identity/User.ts";
 
 interface UsersViewProps {
 	readonly scopes: Permission[];
 	readonly orgId?: string;
 	readonly isAdmin?: boolean;
 	readonly isTokenOrgContext?: boolean;
+	readonly organizations?: Organization[];
 }
 
-export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext }: UsersViewProps) {
+export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizations = [] }: UsersViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
-	const [users, setUsers] = useState<User[]>([]);
-	const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+	const [users, setUsers] = useState<ClientUser[]>([]);
+	const [filteredUsers, setFilteredUsers] = useState<ClientUser[]>([]);
 	const [roles, setRoles] = useState<Role[]>([]);
 	const [pickerRoles, setPickerRoles] = useState<Role[]>([]);
-	const [orgMap, setOrgMap] = useState<Map<string, string>>(new Map());
+	const orgMap = React.useMemo(() => new Map(organizations.map((o) => [o.orgId, o.slug])), [organizations]);
 	const [loading, setLoading] = useState(true);
 	const [modalOpen, setModalOpen] = useState(false);
-	const [editingUser, setEditingUser] = useState<User | null>(null);
-	const [deleteConfirm, setDeleteConfirm] = useState<User | null>(null);
+	const [editingUser, setEditingUser] = useState<ClientUser | null>(null);
+	const [deleteConfirm, setDeleteConfirm] = useState<ClientUser | null>(null);
 
 	// Form state
 	const [formUsername, setFormUsername] = useState("");
@@ -53,20 +55,15 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext }: UsersVi
 
 	const loadData = useCallback(async () => {
 		setLoading(true);
-		const promises: Promise<any>[] = [identityApi.listUsers(orgId)];
-		if (isAdmin && !orgId) promises.push(identityApi.listOrganizations());
-		const [usersRes, orgsRes] = await Promise.all(promises);
+		const usersRes = await identityApi.listUsers(orgId);
 
 		if (usersRes.success && usersRes.data) {
 			setUsers(usersRes.data.users ?? []);
 			setFilteredUsers(usersRes.data.users ?? []);
 			setRoles(usersRes.data.roles ?? []);
 		}
-		if (orgsRes?.success && orgsRes.data) {
-			setOrgMap(new Map((orgsRes.data as Organization[]).map((o) => [o.orgId, o.slug])));
-		}
 		setLoading(false);
-	}, [orgId, isAdmin]);
+	}, [orgId]);
 
 	useEffect(() => {
 		loadData();
@@ -93,13 +90,13 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext }: UsersVi
 		return role.orgId ? "org" : "global";
 	};
 
-	const getVisibleRoleIds = (user: User): string[] => {
+	const getVisibleRoleIds = (user: ClientUser): string[] => {
 		if (!orgId) return user.roleIds;
 		const membership = user.orgMemberships?.find((item) => item.orgId === orgId);
 		return Array.from(new Set([...(user.roleIds || []), ...(membership?.roleIds || [])]));
 	};
 
-	const getEditableRoleIds = (user: User): string[] => {
+	const getEditableRoleIds = (user: ClientUser): string[] => {
 		if (!orgId) return user.roleIds;
 		const membership = user.orgMemberships?.find((item) => item.orgId === orgId);
 		return membership?.roleIds || [];
@@ -124,7 +121,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext }: UsersVi
 		setModalOpen(true);
 	};
 
-	const openEditModal = async (user: User) => {
+	const openEditModal = async (user: ClientUser) => {
 		setEditingUser(user);
 		setFormUsername(user.username);
 		setFormPassword("");
@@ -189,7 +186,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext }: UsersVi
 		setFormRoleIds((prev) => (prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]));
 	};
 
-	const columns: Column<User>[] = [
+	const columns: Column<ClientUser>[] = [
 		{ key: "username", label: t("users.username") },
 		{ key: "email", label: t("users.email"), render: (u) => u.email || "—" },
 		{
@@ -221,9 +218,9 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext }: UsersVi
 		...(isAdmin && !orgId
 			? [
 					{
-						key: "orgMemberships" as keyof User,
+						key: "orgMemberships" as keyof ClientUser,
 						label: t("common.organization"),
-						render: (u: User) => (
+						render: (u: ClientUser) => (
 							<div className="flex flex-wrap gap-1">
 								{u.orgMemberships?.map((m) => (
 									<adc-badge key={m.orgId} color="indigo" size="sm">
@@ -233,7 +230,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext }: UsersVi
 								{(!u.orgMemberships || u.orgMemberships.length === 0) && <span className="text-muted text-xs">—</span>}
 							</div>
 						),
-					} as Column<User>,
+					} as Column<ClientUser>,
 				]
 			: []),
 		{

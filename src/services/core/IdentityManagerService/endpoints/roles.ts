@@ -97,11 +97,13 @@ export class RoleEndpoints {
 		method: "DELETE",
 		url: "/api/identity/roles/:roleId",
 		permissions: [P.IDENTITY.ROLES.DELETE],
+		options: { enqueue: true, queueOptions: { maxRetries: 3, jobTimeoutMs: 20_000 } },
 	})
 	static async deleteRole(ctx: EndpointCtx<{ roleId: string }>) {
 		try {
 			await assertRoleOrgAccess(RoleEndpoints.#identity, ctx.params.roleId, ctx.user?.orgId, ctx.token!);
-			await RoleEndpoints.#identity.roles.deleteRole(ctx.params.roleId, ctx.token!);
+			const resumeFromStep = (ctx as any)._stepperResumeIdx as number | undefined;
+			await RoleEndpoints.#identity.roles.deleteRole(ctx.params.roleId, ctx.token!, resumeFromStep);
 			RoleEndpoints.#identity.permissions.invalidateRole(ctx.params.roleId);
 			return { success: true };
 		} catch (error: any) {

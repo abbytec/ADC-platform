@@ -4,10 +4,13 @@ import { type HttpMethod, type EndpointConfig, type EndpointHandler, type Servic
 import { setPermissionValidator } from "./decorators.js";
 import SessionManagerService from "../../security/SessionManagerService/index.ts";
 import OperationsService from "../OperationsService/index.ts";
+import type RabbitMQProvider from "../../../providers/queue/rabbitmq/index.ts";
+import type { IRedisProvider } from "../../../providers/queue/redis/index.ts";
 import { EndpointRegistry } from "./parts/EndpointRegistry.js";
 import { createPermissionValidator } from "./parts/validator.js";
 import { createHttpWrapper } from "./parts/http.js";
 import { internalCallEndpoint } from "./parts/internalCallEndpoint.ts";
+import { JobManager } from "./parts/JobManager.ts";
 
 // Re-exportar decoradores para uso externo
 export { RegisterEndpoint, EnableEndpoints, DisableEndpoints, readEndpointMetadata, readEnableEndpointsConfig } from "./decorators.js";
@@ -25,6 +28,7 @@ export {
 	type CookieOptions,
 	type SetCookie,
 	type ClearCookie,
+	type JobStatus,
 } from "./types.js";
 
 /**
@@ -38,11 +42,31 @@ export default class EndpointManagerService extends BaseService {
 	#sessionManager: SessionManagerService | null = null;
 	#operationsService: OperationsService | null = null;
 	#registry = new EndpointRegistry(this.logger);
+	#jobManager: JobManager | null = null;
+
+	static readonly JOB_TTL_SECONDS = JobManager.JOB_TTL_SECONDS;
 
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
 		this.#httpProvider = this.getMyProvider<IHostBasedHttpProvider>("fastify-server");
 		this.#operationsService = this.getMyService<OperationsService>("OperationsService");
+
+		const rabbitmq = this.getMyProvider<RabbitMQProvider>("queue/rabbitmq");
+		const redis = this.getMyProvider<IRedisProvider>("queue/redis");
+
+		this.#jobManager = new JobManager({
+			logger: this.logger,
+			getSessionManager: this.#getSessionManager.bind(this),
+			operationsService: this.#operationsService!,
+			rabbitmq,
+			redis,
+			httpProvider: this.#httpProvider,
+		});
+
+		if (this.#httpProvider && redis) {
+			this.#jobManager.registerJobEndpoint(this.#httpProvider);
+		}
+
 		this.logger.logOk("EndpointManagerService iniciado");
 	}
 
@@ -86,10 +110,29 @@ export default class EndpointManagerService extends BaseService {
 		setPermissionValidator(config.instance, createPermissionValidator(this.#getSessionManager.bind(this)));
 
 		// Crear wrapper HTTP que construye ctx y maneja HttpError
-		const wrappedHandler = createHttpWrapper(endpoint, this.#getSessionManager.bind(this), this.#operationsService!, this.logger);
+		const wrappedHandler = createHttpWrapper(
+			endpoint,
+			this.#getSessionManager.bind(this),
+			this.#operationsService!,
+			this.logger,
+			this.getMyProvider<RabbitMQProvider>("queue/rabbitmq"),
+			this.getMyProvider<IRedisProvider>("queue/redis")
+		);
 
 		// Registrar en Fastify
 		this.#httpProvider.registerRoute(config.method, config.url, wrappedHandler);
+
+		// ── Set up queue consumer if endpoint uses enqueue ──────────────────
+		const isMutative = ["POST", "PUT", "PATCH", "DELETE"].includes(config.method);
+		if (isMutative && config.options?.enqueue && this.#jobManager?.hasQueue) {
+			await this.#jobManager.setupConsumer(
+				config.ownerName,
+				config.methodName,
+				endpoint,
+				this.#operationsService!,
+				config.options.queueOptions
+			);
+		}
 
 		this.logger.logDebug(`Endpoint registrado: ${config.method} ${config.url} [${config.ownerName}]`);
 
@@ -113,6 +156,12 @@ export default class EndpointManagerService extends BaseService {
 	getStats = () => this.#registry.getStats();
 
 	async stop(kernelKey: symbol): Promise<void> {
+		// Graceful shutdown: drain all queue consumers first
+		if (this.#jobManager) {
+			await this.#jobManager.shutdown();
+			this.#jobManager = null;
+		}
+
 		// Limpiar todos los endpoints
 		this.#registry.clear();
 

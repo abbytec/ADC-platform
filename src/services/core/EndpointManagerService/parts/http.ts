@@ -4,9 +4,13 @@ import ADCCustomError from "@common/types/ADCCustomError.js";
 import { IdempotencyError } from "@common/types/custom-errors/IdempotencyError.ts";
 import type SessionManagerService from "../../../security/SessionManagerService/index.ts";
 import type OperationsService from "../../OperationsService/index.ts";
+import type RabbitMQProvider from "../../../../providers/queue/rabbitmq/index.ts";
+import type { IRedisProvider } from "../../../../providers/queue/redis/index.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.d.ts";
+import { createHash } from "node:crypto";
 
 const MUTATIVE_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const JOB_TTL_SECONDS = 600; // 10 min
 
 function extractToken(req: FastifyRequest<any>, getSessionManager: () => SessionManagerService | null): string | null {
 	// 1. Intentar desde cookie via SessionManager
@@ -35,9 +39,12 @@ export function createHttpWrapper(
 	endpoint: RegisteredEndpoint,
 	getSessionManager: () => SessionManagerService | null,
 	operationsService: OperationsService,
-	logger: ILogger
+	logger: ILogger,
+	rabbitmq: RabbitMQProvider | null = null,
+	redis: IRedisProvider | null = null
 ): (req: FastifyRequest<any>, reply: FastifyReply<any>) => Promise<void> {
 	const requiresIdempotency = MUTATIVE_METHODS.has(endpoint.method) && endpoint.options?.skipIdempotency !== true;
+	const shouldEnqueue = MUTATIVE_METHODS.has(endpoint.method) && endpoint.options?.enqueue === true && rabbitmq !== null;
 
 	return async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
 		// Extraer token si existe
@@ -76,6 +83,57 @@ export function createHttpWrapper(
 				}
 
 				const cmd = `${endpoint.method}:${endpoint.url}`;
+
+				if (shouldEnqueue && redis) {
+					// ── Enqueue path: always respond 202 ──────────────────────────
+					result = await operationsService.httpCheck(cmd, idempotencyKey, async () => {
+						const jobId = crypto.randomUUID();
+
+						// Persist job status in Redis
+						const jobData = JSON.stringify({
+							status: "queued",
+							endpoint: `${endpoint.method}:${endpoint.url}`,
+							userId: ctx.user?.id,
+							createdAt: new Date().toISOString(),
+						});
+						await redis.setex(`job:${jobId}`, JOB_TTL_SECONDS, jobData);
+
+						// Store token in Redis (not in the queue) so consumer can verify session
+						let tokenHash = "";
+						if (token) {
+							tokenHash = createHash("sha256").update(token).digest("hex");
+							await redis.setex(`job-token:${jobId}`, JOB_TTL_SECONDS, token);
+						}
+
+						// Publish minimal payload to RabbitMQ
+						await rabbitmq!.publish(
+							endpoint.ownerName,
+							endpoint.methodName,
+							{
+								jobId,
+								endpoint: `${endpoint.method}:${endpoint.url}`,
+								methodName: endpoint.methodName,
+								params: ctx.params,
+								data: ctx.data,
+								userId: ctx.user?.id,
+								orgId: ctx.user?.orgId,
+							},
+							{
+								"x-idempotency-key": idempotencyKey,
+								"x-job-id": jobId,
+								"x-retry-count": "0",
+								"x-token-hash": tokenHash,
+							}
+						);
+
+						return { jobId, status: "queued", pollUrl: `/api/jobs/${jobId}` };
+					});
+
+					reply.status(202).send(result);
+					return;
+				}
+
+				// ── Synchronous path (default for mutative endpoints) ─────────
 				result = await operationsService.httpCheck(cmd, idempotencyKey, () => endpoint.handler(ctx));
 			} else {
 				result = await endpoint.handler(ctx);

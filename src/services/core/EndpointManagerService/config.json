@@ -7,6 +7,30 @@
 			"name": "fastify-server",
 			"version": "latest",
 			"language": "typescript"
+		},
+		{
+			"name": "queue/rabbitmq",
+			"version": "latest",
+			"language": "typescript",
+			"custom": {
+				"url": "amqp://admin:password@localhost:5672",
+				"defaultPrefetch": 10,
+				"defaultConcurrency": 5,
+				"maxRetries": 4,
+				"retryDelaysMs": [1000, 5000, 25000, 125000]
+			}
+		},
+		{
+			"name": "queue/redis",
+			"version": "latest",
+			"language": "typescript",
+			"custom": {
+				"host": "${REDIS_HOST:-localhost}",
+				"port": "${REDIS_PORT:-6380}",
+				"password": "${REDIS_PASSWORD}",
+				"db": 0,
+				"keyPrefix": "adc:jobs:"
+			}
 		}
 	],
 	"services": [

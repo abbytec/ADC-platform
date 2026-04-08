@@ -14,9 +14,10 @@ interface RolesViewProps {
 	readonly scopes: Permission[];
 	readonly orgId?: string;
 	readonly isAdmin?: boolean;
+	readonly organizations?: Organization[];
 }
 
-export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
+export function RolesView({ scopes, orgId, organizations = [] }: RolesViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [roles, setRoles] = useState<Role[]>([]);
 	const [filteredRoles, setFilteredRoles] = useState<Role[]>([]);
@@ -24,7 +25,7 @@ export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
 	const [modalOpen, setModalOpen] = useState(false);
 	const [editingRole, setEditingRole] = useState<Role | null>(null);
 	const [deleteConfirm, setDeleteConfirm] = useState<Role | null>(null);
-	const [orgMap, setOrgMap] = useState<Map<string, string>>(new Map());
+	const orgMap = React.useMemo(() => new Map(organizations.map((o) => [o.orgId, o.slug])), [organizations]);
 
 	// Form state
 	const [formName, setFormName] = useState("");
@@ -42,18 +43,13 @@ export function RolesView({ scopes, orgId, isAdmin }: RolesViewProps) {
 
 	const loadData = useCallback(async () => {
 		setLoading(true);
-		const promises: Promise<any>[] = [identityApi.listRoles(orgId)];
-		if (isAdmin && !orgId) promises.push(identityApi.listOrganizations());
-		const [result, orgsRes] = await Promise.all(promises);
+		const result = await identityApi.listRoles(orgId);
 		if (result.success && result.data) {
 			setRoles(result.data);
 			setFilteredRoles(result.data);
 		}
-		if (orgsRes?.success && orgsRes.data) {
-			setOrgMap(new Map((orgsRes.data as Organization[]).map((o) => [o.orgId, o.slug])));
-		}
 		setLoading(false);
-	}, [orgId, isAdmin]);
+	}, [orgId]);
 
 	useEffect(() => {
 		loadData();
