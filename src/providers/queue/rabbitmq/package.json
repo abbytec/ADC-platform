@@ -1,0 +1,9 @@
+{
+	"name": "@adc-platform/rabbitmq-provider",
+	"version": "1.0.0",
+	"type": "module",
+	"private": true,
+	"dependencies": {
+		"rabbitmq-client": "^5.0.8"
+	}
+}
