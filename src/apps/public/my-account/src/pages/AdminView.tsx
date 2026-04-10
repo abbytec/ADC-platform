@@ -1,4 +1,36 @@
+import { accountApi } from "../utils/account-api";
+
+const AUTH_URL = "http://localhost:3012";
+
 export default function AdminView() {
+	const handleLogout = async () => {
+		try {
+			await fetch("/api/auth/logout", {
+				method: "POST",
+				credentials: "include",
+			});
+		} catch {}
+
+		window.location.href = `${AUTH_URL}/login`;
+	};
+
+	const handleDeleteAccount = async () => {
+		const confirmDelete = window.confirm("¿Estás seguro de que querés eliminar tu cuenta? Esta acción no se puede deshacer.");
+
+		if (!confirmDelete) return;
+
+		try {
+			await accountApi.deleteCurrentUser();
+
+			alert("Cuenta eliminada correctamente");
+
+			await handleLogout();
+		} catch (err) {
+			console.error("Error eliminando cuenta", err);
+			alert("Ocurrió un error al eliminar la cuenta");
+		}
+	};
+
 	return (
 		<div className="w-full flex flex-col pl-25 lg:pl-70">
 			{/* Title */}
@@ -32,6 +64,7 @@ export default function AdminView() {
 						<p className="text-sm text-muted">Esta acción eliminará permanentemente todos tus datos.</p>
 					</div>
 				</div>
+
 				<adc-divider />
 
 				{/* Content */}
@@ -49,7 +82,10 @@ export default function AdminView() {
 
 					{/* Action */}
 					<div className="flex items-center justify-end flex-wrap gap-3">
-						<button className="bg-danger hover:bg-danger/90 transition-all text-tdanger font-medium px-4 py-3 rounded-lg shadow-sm">
+						<button
+							onClick={handleDeleteAccount}
+							className="bg-danger hover:bg-danger/90 transition-all text-tdanger font-medium px-4 py-3 rounded-lg shadow-sm"
+						>
 							Eliminar cuenta
 						</button>
 					</div>

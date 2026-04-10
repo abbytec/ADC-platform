@@ -1,5 +1,6 @@
 import { RegisterEndpoint, type EndpointCtx } from "../../EndpointManagerService/index.js";
 import { IdentityError } from "@common/types/custom-errors/IdentityError.js";
+import { AuthError } from "@common/types/custom-errors/AuthError.js";
 import { P } from "@common/types/Permissions.ts";
 import type IdentityManagerService from "../index.js";
 
@@ -115,6 +116,23 @@ export class UserEndpoints {
 
 	@RegisterEndpoint({
 		method: "GET",
+		url: "/api/identity/users/me",
+	})
+	static async getCurrentUser(ctx: EndpointCtx) {
+		if (!ctx.user) {
+			throw new AuthError(401, "UNAUTHORIZED", "No hay usuario autenticado");
+		}
+
+		const user = await UserEndpoints.#identity.users.getUser(ctx.user.id, ctx.token!);
+		if (!user) {
+			throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+		}
+
+		return sanitizeUserForContext(user, ctx.user.orgId);
+	}
+
+	@RegisterEndpoint({
+		method: "GET",
 		url: "/api/identity/users/:userId",
 		permissions: [P.IDENTITY.USERS.READ],
 	})
@@ -125,6 +143,49 @@ export class UserEndpoints {
 		if (!user) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
 		return sanitizeUserForContext(user, callerOrgId);
 	}
+
+	@RegisterEndpoint({
+	method: "POST",
+	url: "/api/identity/users/change-password",
+})
+static async changePassword(
+	ctx: EndpointCtx<
+		Record<string, string>,
+		{ currentPassword: string; newPassword: string }
+	>
+) {
+	if (!ctx.user) {
+		throw new AuthError(401, "UNAUTHORIZED", "No hay usuario autenticado");
+	}
+
+	const { currentPassword, newPassword } = ctx.data || {};
+
+	if (!currentPassword || !newPassword) {
+		throw new IdentityError(400, "MISSING_FIELDS", "Faltan campos");
+	}
+
+	if (newPassword.length < 8) {
+		throw new AuthError(400, "WEAK_PASSWORD", "La nueva contraseña debe tener al menos 8 caracteres");
+	}
+
+	const user = await UserEndpoints.#identity.users.getUser(ctx.user.id, ctx.token!);
+	if (!user) {
+		throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+	}
+
+	const isValid = await UserEndpoints.#identity.users.verifyUserPassword(
+	user.id,
+	currentPassword
+);
+
+	if (!isValid) {
+		throw new AuthError(401, "INVALID_PASSWORD", "Contraseña actual incorrecta");
+	}
+
+	await UserEndpoints.#identity.users.updatePassword(user.id, newPassword, ctx.token!);
+
+	return { success: true };
+}
 
 	@RegisterEndpoint({
 		method: "POST",

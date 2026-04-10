@@ -197,6 +197,54 @@ export class UserManager {
 	}
 
 	/**
+	 * Verifica la password de un usuario
+	 */
+	async verifyUserPassword(userId: string, password: string): Promise<boolean> {
+		try {
+			const doc = await this.userModel.findOne({ id: userId });
+			const user = doc?.toObject?.() || doc;
+
+			if (!user) return false;
+
+			return verifyPassword(password, user.passwordHash);
+		} catch (error) {
+			this.logger.logError(`Error verificando password: ${error}`);
+			return false;
+		}
+	}
+
+	/**
+	 * Actualiza la password de un usuario
+	 * @param token Token de autenticación (requerido para verificar permisos)
+	 */
+	async updatePassword(userId: string, newPassword: string, token?: string): Promise<void> {
+		if (token) {
+			await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
+		}
+
+		try {
+			const passwordHash = hashPassword(newPassword);
+
+			const updated = await this.userModel.findOneAndUpdate(
+				{ id: userId },
+				{
+					passwordHash,
+					updatedAt: new Date(),
+				}
+			);
+
+			if (!updated) {
+				throw new Error(`Usuario ${userId} no encontrado`);
+			}
+
+			this.logger.logDebug(`Password actualizada para usuario ${userId}`);
+		} catch (error) {
+			this.logger.logError(`Error actualizando password: ${error}`);
+			throw error;
+		}
+	}
+
+	/**
 	 * Elimina un usuario
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */

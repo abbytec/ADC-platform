@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import { accountApi } from "../utils/account-api";
 export default function PrivacySecurityView() {
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
@@ -9,46 +9,60 @@ export default function PrivacySecurityView() {
 	const [showNew, setShowNew] = useState(false);
 	const [showConfirm, setShowConfirm] = useState(false);
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		console.log({ currentPassword, newPassword, confirmPassword });
-	};
 
+		if (!currentPassword || !newPassword || !confirmPassword) {
+			alert("Todos los campos son obligatorios");
+			return;
+		}
+
+		if (newPassword.length < 8) {
+			alert("La nueva contraseña debe tener al menos 8 caracteres");
+			return;
+		}
+
+		if (newPassword !== confirmPassword) {
+			alert("Las contraseñas no coinciden");
+			return;
+		}
+
+		try {
+			await accountApi.changePassword(currentPassword, newPassword);
+
+			alert("Contraseña actualizada correctamente");
+
+			setCurrentPassword("");
+			setNewPassword("");
+			setConfirmPassword("");
+		} catch (error: any) {
+			console.error(error);
+
+			alert(error?.message || "Error al cambiar la contraseña");
+		}
+	};
 	return (
 		<div className="w-full flex flex-col pl-25 lg:pl-70">
 			{/* Title */}
 			<div className="mb-4">
-				<h2 className="text-2xl font-bold text-text">
-					Privacidad y Seguridad
-				</h2>
-				<p className="text-muted">
-					Gestiona tu contraseña y configuración de seguridad
-				</p>
+				<h2 className="text-2xl font-bold text-text">Privacidad y Seguridad</h2>
+				<p className="text-muted">Gestiona tu contraseña y configuración de seguridad</p>
 			</div>
 
 			{/* Panel */}
 			<div className="bg-surface p-8 pb-6 rounded-xxl">
-
 				{/* Header */}
 				<div className="mb-6">
-					<h3 className="!mt-0 text-lg font-semibold text-text">
-						Cambiar Contraseña
-					</h3>
-					<p className="text-sm text-muted">
-						Asegúrate de que tu cuenta use una contraseña segura
-					</p>
+					<h3 className="!mt-0 text-lg font-semibold text-text">Cambiar Contraseña</h3>
+					<p className="text-sm text-muted">Asegúrate de que tu cuenta use una contraseña segura</p>
 				</div>
 
 				{/* Contenido centrado */}
 				<div className="max-w-2xl mx-auto">
-
 					<form onSubmit={handleSubmit} className="space-y-5">
-
 						{/* Contraseña actual */}
 						<div>
-							<label className="block text-sm mb-1 text-text">
-								Contraseña Actual
-							</label>
+							<label className="block text-sm mb-1 text-text">Contraseña Actual</label>
 
 							<div className="relative">
 								<adc-input
@@ -56,9 +70,7 @@ export default function PrivacySecurityView() {
 									placeholder="Ingresa tu contraseña actual"
 									value={currentPassword}
 									class="w-full pr-12"
-									onInput={(e) =>
-										setCurrentPassword((e.target as HTMLInputElement).value)
-									}
+									onInput={(e) => setCurrentPassword((e.target as HTMLInputElement).value)}
 								/>
 
 								<button
@@ -73,9 +85,7 @@ export default function PrivacySecurityView() {
 
 						{/* Nueva contraseña */}
 						<div>
-							<label className="block text-sm mb-1 text-text">
-								Nueva Contraseña
-							</label>
+							<label className="block text-sm mb-1 text-text">Nueva Contraseña</label>
 
 							<div className="relative">
 								<adc-input
@@ -83,9 +93,7 @@ export default function PrivacySecurityView() {
 									placeholder="Ingresa tu nueva contraseña"
 									value={newPassword}
 									class="w-full pr-12"
-									onInput={(e) =>
-										setNewPassword((e.target as HTMLInputElement).value)
-									}
+									onInput={(e) => setNewPassword((e.target as HTMLInputElement).value)}
 								/>
 
 								<button
@@ -100,9 +108,7 @@ export default function PrivacySecurityView() {
 
 						{/* Confirmar contraseña */}
 						<div>
-							<label className="block text-sm mb-1 text-text">
-								Confirmar Nueva Contraseña
-							</label>
+							<label className="block text-sm mb-1 text-text">Confirmar Nueva Contraseña</label>
 
 							<div className="relative">
 								<adc-input
@@ -110,9 +116,7 @@ export default function PrivacySecurityView() {
 									placeholder="Confirma tu nueva contraseña"
 									value={confirmPassword}
 									class="w-full pr-12"
-									onInput={(e) =>
-										setConfirmPassword((e.target as HTMLInputElement).value)
-									}
+									onInput={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
 								/>
 
 								<button
