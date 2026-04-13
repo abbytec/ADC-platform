@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { accountApi } from "../utils/account-api";
 
 const AUTH_URL = "http://localhost:3012";
 
 export default function AdminView() {
+	const [modalOpen, setModalOpen] = useState(false);
+	const [deleting, setDeleting] = useState(false);
+
 	const handleLogout = async () => {
 		try {
 			await fetch("/api/auth/logout", {
@@ -10,29 +14,67 @@ export default function AdminView() {
 				credentials: "include",
 			});
 		} catch {}
-
 		window.location.href = `${AUTH_URL}/login`;
 	};
 
 	const handleDeleteAccount = async () => {
-		const confirmDelete = window.confirm("¿Estás seguro de que querés eliminar tu cuenta? Esta acción no se puede deshacer.");
-
-		if (!confirmDelete) return;
-
+		setDeleting(true);
+		const toast = document.getElementById("successToast") as any;
 		try {
 			await accountApi.deleteCurrentUser();
-
-			alert("Cuenta eliminada correctamente");
-
-			await handleLogout();
+			toast?.show("Cuenta eliminada correctamente");
+			setTimeout(() => handleLogout(), 1500);
 		} catch (err) {
 			console.error("Error eliminando cuenta", err);
-			alert("Ocurrió un error al eliminar la cuenta");
+			toast?.show("Ocurrió un error al eliminar la cuenta");
+		} finally {
+			setDeleting(false);
+			setModalOpen(false);
 		}
 	};
 
 	return (
-		<div className="w-full flex flex-col pl-25 lg:pl-70">
+		<>
+			<adc-toast id="successToast"></adc-toast>
+			<adc-modal
+				open={modalOpen}
+				modalTitle="Confirmar eliminación de cuenta"
+				size="lg"
+				dismissOnBackdrop={!deleting}
+				dismissOnEscape={!deleting}
+				onAdcClose={() => setModalOpen(false)}
+			>
+				<div className="flex flex-col items-center py-6 px-2">
+					<div className="flex items-center justify-center w-16 h-16 rounded-full bg-danger mb-4">
+						<svg className="w-10 h-10 text-tdanger" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+							<path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M4.5 19h15c1.1 0 1.8-1.2 1.2-2.1L13.2 5.3c-.6-1-2-1-2.6 0L3.3 16.9c-.6.9.1 2.1 1.2 2.1z" />
+						</svg>
+					</div>
+					<h3 className="text-xl font-semibold text-center text-tdanger mb-2">¿Eliminar cuenta?</h3>
+					<p className="mb-4 text-base text-center text-text max-w-xl">
+						Esta acción <span className="font-bold text-tdanger">no se puede deshacer</span> y eliminará permanentemente todos tus datos. ¿Estás seguro de que querés continuar?
+					</p>
+					<div className="flex flex-row justify-center gap-4 w-full mt-4">
+						<adc-button
+							type="button"
+							class="min-w-[140px]"
+							disabled={deleting}
+							onClick={() => setModalOpen(false)}
+						>
+							Cancelar
+						</adc-button>
+						<adc-button
+							type="button"
+							class="min-w-[140px]"
+							disabled={deleting}
+							onClick={handleDeleteAccount}
+						>
+							{deleting ? "Eliminando..." : "Eliminar cuenta"}
+						</adc-button>
+					</div>
+				</div>
+			</adc-modal>
+			<div className="w-full flex flex-col pl-25 lg:pl-70">
 			{/* Title */}
 			<div className="mb-4">
 				<h2 className="text-2xl font-bold text-text">Administración</h2>
@@ -82,15 +124,16 @@ export default function AdminView() {
 
 					{/* Action */}
 					<div className="flex items-center justify-end flex-wrap gap-3">
-						<button
-							onClick={handleDeleteAccount}
-							className="bg-danger hover:bg-danger/90 transition-all text-tdanger font-medium px-4 py-3 rounded-lg shadow-sm"
+						<adc-button
+							type="button"
+							onClick={() => setModalOpen(true)}
 						>
 							Eliminar cuenta
-						</button>
+						</adc-button>
 					</div>
 				</div>
 			</div>
 		</div>
+		</>
 	);
 }

@@ -7,19 +7,40 @@ export default function ProfileView() {
 		lastName: "",
 		birthDate: "",
 	});
+
+	const [original, setOriginal] = useState({
+		name: "",
+		lastName: "",
+		birthDate: "",
+	});
+
 	const [loading, setLoading] = useState(true);
+
+	// Detectar cambios (escalable)
+	const hasChanges = useMemo(() => {
+		return Object.keys(form).some(
+			(key) =>
+				form[key as keyof typeof form] !==
+				original[key as keyof typeof original]
+		);
+	}, [form, original]);
 
 	useEffect(() => {
 		async function fetchProfile() {
 			try {
 				const res = await accountApi.getCurrentUser();
+
 				if (res.success) {
 					const user = res.data;
-					setForm({
+
+					const userData = {
 						name: user.metadata?.name || "",
 						lastName: user.metadata?.lastName || "",
 						birthDate: user.metadata?.birthDate || "",
-					});
+					};
+
+					setForm(userData);
+					setOriginal(userData);
 				}
 			} catch (err) {
 				console.error("Error al obtener usuario:", err);
@@ -27,25 +48,45 @@ export default function ProfileView() {
 				setLoading(false);
 			}
 		}
+
 		fetchProfile();
 	}, []);
 
+	const getToast = () =>
+		document.getElementById("successToast") as any;
+
 	const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+		e.preventDefault();
 
-  try {
-    await accountApi.updateCurrentUser({
-      name: form.name,
-      lastName: form.lastName,
-      birthDate: form.birthDate,
-    });
+		if (!hasChanges) {
+			getToast()?.show("No hay cambios para guardar");
+			return;
+		}
 
-    alert("Perfil actualizado correctamente");
-  } catch (err: any) {
-    console.error("Error actualizando perfil", err?.response ?? err);
-    alert("Ocurrió un error al actualizar el perfil");
-  }
-};
+		try {
+			await accountApi.updateCurrentUser({
+				name: form.name,
+				lastName: form.lastName,
+				birthDate: form.birthDate,
+			});
+
+			setOriginal(form);
+
+			getToast()?.show("Perfil actualizado correctamente");
+		} catch (err: any) {
+			console.error("Error actualizando perfil", err?.response ?? err);
+
+			window.dispatchEvent(
+				new CustomEvent("adc-error", {
+					detail: {
+						errorKey: "update_profile_error",
+						message:
+							"Ocurrió un error al actualizar el perfil",
+					},
+				})
+			);
+		}
+	};
 
 	function handleChange(field: keyof typeof form, value: string) {
 		setForm((prev) => ({ ...prev, [field]: value }));
@@ -55,79 +96,126 @@ export default function ProfileView() {
 		return `${form.name?.[0] ?? ""}${form.lastName?.[0] ?? ""}`.toUpperCase();
 	}, [form.name, form.lastName]);
 
-	return (
-		<div className="w-full flex flex-col pl-25 lg:pl-70">
-			{/* Title */}
-			<div className="mb-4">
-				<h2 className="font-bold text-text">Información Personal</h2>
-				<p className="text-muted">Actualiza tu perfil y avatar</p>
-			</div>
+	// Loading state
+	if (loading) {
+		return <p className="p-4">Cargando perfil...</p>;
+	}
 
-			{/* Panel */}
-			<div className="bg-surface p-8 pb-6 rounded-xxl">
-				{/* Header */}
-				<div className="mb-6">
-					<h3 className="!mt-0 text-lg font-semibold text-text">Datos del perfil</h3>
-					<p className="text-sm text-muted">Puedes modificar tu información personal</p>
+	return (
+		<>
+			<adc-toast id="successToast"></adc-toast>
+
+			<div className="w-full flex flex-col pl-25 lg:pl-70">
+				{/* Title */}
+				<div className="mb-4">
+					<h2 className="font-bold text-text">
+						Información Personal
+					</h2>
+					<p className="text-muted">
+						Actualiza tu perfil y avatar
+					</p>
 				</div>
 
-				<div className="max-w-3xl mx-auto">
-					{/* Avatar */}
-					<div className="flex flex-col items-center mb-8">
-						<div className="w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-white text-xl md:text-2xl font-bold bg-gradient-to-br from-blue-400 to-purple-500">
-							{initials}
-						</div>
-
-						<adc-button class="mt-4" variant="primary">
-							Subir Avatar
-						</adc-button>
-
-						<p className="text-xs text-muted mt-2 text-center">JPG, PNG o GIF (máx. 2MB)</p>
+				{/* Panel */}
+				<div className="bg-surface p-8 pb-6 rounded-xxl">
+					{/* Header */}
+					<div className="mb-6">
+						<h3 className="!mt-0 text-lg font-semibold text-text">
+							Datos del perfil
+						</h3>
+						<p className="text-sm text-muted">
+							Puedes modificar tu información personal
+						</p>
 					</div>
 
-					{/* Form */}
-					<form onSubmit={handleSubmit} className="space-y-5">
-						{/* Nombre / Apellido */}
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<div>
-								<label className="block text-sm mb-1 text-text">Nombre</label>
-								<adc-input
-									value={form.name}
-									class="w-full"
-									onInput={(e) => handleChange("name", (e.target as HTMLInputElement).value)}
-								/>
+					<div className="max-w-3xl mx-auto">
+						{/* Avatar */}
+						<div className="flex flex-col items-center mb-8">
+							<div className="w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-white text-xl md:text-2xl font-bold bg-gradient-to-br from-blue-400 to-purple-500">
+								{initials}
 							</div>
 
-							<div>
-								<label className="block text-sm mb-1 text-text">Apellido</label>
-								<adc-input
-									value={form.lastName}
-									class="w-full"
-									onInput={(e) => handleChange("lastName", (e.target as HTMLInputElement).value)}
-								/>
-							</div>
-						</div>
-
-						{/* Fecha */}
-						<div>
-							<label className="block text-sm mb-1 text-text">Fecha de Nacimiento</label>
-							<adc-input
-								type="date"
-								value={form.birthDate}
-								class="w-full"
-								onInput={(e) => handleChange("birthDate", (e.target as HTMLInputElement).value)}
-							/>
-						</div>
-
-						{/* Submit */}
-						<div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
-							<adc-button type="submit" variant="primary">
-								Guardar Cambios
+							<adc-button class="mt-4" variant="primary">
+								Subir Avatar
 							</adc-button>
+
+							<p className="text-xs text-muted mt-2 text-center">
+								JPG, PNG o GIF (máx. 2MB)
+							</p>
 						</div>
-					</form>
+
+						{/* Form */}
+						<form onSubmit={handleSubmit} className="space-y-5">
+							{/* Nombre / Apellido */}
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div>
+									<label className="block text-sm mb-1 text-text">
+										Nombre
+									</label>
+									<adc-input
+										value={form.name}
+										class="w-full"
+										onInput={(e) =>
+											handleChange(
+												"name",
+												(e.target as HTMLInputElement).value
+											)
+										}
+									/>
+								</div>
+
+								<div>
+									<label className="block text-sm mb-1 text-text">
+										Apellido
+									</label>
+									<adc-input
+										value={form.lastName}
+										class="w-full"
+										onInput={(e) =>
+											handleChange(
+												"lastName",
+												(e.target as HTMLInputElement).value
+											)
+										}
+									/>
+								</div>
+							</div>
+
+							{/* Fecha */}
+							<div>
+								<label className="block text-sm mb-1 text-text">
+									Fecha de Nacimiento
+								</label>
+								<adc-input
+									type="date"
+									value={form.birthDate}
+									class="w-full"
+									onInput={(e) =>
+										handleChange(
+											"birthDate",
+											(e.target as HTMLInputElement).value
+										)
+									}
+								/>
+							</div>
+
+							{/* Submit */}
+							<div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
+								<adc-button
+									type="submit"
+									variant="primary"
+									disabled={!hasChanges}
+									label={
+										hasChanges
+											? "Guardar Cambios"
+											: "Sin cambios"
+									}
+								/>
+							</div>
+						</form>
+					</div>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }

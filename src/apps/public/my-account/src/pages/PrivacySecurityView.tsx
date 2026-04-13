@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { accountApi } from "../utils/account-api";
 export default function PrivacySecurityView() {
 	const [currentPassword, setCurrentPassword] = useState("");
@@ -29,20 +29,21 @@ export default function PrivacySecurityView() {
 
 		try {
 			await accountApi.changePassword(currentPassword, newPassword);
-
-			alert("Contraseña actualizada correctamente");
-
+			const toast = document.getElementById("successToast") as any;
+			toast?.show("Contraseña actualizada correctamente");
 			setCurrentPassword("");
 			setNewPassword("");
 			setConfirmPassword("");
 		} catch (error: any) {
 			console.error(error);
-
-			alert(error?.message || "Error al cambiar la contraseña");
+			const toast = document.getElementById("successToast") as any;
+			toast?.show(error?.message || "Error al cambiar la contraseña");
 		}
 	};
-	return (
-		<div className="w-full flex flex-col pl-25 lg:pl-70">
+	   return (
+		   <>
+			   <adc-toast id="successToast"></adc-toast>
+			   <div className="w-full flex flex-col pl-25 lg:pl-70">
 			{/* Title */}
 			<div className="mb-4">
 				<h2 className="text-2xl font-bold text-text">Privacidad y Seguridad</h2>
@@ -139,5 +140,6 @@ export default function PrivacySecurityView() {
 				</div>
 			</div>
 		</div>
+		</>
 	);
 }

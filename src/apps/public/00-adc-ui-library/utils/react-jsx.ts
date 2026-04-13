@@ -18,6 +18,12 @@ type WebComponentProps<T = Record<string, unknown>> = T & {
 } & React.DOMAttributes<HTMLElement>;
 
 interface AdcIntrinsicElements {
+	"adc-toast": WebComponentProps<{
+		message?: string;
+		duration?: number;
+		ref?: React.Ref<any>;
+		id?: string;
+	}>;
 	"adc-blocks-renderer": WebComponentProps<{ blocks?: unknown[] }>;
 	"adc-button": WebComponentProps<{
 		ariaLabel?: string;
