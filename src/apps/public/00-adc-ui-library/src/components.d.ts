@@ -830,17 +830,7 @@ export namespace Components {
          */
         "staticRender": boolean;
     }
-    interface AdcToast {
-        "close": () => Promise<void>;
-        /**
-          * @default 3000
-         */
-        "duration": number;
-        /**
-          * @default ""
-         */
-        "message": string;
-        "show": (message?: string) => Promise<void>;
+    interface AdcToastManager {
     }
     interface AdcToggle {
         /**
@@ -1501,11 +1491,11 @@ declare global {
         prototype: HTMLAdcTextElement;
         new (): HTMLAdcTextElement;
     };
-    interface HTMLAdcToastElement extends Components.AdcToast, HTMLStencilElement {
+    interface HTMLAdcToastManagerElement extends Components.AdcToastManager, HTMLStencilElement {
     }
-    var HTMLAdcToastElement: {
-        prototype: HTMLAdcToastElement;
-        new (): HTMLAdcToastElement;
+    var HTMLAdcToastManagerElement: {
+        prototype: HTMLAdcToastManagerElement;
+        new (): HTMLAdcToastManagerElement;
     };
     interface HTMLAdcToggleElementEventMap {
         "adcChange": boolean;
@@ -1607,7 +1597,7 @@ declare global {
         "adc-tabs": HTMLAdcTabsElement;
         "adc-testimonial-card": HTMLAdcTestimonialCardElement;
         "adc-text": HTMLAdcTextElement;
-        "adc-toast": HTMLAdcToastElement;
+        "adc-toast-manager": HTMLAdcToastManagerElement;
         "adc-toggle": HTMLAdcToggleElement;
         "adc-toggle-badge": HTMLAdcToggleBadgeElement;
         "adc-youtube-facade": HTMLAdcYoutubeFacadeElement;
@@ -2450,15 +2440,7 @@ declare namespace LocalJSX {
          */
         "staticRender"?: boolean;
     }
-    interface AdcToast {
-        /**
-          * @default 3000
-         */
-        "duration"?: number;
-        /**
-          * @default ""
-         */
-        "message"?: string;
+    interface AdcToastManager {
     }
     interface AdcToggle {
         /**
@@ -2787,10 +2769,6 @@ declare namespace LocalJSX {
         "staticRender": boolean;
         "contain": boolean;
     }
-    interface AdcToastAttributes {
-        "message": string;
-        "duration": number;
-    }
     interface AdcToggleAttributes {
         "checked": boolean;
         "disabled": boolean;
@@ -2862,7 +2840,7 @@ declare namespace LocalJSX {
         "adc-tabs": Omit<AdcTabs, keyof AdcTabsAttributes> & { [K in keyof AdcTabs & keyof AdcTabsAttributes]?: AdcTabs[K] } & { [K in keyof AdcTabs & keyof AdcTabsAttributes as `attr:${K}`]?: AdcTabsAttributes[K] } & { [K in keyof AdcTabs & keyof AdcTabsAttributes as `prop:${K}`]?: AdcTabs[K] };
         "adc-testimonial-card": Omit<AdcTestimonialCard, keyof AdcTestimonialCardAttributes> & { [K in keyof AdcTestimonialCard & keyof AdcTestimonialCardAttributes]?: AdcTestimonialCard[K] } & { [K in keyof AdcTestimonialCard & keyof AdcTestimonialCardAttributes as `attr:${K}`]?: AdcTestimonialCardAttributes[K] } & { [K in keyof AdcTestimonialCard & keyof AdcTestimonialCardAttributes as `prop:${K}`]?: AdcTestimonialCard[K] };
         "adc-text": Omit<AdcText, keyof AdcTextAttributes> & { [K in keyof AdcText & keyof AdcTextAttributes]?: AdcText[K] } & { [K in keyof AdcText & keyof AdcTextAttributes as `attr:${K}`]?: AdcTextAttributes[K] } & { [K in keyof AdcText & keyof AdcTextAttributes as `prop:${K}`]?: AdcText[K] };
-        "adc-toast": Omit<AdcToast, keyof AdcToastAttributes> & { [K in keyof AdcToast & keyof AdcToastAttributes]?: AdcToast[K] } & { [K in keyof AdcToast & keyof AdcToastAttributes as `attr:${K}`]?: AdcToastAttributes[K] } & { [K in keyof AdcToast & keyof AdcToastAttributes as `prop:${K}`]?: AdcToast[K] };
+        "adc-toast-manager": AdcToastManager;
         "adc-toggle": Omit<AdcToggle, keyof AdcToggleAttributes> & { [K in keyof AdcToggle & keyof AdcToggleAttributes]?: AdcToggle[K] } & { [K in keyof AdcToggle & keyof AdcToggleAttributes as `attr:${K}`]?: AdcToggleAttributes[K] } & { [K in keyof AdcToggle & keyof AdcToggleAttributes as `prop:${K}`]?: AdcToggle[K] };
         "adc-toggle-badge": Omit<AdcToggleBadge, keyof AdcToggleBadgeAttributes> & { [K in keyof AdcToggleBadge & keyof AdcToggleBadgeAttributes]?: AdcToggleBadge[K] } & { [K in keyof AdcToggleBadge & keyof AdcToggleBadgeAttributes as `attr:${K}`]?: AdcToggleBadgeAttributes[K] } & { [K in keyof AdcToggleBadge & keyof AdcToggleBadgeAttributes as `prop:${K}`]?: AdcToggleBadge[K] };
         "adc-youtube-facade": Omit<AdcYoutubeFacade, keyof AdcYoutubeFacadeAttributes> & { [K in keyof AdcYoutubeFacade & keyof AdcYoutubeFacadeAttributes]?: AdcYoutubeFacade[K] } & { [K in keyof AdcYoutubeFacade & keyof AdcYoutubeFacadeAttributes as `attr:${K}`]?: AdcYoutubeFacadeAttributes[K] } & { [K in keyof AdcYoutubeFacade & keyof AdcYoutubeFacadeAttributes as `prop:${K}`]?: AdcYoutubeFacade[K] } & OneOf<"src", AdcYoutubeFacade["src"], AdcYoutubeFacadeAttributes["src"]>;
@@ -2943,7 +2921,7 @@ declare module "@stencil/core" {
             "adc-tabs": LocalJSX.IntrinsicElements["adc-tabs"] & JSXBase.HTMLAttributes<HTMLAdcTabsElement>;
             "adc-testimonial-card": LocalJSX.IntrinsicElements["adc-testimonial-card"] & JSXBase.HTMLAttributes<HTMLAdcTestimonialCardElement>;
             "adc-text": LocalJSX.IntrinsicElements["adc-text"] & JSXBase.HTMLAttributes<HTMLAdcTextElement>;
-            "adc-toast": LocalJSX.IntrinsicElements["adc-toast"] & JSXBase.HTMLAttributes<HTMLAdcToastElement>;
+            "adc-toast-manager": LocalJSX.IntrinsicElements["adc-toast-manager"] & JSXBase.HTMLAttributes<HTMLAdcToastManagerElement>;
             "adc-toggle": LocalJSX.IntrinsicElements["adc-toggle"] & JSXBase.HTMLAttributes<HTMLAdcToggleElement>;
             "adc-toggle-badge": LocalJSX.IntrinsicElements["adc-toggle-badge"] & JSXBase.HTMLAttributes<HTMLAdcToggleBadgeElement>;
             /**

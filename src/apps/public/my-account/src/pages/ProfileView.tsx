@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { accountApi } from "../utils/account-api";
+import { toast } from "../utils/toast";
 
 export default function ProfileView() {
 	const [form, setForm] = useState({
@@ -18,11 +19,7 @@ export default function ProfileView() {
 
 	// Detectar cambios (escalable)
 	const hasChanges = useMemo(() => {
-		return Object.keys(form).some(
-			(key) =>
-				form[key as keyof typeof form] !==
-				original[key as keyof typeof original]
-		);
+		return Object.keys(form).some((key) => form[key as keyof typeof form] !== original[key as keyof typeof original]);
 	}, [form, original]);
 
 	useEffect(() => {
@@ -52,8 +49,7 @@ export default function ProfileView() {
 		fetchProfile();
 	}, []);
 
-	const getToast = () =>
-		document.getElementById("successToast") as any;
+	const getToast = () => document.getElementById("successToast") as any;
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -72,16 +68,15 @@ export default function ProfileView() {
 
 			setOriginal(form);
 
-			getToast()?.show("Perfil actualizado correctamente");
+			toast.success("Perfil actualizado correctamente!");
 		} catch (err: any) {
-			console.error("Error actualizando perfil", err?.response ?? err);
+			
 
 			window.dispatchEvent(
 				new CustomEvent("adc-error", {
 					detail: {
 						errorKey: "update_profile_error",
-						message:
-							"Ocurrió un error al actualizar el perfil",
+						message: "Ocurrió un error al actualizar el perfil",
 					},
 				})
 			);
@@ -108,24 +103,16 @@ export default function ProfileView() {
 			<div className="w-full flex flex-col pl-25 lg:pl-70">
 				{/* Title */}
 				<div className="mb-4">
-					<h2 className="font-bold text-text">
-						Información Personal
-					</h2>
-					<p className="text-muted">
-						Actualiza tu perfil y avatar
-					</p>
+					<h2 className="font-bold text-text">Información Personal</h2>
+					<p className="text-muted">Actualiza tu perfil y avatar</p>
 				</div>
 
 				{/* Panel */}
 				<div className="bg-surface p-8 pb-6 rounded-xxl">
 					{/* Header */}
 					<div className="mb-6">
-						<h3 className="!mt-0 text-lg font-semibold text-text">
-							Datos del perfil
-						</h3>
-						<p className="text-sm text-muted">
-							Puedes modificar tu información personal
-						</p>
+						<h3 className="!mt-0 text-lg font-semibold text-text">Datos del perfil</h3>
+						<p className="text-sm text-muted">Puedes modificar tu información personal</p>
 					</div>
 
 					<div className="max-w-3xl mx-auto">
@@ -139,9 +126,7 @@ export default function ProfileView() {
 								Subir Avatar
 							</adc-button>
 
-							<p className="text-xs text-muted mt-2 text-center">
-								JPG, PNG o GIF (máx. 2MB)
-							</p>
+							<p className="text-xs text-muted mt-2 text-center">JPG, PNG o GIF (máx. 2MB)</p>
 						</div>
 
 						{/* Form */}
@@ -149,53 +134,32 @@ export default function ProfileView() {
 							{/* Nombre / Apellido */}
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div>
-									<label className="block text-sm mb-1 text-text">
-										Nombre
-									</label>
+									<label className="block text-sm mb-1 text-text">Nombre</label>
 									<adc-input
 										value={form.name}
 										class="w-full"
-										onInput={(e) =>
-											handleChange(
-												"name",
-												(e.target as HTMLInputElement).value
-											)
-										}
+										onInput={(e) => handleChange("name", (e.target as HTMLInputElement).value)}
 									/>
 								</div>
 
 								<div>
-									<label className="block text-sm mb-1 text-text">
-										Apellido
-									</label>
+									<label className="block text-sm mb-1 text-text">Apellido</label>
 									<adc-input
 										value={form.lastName}
 										class="w-full"
-										onInput={(e) =>
-											handleChange(
-												"lastName",
-												(e.target as HTMLInputElement).value
-											)
-										}
+										onInput={(e) => handleChange("lastName", (e.target as HTMLInputElement).value)}
 									/>
 								</div>
 							</div>
 
 							{/* Fecha */}
 							<div>
-								<label className="block text-sm mb-1 text-text">
-									Fecha de Nacimiento
-								</label>
+								<label className="block text-sm mb-1 text-text">Fecha de Nacimiento</label>
 								<adc-input
 									type="date"
 									value={form.birthDate}
 									class="w-full"
-									onInput={(e) =>
-										handleChange(
-											"birthDate",
-											(e.target as HTMLInputElement).value
-										)
-									}
+									onInput={(e) => handleChange("birthDate", (e.target as HTMLInputElement).value)}
 								/>
 							</div>
 
@@ -205,11 +169,7 @@ export default function ProfileView() {
 									type="submit"
 									variant="primary"
 									disabled={!hasChanges}
-									label={
-										hasChanges
-											? "Guardar Cambios"
-											: "Sin cambios"
-									}
+									label={hasChanges ? "Guardar Cambios" : "Sin cambios"}
 								/>
 							</div>
 						</form>

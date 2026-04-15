@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { accountApi } from "../utils/account-api";
+import { toast } from "../utils/toast";
 
 const AUTH_URL = "http://localhost:3012";
 
@@ -7,35 +8,41 @@ export default function AdminView() {
 	const [modalOpen, setModalOpen] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 
-	const handleLogout = async () => {
-		try {
-			await fetch("/api/auth/logout", {
-				method: "POST",
-				credentials: "include",
-			});
-		} catch {}
-		window.location.href = `${AUTH_URL}/login`;
-	};
+const handleLogout = async () => {
+	try {
+		await fetch("/api/auth/logout", {
+			method: "POST",
+			credentials: "include",
+		});
+	} catch {
+		toast.warning("Error cerrando sesión, redirigiendo igual...");
+	}
+
+	window.location.href = `${AUTH_URL}/login`;
+};
 
 	const handleDeleteAccount = async () => {
-		setDeleting(true);
-		const toast = document.getElementById("successToast") as any;
-		try {
-			await accountApi.deleteCurrentUser();
-			toast?.show("Cuenta eliminada correctamente");
-			setTimeout(() => handleLogout(), 1500);
-		} catch (err) {
-			console.error("Error eliminando cuenta", err);
-			toast?.show("Ocurrió un error al eliminar la cuenta");
-		} finally {
-			setDeleting(false);
-			setModalOpen(false);
-		}
-	};
+	setDeleting(true);
+
+	try {
+		await accountApi.deleteCurrentUser();
+
+		toast.success("Cuenta eliminada correctamente");
+
+		setTimeout(() => handleLogout(), 1500);
+	} catch (err) {
+		console.error("Error eliminando cuenta", err);
+
+		toast.error("Ocurrió un error al eliminar la cuenta");
+	} finally {
+		setDeleting(false);
+		setModalOpen(false);
+	}
+};
 
 	return (
 		<>
-			<adc-toast id="successToast"></adc-toast>
+			
 			<adc-modal
 				open={modalOpen}
 				modalTitle="Confirmar eliminación de cuenta"

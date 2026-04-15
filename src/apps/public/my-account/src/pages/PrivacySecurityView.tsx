@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { accountApi } from "../utils/account-api";
+import { toast } from "../utils/toast";
 export default function PrivacySecurityView() {
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
@@ -10,39 +11,43 @@ export default function PrivacySecurityView() {
 	const [showConfirm, setShowConfirm] = useState(false);
 
 	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
+	e.preventDefault();
 
-		if (!currentPassword || !newPassword || !confirmPassword) {
-			alert("Todos los campos son obligatorios");
-			return;
-		}
+	// Validaciones
+	if (!currentPassword || !newPassword || !confirmPassword) {
+		toast.error("Todos los campos son obligatorios");
+		return;
+	}
 
-		if (newPassword.length < 8) {
-			alert("La nueva contraseña debe tener al menos 8 caracteres");
-			return;
-		}
+	if (newPassword.length < 8) {
+		toast.warning("La nueva contraseña debe tener al menos 8 caracteres");
+		return;
+	}
 
-		if (newPassword !== confirmPassword) {
-			alert("Las contraseñas no coinciden");
-			return;
-		}
+	if (newPassword !== confirmPassword) {
+		toast.error("Las contraseñas no coinciden");
+		return;
+	}
 
-		try {
-			await accountApi.changePassword(currentPassword, newPassword);
-			const toast = document.getElementById("successToast") as any;
-			toast?.show("Contraseña actualizada correctamente");
-			setCurrentPassword("");
-			setNewPassword("");
-			setConfirmPassword("");
-		} catch (error: any) {
-			console.error(error);
-			const toast = document.getElementById("successToast") as any;
-			toast?.show(error?.message || "Error al cambiar la contraseña");
-		}
-	};
+	try {
+		await accountApi.changePassword(currentPassword, newPassword);
+
+		toast.success("Contraseña actualizada correctamente");
+
+		setCurrentPassword("");
+		setNewPassword("");
+		setConfirmPassword("");
+	} catch (error: any) {
+		console.error(error);
+
+		toast.error(
+			error?.message || "Error al cambiar la contraseña"
+		);
+	}
+};
 	   return (
 		   <>
-			   <adc-toast id="successToast"></adc-toast>
+			  
 			   <div className="w-full flex flex-col pl-25 lg:pl-70">
 			{/* Title */}
 			<div className="mb-4">

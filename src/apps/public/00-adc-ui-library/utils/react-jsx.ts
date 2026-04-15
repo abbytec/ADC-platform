@@ -18,12 +18,6 @@ type WebComponentProps<T = Record<string, unknown>> = T & {
 } & React.DOMAttributes<HTMLElement>;
 
 interface AdcIntrinsicElements {
-	"adc-toast": WebComponentProps<{
-		message?: string;
-		duration?: number;
-		ref?: React.Ref<any>;
-		id?: string;
-	}>;
 	"adc-blocks-renderer": WebComponentProps<{ blocks?: unknown[] }>;
 	"adc-button": WebComponentProps<{
 		ariaLabel?: string;
@@ -145,6 +139,7 @@ interface AdcIntrinsicElements {
 	"adc-toggle-badge": WebComponentProps<{ active?: boolean }>;
 	"adc-testimonial-card": WebComponentProps<{ author?: string; staticRender?: boolean }>;
 	"adc-text": WebComponentProps<{ contain?: boolean; staticRender?: boolean }>;
+	"adc-toast-manager": WebComponentProps;
 	"adc-youtube-facade": WebComponentProps<{ height?: string; src: string; title?: string; width?: string }>;
 }
 
