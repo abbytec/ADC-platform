@@ -59,6 +59,7 @@ export class AdcSelect {
 	};
 
 	render() {
+		void h;
 		return (
 			<div class="relative w-full">
 				{/* Hidden native select — enables React onChange to work */}

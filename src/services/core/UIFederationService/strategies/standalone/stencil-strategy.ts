@@ -30,11 +30,11 @@ export class StencilStrategy extends BaseCLIStrategy {
 
 		const namespace = module.uiConfig.uiNamespace || "default";
 		const targetDir = path.join(namespaceOutputDir, module.uiConfig.name);
-		const relativeOutputDir = path.relative(module.appDir, targetDir).replace(/\\/g, "/");
+		const relativeOutputDir = path.relative(module.appDir, targetDir).replaceAll(/\\/g, "/");
 
 		// Cache de Stencil en temp/
 		const cacheDir = path.resolve(process.cwd(), "temp", "stencil-cache", namespace, module.uiConfig.name);
-		const relativeCacheDir = path.relative(module.appDir, cacheDir).replace(/\\/g, "/");
+		const relativeCacheDir = path.relative(module.appDir, cacheDir).replaceAll(/\\/g, "/");
 
 		// Asegurar que el directorio de cache existe
 		await fs.mkdir(cacheDir, { recursive: true });
@@ -115,9 +115,9 @@ export const config: Config = {
 			const output = data.toString();
 			if (output.includes("build finished")) {
 				context.logger?.logDebug(`Stencil build actualizado para ${module.uiConfig.name} [${namespace}]`);
-				// Regenerar init.js y styles.css después de cada rebuild
-				this.generateAutoInit(module, context.logger).catch((err) => {
-					context.logger?.logDebug(`Error regenerando auto-init: ${err.message}`);
+				// Regenerar init.js, styles.css y react-jsx.ts después de cada rebuild
+				Promise.all([this.generateAutoInit(module, context.logger), this.regenerateReactJSX(module, context.logger)]).catch((err) => {
+					context.logger?.logDebug(`Error en post-build: ${(err as Error).message}`);
 				});
 			}
 		});
@@ -157,8 +157,8 @@ export const config: Config = {
 			context.logger?.logWarn(`Timeout esperando build de Stencil para ${module.uiConfig.name}. El loader podría no estar disponible.`);
 		}
 
-		// Generar archivos de auto-init (init.js + styles.css)
-		await this.generateAutoInit(module, context.logger);
+		// Generar archivos de auto-init (init.js + styles.css) y react-jsx.ts
+		await Promise.all([this.generateAutoInit(module, context.logger), this.regenerateReactJSX(module, context.logger)]);
 
 		return { watcher, outputPath: outputDir };
 	}
@@ -183,12 +183,41 @@ export const config: Config = {
 
 		module.outputPath = outputDir;
 
-		// Generar archivos de auto-init (init.js + styles.css)
-		await this.generateAutoInit(module, context.logger);
+		// Generar archivos de auto-init (init.js + styles.css) y react-jsx.ts
+		await Promise.all([this.generateAutoInit(module, context.logger), this.regenerateReactJSX(module, context.logger)]);
 
 		context.logger?.logOk(`Build Stencil completado para ${module.uiConfig.name}`);
 
 		return { outputPath: outputDir };
+	}
+
+	/**
+	 * Regenera utils/react-jsx.ts con los tipos de los componentes Stencil.
+	 * Ejecuta scripts/generate-react-jsx.mjs pasando la ruta relativa de la librería.
+	 */
+	private async regenerateReactJSX(module: any, logger?: any): Promise<void> {
+		const appDir: string = module.appDir;
+		const dtsPath = path.join(appDir, "src/components.d.ts");
+		const reactJsxPath = path.join(appDir, "utils/react-jsx.ts");
+
+		// Solo regenerar si la librería tiene ambos archivos (opt-in)
+		try {
+			await fs.access(dtsPath);
+			await fs.access(reactJsxPath);
+		} catch {
+			return;
+		}
+
+		const projectRoot = process.cwd();
+		const relativePath = path.relative(projectRoot, appDir).replaceAll(/\\/g, "/");
+		const scriptPath = path.join(projectRoot, "scripts/generate-react-jsx.mjs");
+
+		try {
+			await runCommand("node", [scriptPath, relativePath], projectRoot, logger);
+			logger?.logDebug(`react-jsx.ts regenerado para ${module.uiConfig.name}`);
+		} catch (err) {
+			logger?.logWarn(`No se pudo regenerar react-jsx.ts: ${(err as Error).message}`);
+		}
 	}
 
 	/**
@@ -257,7 +286,7 @@ export * from './loader/index.js';
 		let result = `/**\n * CSS base para ${moduleName}\n * Generado automáticamente - CSS puro sin directivas de Tailwind\n */\n\n`;
 
 		// Remover @import "tailwindcss" y similares
-		let cleaned = cssContent.replace(/@import\s+["']tailwindcss["'];?\s*/g, "");
+		let cleaned = cssContent.replaceAll(/@import\s+["']tailwindcss["'];?\s*/g, "");
 
 		// Extraer contenido de @layer base { ... }
 		const layerBaseMatch = cleaned.match(/@layer\s+base\s*\{([\s\S]*?)\n\}/);
@@ -274,9 +303,9 @@ export * from './loader/index.js';
 		// Si no hay @layer, buscar CSS directo (variables :root, etc.)
 		if (!layerBaseMatch && !layerComponentsMatch) {
 			// Remover @utility blocks (son específicos de Tailwind)
-			cleaned = cleaned.replace(/@utility\s+[\w-]+\s*\{[^}]*\}/g, "");
+			cleaned = cleaned.replaceAll(/@utility\s+[\w-]+\s*\{[^}]*\}/g, "");
 			// Remover @keyframes por ahora (las apps los definen)
-			cleaned = cleaned.replace(/@keyframes\s+[\w-]+\s*\{[\s\S]*?\}\s*\}/g, "");
+			cleaned = cleaned.replaceAll(/@keyframes\s+[\w-]+\s*\{[\s\S]*?\}\s*\}/g, "");
 			// Usar el CSS restante
 			result = cleaned.trim() || result;
 		}

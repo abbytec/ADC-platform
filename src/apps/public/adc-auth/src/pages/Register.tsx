@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { authApi } from "../utils/auth.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
@@ -32,6 +32,50 @@ export function Register({ onNavigateToLogin, returnUrl }: RegisterProps) {
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [loading, setLoading] = useState(false);
+	const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
+
+	const controllerRef = useRef<AbortController | null>(null);
+
+	const checkUsername = async (username: string) => {
+		controllerRef.current?.abort(); // cancelar request anterior
+
+		const controller = new AbortController();
+		controllerRef.current = controller;
+
+		try {
+			setUsernameStatus("checking");
+
+			const res = await fetch(`${API_BASE}/api/identity/users/username/${encodeURIComponent(username)}`, {
+				method: "HEAD",
+				signal: controller.signal,
+			});
+
+			if (res.status === 200) {
+				setUsernameStatus("unavailable");
+			} else if (res.status === 404) {
+				setUsernameStatus("available");
+			} else {
+				setUsernameStatus("idle");
+			}
+		} catch (err: any) {
+			if (err?.name !== "AbortError") {
+				setUsernameStatus("idle");
+			}
+		}
+	};
+
+	useEffect(() => {
+		if (username.length < 3) {
+			setUsernameStatus("idle");
+			return;
+		}
+
+		const timeout = setTimeout(() => {
+			checkUsername(username);
+		}, 500);
+
+		return () => clearTimeout(timeout);
+	}, [username]);
 
 	/**
 	 * Construye la URL de redirección tras registro exitoso
@@ -102,6 +146,11 @@ export function Register({ onNavigateToLogin, returnUrl }: RegisterProps) {
 							placeholder={t("register.usernamePlaceholder") || "tu_usuario"}
 							onInput={(e) => setUsername((e.target as HTMLInputElement).value)}
 						/>
+						{usernameStatus === "checking" && <p className="text-sm text-muted">Verificando...</p>}
+
+						{usernameStatus === "available" && <p className="text-sm text-green-500">Nombre de usuario disponible</p>}
+
+						{usernameStatus === "unavailable" && <p className="text-sm text-red-500">Este nombre de usuario ya está en uso</p>}
 					</div>
 
 					<div>
@@ -147,7 +196,7 @@ export function Register({ onNavigateToLogin, returnUrl }: RegisterProps) {
 						key={loading ? "loading" : "idle"}
 						type="submit"
 						class="w-full flex justify-end mt-8"
-						disabled={loading ? true : undefined}
+						disabled={loading || usernameStatus === "unavailable"}
 						variant="primary"
 					>
 						{loading ? t("register.submitting") || "Creando cuenta..." : t("register.submit") || "Crear Cuenta"}

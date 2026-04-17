@@ -56,6 +56,7 @@ export class AdcInlineTokens {
 	@Prop() fallback: string = "";
 
 	render() {
+		void h;
 		// Si no hay tokens pre-parseados, parsear el fallback automáticamente
 		const effectiveTokens = this.tokens && this.tokens.length > 0 ? this.tokens : parseInlineTokens(this.fallback);
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { identityApi } from "../utils/identity-api.ts";
 import type { Organization, Permission, Role } from "@common/types/identity/index.d.ts";
@@ -10,6 +10,7 @@ import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { RolePicker } from "../components/RolePicker.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { RowActions } from "../components/RowActions.tsx";
+import { getBaseUrl } from "@common/utils/url-utils.js";
 import { ClientUser } from "@common/types/identity/User.ts";
 
 interface UsersViewProps {
@@ -40,6 +41,10 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 	const [formIsActive, setFormIsActive] = useState(true);
 	const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
 	const [submitting, setSubmitting] = useState(false);
+	const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
+
+	const controllerRef = useRef<AbortController | null>(null);
+	const API_BASE = getBaseUrl(3000);
 
 	const writable = canWrite(scopes, Scope.USERS);
 	const updatable = canUpdate(scopes, Scope.USERS);
@@ -52,6 +57,61 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 	const toggleRef = useCallback((el: HTMLElement | null) => {
 		if (el) el.addEventListener("adcChange", (e: Event) => setFormIsActive((e as CustomEvent<boolean>).detail));
 	}, []);
+
+	const checkUsername = async (username: string) => {
+		controllerRef.current?.abort();
+
+		const controller = new AbortController();
+		controllerRef.current = controller;
+
+		try {
+			setUsernameStatus("checking");
+
+			const res = await fetch(`${API_BASE}/api/identity/users/username/${encodeURIComponent(username)}`, {
+				method: "HEAD",
+				signal: controller.signal,
+			});
+
+			if (res.status === 200) {
+				// Usuario existe
+				setUsernameStatus(editingUser?.username === username ? "available" : "unavailable");
+			} else if (res.status === 404) {
+				// Usuario no existe
+				setUsernameStatus("available");
+			} else {
+				setUsernameStatus("idle");
+			}
+		} catch (err: any) {
+			if (err?.name !== "AbortError") {
+				setUsernameStatus("idle");
+			}
+		}
+	};
+
+	useEffect(() => {
+		// No validar si estamos en contexto org (no se puede cambiar username)
+		if (isTokenOrgContext) {
+			setUsernameStatus("idle");
+			return;
+		}
+
+		// No validar si el username es el del usuario actual (editando)
+		if (editingUser && formUsername === editingUser.username) {
+			setUsernameStatus("idle");
+			return;
+		}
+
+		if (formUsername.length < 3) {
+			setUsernameStatus("idle");
+			return;
+		}
+
+		const timeout = setTimeout(() => {
+			checkUsername(formUsername);
+		}, 500);
+
+		return () => clearTimeout(timeout);
+	}, [formUsername, editingUser, isTokenOrgContext]);
 
 	const loadData = useCallback(async () => {
 		setLoading(true);
@@ -117,6 +177,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 		setFormRoleIds([]);
 		setFormIsActive(true);
 		setFormPermissions([]);
+		setUsernameStatus("idle");
 		await loadPickerRoles();
 		setModalOpen(true);
 	};
@@ -129,6 +190,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 		setFormRoleIds(getEditableRoleIds(user));
 		setFormIsActive(user.isActive);
 		setFormPermissions(user.permissions ? [...user.permissions] : []);
+		setUsernameStatus("idle");
 		await loadPickerRoles();
 		setModalOpen(true);
 	};
@@ -278,6 +340,17 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 									placeholder={t("users.usernamePlaceholder")}
 									onInput={(e: any) => setFormUsername(e.target.value)}
 								/>
+								{!isTokenOrgContext && (
+									<>
+										{usernameStatus === "checking" && <p className="text-xs text-muted mt-1">Verificando...</p>}
+										{usernameStatus === "available" && (
+											<p className="text-xs text-green-500 mt-1">Nombre de usuario disponible</p>
+										)}
+										{usernameStatus === "unavailable" && (
+											<p className="text-xs text-red-500 mt-1">Este nombre de usuario ya está en uso</p>
+										)}
+									</>
+								)}
 							</div>
 						)}
 

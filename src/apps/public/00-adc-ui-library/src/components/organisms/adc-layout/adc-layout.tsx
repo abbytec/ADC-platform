@@ -46,6 +46,7 @@ export class AdcLayout {
 		return (
 			<div class="flex flex-col min-h-screen bg-background text-text" style={{ paddingBottom: "var(--consent-h, 0px)" }}>
 				<adc-custom-error variant="toast" global handle-unhandled />
+				<adc-toast-manager />
 
 				<adc-site-header
 					logo-src={this.logoSrc}

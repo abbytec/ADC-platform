@@ -6,8 +6,10 @@ type IdentityErrorTypes =
 	| "GLOBAL_ONLY"
 	| "CROSS_ORG_ROLE"
 	| "CROSS_ORG_USER"
+	| "CROSS_ORG_GROUP"
 	| "CANNOT_MODIFY_PREDEFINED"
 	| "CANNOT_DELETE_PREDEFINED"
+	| "FORBIDDEN_FIELD"
 	// Not found
 	| "USER_NOT_FOUND"
 	| "ROLE_NOT_FOUND"
@@ -16,7 +18,11 @@ type IdentityErrorTypes =
 	| "REGION_NOT_FOUND"
 	// Validation
 	| "MISSING_FIELDS"
-	| "INVALID_ROLE";
+	| "INVALID_ROLE"
+	| "INVALID_ROLE_ID"
+	| "INVALID_GROUP"
+	| "INVALID_FIELD"
+	| "INVALID_PERMISSION";
 
 export class IdentityError extends ADCCustomError<Record<string, unknown>, IdentityErrorTypes> {
 	public readonly name = "IdentityError";
