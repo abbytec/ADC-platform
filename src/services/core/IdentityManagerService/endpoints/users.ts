@@ -6,12 +6,12 @@ import type IdentityManagerService from "../index.js";
 
 /**
  * CAMPOS DE USUARIO - MATRIZ DE MODIFICABILIDAD
- * 
+ *
  * NUNCA MODIFICABLES (sistema):
  * - id: Identificador único inmutable
  * - passwordHash: Solo via endpoint /change-password
  * - createdAt: Timestamp de creación
- * 
+ *
  * MODIFICABLES CON RESTRICCIONES:
  * - username: Unicidad requerida, no puede duplicarse
  * - email: Unicidad requerida, no puede duplicarse
@@ -19,10 +19,10 @@ import type IdentityManagerService from "../index.js";
  * - roleIds: Solo roles del contexto del caller
  * - groupIds: Solo grupos del contexto del caller (si existen)
  * - permissions: Solo admin global
- * 
+ *
  * MODIFICABLES SIN RESTRICCIONES:
  * - metadata: Datos personalizados por aplicación
- * 
+ *
  * orgMemberships:
  * - Org admin: Puede editar roleIds de su propia membresía
  * - Global admin: Acceso irrestricto
@@ -170,6 +170,22 @@ export class UserEndpoints {
 	}
 
 	@RegisterEndpoint({
+		method: "HEAD",
+		url: "/api/identity/users/username/:username",
+	})
+	static async checkUsername(ctx: EndpointCtx<{ username: string }>) {
+		const { username } = ctx.params;
+
+		const user = await UserEndpoints.#identity.users.getUserByUsername(username);
+
+		if (!user) {
+			throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+		}
+
+		return {};
+	}
+
+	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/users",
 		permissions: [P.IDENTITY.USERS.READ],
@@ -240,47 +256,39 @@ export class UserEndpoints {
 	}
 
 	@RegisterEndpoint({
-	method: "POST",
-	url: "/api/identity/users/change-password",
-})
-static async changePassword(
-	ctx: EndpointCtx<
-		Record<string, string>,
-		{ currentPassword: string; newPassword: string }
-	>
-) {
-	if (!ctx.user) {
-		throw new AuthError(401, "UNAUTHORIZED", "No hay usuario autenticado");
+		method: "POST",
+		url: "/api/identity/users/change-password",
+	})
+	static async changePassword(ctx: EndpointCtx<Record<string, string>, { currentPassword: string; newPassword: string }>) {
+		if (!ctx.user) {
+			throw new AuthError(401, "UNAUTHORIZED", "No hay usuario autenticado");
+		}
+
+		const { currentPassword, newPassword } = ctx.data || {};
+
+		if (!currentPassword || !newPassword) {
+			throw new IdentityError(400, "MISSING_FIELDS", "Faltan campos");
+		}
+
+		if (newPassword.length < 8) {
+			throw new AuthError(400, "WEAK_PASSWORD", "La nueva contraseña debe tener al menos 8 caracteres");
+		}
+
+		const user = await UserEndpoints.#identity.users.getUser(ctx.user.id, ctx.token!);
+		if (!user) {
+			throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+		}
+
+		const isValid = await UserEndpoints.#identity.users.verifyUserPassword(user.id, currentPassword);
+
+		if (!isValid) {
+			throw new AuthError(401, "INVALID_PASSWORD", "Contraseña actual incorrecta");
+		}
+
+		await UserEndpoints.#identity.users.updatePassword(user.id, newPassword, ctx.token!);
+
+		return { success: true };
 	}
-
-	const { currentPassword, newPassword } = ctx.data || {};
-
-	if (!currentPassword || !newPassword) {
-		throw new IdentityError(400, "MISSING_FIELDS", "Faltan campos");
-	}
-
-	if (newPassword.length < 8) {
-		throw new AuthError(400, "WEAK_PASSWORD", "La nueva contraseña debe tener al menos 8 caracteres");
-	}
-
-	const user = await UserEndpoints.#identity.users.getUser(ctx.user.id, ctx.token!);
-	if (!user) {
-		throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
-	}
-
-	const isValid = await UserEndpoints.#identity.users.verifyUserPassword(
-	user.id,
-	currentPassword
-);
-
-	if (!isValid) {
-		throw new AuthError(401, "INVALID_PASSWORD", "Contraseña actual incorrecta");
-	}
-
-	await UserEndpoints.#identity.users.updatePassword(user.id, newPassword, ctx.token!);
-
-	return { success: true };
-}
 
 	@RegisterEndpoint({
 		method: "POST",
@@ -331,20 +339,20 @@ static async changePassword(
 	) {
 		const callerOrgId = ctx.user?.orgId;
 		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId);
-		
+
 		// Obtener usuario actual para validaciones comparativas
 		const currentUser = await UserEndpoints.#identity.users.getUser(ctx.params.userId, ctx.token!);
 		if (!currentUser) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
 
 		const updates = { ...ctx.data };
-		
+
 		// Validar campos inmutables/sensibles ANTES de cualquier modificación
 		await validateImmutableFields(UserEndpoints.#identity, currentUser, updates, callerOrgId);
-		
+
 		// Prevent updating sensitive fields via API
 		delete (updates as any).passwordHash;
 		delete (updates as any).id;
-		
+
 		// Validar que los roleIds asignados sean del contexto correcto
 		if (updates.roleIds?.length) {
 			await validateRoleIdsContext(UserEndpoints.#identity, updates.roleIds, callerOrgId);
