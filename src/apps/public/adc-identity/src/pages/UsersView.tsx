@@ -67,7 +67,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 		try {
 			setUsernameStatus("checking");
 
-			const res = await fetch(`${API_BASE}/api/identity/users/username/${username}`, {
+			const res = await fetch(`${API_BASE}/api/identity/users/username/${encodeURIComponent(username)}`, {
 				method: "HEAD",
 				signal: controller.signal,
 			});
@@ -342,9 +342,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 								/>
 								{!isTokenOrgContext && (
 									<>
-										{usernameStatus === "checking" && (
-											<p className="text-xs text-muted mt-1">Verificando...</p>
-										)}
+										{usernameStatus === "checking" && <p className="text-xs text-muted mt-1">Verificando...</p>}
 										{usernameStatus === "available" && (
 											<p className="text-xs text-green-500 mt-1">Nombre de usuario disponible</p>
 										)}
@@ -406,11 +404,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 							</div>
 						)}
 
-						<FormModalFooter 
-							onCancel={() => setModalOpen(false)} 
-							submitting={submitting}
-							
-						/>
+						<FormModalFooter onCancel={() => setModalOpen(false)} submitting={submitting} />
 					</form>
 				</adc-modal>
 			)}

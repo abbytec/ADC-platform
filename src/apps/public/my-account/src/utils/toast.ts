@@ -1,11 +1,7 @@
 type ToastVariant = "success" | "error" | "info" | "warning";
 
-function showToast(
-	message: string,
-	variant: ToastVariant = "info",
-	duration = 3000
-) {
-	window.dispatchEvent(
+function showToast(message: string, variant: ToastVariant = "info", duration = 3000) {
+	globalThis.dispatchEvent(
 		new CustomEvent("adc-toast", {
 			detail: {
 				message,

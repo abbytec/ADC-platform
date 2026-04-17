@@ -10,7 +10,7 @@ export class AdcBurgerButton {
 
 	@Event() adcBurgerToggle!: EventEmitter<boolean>;
 
-	private handleClick = () => {
+	private readonly handleClick = () => {
 		this.adcBurgerToggle.emit(!this.isOpen);
 	};
 

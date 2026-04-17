@@ -6,7 +6,7 @@
  * <adc-toast-manager></adc-toast-manager>
  *
  * Dispatch from anywhere:
- * window.dispatchEvent(new CustomEvent('adc-toast', {
+ * globalThis.dispatchEvent(new CustomEvent('adc-toast', {
  *   detail: {
  *     message: 'Success!',
  *     variant: 'success',
@@ -29,8 +29,8 @@ export class AdcToastManager {
 	@State() toasts: DisplayedToast[] = [];
 
 	private toastIdCounter = 0;
-	private boundHandleToast = this.handleToast.bind(this);
-	private boundHandleClear = this.handleClear.bind(this);
+	private readonly boundHandleToast = this.handleToast.bind(this);
+	private readonly boundHandleClear = this.handleClear.bind(this);
 
 	connectedCallback() {
 		globalThis.addEventListener("adc-toast", this.boundHandleToast as EventListener);

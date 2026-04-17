@@ -34,7 +34,7 @@ export class AdcSiteHeader {
 		window.removeEventListener("scroll", this.updateVars);
 	}
 
-	private updateVars = () => {
+	private readonly updateVars = () => {
 		const rect = this.el.getBoundingClientRect();
 
 		const height = rect.height;

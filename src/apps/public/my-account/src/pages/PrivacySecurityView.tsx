@@ -11,44 +11,40 @@ export default function PrivacySecurityView() {
 	const [showConfirm, setShowConfirm] = useState(false);
 
 	const handleSubmit = async (e: React.FormEvent) => {
-	e.preventDefault();
+		e.preventDefault();
 
-	// Validaciones
-	if (!currentPassword || !newPassword || !confirmPassword) {
-		toast.error("Todos los campos son obligatorios");
-		return;
-	}
+		// Validaciones
+		if (!currentPassword || !newPassword || !confirmPassword) {
+			toast.error("Todos los campos son obligatorios");
+			return;
+		}
 
-	if (newPassword.length < 8) {
-		toast.warning("La nueva contraseña debe tener al menos 8 caracteres");
-		return;
-	}
+		if (newPassword.length < 8) {
+			toast.warning("La nueva contraseña debe tener al menos 8 caracteres");
+			return;
+		}
 
-	if (newPassword !== confirmPassword) {
-		toast.error("Las contraseñas no coinciden");
-		return;
-	}
+		if (newPassword !== confirmPassword) {
+			toast.error("Las contraseñas no coinciden");
+			return;
+		}
 
-	try {
-		await accountApi.changePassword(currentPassword, newPassword);
+		try {
+			await accountApi.changePassword(currentPassword, newPassword);
 
-		toast.success("Contraseña actualizada correctamente");
+			toast.success("Contraseña actualizada correctamente");
 
-		setCurrentPassword("");
-		setNewPassword("");
-		setConfirmPassword("");
-	} catch (error: any) {
-		console.error(error);
+			setCurrentPassword("");
+			setNewPassword("");
+			setConfirmPassword("");
+		} catch (error: any) {
+			console.error(error);
 
-		toast.error(
-			error?.message || "Error al cambiar la contraseña"
-		);
-	}
-};
-	   return (
-		   <>
-			  
-			   <div className="w-full flex flex-col pl-25 lg:pl-70">
+			toast.error(error?.message || "Error al cambiar la contraseña");
+		}
+	};
+	return (
+		<div className="w-full flex flex-col pl-25 lg:pl-70">
 			{/* Title */}
 			<div className="mb-4">
 				<h2 className="text-2xl font-bold text-text">Privacidad y Seguridad</h2>
@@ -59,7 +55,7 @@ export default function PrivacySecurityView() {
 			<div className="bg-surface p-8 pb-6 rounded-xxl">
 				{/* Header */}
 				<div className="mb-6">
-					<h3 className="!mt-0 text-lg font-semibold text-text">Cambiar Contraseña</h3>
+					<h3 className="mt-0! text-lg font-semibold text-text">Cambiar Contraseña</h3>
 					<p className="text-sm text-muted">Asegúrate de que tu cuenta use una contraseña segura</p>
 				</div>
 
@@ -145,6 +141,5 @@ export default function PrivacySecurityView() {
 				</div>
 			</div>
 		</div>
-		</>
 	);
 }

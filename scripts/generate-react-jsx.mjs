@@ -40,7 +40,7 @@ function extractBraceBlock(text, openPos) {
  * Returns the full `interface Name { ... }` string (without `export`).
  */
 function extractInterface(srcContent, name) {
-	const re = new RegExp(`export\\s+interface\\s+${name}\\s*(?:extends\\s+[^{]+)?\\{`);
+	const re = new RegExp(String.raw`export\s+interface\s+${name}\s*(?:extends\s[^{]*)?\{`);
 	const m = srcContent.match(re);
 	if (!m) return null;
 	const braceStart = srcContent.indexOf("{", m.index + m[0].length - 1);
@@ -54,7 +54,7 @@ function extractInterface(srcContent, name) {
  * e.g. `type Align = "left" | "center" | "right";`
  */
 function extractLocalType(srcContent, name) {
-	const re = new RegExp(`(?:^|\\n)\\s*type\\s+${name}\\s*=\\s*([^;]+);`, "m");
+	const re = new RegExp(String.raw`^[ \t]*type\s+${name}\s*=\s*([^;]+);`, "m");
 	const m = srcContent.match(re);
 	if (!m) return null;
 	return `type ${name} = ${m[1].trim()};`;
@@ -129,7 +129,7 @@ function generate(libPath) {
 			"true", "false", "Event", "MouseEvent", "KeyboardEvent",
 			"HTMLElement", "Element", "EventEmitter", "CustomEvent",
 		]);
-		const refRegex = /(?<!\w)([A-Z][a-zA-Z0-9]+)(?=\s*[;[\]|&,?>)}\s])/g;
+		const refRegex = /(?<!\w)([A-Z][a-zA-Z0-9]+)(?=[\s;[\]|&,?>)}])/g;
 		let rm;
 		while ((rm = refRegex.exec(def)) !== null) {
 			const ref = rm[1];
@@ -196,13 +196,19 @@ function generate(libPath) {
 
 			const [, propName, , propType] = propMatch;
 
-			// Skip event handlers (Stencil CustomEvent types don't exist in React context)
-			if (propName.startsWith("on")) continue;
+			// Skip standard DOM event handlers (React.DOMAttributes already provides them)
+			// But keep custom Stencil events (onAdc*)
+			if (propName.startsWith("on") && !propName.startsWith("onAdc")) continue;
 
 			// Replace type aliases (e.g. AccessMenuItem1 → AccessMenuItem)
 			let resolvedType = propType;
 			for (const [alias, canonical] of typeAliases) {
-				resolvedType = resolvedType.replace(new RegExp(`\\b${alias}\\b`, "g"), canonical);
+				resolvedType = resolvedType.replaceAll(new RegExp(String.raw`\b${alias}\b`, "g"), canonical);
+			}
+
+			// For Stencil custom events, replace ComponentCustomEvent<T> with CustomEvent<T>
+			if (propName.startsWith("onAdc")) {
+				resolvedType = resolvedType.replace(/\w+CustomEvent<([^>]*)>/g, "CustomEvent<$1>");
 			}
 
 			// Emit JSDoc + prop
@@ -260,8 +266,10 @@ import "react";
 
 	out += `// ─── Web component base props ───
 
-type WCProps<T = Record<string, never>> = T & {
+/** eslint-disable-next-line @typescript-eslint/no-empty-object-type */
+type WCProps<T = {}> = T & {
 \tchildren?: React.ReactNode;
+\tid?: string;
 \tclass?: string;
 \tclassName?: string;
 \tstyle?: React.CSSProperties | string;
@@ -275,7 +283,7 @@ type WCProps<T = Record<string, never>> = T & {
 
 	for (const { name, props } of componentInterfaces) {
 		if (props.length === 0) {
-			out += `\ntype ${name}Props = Record<string, never>;\n`;
+			out += `\ntype ${name}Props = {};\n`;
 		} else {
 			out += `\ninterface ${name}Props {\n${props.join("\n")}\n}\n`;
 		}
@@ -292,9 +300,7 @@ declare module "react" {
 		out += `\t\t\t"${tag}": WCProps<${iface}Props>;\n`;
 	}
 
-	out += `\t\t\t/** Fallback: any unknown adc-* web component */
-\t\t\t[tag: \`adc-\${string}\`]: WCProps;
-\t\t}
+	out += `\t\t}
 \t}
 }
 `;

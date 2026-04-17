@@ -39,7 +39,7 @@ const SECTIONS = {
 } as const;
 
 function getSectionFromPath(path: string): SettingsSection {
-	const match = path.match(/^\/settings\/([^/]+)/);
+	const match = /^\/settings\/([^/]+)/.exec(path);
 	const section = match?.[1] as SettingsSection;
 	return SECTIONS[section] ? section : DEFAULT_SECTION;
 }

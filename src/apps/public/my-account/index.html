@@ -8,7 +8,7 @@
 			(function () {
 				const saved = localStorage.getItem("theme_mode");
 
-				const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+				const prefersDark = globalThis.matchMedia("(prefers-color-scheme: dark)").matches;
 
 				const isDark = saved === "dark" || (!saved && prefersDark);
 

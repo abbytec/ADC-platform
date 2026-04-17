@@ -31,9 +31,9 @@ export default function ProfileView() {
 					const user = res.data;
 
 					const userData = {
-						name: user.metadata?.name || "",
-						lastName: user.metadata?.lastName || "",
-						birthDate: user.metadata?.birthDate || "",
+						name: user?.metadata?.name || "",
+						lastName: user?.metadata?.lastName || "",
+						birthDate: user?.metadata?.birthDate || "",
 					};
 
 					setForm(userData);
@@ -49,13 +49,11 @@ export default function ProfileView() {
 		fetchProfile();
 	}, []);
 
-	const getToast = () => document.getElementById("successToast") as any;
-
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
 		if (!hasChanges) {
-			getToast()?.show("No hay cambios para guardar");
+			toast.info("No hay cambios para guardar");
 			return;
 		}
 
@@ -70,9 +68,7 @@ export default function ProfileView() {
 
 			toast.success("Perfil actualizado correctamente!");
 		} catch (err: any) {
-			
-
-			window.dispatchEvent(
+			globalThis.dispatchEvent(
 				new CustomEvent("adc-error", {
 					detail: {
 						errorKey: "update_profile_error",
@@ -98,8 +94,6 @@ export default function ProfileView() {
 
 	return (
 		<>
-			<adc-toast id="successToast"></adc-toast>
-
 			<div className="w-full flex flex-col pl-25 lg:pl-70">
 				{/* Title */}
 				<div className="mb-4">
@@ -111,14 +105,14 @@ export default function ProfileView() {
 				<div className="bg-surface p-8 pb-6 rounded-xxl">
 					{/* Header */}
 					<div className="mb-6">
-						<h3 className="!mt-0 text-lg font-semibold text-text">Datos del perfil</h3>
+						<h3 className="mt-0! text-lg font-semibold text-text">Datos del perfil</h3>
 						<p className="text-sm text-muted">Puedes modificar tu información personal</p>
 					</div>
 
 					<div className="max-w-3xl mx-auto">
 						{/* Avatar */}
 						<div className="flex flex-col items-center mb-8">
-							<div className="w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-white text-xl md:text-2xl font-bold bg-gradient-to-br from-blue-400 to-purple-500">
+							<div className="w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-white text-xl md:text-2xl font-bold bg-linear-to-br from-blue-400 to-purple-500">
 								{initials}
 							</div>
 
@@ -165,12 +159,9 @@ export default function ProfileView() {
 
 							{/* Submit */}
 							<div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
-								<adc-button
-									type="submit"
-									variant="primary"
-									disabled={!hasChanges}
-									label={hasChanges ? "Guardar Cambios" : "Sin cambios"}
-								/>
+								<adc-button type="submit" variant="primary" disabled={!hasChanges}>
+									{hasChanges ? "Guardar Cambios" : "Sin cambios"}
+								</adc-button>
 							</div>
 						</form>
 					</div>

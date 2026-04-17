@@ -45,7 +45,7 @@ export function Register({ onNavigateToLogin, returnUrl }: RegisterProps) {
 		try {
 			setUsernameStatus("checking");
 
-			const res = await fetch(`${API_BASE}/api/identity/users/username/${username}`, {
+			const res = await fetch(`${API_BASE}/api/identity/users/username/${encodeURIComponent(username)}`, {
 				method: "HEAD",
 				signal: controller.signal,
 			});
