@@ -44,13 +44,20 @@ export class PermissionChecker {
 
 	/**
 	 * Verifica que el usuario del token tiene permisos para la operación
-	 * @throws AuthorizationError si no tiene permisos
-	 * @returns userId del usuario autenticado
+	 * @throws AuthorizationError si no tiene permisos o si el token no está presente
+	 * @returns userId del usuario autenticado, o "" si no hay auth system configurado
 	 */
-	async requirePermission(token: string, action: number, scope: number, orgId?: string): Promise<string> {
+	async requirePermission(token: string | undefined, action: number, scope: number, orgId?: string): Promise<string> {
 		const authVerifier = this.getAuthVerifier();
+
+		// Auth system no configurado (durante init o servicios internos sin auth)
 		if (!authVerifier) {
-			throw new AuthorizationError(`[${this.managerName}] AuthVerifier no configurado`, "NO_TOKEN");
+			return "";
+		}
+
+		// Auth system configurado pero sin token → error
+		if (!token) {
+			throw new AuthorizationError(`[${this.managerName}] Token de autenticación requerido`, "NO_TOKEN");
 		}
 
 		const result = await authVerifier.verifyToken(token);

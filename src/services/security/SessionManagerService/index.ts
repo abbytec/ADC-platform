@@ -53,6 +53,7 @@ export default class SessionManagerService extends BaseService {
 
 	// Providers externos
 	#identityService: IdentityManagerService | null = null;
+	#internalIdentity: ReturnType<IdentityManagerService["_internal"]> | null = null;
 	#jwtProvider: IJWTProviderMultiKey | null = null;
 	#redis: IRedisProvider | null = null;
 
@@ -89,6 +90,9 @@ export default class SessionManagerService extends BaseService {
 
 		this.#jwtProvider = this.getMyProvider<IJWTProviderMultiKey>("security/jwt");
 		this.#identityService = this.getMyService<IdentityManagerService>("IdentityManagerService");
+		if (this.#identityService) {
+			this.#internalIdentity = this.#identityService._internal(kernelKey);
+		}
 
 		// Redis es opcional - funciona con fallback en memoria
 		try {
@@ -181,6 +185,7 @@ export default class SessionManagerService extends BaseService {
 				loginTracker: this.#loginTracker!,
 				geoValidator: this.#geoValidator!,
 				identityService: this.#identityService,
+				internalIdentity: this.#internalIdentity,
 				cookieDomain: this.#cookieDomain,
 				defaultRedirectUrl: this.#defaultRedirectUrl,
 				logger: this.logger,
@@ -194,6 +199,7 @@ export default class SessionManagerService extends BaseService {
 			sessionManager: this.#sessionManager!,
 			oauthRegistry: this.#oauthRegistry!,
 			identityService: this.#identityService,
+			internalIdentity: this.#internalIdentity,
 			cookieDomain: this.#cookieDomain,
 			defaultRedirectUrl: this.#defaultRedirectUrl,
 			getProviderConfig: (provider: string) => this.#getProviderConfig(provider),
@@ -360,11 +366,10 @@ export default class SessionManagerService extends BaseService {
 	}
 
 	async #getUserById(userId: string): Promise<AuthenticatedUser | null> {
-		if (!this.#identityService) return null;
+		if (!this.#internalIdentity) return null;
 
 		try {
-			const users = this.#identityService.users;
-			const user = await users.getUser(userId);
+			const user = await this.#internalIdentity.users.getUser(userId);
 			if (!user) return null;
 
 			const permissions = await this.#getUserPermissions(userId);
@@ -414,6 +419,7 @@ export default class SessionManagerService extends BaseService {
 		this.#geoValidator = null;
 		this.#sessionManager = null;
 		this.#oauthRegistry = null;
+		this.#internalIdentity = null;
 
 		this.logger.logDebug("SessionManagerService detenido");
 	}

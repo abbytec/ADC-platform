@@ -5,13 +5,14 @@ import { generateId } from "../utils/crypto.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
 import { IdentityScopes } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.js";
+import type { UserManager } from "./users.js";
 
 export class GroupManager {
 	#permissionChecker: PermissionChecker;
 
 	constructor(
 		private readonly groupModel: Model<any>,
-		private readonly userModel: Model<any>,
+		private readonly userManager: UserManager,
 		private readonly logger: ILogger,
 		getAuthVerifier: AuthVerifierGetter = () => null
 	) {
@@ -24,9 +25,7 @@ export class GroupManager {
 	 * @param orgId Organización a la que pertenece el grupo (undefined = global)
 	 */
 	async createGroup(name: string, description: string, roleIds?: string[], token?: string, orgId?: string): Promise<Group> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.GROUPS, orgId);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.GROUPS, orgId);
 
 		try {
 			const groupId = generateId();
@@ -54,9 +53,7 @@ export class GroupManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async getGroup(groupId: string, token?: string): Promise<Group | null> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS);
 
 		try {
 			const doc = await this.groupModel.findOne({ id: groupId });
@@ -72,9 +69,7 @@ export class GroupManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async updateGroup(groupId: string, updates: Partial<Group>, token?: string): Promise<Group> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.GROUPS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.GROUPS);
 
 		try {
 			updates.updatedAt = new Date();
@@ -93,20 +88,31 @@ export class GroupManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async deleteGroup(groupId: string, token?: string): Promise<void> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.GROUPS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.GROUPS);
 
 		try {
-			// Remover groupId de todos los usuarios que pertenecen a este grupo
-			await this.userModel.updateMany({ groupIds: groupId }, { $pull: { groupIds: groupId } });
-
+			await this.userManager.removeGroupFromAll(groupId, token);
 			await this.groupModel.deleteOne({ id: groupId });
 			this.logger.logDebug(`Grupo eliminado: ${groupId}`);
 		} catch (error) {
 			this.logger.logError(`Error eliminando grupo: ${error}`);
 			throw error;
 		}
+	}
+
+	/**
+	 * Elimina TODOS los grupos de una organización con cascade.
+	 * Usado por OrgManager al eliminar una organización.
+	 */
+	async deleteAllForOrg(orgId: string, token?: string): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.GROUPS);
+
+		const groups = await this.groupModel.find({ orgId });
+		for (const group of groups) {
+			await this.userManager.removeGroupFromAll(group.id, token);
+		}
+		await this.groupModel.deleteMany({ orgId });
+		this.logger.logDebug(`Todos los grupos de org ${orgId} eliminados con cascade (${groups.length})`);
 	}
 
 	/**
@@ -117,9 +123,7 @@ export class GroupManager {
 	 * @param orgId Si se proporciona, retorna solo grupos de esta org
 	 */
 	async getAllGroups(token?: string, orgId?: string): Promise<Group[]> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS, orgId);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS, orgId);
 
 		try {
 			const filter = orgId ? { orgId } : { $or: [{ orgId: null }, { orgId: { $exists: false } }] };
@@ -136,18 +140,12 @@ export class GroupManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async addUserToGroup(userId: string, groupId: string, token?: string): Promise<void> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.GROUPS | IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.GROUPS | IdentityScopes.USERS);
 
 		try {
 			const group = await this.groupModel.findOne({ id: groupId });
 			if (!group) throw new Error(`Grupo ${groupId} no encontrado`);
-
-			const result = await this.userModel.findOneAndUpdate({ id: userId }, { $addToSet: { groupIds: groupId }, updatedAt: new Date() });
-
-			if (!result) throw new Error(`Usuario ${userId} no encontrado`);
-
+			await this.userManager.addToGroup(userId, groupId, token);
 			this.logger.logDebug(`Usuario ${userId} agregado al grupo ${groupId}`);
 		} catch (error) {
 			this.logger.logError(`Error agregando usuario a grupo: ${error}`);
@@ -160,15 +158,10 @@ export class GroupManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async removeUserFromGroup(userId: string, groupId: string, token?: string): Promise<void> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.GROUPS | IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.GROUPS | IdentityScopes.USERS);
 
 		try {
-			const result = await this.userModel.findOneAndUpdate({ id: userId }, { $pull: { groupIds: groupId }, updatedAt: new Date() });
-
-			if (!result) throw new Error(`Usuario ${userId} no encontrado`);
-
+			await this.userManager.removeFromGroup(userId, groupId, token);
 			this.logger.logDebug(`Usuario ${userId} removido del grupo ${groupId}`);
 		} catch (error) {
 			this.logger.logError(`Error removiendo usuario del grupo: ${error}`);
@@ -181,16 +174,23 @@ export class GroupManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async getGroupUsers(groupId: string, token?: string): Promise<User[]> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS | IdentityScopes.USERS);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.GROUPS | IdentityScopes.USERS);
 
 		try {
-			const docs = await this.userModel.find({ groupIds: groupId });
-			return docs.map((d: any) => d.toObject?.() || d);
+			return await this.userManager.getUsersByGroup(groupId, token);
 		} catch (error) {
 			this.logger.logError(`Error obteniendo usuarios del grupo: ${error}`);
 			return [];
 		}
+	}
+
+	/**
+	 * Remueve un roleId de todos los grupos.
+	 * Usado por RoleManager al eliminar un rol.
+	 */
+	async removeRoleFromAll(roleId: string, token?: string): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.GROUPS);
+
+		await this.groupModel.updateMany({ roleIds: roleId }, { $pull: { roleIds: roleId } });
 	}
 }

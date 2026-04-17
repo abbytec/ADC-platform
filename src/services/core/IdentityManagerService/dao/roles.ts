@@ -6,16 +6,25 @@ import { CRUDXAction } from "@common/types/Actions.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
 import type { Permission, Role } from "@common/types/identity/index.ts";
 import { PREDEFINED_ROLES, ORG_PREDEFINED_ROLES } from "../defaults/systemRoles.ts";
+import type { UserManager } from "./users.js";
+import type { GroupManager } from "./groups.js";
+import type OperationsService from "../../../core/OperationsService/index.ts";
+import type { Step } from "../../../core/OperationsService/types.ts";
 
 export class RoleManager {
 	#permissionChecker: PermissionChecker;
+	readonly #operations: OperationsService;
 
 	constructor(
 		private readonly roleModel: Model<any>,
+		private readonly userManager: UserManager,
+		private readonly groupManager: GroupManager,
 		private readonly logger: ILogger,
+		operations: OperationsService,
 		getAuthVerifier: AuthVerifierGetter = () => null
 	) {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "RoleManager");
+		this.#operations = operations;
 	}
 
 	/**
@@ -59,9 +68,7 @@ export class RoleManager {
 	 * @param orgId Organización a la que pertenece el rol (undefined = global)
 	 */
 	async createRole(name: string, description: string, permissions?: Permission[], token?: string, orgId?: string): Promise<Role> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.ROLES, orgId);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.ROLES, orgId);
 
 		try {
 			const roleId = generateId();
@@ -89,9 +96,7 @@ export class RoleManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async getRole(roleId: string, token?: string): Promise<Role | null> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES);
 
 		try {
 			const doc = await this.roleModel.findOne({ id: roleId });
@@ -107,9 +112,7 @@ export class RoleManager {
 	 */
 	async getRolesByIds(roleIds: string[], token?: string, orgId?: string): Promise<Role[]> {
 		if (!roleIds.length) return [];
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES, orgId);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES, orgId);
 		try {
 			const docs = await this.roleModel.find({ id: { $in: roleIds } });
 			return docs.map((d: any) => d.toObject?.() || d);
@@ -124,9 +127,7 @@ export class RoleManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async getRoleByName(name: string, token?: string): Promise<Role | null> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES);
 
 		try {
 			const doc = await this.roleModel.findOne({ name });
@@ -142,9 +143,7 @@ export class RoleManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async updateRole(roleId: string, updates: Partial<Role>, token?: string): Promise<Role> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.ROLES);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.ROLES);
 
 		try {
 			const updated = await this.roleModel.findOneAndUpdate({ id: roleId }, updates, { new: true });
@@ -158,13 +157,19 @@ export class RoleManager {
 	}
 
 	/**
-	 * Elimina un rol
+	 * Limpia todas las referencias a un roleId delegando a los managers correspondientes.
+	 */
+	async #cascadeCleanupRole(roleId: string, token?: string): Promise<void> {
+		await this.userManager.removeRoleFromAll(roleId, token);
+		await this.groupManager.removeRoleFromAll(roleId, token);
+	}
+
+	/**
+	 * Elimina un rol (solo custom, protege predefinidos globales)
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
-	async deleteRole(roleId: string, token?: string): Promise<void> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.ROLES);
-		}
+	async deleteRole(roleId: string, token?: string, resumeFromStep?: number): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.ROLES);
 
 		const role = (await this.roleModel.findOne({ id: roleId }).lean()) as Role | null;
 		if (!role) {
@@ -174,11 +179,46 @@ export class RoleManager {
 			throw new Error("No se pueden eliminar roles predefinidos");
 		}
 
-		const result = await this.roleModel.deleteOne({ id: roleId });
-		if (result.deletedCount === 0) {
-			throw new Error(`No se pudo eliminar el rol ${roleId}`);
+		// Steps defined in the DAO: cascade cleanup then delete
+		const steps: Step[] = [
+			// 0: Remove role from all users
+			() => this.userManager.removeRoleFromAll(roleId, token),
+			// 1: Remove role from all groups
+			() => this.groupManager.removeRoleFromAll(roleId, token),
+			// 2: Delete the role document
+			async () => {
+				const result = await this.roleModel.deleteOne({ id: roleId });
+				if (result.deletedCount === 0) {
+					throw new Error(`No se pudo eliminar el rol ${roleId}`);
+				}
+			},
+		];
+
+		const startIdx = resumeFromStep ?? 0;
+
+		const failedStep = await this.#operations.stepper(startIdx, "delete-role", roleId, steps);
+		if (failedStep !== null) {
+			const err = new Error(`deleteRole failed at step ${failedStep}`);
+			(err as any).failedStep = failedStep;
+			throw err;
 		}
+
 		this.logger.logOk(`Rol eliminado: ${roleId} (${role.name})`);
+	}
+
+	/**
+	 * Elimina TODOS los roles de una organización (custom + predefinidos de org) con cascade.
+	 * Usado por OrgManager al eliminar una organización.
+	 */
+	async deleteAllForOrg(orgId: string, token?: string): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.ROLES);
+
+		const roles = await this.roleModel.find({ orgId });
+		for (const role of roles) {
+			await this.#cascadeCleanupRole(role.id, token);
+		}
+		await this.roleModel.deleteMany({ orgId });
+		this.logger.logDebug(`Todos los roles de org ${orgId} eliminados con cascade (${roles.length})`);
 	}
 
 	/**
@@ -189,9 +229,7 @@ export class RoleManager {
 	 * @param orgId Si se proporciona, retorna roles de esta org + globales predefinidos
 	 */
 	async getAllRoles(token?: string, orgId?: string): Promise<Role[]> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES, orgId);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES, orgId);
 
 		try {
 			const filter = orgId
@@ -215,9 +253,7 @@ export class RoleManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async getPredefinedRoles(token?: string): Promise<Role[]> {
-		if (token) {
-			await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES);
-		}
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ROLES);
 
 		try {
 			const docs = await this.roleModel.find({ isCustom: false });

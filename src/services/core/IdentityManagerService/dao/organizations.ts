@@ -1,18 +1,39 @@
 import type { Model } from "mongoose";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "../utils/crypto.ts";
+import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
+import { IdentityScopes } from "@common/types/identity/permissions.ts";
+import { CRUDXAction } from "@common/types/Actions.ts";
 import type { RegionManager } from "./regions.js";
+import type { RoleManager } from "./roles.js";
+import type { GroupManager } from "./groups.js";
+import type { UserManager } from "./users.js";
 import type { Organization } from "@common/types/identity/Organization.ts";
+import type OperationsService from "../../../core/OperationsService/index.ts";
+import type { Step } from "../../../core/OperationsService/types.ts";
 
 export class OrgManager {
+	#permissionChecker: PermissionChecker;
+	readonly #operations: OperationsService;
+
 	constructor(
 		private readonly orgModel: Model<any>,
+		private readonly roleManager: RoleManager,
+		private readonly groupManager: GroupManager,
+		private readonly userManager: UserManager,
 		private readonly regionManager: RegionManager,
-		private readonly logger: ILogger
-	) {}
+		private readonly logger: ILogger,
+		operations: OperationsService,
+		getAuthVerifier: AuthVerifierGetter = () => null
+	) {
+		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "OrgManager");
+		this.#operations = operations;
+	}
 
 	/** Crea una nueva organización */
-	async createOrganization(slug: string, region?: string, metadata?: Record<string, any>): Promise<Organization> {
+	async createOrganization(slug: string, region?: string, metadata?: Record<string, any>, token?: string): Promise<Organization> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, IdentityScopes.ORGANIZATIONS);
+
 		const regionPath = region || "default/default";
 
 		// Validar que la región existe
@@ -50,7 +71,9 @@ export class OrgManager {
 	/**
 	 * Obtiene una organización por ID o slug
 	 */
-	async getOrganization(orgIdOrSlug: string): Promise<Organization | null> {
+	async getOrganization(orgIdOrSlug: string, token?: string): Promise<Organization | null> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ORGANIZATIONS);
+
 		const org = await this.orgModel.findOne({
 			$or: [{ orgId: orgIdOrSlug }, { slug: orgIdOrSlug.toLowerCase() }],
 		});
@@ -59,7 +82,9 @@ export class OrgManager {
 	}
 
 	/** Actualiza una organización */
-	async updateOrganization(orgId: string, updates: Partial<Organization>): Promise<Organization> {
+	async updateOrganization(orgId: string, updates: Partial<Organization>, token?: string): Promise<Organization> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.ORGANIZATIONS);
+
 		// No permitir cambiar orgId
 		delete (updates as any).orgId;
 
@@ -77,22 +102,49 @@ export class OrgManager {
 		return this.#toOrganization(org);
 	}
 
-	/** Elimina una organización */
-	async deleteOrganization(orgId: string): Promise<void> {
-		const result = await this.orgModel.deleteOne({ orgId });
-		if (result.deletedCount === 0) throw new Error(`Organización no encontrada: ${orgId}`);
+	/** Elimina una organización y todas sus referencias (cascade a través de DAOs) */
+	async deleteOrganization(orgId: string, token?: string, resumeFromStep?: number): Promise<void> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, IdentityScopes.ORGANIZATIONS);
 
-		this.logger.logDebug(`[OrgManager] Organización eliminada: ${orgId}`);
+		const org = await this.orgModel.findOne({ orgId });
+		if (!org) throw new Error(`Organización no encontrada: ${orgId}`);
+
+		// Steps defined here in the DAO - the source of truth for cascade order
+		const steps: Step[] = [
+			// 0: Eliminar roles de la org (cascade → user.roleIds, orgMemberships.roleIds, group.roleIds)
+			() => this.roleManager.deleteAllForOrg(orgId, token),
+			// 1: Eliminar groups de la org (cascade → user.groupIds)
+			() => this.groupManager.deleteAllForOrg(orgId, token),
+			// 2: Limpiar orgMemberships de todos los users
+			() => this.userManager.removeAllOrgMemberships(orgId, token),
+			// 3: Eliminar el documento de la organización
+			() => this.orgModel.deleteOne({ orgId }).then(() => {}),
+		];
+
+		const startIdx = resumeFromStep ?? 0;
+
+		const failedStep = await this.#operations.stepper(startIdx, "delete-org", orgId, steps);
+		if (failedStep !== null) {
+			const err = new Error(`deleteOrganization failed at step ${failedStep}`);
+			(err as any).failedStep = failedStep;
+			throw err;
+		}
+
+		this.logger.logOk(`[OrgManager] Organización eliminada con cascade: ${orgId}`);
 	}
 
 	/** Obtiene todas las organizaciones */
-	async getAllOrganizations(): Promise<Organization[]> {
+	async getAllOrganizations(token?: string): Promise<Organization[]> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ORGANIZATIONS);
+
 		const orgs = await this.orgModel.find({});
 		return orgs.map((org: any) => this.#toOrganization(org));
 	}
 
 	/** Obtiene organizaciones por región */
-	async getOrganizationsByRegion(region: string): Promise<Organization[]> {
+	async getOrganizationsByRegion(region: string, token?: string): Promise<Organization[]> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ORGANIZATIONS);
+
 		const orgs = await this.orgModel.find({ region });
 		return orgs.map((org: any) => this.#toOrganization(org));
 	}

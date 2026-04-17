@@ -3,9 +3,11 @@ import { BaseService } from "../../BaseService.js";
 import type { IdentityStats, OrgScopedManagers } from "./types.js";
 import type { IMongoProvider } from "../../../providers/object/mongo/index.js";
 import { userSchema, groupSchema, roleSchema, organizationSchema, regionSchema } from "./domain/index.js";
+import type { User, Role, Group, Organization, RegionInfo } from "@common/types/identity/index.d.ts";
 import { UserManager, GroupManager, RoleManager, PermissionManager, SystemManager, RegionManager, OrgManager } from "./dao/index.js";
 import { type IAuthVerifier, type AuthVerifierGetter } from "./utils/auth-verifier.js";
 import type SessionManagerService from "../../security/SessionManagerService/index.js";
+import type OperationsService from "../OperationsService/index.ts";
 import { EnableEndpoints, DisableEndpoints } from "../../core/EndpointManagerService/index.js";
 import { UserEndpoints } from "./endpoints/users.js";
 import { RoleEndpoints } from "./endpoints/roles.js";
@@ -13,6 +15,7 @@ import { GroupEndpoints } from "./endpoints/groups.js";
 import { OrgEndpoints } from "./endpoints/organizations.js";
 import { RegionEndpoints } from "./endpoints/regions.js";
 import { StatsEndpoints } from "./endpoints/stats.js";
+import { Kernel } from "../../../kernel.ts";
 
 /**
  * IdentityManagerService - Gestión centralizada de identidades, usuarios, roles y grupos
@@ -45,20 +48,32 @@ export default class IdentityManagerService extends BaseService {
 	#orgManager: OrgManager | null = null;
 	#permissionManager: PermissionManager | null = null;
 
+	// Managers internos (sin auth) para uso de servicios de infraestructura (SessionManagerService)
+	#internalUserManager: UserManager | null = null;
+	#internalOrgManager: OrgManager | null = null;
+
 	// AuthVerifier para verificar tokens y permisos
 	#authVerifier: IAuthVerifier | null = null;
+
+	// Kernel key para operaciones privilegiadas
+	#kernelKey: symbol | null = null;
 
 	// SessionManagerService (lazy-loaded singleton)
 	#sessionManager: SessionManagerService | null = null;
 
 	// MongoDB provider
-	#mongoProvider: IMongoProvider | null = null;
+	readonly #mongoProvider: IMongoProvider;
+
+	// OperationsService for stepper support in cascade DAOs
+	readonly #operationsService: OperationsService;
 
 	// Cache de conexiones por organización
 	#orgConnectionCache: Map<string, { connection: Connection; managers: OrgScopedManagers }> = new Map();
 
-	constructor(kernel: any, options?: any) {
+	constructor(kernel: Kernel, options?: any) {
 		super(kernel, options);
+		this.#mongoProvider = this.getMyProvider<IMongoProvider>("object/mongo");
+		this.#operationsService = kernel.registry.getService<OperationsService>("OperationsService");
 	}
 
 	/**
@@ -71,49 +86,89 @@ export default class IdentityManagerService extends BaseService {
 	})
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
+		this.#kernelKey = kernelKey;
 
 		try {
-			this.#mongoProvider = this.getMyProvider<IMongoProvider>("object/mongo");
-
 			// Esperar a que MongoDB esté conectado (máximo 10 segundos)
 			const maxWaitTime = 10000;
 			const startTime = Date.now();
-			while (!this.#mongoProvider?.isConnected() && Date.now() - startTime < maxWaitTime) {
+			while (!this.#mongoProvider.isConnected() && Date.now() - startTime < maxWaitTime) {
 				await new Promise((resolve) => setTimeout(resolve, 500));
 			}
 
-			if (!this.#mongoProvider?.isConnected()) {
+			if (!this.#mongoProvider.isConnected()) {
 				throw new Error("MongoDB no pudo conectarse en el tiempo esperado");
 			}
 
 			// Configurar modelos para la base de datos LOCAL (entidades globales)
-			const RegionModel = this.#mongoProvider.createModel("Region", regionSchema);
-			const OrganizationModel = this.#mongoProvider.createModel("Organization", organizationSchema);
-			const UserModel = this.#mongoProvider.createModel("User", userSchema);
-			const RoleModel = this.#mongoProvider.createModel("Role", roleSchema);
-			const GroupModel = this.#mongoProvider.createModel("Group", groupSchema);
+			const RegionModel = this.#mongoProvider.createModel<RegionInfo>("Region", regionSchema);
+			const OrganizationModel = this.#mongoProvider.createModel<Organization>("Organization", organizationSchema);
+			const UserModel = this.#mongoProvider.createModel<User>("User", userSchema);
+			const RoleModel = this.#mongoProvider.createModel<Role>("Role", roleSchema);
+			const GroupModel = this.#mongoProvider.createModel<Group>("Group", groupSchema);
 
 			// Inicializar RegionManager PRIMERO (necesario para OrgManager)
-			this.#regionManager = new RegionManager(RegionModel, this.logger);
+			this.#regionManager = new RegionManager(RegionModel, OrganizationModel, this.logger, this.#getAuthVerifier);
 			await this.#regionManager.initialize();
 
-			// Inicializar otros managers con el getter de AuthVerifier
-			this.#orgManager = new OrgManager(OrganizationModel, this.#regionManager, this.logger);
+			// Inicializar managers en orden de dependencia:
+			// UserManager (independiente) → GroupManager (→ UserManager) → RoleManager (→ UserManager, GroupManager) → OrgManager (→ todos)
 			this.#userManager = new UserManager(UserModel, this.logger, this.#getAuthVerifier);
-			this.#roleManager = new RoleManager(RoleModel, this.logger, this.#getAuthVerifier);
-			this.#groupManager = new GroupManager(GroupModel, UserModel, this.logger, this.#getAuthVerifier);
+			this.#groupManager = new GroupManager(GroupModel, this.#userManager, this.logger, this.#getAuthVerifier);
+			this.#roleManager = new RoleManager(
+				RoleModel,
+				this.#userManager,
+				this.#groupManager,
+				this.logger,
+				this.#operationsService,
+				this.#getAuthVerifier
+			);
+			this.#orgManager = new OrgManager(
+				OrganizationModel,
+				this.#roleManager,
+				this.#groupManager,
+				this.#userManager,
+				this.#regionManager,
+				this.logger,
+				this.#operationsService,
+				this.#getAuthVerifier
+			);
 			this.#systemManager = new SystemManager(UserModel, RoleModel, GroupModel, this.logger, kernelKey);
+
+			// Managers internos (sin auth verifier) para servicios de infraestructura (SessionManagerService)
+			// Usan () => null como AuthVerifierGetter, por lo que requirePermission no aplica
+			const noAuth: () => null = () => null;
+			this.#internalUserManager = new UserManager(UserModel, this.logger, noAuth);
+			const internalGroupManager = new GroupManager(GroupModel, this.#internalUserManager, this.logger, noAuth);
+			const internalRoleManager = new RoleManager(
+				RoleModel,
+				this.#internalUserManager,
+				internalGroupManager,
+				this.logger,
+				this.#operationsService,
+				noAuth
+			);
+			this.#internalOrgManager = new OrgManager(
+				OrganizationModel,
+				internalRoleManager,
+				internalGroupManager,
+				this.#internalUserManager,
+				this.#regionManager,
+				this.logger,
+				this.#operationsService,
+				noAuth
+			);
 
 			// Inicializar roles predefinidos y usuario SYSTEM en BD local
 			await this.#roleManager.initializePredefinedRoles();
 			await this.#systemManager.initializeSystemUser();
 
-			// Inicializar PermissionManager con cache LRU
+			// Inicializar PermissionManager con cache LRU (usa modelos directamente para evitar recursión de auth)
 			this.#permissionManager = new PermissionManager(
-				this.#userManager,
-				this.#roleManager,
-				this.#groupManager,
-				this.#orgManager,
+				UserModel,
+				RoleModel,
+				GroupModel,
+				OrganizationModel,
 				1000, // cache size
 				60000 // TTL 1 minuto
 			);
@@ -142,15 +197,13 @@ export default class IdentityManagerService extends BaseService {
 	#createAuthVerifier(): IAuthVerifier {
 		return {
 			verifyToken: async (token: string) => {
-				// Lazy-load singleton pattern para SessionManagerService
-				if (!this.#sessionManager) {
+				// Lazy-load singleton pattern para SessionManagerService Opcional
+				if (!this.#sessionManager)
 					try {
-						// SessionManagerService está declarado como dependencia opcional en config.json
 						this.#sessionManager = this.getMyService<SessionManagerService>("SessionManagerService");
 					} catch {
 						return { valid: false, error: "SessionManagerService no disponible" };
 					}
-				}
 
 				const result = await this.#sessionManager.verifyToken(token);
 				if (!result.valid || !result.session) {
@@ -166,6 +219,24 @@ export default class IdentityManagerService extends BaseService {
 				}
 				return this.#permissionManager.hasPermission(userId, action, scope, orgId);
 			},
+		};
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// Acceso interno para servicios de infraestructura (requiere kernelKey)
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * Acceso privilegiado a managers SIN verificación de auth.
+	 * Solo para servicios de infraestructura (SessionManagerService) que operan
+	 * en contextos pre-autenticación (login, registro, OAuth).
+	 * @param kernelKey Clave del kernel para verificar acceso privilegiado
+	 */
+	_internal(kernelKey: symbol): { users: UserManager; organizations: OrgManager } {
+		if (kernelKey !== this.#kernelKey) throw new Error("Acceso denegado: kernelKey inválido");
+		return {
+			users: this.#internalUserManager!,
+			organizations: this.#internalOrgManager!,
 		};
 	}
 
@@ -219,8 +290,8 @@ export default class IdentityManagerService extends BaseService {
 	 * @param mode - "write" usa región global, "read" puede usar réplica local
 	 * @returns Managers para operar dentro de la organización
 	 */
-	async forOrg(orgIdOrSlug: string, mode: "read" | "write" = "write"): Promise<OrgScopedManagers> {
-		const org = await this.#orgManager!.getOrganization(orgIdOrSlug);
+	async forOrg(orgIdOrSlug: string, mode: "read" | "write" = "write", token?: string): Promise<OrgScopedManagers> {
+		const org = await this.#orgManager!.getOrganization(orgIdOrSlug, token);
 		if (!org) {
 			throw new Error(`Organización no encontrada: ${orgIdOrSlug}`);
 		}
@@ -243,7 +314,7 @@ export default class IdentityManagerService extends BaseService {
 
 		if (mode === "write") {
 			// Escrituras siempre van a la región global
-			const globalRegion = await this.#regionManager!.getGlobalRegion();
+			const globalRegion = await this.#regionManager!.getGlobalRegion(token);
 			connectionUri = globalRegion.metadata.objectConnectionUri || null;
 		} else {
 			// Lecturas pueden usar la réplica local de la org
@@ -255,21 +326,28 @@ export default class IdentityManagerService extends BaseService {
 		}
 
 		// Obtener/crear conexión
-		const regionConnection = await this.#mongoProvider!.getOrCreateConnection(connectionUri);
+		const regionConnection = await this.#mongoProvider.getOrCreateConnection(connectionUri);
 
 		// Cambiar a la base de datos de la organización
 		const dbName = this.#orgManager!.getDbName(org);
-		const orgDbConnection = this.#mongoProvider!.useDb(regionConnection, dbName);
+		const orgDbConnection = this.#mongoProvider.useDb(regionConnection, dbName);
 
 		// Crear modelos para la base de datos de la organización
-		const OrgUserModel = this.#mongoProvider!.createModelForDb(orgDbConnection, "User", userSchema);
-		const OrgRoleModel = this.#mongoProvider!.createModelForDb(orgDbConnection, "Role", roleSchema);
-		const OrgGroupModel = this.#mongoProvider!.createModelForDb(orgDbConnection, "Group", groupSchema);
+		const OrgUserModel = this.#mongoProvider.createModelForDb<User>(orgDbConnection, "User", userSchema);
+		const OrgRoleModel = this.#mongoProvider.createModelForDb<Role>(orgDbConnection, "Role", roleSchema);
+		const OrgGroupModel = this.#mongoProvider.createModelForDb<Group>(orgDbConnection, "Group", groupSchema);
 
-		// Crear managers con scope de organización (con AuthVerifier)
+		// Crear managers con scope de organización (misma cadena de dependencia)
 		const orgUserManager = new UserManager(OrgUserModel, this.logger, this.#getAuthVerifier);
-		const orgRoleManager = new RoleManager(OrgRoleModel, this.logger, this.#getAuthVerifier);
-		const orgGroupManager = new GroupManager(OrgGroupModel, OrgUserModel, this.logger, this.#getAuthVerifier);
+		const orgGroupManager = new GroupManager(OrgGroupModel, orgUserManager, this.logger, this.#getAuthVerifier);
+		const orgRoleManager = new RoleManager(
+			OrgRoleModel,
+			orgUserManager,
+			orgGroupManager,
+			this.logger,
+			this.#operationsService,
+			this.#getAuthVerifier
+		);
 
 		const managers: OrgScopedManagers = {
 			org,
@@ -297,10 +375,10 @@ export default class IdentityManagerService extends BaseService {
 	// Métodos de servicio
 	// ─────────────────────────────────────────────────────────────────────────────
 
-	async getStats(): Promise<IdentityStats> {
+	async getStats(token?: string): Promise<IdentityStats> {
 		const baseStats = await this.#systemManager!.getStats();
-		const orgs = await this.#orgManager!.getAllOrganizations();
-		const regions = await this.#regionManager!.getAllRegions();
+		const orgs = await this.#orgManager!.getAllOrganizations(token);
+		const regions = await this.#regionManager!.getAllRegions(token);
 
 		return {
 			...baseStats,

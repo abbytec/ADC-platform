@@ -122,7 +122,7 @@ export default class RedisProvider extends BaseProvider implements IRedisProvide
 
 	// === Operaciones básicas ===
 	async get(key: string): Promise<string | null> {
-		return this.client.get(key);
+		return this.client.get(this._k(key));
 	}
 
 	async set(key: string, value: string, ttlSeconds?: number): Promise<void> {

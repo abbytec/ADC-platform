@@ -1,0 +1,14 @@
+{
+	"name": "rabbitmq",
+	"version": "1.0.0",
+	"type": "queue-provider",
+	"global": true,
+	"language": "typescript",
+	"config": {
+		"url": "amqp://admin:password@localhost:5672",
+		"defaultPrefetch": 10,
+		"defaultConcurrency": 5,
+		"maxRetries": 4,
+		"retryDelaysMs": [1000, 5000, 25000, 125000]
+	}
+}

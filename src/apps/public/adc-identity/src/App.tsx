@@ -154,11 +154,19 @@ export default function App() {
 	const renderActiveView = () => {
 		switch (activeTab) {
 			case "users":
-				return <UsersView scopes={scopes} orgId={effectiveOrgId} isAdmin={isAdmin} isTokenOrgContext={Boolean(tokenOrgId)} />;
+				return (
+					<UsersView
+						scopes={scopes}
+						orgId={effectiveOrgId}
+						isAdmin={isAdmin}
+						isTokenOrgContext={Boolean(tokenOrgId)}
+						organizations={organizations}
+					/>
+				);
 			case "roles":
-				return <RolesView scopes={scopes} orgId={effectiveOrgId} isAdmin={isAdmin} />;
+				return <RolesView scopes={scopes} orgId={effectiveOrgId} organizations={organizations} />;
 			case "groups":
-				return <GroupsView scopes={scopes} orgId={effectiveOrgId} isAdmin={isAdmin} />;
+				return <GroupsView scopes={scopes} orgId={effectiveOrgId} organizations={organizations} />;
 			case "organizations":
 				return <OrganizationsView scopes={scopes} />;
 			case "regions":

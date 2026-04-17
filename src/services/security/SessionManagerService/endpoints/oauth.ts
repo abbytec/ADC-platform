@@ -25,6 +25,7 @@ interface OAuthEndpointsDeps {
 	sessionManager: SessionManager;
 	oauthRegistry: OAuthProviderRegistry;
 	identityService: IdentityManagerService | null;
+	internalIdentity: ReturnType<IdentityManagerService["_internal"]> | null;
 	cookieDomain: string;
 	defaultRedirectUrl: string;
 	getProviderConfig: (provider: string) => OAuthProviderConfig | null;
@@ -268,7 +269,7 @@ export class OAuthEndpoints {
 		provider: string,
 		profile: { id: string; username: string; email?: string; avatar?: string }
 	): Promise<AuthenticatedUser> {
-		if (!OAuthEndpoints.deps.identityService) {
+		if (!OAuthEndpoints.deps.internalIdentity) {
 			return {
 				id: `temp_${profile.id}`,
 				providerId: profile.id,
@@ -281,7 +282,7 @@ export class OAuthEndpoints {
 		}
 
 		const providerIdField = `${provider}Id`;
-		const users = OAuthEndpoints.deps.identityService.users;
+		const users = OAuthEndpoints.deps.internalIdentity.users;
 		let existingUser = await users.findByProviderIdOrEmail(providerIdField, profile.id, profile.email);
 
 		if (existingUser) {

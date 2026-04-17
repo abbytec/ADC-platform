@@ -22,7 +22,32 @@ export interface EndpointOptions {
 	};
 	/** Skip automatic idempotency check for this endpoint (default: false). */
 	skipIdempotency?: boolean;
+	/**
+	 * When true (and the method is mutative: POST/PUT/PATCH/DELETE), the request
+	 * is enqueued into RabbitMQ after idempotency+permissions checks and the HTTP
+	 * response is always 202 Accepted with a jobId for polling.
+	 */
+	enqueue?: boolean;
+	/** Queue consumer options - only meaningful when enqueue=true */
+	queueOptions?: {
+		prefetch?: number;
+		concurrency?: number;
+		maxRetries?: number;
+		/** Max time (ms) a handler may run before timeout */
+		jobTimeoutMs?: number;
+	};
 	[key: string]: unknown;
+}
+
+/** Job status stored in Redis for async (enqueued) operations */
+export interface JobStatus {
+	status: "queued" | "processing" | "completed" | "failed";
+	endpoint: string;
+	userId?: string;
+	result?: unknown;
+	error?: string;
+	createdAt: string;
+	completedAt?: string;
 }
 
 /** Context passed to endpoint handlers */

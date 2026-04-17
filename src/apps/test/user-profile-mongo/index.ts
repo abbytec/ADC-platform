@@ -25,6 +25,7 @@ export default class UserProfileApp extends BaseApp {
 	private sessionManager!: SessionManagerService;
 	#systemUser: User | null = null;
 	#kernelKey!: symbol;
+	#systemToken: string | null = null;
 	private testData: IdentityTestData = {
 		userIds: [],
 		roleIds: [],
@@ -47,10 +48,12 @@ export default class UserProfileApp extends BaseApp {
 		}
 
 		try {
+			const token = await this.#getSystemToken();
+
 			// Borrar usuarios (en orden inverso para evitar dependencias)
 			for (const userId of [...this.testData.userIds].reverse()) {
 				try {
-					await this.identityManager.users.deleteUser(userId);
+					await this.identityManager.users.deleteUser(userId, token);
 					Logger.ok(`[${this.name}] ✓ Usuario eliminado: ${userId}`);
 				} catch (e: any) {
 					Logger.warn(`[${this.name}] No se pudo eliminar usuario ${userId}: ${e.message}`);
@@ -60,7 +63,7 @@ export default class UserProfileApp extends BaseApp {
 			// Borrar grupos
 			for (const groupId of this.testData.groupIds) {
 				try {
-					await this.identityManager.groups.deleteGroup(groupId);
+					await this.identityManager.groups.deleteGroup(groupId, token);
 					Logger.ok(`[${this.name}] ✓ Grupo eliminado: ${groupId}`);
 				} catch (e: any) {
 					Logger.warn(`[${this.name}] No se pudo eliminar grupo ${groupId}: ${e.message}`);
@@ -70,7 +73,7 @@ export default class UserProfileApp extends BaseApp {
 			// Borrar roles
 			for (const roleId of this.testData.roleIds) {
 				try {
-					await this.identityManager.roles.deleteRole(roleId);
+					await this.identityManager.roles.deleteRole(roleId, token);
 					Logger.ok(`[${this.name}] ✓ Rol eliminado: ${roleId}`);
 				} catch (e: any) {
 					Logger.warn(`[${this.name}] No se pudo eliminar rol ${roleId}: ${e.message}`);
@@ -111,28 +114,29 @@ export default class UserProfileApp extends BaseApp {
 	}
 
 	/**
-	 * Prueba operaciones básicas sin autenticación (token no proporcionado)
+	 * Prueba operaciones con token SYSTEM
 	 */
 	async #testBasicOperations(): Promise<void> {
-		Logger.info(`\n[${this.name}] --- Test: Operaciones Básicas (sin token) ---`);
+		const token = await this.#getSystemToken();
+		Logger.info(`\n[${this.name}] --- Test: Operaciones Básicas (con token SYSTEM) ---`);
 
 		// 1. Crear rol de prueba
-		const role = await this.#createTestRole("basic");
+		const role = await this.#createTestRole("basic", token);
 		this.testData.roleIds.push(role.id);
 		Logger.ok(`[${this.name}] ✓ Rol creado: ${role.name}`);
 
 		// 2. Crear grupo
-		const group = await this.identityManager.groups.createGroup(`test-group-${Date.now()}`, "Grupo de prueba básico", [role.id]);
+		const group = await this.identityManager.groups.createGroup(`test-group-${Date.now()}`, "Grupo de prueba básico", [role.id], token);
 		this.testData.groupIds.push(group.id);
 		Logger.ok(`[${this.name}] ✓ Grupo creado: ${group.name}`);
 
 		// 3. Crear usuario
-		const user = await this.identityManager.users.createUser(`test-user-${Date.now()}`, `pwd-${crypto.randomUUID()}`, [role.id]);
+		const user = await this.identityManager.users.createUser(`test-user-${Date.now()}`, `pwd-${crypto.randomUUID()}`, [role.id], token);
 		this.testData.userIds.push(user.id);
 		Logger.ok(`[${this.name}] ✓ Usuario creado: ${user.username}`);
 
 		// 4. Asociar usuario con grupo
-		await this.identityManager.groups.addUserToGroup(user.id, group.id);
+		await this.identityManager.groups.addUserToGroup(user.id, group.id, token);
 		Logger.ok(`[${this.name}] ✓ Usuario asociado al grupo`);
 
 		// 5. Verificar permisos
@@ -140,7 +144,7 @@ export default class UserProfileApp extends BaseApp {
 		Logger.info(`[${this.name}]   Usuario tiene permiso READ.SELF: ${hasReadPerm}`);
 
 		// 6. Estadísticas
-		const stats = await this.identityManager.getStats();
+		const stats = await this.identityManager.getStats(token);
 		Logger.info(`[${this.name}] Estadísticas:`);
 		Logger.info(`  - Usuarios: ${stats.totalUsers}, Roles: ${stats.totalRoles}, Grupos: ${stats.totalGroups}`);
 
@@ -167,15 +171,18 @@ export default class UserProfileApp extends BaseApp {
 		Logger.ok(`[${this.name}] ✓ Token SYSTEM generado via login real`);
 
 		// 3. Crear rol con permisos limitados (solo lectura)
-		const limitedRole = await this.identityManager.roles.createRole(`limited-role-${Date.now()}`, "Rol con permisos limitados", [
-			{ resource: "identity", action: CRUDXAction.READ, scope: IdentityScopes.USERS },
-		]);
+		const limitedRole = await this.identityManager.roles.createRole(
+			`limited-role-${Date.now()}`,
+			"Rol con permisos limitados",
+			[{ resource: "identity", action: CRUDXAction.READ, scope: IdentityScopes.USERS }],
+			systemToken
+		);
 		this.testData.roleIds.push(limitedRole.id);
 		Logger.ok(`[${this.name}] ✓ Rol limitado creado: ${limitedRole.name}`);
 
 		// 4. Crear usuario con permisos limitados
 		const limitedPassword = `limited-pwd-${crypto.randomUUID()}`;
-		const limitedUser = await this.identityManager.users.createUser(`limited-${Date.now()}`, limitedPassword, [limitedRole.id]);
+		const limitedUser = await this.identityManager.users.createUser(`limited-${Date.now()}`, limitedPassword, [limitedRole.id], systemToken);
 		this.testData.userIds.push(limitedUser.id);
 		Logger.ok(`[${this.name}] ✓ Usuario limitado creado: ${limitedUser.username}`);
 
@@ -261,12 +268,32 @@ export default class UserProfileApp extends BaseApp {
 	}
 
 	/**
+	 * Obtiene o reutiliza el token SYSTEM
+	 */
+	async #getSystemToken(): Promise<string> {
+		if (this.#systemToken) return this.#systemToken;
+
+		const systemCredentials = this.identityManager.system.getSystemCredentials(this.#kernelKey);
+		const token = await this.sessionManager.loginProgrammatic(this.#kernelKey, systemCredentials.username, systemCredentials.password);
+		if (!token) {
+			throw new Error("No se pudo obtener token para usuario SYSTEM");
+		}
+		this.#systemToken = token;
+		return token;
+	}
+
+	/**
 	 * Crea un rol de prueba con permisos básicos
 	 */
-	async #createTestRole(prefix: string): Promise<Role> {
-		return await this.identityManager.roles.createRole(`${prefix}-role-${Date.now()}`, `Rol de prueba ${prefix}`, [
-			{ resource: "user-profile", action: CRUDXAction.READ, scope: IdentityScopes.SELF },
-			{ resource: "user-profile", action: CRUDXAction.WRITE, scope: IdentityScopes.SELF },
-		]);
+	async #createTestRole(prefix: string, token: string): Promise<Role> {
+		return await this.identityManager.roles.createRole(
+			`${prefix}-role-${Date.now()}`,
+			`Rol de prueba ${prefix}`,
+			[
+				{ resource: "user-profile", action: CRUDXAction.READ, scope: IdentityScopes.SELF },
+				{ resource: "user-profile", action: CRUDXAction.WRITE, scope: IdentityScopes.SELF },
+			],
+			token
+		);
 	}
 }
