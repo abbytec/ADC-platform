@@ -85,7 +85,7 @@ function generate(libPath) {
 		const m = line.match(/^import\s+\{(.+?)\}\s+from\s+"(\.[^"]+)"/);
 		if (!m || m[2].includes("@stencil")) continue;
 		for (const part of m[1].split(",")) {
-			const [raw, alias] = part.trim().split(/\s+as\s+/);
+			const [raw, alias] = part.trim().split(" as ");
 			const name = (alias || raw).trim();
 			typeImports.set(name, { original: raw.trim(), sourceRel: m[2] });
 		}
@@ -191,7 +191,7 @@ function generate(libPath) {
 			}
 
 			// Match property line: "propName"?: type;
-			const propMatch = trimmed.match(/^"(\w+)"(\?)?:\s*(.+);$/);
+			const propMatch = trimmed.match(/^"(\w+)"(\?)?:\s(.+);$/);
 			if (!propMatch) continue;
 
 			const [, propName, , propType] = propMatch;
@@ -208,7 +208,7 @@ function generate(libPath) {
 
 			// For Stencil custom events, replace ComponentCustomEvent<T> with CustomEvent<T>
 			if (propName.startsWith("onAdc")) {
-				resolvedType = resolvedType.replace(/\w+CustomEvent<([^>]*)>/g, "CustomEvent<$1>");
+				resolvedType = resolvedType.replace(/\w+CustomEvent<([^>]+)>/g, "CustomEvent<$1>");
 			}
 
 			// Emit JSDoc + prop
@@ -232,7 +232,7 @@ function generate(libPath) {
 		const ieBlock = extractBraceBlock(nsBlock, ieBrace);
 
 		// Match: "adc-xxx": Omit<AdcXxx, ... or "adc-xxx": AdcXxx;
-		const tagRegex = /^\s+"(adc-[\w-]+)":\s+(?:Omit<(\w+),|(\w+)\b)/gm;
+		const tagRegex = /^\s+"(adc-[\w-]+)":\s(?:Omit<(\w+),|(\w+)\b)/gm;
 		let tm;
 		while ((tm = tagRegex.exec(ieBlock)) !== null) {
 			tagMap.set(tm[1], tm[2] || tm[3]);

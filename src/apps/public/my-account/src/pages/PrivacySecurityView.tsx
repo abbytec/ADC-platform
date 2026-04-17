@@ -64,12 +64,13 @@ export default function PrivacySecurityView() {
 					<form onSubmit={handleSubmit} className="space-y-5">
 						{/* Contraseña actual */}
 						<div>
-							<label className="block text-sm mb-1 text-text">Contraseña Actual</label>
+							<label htmlFor="current-password" className="block text-sm mb-1 text-text">
+								Contraseña Actual
+							</label>
 
 							<div className="relative">
 								<adc-input
-									type={showCurrent ? "text" : "password"}
-									placeholder="Ingresa tu contraseña actual"
+									inputId="current-password"
 									value={currentPassword}
 									class="w-full pr-12"
 									onInput={(e) => setCurrentPassword((e.target as HTMLInputElement).value)}
@@ -87,12 +88,13 @@ export default function PrivacySecurityView() {
 
 						{/* Nueva contraseña */}
 						<div>
-							<label className="block text-sm mb-1 text-text">Nueva Contraseña</label>
+							<label htmlFor="new-password" className="block text-sm mb-1 text-text">
+								Nueva Contraseña
+							</label>
 
 							<div className="relative">
 								<adc-input
-									type={showNew ? "text" : "password"}
-									placeholder="Ingresa tu nueva contraseña"
+									inputId="new-password"
 									value={newPassword}
 									class="w-full pr-12"
 									onInput={(e) => setNewPassword((e.target as HTMLInputElement).value)}
@@ -110,12 +112,13 @@ export default function PrivacySecurityView() {
 
 						{/* Confirmar contraseña */}
 						<div>
-							<label className="block text-sm mb-1 text-text">Confirmar Nueva Contraseña</label>
+							<label htmlFor="confirm-password" className="block text-sm mb-1 text-text">
+								Confirmar Nueva Contraseña
+							</label>
 
 							<div className="relative">
 								<adc-input
-									type={showConfirm ? "text" : "password"}
-									placeholder="Confirma tu nueva contraseña"
+									inputId="confirm-password"
 									value={confirmPassword}
 									class="w-full pr-12"
 									onInput={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
