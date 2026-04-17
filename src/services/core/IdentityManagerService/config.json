@@ -29,5 +29,12 @@
 			"name": "OperationsService",
 			"version": "latest"
 		}
-	]
+	],
+	"private": {
+		"discordGuildId": "${DISCORD_GUILD_ID}",
+		"discordRoleMap": {
+			"1402525398788739145": "Discord VIP",
+			"858592931594502166": "Discord Nitro Booster"
+		}
+	}
 }

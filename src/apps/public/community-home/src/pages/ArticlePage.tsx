@@ -190,6 +190,10 @@ export function ArticlePage({ slug }: { readonly slug: string }) {
 			{/* Sección de comentarios */}
 			<div className="mt-8">
 				<h3>Comentarios</h3>
+				{/* TODO: Verificar permiso community.social con acción WRITE (2) para habilitar comentarios.
+				     Ejemplo: permissions.some(p => { const [r,,a] = p.split("."); return r === "community.social" && (Number(a) & 2) !== 0; })
+				     Los roles Discord VIP y Discord Nitro Booster otorgan este permiso automáticamente via autoroles.
+				     Ver docs/auth/discord.md para detalles. */}
 				<div className="paperWarn rounded-xxl border-default p-6">
 					<p className="text-sm">
 						Solo los usuarios con rol VIP o Server Booster pueden comentar. Obtén estos roles en nuestro servidor de Discord para

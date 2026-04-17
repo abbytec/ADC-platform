@@ -2,7 +2,8 @@ import type { Connection } from "mongoose";
 import { BaseService } from "../../BaseService.js";
 import type { IdentityStats, OrgScopedManagers } from "./types.js";
 import type { IMongoProvider } from "../../../providers/object/mongo/index.js";
-import { userSchema, groupSchema, roleSchema, organizationSchema, regionSchema } from "./domain/index.js";
+import { userSchema, groupSchema, roleSchema, organizationSchema, regionSchema, discordGuildConfigSchema } from "./domain/index.js";
+import type { DiscordGuildConfig } from "./domain/index.js";
 import type { User, Role, Group, Organization, RegionInfo } from "@common/types/identity/index.d.ts";
 import { UserManager, GroupManager, RoleManager, PermissionManager, SystemManager, RegionManager, OrgManager } from "./dao/index.js";
 import { type IAuthVerifier, type AuthVerifierGetter } from "./utils/auth-verifier.js";
@@ -51,6 +52,10 @@ export default class IdentityManagerService extends BaseService {
 	// Managers internos (sin auth) para uso de servicios de infraestructura (SessionManagerService)
 	#internalUserManager: UserManager | null = null;
 	#internalOrgManager: OrgManager | null = null;
+	#internalRoleManager: RoleManager | null = null;
+
+	// Discord Guild Config model (para mapeo de roles por guild)
+	#discordGuildConfigModel: import("mongoose").Model<DiscordGuildConfig> | null = null;
 
 	// AuthVerifier para verificar tokens y permisos
 	#authVerifier: IAuthVerifier | null = null;
@@ -106,6 +111,8 @@ export default class IdentityManagerService extends BaseService {
 			const UserModel = this.#mongoProvider.createModel<User>("User", userSchema);
 			const RoleModel = this.#mongoProvider.createModel<Role>("Role", roleSchema);
 			const GroupModel = this.#mongoProvider.createModel<Group>("Group", groupSchema);
+			const DiscordGuildConfigModel = this.#mongoProvider.createModel<DiscordGuildConfig>("DiscordGuildConfig", discordGuildConfigSchema);
+			this.#discordGuildConfigModel = DiscordGuildConfigModel;
 
 			// Inicializar RegionManager PRIMERO (necesario para OrgManager)
 			this.#regionManager = new RegionManager(RegionModel, OrganizationModel, this.logger, this.#getAuthVerifier);
@@ -148,6 +155,7 @@ export default class IdentityManagerService extends BaseService {
 				this.#operationsService,
 				noAuth
 			);
+			this.#internalRoleManager = internalRoleManager;
 			this.#internalOrgManager = new OrgManager(
 				OrganizationModel,
 				internalRoleManager,
@@ -232,11 +240,42 @@ export default class IdentityManagerService extends BaseService {
 	 * en contextos pre-autenticación (login, registro, OAuth).
 	 * @param kernelKey Clave del kernel para verificar acceso privilegiado
 	 */
-	_internal(kernelKey: symbol): { users: UserManager; organizations: OrgManager } {
+	_internal(kernelKey: symbol): {
+		users: UserManager;
+		organizations: OrgManager;
+		roles: RoleManager;
+		discordGuildId: string | undefined;
+		getDiscordRoleMap: (guildId: string) => Promise<Record<string, string> | null>;
+	} {
 		if (kernelKey !== this.#kernelKey) throw new Error("Acceso denegado: kernelKey inválido");
+		const configPrivate = (this.config?.private || {}) as { discordGuildId?: string; discordRoleMap?: Record<string, string> };
+		const discordGuildConfigModel = this.#discordGuildConfigModel;
+
 		return {
 			users: this.#internalUserManager!,
 			organizations: this.#internalOrgManager!,
+			roles: this.#internalRoleManager!,
+			discordGuildId: configPrivate.discordGuildId,
+			/**
+			 * Obtiene el mapeo Discord Role ID → nombre de rol de plataforma para un guild.
+			 * Primero busca en DB (para guilds custom/por org), fallback a config.json default.
+			 */
+			getDiscordRoleMap: async (guildId: string): Promise<Record<string, string> | null> => {
+				// 1. Buscar config en DB para este guild
+				if (discordGuildConfigModel) {
+					try {
+						const doc = await discordGuildConfigModel.findOne({ guildId });
+						if (doc) return (doc.toObject?.() || doc).roleMap;
+					} catch {
+						/* fallback to config */
+					}
+				}
+				// 2. Fallback: si coincide con el guild default de config.json
+				if (guildId === configPrivate.discordGuildId && configPrivate.discordRoleMap) {
+					return configPrivate.discordRoleMap;
+				}
+				return null;
+			},
 		};
 	}
 

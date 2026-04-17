@@ -1,5 +1,5 @@
 import type { Model } from "mongoose";
-import type { User } from "@common/types/identity/User.ts";
+import type { User, LinkedAccount } from "@common/types/identity/User.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId, hashPassword, verifyPassword } from "../utils/crypto.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
@@ -162,6 +162,132 @@ export class UserManager {
 			this.logger.logError(`Error buscando usuario por provider o email: ${error}`);
 			return null;
 		}
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// Linked Accounts (OAuth external providers)
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * Busca usuario por linked account (provider + providerId con status "linked")
+	 * Reemplaza búsqueda por metadata.discordId
+	 */
+	async findByLinkedExternalAccount(provider: string, providerId: string, token?: string): Promise<User | null> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
+
+		try {
+			const doc = await this.userModel.findOne({
+				linkedAccounts: {
+					$elemMatch: { provider, providerId, status: "linked" },
+				},
+			});
+			return doc?.toObject?.() || doc || null;
+		} catch (error) {
+			this.logger.logError(`Error buscando usuario por linked account: ${error}`);
+			return null;
+		}
+	}
+
+	/**
+	 * Vincula una cuenta externa al usuario.
+	 * Valida que no exista otro usuario con ese providerId activo para el mismo provider.
+	 */
+	async linkExternalAccount(userId: string, account: LinkedAccount, token?: string): Promise<User> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
+
+		// Anti-collision: verificar que ningún OTRO usuario tiene este provider+id activo
+		const existing = await this.userModel.findOne({
+			id: { $ne: userId },
+			linkedAccounts: {
+				$elemMatch: { provider: account.provider, providerId: account.providerId, status: "linked" },
+			},
+		});
+		if (existing) {
+			throw new Error(`La cuenta ${account.provider}:${account.providerId} ya está vinculada a otro usuario`);
+		}
+
+		// Verificar si ya existe una entrada para este provider (puede estar "unlinked")
+		const userDoc = await this.userModel.findOne({
+			id: userId,
+			"linkedAccounts.provider": account.provider,
+			"linkedAccounts.providerId": account.providerId,
+		});
+
+		if (userDoc) {
+			// Re-vincular: cambiar status a "linked", actualizar linkedAt y datos
+			const updated = await this.userModel.findOneAndUpdate(
+				{
+					id: userId,
+					linkedAccounts: {
+						$elemMatch: { provider: account.provider, providerId: account.providerId },
+					},
+				},
+				{
+					$set: {
+						"linkedAccounts.$.status": "linked",
+						"linkedAccounts.$.linkedAt": new Date(),
+						"linkedAccounts.$.providerUsername": account.providerUsername,
+						"linkedAccounts.$.providerAvatar": account.providerAvatar,
+						"linkedAccounts.$.unlinkedAt": undefined,
+					},
+					updatedAt: new Date(),
+				},
+				{ new: true }
+			);
+			if (!updated) throw new Error(`Usuario ${userId} no encontrado`);
+			this.logger.logDebug(`Cuenta ${account.provider} re-vinculada para usuario ${userId}`);
+			return updated.toObject?.() || updated;
+		}
+
+		// Nueva vinculación: push al array
+		const updated = await this.userModel.findOneAndUpdate(
+			{ id: userId },
+			{
+				$push: {
+					linkedAccounts: {
+						provider: account.provider,
+						providerId: account.providerId,
+						providerUsername: account.providerUsername,
+						providerAvatar: account.providerAvatar,
+						status: "linked",
+						linkedAt: new Date(),
+					},
+				},
+				updatedAt: new Date(),
+			},
+			{ new: true }
+		);
+		if (!updated) throw new Error(`Usuario ${userId} no encontrado`);
+		this.logger.logDebug(`Cuenta ${account.provider} vinculada para usuario ${userId}`);
+		return updated.toObject?.() || updated;
+	}
+
+	/**
+	 * Desvincula una cuenta externa (cambia status a "unlinked", no elimina la entrada)
+	 */
+	async unlinkExternalAccount(userId: string, provider: string, token?: string): Promise<User> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.USERS);
+
+		const updated = await this.userModel.findOneAndUpdate(
+			{
+				id: userId,
+				linkedAccounts: {
+					$elemMatch: { provider, status: "linked" },
+				},
+			},
+			{
+				$set: {
+					"linkedAccounts.$.status": "unlinked",
+					"linkedAccounts.$.unlinkedAt": new Date(),
+				},
+				updatedAt: new Date(),
+			},
+			{ new: true }
+		);
+
+		if (!updated) throw new Error(`No se encontró cuenta ${provider} vinculada para usuario ${userId}`);
+		this.logger.logDebug(`Cuenta ${provider} desvinculada para usuario ${userId}`);
+		return updated.toObject?.() || updated;
 	}
 
 	/**

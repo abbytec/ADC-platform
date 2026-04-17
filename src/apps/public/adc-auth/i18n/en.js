@@ -52,6 +52,12 @@ export default {
 		PROVIDER_CONFIG_NOT_FOUND: "Provider not configured",
 		REGISTER_ERROR: "Error creating account",
 		NOT_ORG_MEMBER: "You are not a member of this organization",
-		USER_NOT_FOUND: "User not found"
+		USER_NOT_FOUND: "User not found",
+		// OAuth link flow
+		NO_PENDING_LINK: "No pending account link found. Please restart the sign-in process.",
+		INVALID_PENDING_LINK: "The account link has expired or is invalid. Please sign in with Discord again.",
+		PASSWORD_REQUIRED: "Enter your platform password to link the account.",
+		WRONG_PASSWORD: "Incorrect password",
+		IDENTITY_NOT_AVAILABLE: "Identity service unavailable"
 	}
 };

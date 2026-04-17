@@ -200,6 +200,7 @@ export default class SessionManagerService extends BaseService {
 			oauthRegistry: this.#oauthRegistry!,
 			identityService: this.#identityService,
 			internalIdentity: this.#internalIdentity,
+			redis: this.#redis,
 			cookieDomain: this.#cookieDomain,
 			defaultRedirectUrl: this.#defaultRedirectUrl,
 			getProviderConfig: (provider: string) => this.#getProviderConfig(provider),
@@ -343,14 +344,14 @@ export default class SessionManagerService extends BaseService {
 
 		const configs: Record<string, OAuthProviderConfig> = {
 			discord: {
-				clientId: cfg.discordClientId || "",
-				clientSecret: cfg.discordClientSecret || "",
+				clientId: this.config.private?.discordClientId || "",
+				clientSecret: this.config.private?.discordClientSecret || "",
 				redirectUri: `${baseUrl}/api/auth/callback/discord`,
-				scopes: ["identify", "email"],
+				scopes: ["identify", "email", "guilds.members.read"],
 			},
 			google: {
-				clientId: cfg.googleClientId || "",
-				clientSecret: cfg.googleClientSecret || "",
+				clientId: this.config.private?.googleClientId || "",
+				clientSecret: this.config.private?.googleClientSecret || "",
 				redirectUri: `${baseUrl}/api/auth/callback/google`,
 				scopes: ["openid", "email", "profile"],
 			},

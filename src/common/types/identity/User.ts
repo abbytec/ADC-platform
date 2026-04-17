@@ -10,6 +10,19 @@ export interface OrgMembership {
 }
 
 /**
+ * Cuenta vinculada de un proveedor externo (Discord, Google, etc.)
+ */
+export interface LinkedAccount {
+	provider: string;
+	providerId: string;
+	providerUsername?: string;
+	providerAvatar?: string;
+	status: "linked" | "unlinked";
+	linkedAt: Date;
+	unlinkedAt?: Date;
+}
+
+/**
  * @public Usuario del sistema (frontend)
  */
 export interface ClientUser {
@@ -21,6 +34,7 @@ export interface ClientUser {
 	groupIds: string[];
 	permissions?: Permission[];
 	orgMemberships?: OrgMembership[];
+	linkedAccounts?: LinkedAccount[];
 	metadata?: Record<string, any>;
 	isActive: boolean;
 	createdAt: Date;

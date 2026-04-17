@@ -15,6 +15,17 @@ export const userSchema = new Schema<User>(
 				joinedAt: Date,
 			},
 		],
+		linkedAccounts: [
+			{
+				provider: { type: String, required: true },
+				providerId: { type: String, required: true },
+				providerUsername: String,
+				providerAvatar: String,
+				status: { type: String, enum: ["linked", "unlinked"], default: "linked" },
+				linkedAt: { type: Date, default: Date.now },
+				unlinkedAt: Date,
+			},
+		],
 		permissions: [
 			{
 				resource: { type: String, required: true },

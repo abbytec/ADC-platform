@@ -1,4 +1,5 @@
 export { AuthError } from "@common/types/custom-errors/AuthError.js";
+import type { LinkedAccount } from "@common/types/identity/User.js";
 import { createAdcApi, type RequestOptions } from "@ui-library/utils/adc-fetch";
 
 export interface AuthUser {
@@ -8,6 +9,7 @@ export interface AuthUser {
 	avatar?: string;
 	permissions?: string[];
 	orgId?: string;
+	linkedAccounts?: LinkedAccount[];
 }
 
 export interface OrgOption {

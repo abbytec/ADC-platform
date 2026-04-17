@@ -2,6 +2,16 @@ import { CRUDXAction } from "@common/types/Actions.ts";
 import { Permission } from "@common/types/identity/Permission.ts";
 import { RESOURCE_NAME, IdentityScopes } from "@common/types/identity/permissions.ts";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Community scopes (bitfield) — Alcances para recursos community
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const CommunityScopes = {
+	CONTENT: 1,
+	PUBLISH_STATUS: 1 << 1, // 2
+	COMMENTS: 1 << 2, // 4
+} as const;
+
 export enum SystemRole {
 	SYSTEM = "SYSTEM",
 	ADMIN = "Admin",
@@ -11,6 +21,11 @@ export enum SystemRole {
 	APP_MANAGER = "App Manager",
 	CONFIG_MANAGER = "Config Manager",
 	USER = "User",
+	// Community roles (Discord autoroles)
+	DISCORD_VIP = "Discord VIP",
+	DISCORD_NITRO_BOOSTER = "Discord Nitro Booster",
+	DISCORD_PUBLISHER = "Discord Publisher",
+	DISCORD_REVIEWER = "Discord Reviewer",
 }
 
 export const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; permissions: Permission[] }> = [
@@ -69,6 +84,32 @@ export const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; pe
 		name: SystemRole.USER,
 		description: "Usuario estándar del sistema",
 		permissions: [{ resource: RESOURCE_NAME, action: CRUDXAction.READ, scope: IdentityScopes.SELF }],
+	},
+	// ─── Community roles (Discord autoroles) ─────────────────────────────────
+	{
+		name: SystemRole.DISCORD_VIP,
+		description: "Miembro VIP de la comunidad Discord",
+		permissions: [{ resource: "community", action: CRUDXAction.WRITE, scope: CommunityScopes.COMMENTS }],
+	},
+	{
+		name: SystemRole.DISCORD_NITRO_BOOSTER,
+		description: "Nitro Booster del servidor de Discord",
+		permissions: [{ resource: "community", action: CRUDXAction.WRITE, scope: CommunityScopes.COMMENTS }],
+	},
+	{
+		name: SystemRole.DISCORD_PUBLISHER,
+		description: "Publicador de contenido de la comunidad",
+		permissions: [
+			{ resource: "community", action: CRUDXAction.READ | CRUDXAction.WRITE | CRUDXAction.UPDATE, scope: CommunityScopes.CONTENT },
+		],
+	},
+	{
+		name: SystemRole.DISCORD_REVIEWER,
+		description: "Revisor de contenido de la comunidad",
+		permissions: [
+			{ resource: "community", action: CRUDXAction.CRUD, scope: CommunityScopes.CONTENT },
+			{ resource: "community", action: CRUDXAction.UPDATE, scope: CommunityScopes.PUBLISH_STATUS },
+		],
 	},
 ];
 

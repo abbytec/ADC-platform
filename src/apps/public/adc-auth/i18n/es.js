@@ -52,6 +52,12 @@ export default {
 		PROVIDER_CONFIG_NOT_FOUND: "Proveedor no configurado",
 		REGISTER_ERROR: "Error al crear la cuenta",
 		NOT_ORG_MEMBER: "No perteneces a esta organización",
-		USER_NOT_FOUND: "Usuario no encontrado"
+		USER_NOT_FOUND: "Usuario no encontrado",
+		// OAuth link flow
+		NO_PENDING_LINK: "No hay una vinculación pendiente. Reinicia el proceso de inicio de sesión.",
+		INVALID_PENDING_LINK: "El enlace de vinculación expiró o es inválido. Vuelve a iniciar sesión con Discord.",
+		PASSWORD_REQUIRED: "Ingresa tu contraseña de plataforma para vincular la cuenta.",
+		WRONG_PASSWORD: "Contraseña incorrecta",
+		IDENTITY_NOT_AVAILABLE: "Servicio de identidad no disponible"
 	}
 };
