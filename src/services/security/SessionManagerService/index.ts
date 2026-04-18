@@ -373,13 +373,18 @@ export default class SessionManagerService extends BaseService {
 			const user = await this.#internalIdentity.users.getUser(userId);
 			if (!user) return null;
 
+			// Resolve avatar: prefer metadata.avatar, fallback to first linked account's providerAvatar
+			const avatar =
+				(user.metadata?.avatar as string) ||
+				user.linkedAccounts?.find((a) => a.status === "linked" && a.providerAvatar)?.providerAvatar;
+
 			const permissions = await this.#getUserPermissions(userId);
 			return {
 				id: user.id,
 				provider: (user.metadata?.createdVia as string) || "platform",
 				username: user.username,
 				email: user.email,
-				avatar: user.metadata?.avatar as string,
+				avatar,
 				permissions,
 				metadata: user.metadata,
 			};

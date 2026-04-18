@@ -40,17 +40,14 @@ export class AdcSidebar {
 					top: "var(--header-offset)",
 					height: "calc(100vh - var(--header-offset))",
 				}}
-				role="complementary"
 			>
 				{(this.title || this.subtitle) && (
 					<div
 						class={`flex flex-col justify-center items-center px-3 mb-4 transition-opacity duration-300 ${
-							this.collapsed
-								? "opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto"
-								: "opacity-100"
+							this.collapsed ? "opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto" : "opacity-100"
 						}`}
 					>
-						{this.title && <h2 class="!mb-0 truncate">{this.title}</h2>}
+						{this.title && <h2 class="mb-0! truncate">{this.title}</h2>}
 						{this.subtitle && <p class="text-sm text-primary opacity-70 truncate">{this.subtitle}</p>}
 					</div>
 				)}
@@ -64,14 +61,8 @@ export class AdcSidebar {
 								<a
 									href={item.to}
 									class={`flex gap-2 transition-all duration-300 py-3 rounded w-full items-center cursor-pointer ${
-										this.collapsed
-											? "justify-center px-0"
-											: "justify-start gap-2 px-3"
-									} ${
-										this.activeItem === item.action
-											? "bg-primary text-tprimary"
-											: "hover:bg-primary hover:text-tprimary"
-									}`}
+										this.collapsed ? "justify-center px-0" : "justify-start gap-2 px-3"
+									} ${this.activeItem === item.action ? "bg-primary text-tprimary" : "hover:bg-primary hover:text-tprimary"}`}
 									onClick={() => this.handleItemClick(item)}
 									title={this.collapsed ? item.label : ""}
 								>
@@ -84,14 +75,10 @@ export class AdcSidebar {
 
 									<span
 										class={`flex-1 overflow-hidden transition-all duration-300 ${
-											this.collapsed
-												? "max-w-0 opacity-0"
-												: "max-w-[160px] opacity-100"
+											this.collapsed ? "max-w-0 opacity-0" : "max-w-[160px] opacity-100"
 										} lg:max-w-[160px] lg:opacity-100`}
 									>
-										<span class="text-left whitespace-nowrap text-lg font-semibold ">
-											{item.label}
-										</span>
+										<span class="text-left whitespace-nowrap text-lg font-semibold ">{item.label}</span>
 
 										{item.badge && <span class="ml-auto badge badge-sm">{item.badge}</span>}
 									</span>

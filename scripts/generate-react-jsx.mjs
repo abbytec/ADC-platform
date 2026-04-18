@@ -208,7 +208,7 @@ function generate(libPath) {
 
 			// For Stencil custom events, replace ComponentCustomEvent<T> with CustomEvent<T>
 			if (propName.startsWith("onAdc")) {
-				resolvedType = resolvedType.replace(/\w+CustomEvent<([^>]+)>/g, "CustomEvent<$1>");
+				resolvedType = resolvedType.replaceAll(/\w+CustomEvent<([^>]+)>/g, "CustomEvent<$1>");
 			}
 
 			// Emit JSDoc + prop

@@ -30,11 +30,11 @@ export class StencilStrategy extends BaseCLIStrategy {
 
 		const namespace = module.uiConfig.uiNamespace || "default";
 		const targetDir = path.join(namespaceOutputDir, module.uiConfig.name);
-		const relativeOutputDir = path.relative(module.appDir, targetDir).replaceAll(/\\/g, "/");
+		const relativeOutputDir = path.relative(module.appDir, targetDir).replaceAll("\\", "/");
 
 		// Cache de Stencil en temp/
 		const cacheDir = path.resolve(process.cwd(), "temp", "stencil-cache", namespace, module.uiConfig.name);
-		const relativeCacheDir = path.relative(module.appDir, cacheDir).replaceAll(/\\/g, "/");
+		const relativeCacheDir = path.relative(module.appDir, cacheDir).replaceAll("\\", "/");
 
 		// Asegurar que el directorio de cache existe
 		await fs.mkdir(cacheDir, { recursive: true });
@@ -209,7 +209,7 @@ export const config: Config = {
 		}
 
 		const projectRoot = process.cwd();
-		const relativePath = path.relative(projectRoot, appDir).replaceAll(/\\/g, "/");
+		const relativePath = path.relative(projectRoot, appDir).replaceAll("\\", "/");
 		const scriptPath = path.join(projectRoot, "scripts/generate-react-jsx.mjs");
 
 		try {

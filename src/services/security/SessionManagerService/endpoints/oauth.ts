@@ -740,8 +740,8 @@ export class OAuthEndpoints {
 		}
 
 		// Solo actualizar si cambió
-		const sortedCurrent = [...currentRoleIds].sort();
-		const sortedNew = [...newRoleIds].sort();
+		const sortedCurrent = [...currentRoleIds].sort((a, b) => a.localeCompare(b));
+		const sortedNew = [...newRoleIds].sort((a, b) => a.localeCompare(b));
 		if (sortedCurrent.join(",") !== sortedNew.join(",")) {
 			await users.updateUser(userId, { roleIds: [...newRoleIds] });
 		}
