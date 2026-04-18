@@ -545,8 +545,7 @@ export class AuthEndpoints {
 
 			// Resolve avatar: prefer metadata.avatar, fallback to first linked account's providerAvatar
 			const avatar =
-				(user.metadata?.avatar as string) ||
-				user.linkedAccounts?.find((a) => a.status === "linked" && a.providerAvatar)?.providerAvatar;
+				(user.metadata?.avatar as string) || user.linkedAccounts?.find((a) => a.status === "linked" && a.providerAvatar)?.providerAvatar;
 
 			const permissions = await AuthEndpoints.getUserPermissions(userId);
 			return {

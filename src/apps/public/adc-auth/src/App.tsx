@@ -10,9 +10,31 @@ type Page = "login" | "register";
 /** URL base del sitio principal según entorno */
 const DEFAULT_RETURN_URL = getUrl(3011, "community.adigitalcafe.com");
 
+/** Allowed hostnames for returnUrl redirection (same-origin + trusted subdomains) */
+const ALLOWED_HOSTS = new Set([globalThis.location?.hostname, "adigitalcafe.com"]);
+
+/** Validates that a returnUrl is safe (relative path or allowed origin) to prevent open redirect */
+function sanitizeReturnUrl(raw: string): string {
+	// Relative paths are always safe
+	if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
+
+	try {
+		const parsed = new URL(raw, globalThis.location?.origin);
+		const host = parsed.hostname;
+		if (ALLOWED_HOSTS.has(host) || host.endsWith(".adigitalcafe.com")) {
+			return parsed.href;
+		}
+	} catch {
+		// Invalid URL — fall through to default
+	}
+
+	return DEFAULT_RETURN_URL;
+}
+
 function getReturnUrl(): string {
 	const params = new URLSearchParams(globalThis.location?.search);
-	return params.get("returnUrl") || DEFAULT_RETURN_URL;
+	const raw = params.get("returnUrl");
+	return raw ? sanitizeReturnUrl(raw) : DEFAULT_RETURN_URL;
 }
 
 /**
