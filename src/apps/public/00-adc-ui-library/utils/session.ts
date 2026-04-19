@@ -7,7 +7,7 @@
  */
 
 import { createAdcApi } from "./adc-fetch.js";
-import { hasAnyPermission, type CRUDXActionValue } from "./permissions";
+import { hasPermission } from "./permissions";
 import type { SessionUser, SessionResponse } from "@common/types/identity/Session.js";
 
 /** @deprecated Usa SessionResponse directamente. */
@@ -48,9 +48,8 @@ export function clearSessionCache(): void {
 	cache = null;
 }
 
-/** Verifica si la sesión actual tiene un permiso bitfield (resource.scope.action). */
-export async function sessionHasPermission(resource: string, scope: number, action: CRUDXActionValue): Promise<boolean> {
+/** Verifica si la sesión actual tiene un permiso (e.g. P.COMMUNITY.SOCIAL.WRITE). */
+export async function sessionHasPermission(required: string): Promise<boolean> {
 	const session = await getSession();
-	const perms = session.user?.permissions || [];
-	return hasAnyPermission(perms, resource, scope, action);
+	return hasPermission(session.user?.permissions || [], required);
 }

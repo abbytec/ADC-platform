@@ -108,7 +108,7 @@ export const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; pe
 		description: "Revisor de contenido de la comunidad",
 		permissions: [
 			{ resource: "community", action: CRUDXAction.CRUD, scope: CommunityScopes.CONTENT },
-			{ resource: "community", action: CRUDXAction.UPDATE, scope: CommunityScopes.PUBLISH_STATUS },
+			{ resource: "community", action: CRUDXAction.CRUD, scope: CommunityScopes.PUBLISH_STATUS },
 		],
 	},
 ];

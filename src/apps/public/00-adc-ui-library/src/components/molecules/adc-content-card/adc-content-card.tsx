@@ -28,7 +28,7 @@ export class AdcContentCard {
 	render() {
 		const rootClass = "relative block h-full rounded-xxl cursor-pointer no-underline group max-w-lg";
 		const surfaceClass =
-			"absolute inset-0 min-h-full custom-surface rounded-xxl " +
+			"absolute inset-0 min-h-full bg-surface shadow-cozy custom-surface rounded-xxl " +
 			"motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out " +
 			"group-hover:scale-y-[1.05]";
 

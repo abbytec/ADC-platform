@@ -94,3 +94,36 @@ export const P = buildAllPermissions() as {
 		readonly SOCIAL: ScopePermissions<"community">;
 	};
 };
+
+/**
+ * Checks if any user permission satisfies `required` using bitfield matching.
+ *
+ * @param userPerms  - Permission strings from the user's session/roles
+ * @param required   - A permission constant from `P`, e.g. `P.COMMUNITY.SOCIAL.WRITE`
+ *
+ * Fast path: exact string match (`includes`).
+ * Slow path: bitwise AND on scope & action for same-resource permissions.
+ */
+export function hasPermission(userPerms: readonly string[], required: string): boolean {
+	if (!userPerms.length) return false;
+	if (userPerms.includes("*") || userPerms.includes(required)) return true;
+
+	const dot1 = required.indexOf(".");
+	const dot2 = required.indexOf(".", dot1 + 1);
+	if (dot1 === -1 || dot2 === -1) return false;
+
+	const prefix = required.slice(0, dot1 + 1); // "community."
+	const reqScope = Number(required.slice(dot1 + 1, dot2));
+	const reqAction = Number(required.slice(dot2 + 1));
+
+	for (const p of userPerms) {
+		if (!p.startsWith(prefix)) continue;
+		const d1 = prefix.length;
+		const d2 = p.indexOf(".", d1);
+		if (d2 === -1) continue;
+		const scope = Number(p.slice(d1, d2));
+		const action = Number(p.slice(d2 + 1));
+		if ((scope & reqScope) === reqScope && (action & reqAction) === reqAction) return true;
+	}
+	return false;
+}

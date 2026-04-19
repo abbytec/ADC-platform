@@ -5,6 +5,7 @@ import { COMMENT_MAX_LENGTH, COMMENT_MIN_LENGTH } from "../../../../common/ADC/t
 import { RegisterEndpoint, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
 import { HttpError } from "@common/types/ADCCustomError.ts";
 import { P } from "@common/types/Permissions.ts";
+import { canModerateSocial } from "../utils/community-perms.js";
 
 interface SlugParams {
 	slug: string;
@@ -87,7 +88,7 @@ export class CommentEndpoints {
 		if (!comment) throw new HttpError(404, "COMMENT_NOT_FOUND", "Comment not found");
 
 		const isOwner = comment.authorId === user.id;
-		const isModerator = (user.permissions || []).some((p) => p === P.COMMUNITY.SOCIAL.DELETE || p === P.COMMUNITY.SOCIAL.ALL);
+		const isModerator = canModerateSocial(user);
 
 		if (!isOwner && !isModerator) {
 			const article = await CommentEndpoints.articleModel.findOne({ slug }).select("authorId").lean();
