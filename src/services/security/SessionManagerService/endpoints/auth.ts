@@ -122,6 +122,7 @@ export class AuthEndpoints {
 					user: {
 						id: user.id,
 						username: user.username,
+						avatar: user.avatar,
 						email: user.email,
 						permissions: user.permissions,
 						orgId: user.orgId,
@@ -249,39 +250,33 @@ export class AuthEndpoints {
 			headers["X-Refresh-Required"] = "true";
 		}
 
+		const orgSlug = result.session.user.orgId ? await AuthEndpoints.resolveOrgSlug(result.session.user.orgId) : undefined;
+		const userPayload = {
+			id: result.session.user.id,
+			username: result.session.user.username,
+			email: result.session.user.email,
+			avatar: result.session.user.avatar,
+			provider: result.session.user.provider,
+			permissions: result.session.user.permissions ?? [],
+			orgId: result.session.user.orgId,
+			orgSlug,
+		};
+
 		// Si hay headers especiales, usar UncommonResponse
 		if (Object.keys(headers).length > 0) {
-			const orgSlug = result.session.user.orgId ? await AuthEndpoints.resolveOrgSlug(result.session.user.orgId) : undefined;
 			throw UncommonResponse.json(
 				{
 					authenticated: true,
-					user: {
-						id: result.session.user.id,
-						username: result.session.user.username,
-						email: result.session.user.email,
-						avatar: result.session.user.avatar,
-						provider: result.session.user.provider,
-						orgId: result.session.user.orgId,
-						orgSlug,
-					},
+					user: userPayload,
 					expiresAt: result.session.expiresAt,
 				},
 				{ headers }
 			);
 		}
 
-		const orgSlug = result.session.user.orgId ? await AuthEndpoints.resolveOrgSlug(result.session.user.orgId) : undefined;
 		return {
 			authenticated: true,
-			user: {
-				id: result.session.user.id,
-				username: result.session.user.username,
-				email: result.session.user.email,
-				avatar: result.session.user.avatar,
-				provider: result.session.user.provider,
-				orgId: result.session.user.orgId,
-				orgSlug,
-			},
+			user: userPayload,
 			expiresAt: result.session.expiresAt,
 		};
 	}
@@ -563,22 +558,37 @@ export class AuthEndpoints {
 	}
 
 	/**
-	 * Construye AuthenticatedUser a partir de un perfil ya validado (sin buscar en DB)
-	 * Usado cuando el usuario ya fue autenticado por validateCredentials
+	 * Construye AuthenticatedUser a partir de un perfil ya validado.
+	 * Resuelve avatar con la misma lógica que getUserById:
+	 *   profile.avatar → metadata.avatar → linkedAccounts providerAvatar
 	 */
 	private static async buildAuthenticatedUser(
 		provider: string,
-		profile: { id: string; username: string; email?: string; avatar?: string },
+		profile: {
+			id: string;
+			username: string;
+			email?: string;
+			avatar?: string;
+			metadata?: Record<string, unknown>;
+			linkedAccounts?: Array<{ status: string; providerAvatar?: string }>;
+		},
 		orgId?: string
 	): Promise<AuthenticatedUser> {
 		const permissions = await AuthEndpoints.getUserPermissions(profile.id, orgId);
+
+		// Resolver avatar igual que getUserById: perfil → metadata → linked accounts
+		const avatar =
+			profile.avatar ||
+			(profile.metadata?.avatar as string) ||
+			profile.linkedAccounts?.find((a) => a.status === "linked" && a.providerAvatar)?.providerAvatar;
+
 		return {
 			id: profile.id,
 			providerId: profile.id,
 			provider,
 			username: profile.username,
 			email: profile.email,
-			avatar: profile.avatar,
+			avatar,
 			permissions,
 			orgId,
 		};

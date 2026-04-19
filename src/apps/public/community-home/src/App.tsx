@@ -6,6 +6,10 @@ import { PathsPage } from "./pages/PathsPage";
 import { PathPage } from "./pages/PathPage";
 import { ArticlesPage } from "./pages/ArticlesPage";
 import { ArticlePage } from "./pages/ArticlePage";
+import { AdminArticlesPage } from "./pages/admin/AdminArticlesPage";
+import { AdminArticleEditPage } from "./pages/admin/AdminArticleEditPage";
+import { AdminPublishPage } from "./pages/admin/AdminPublishPage";
+import { AdminPathsPage } from "./pages/admin/AdminPathsPage";
 import HeaderNav from "./components/HeaderNav";
 
 export default function App() {
@@ -16,6 +20,13 @@ export default function App() {
 	}, []);
 
 	function renderPage() {
+		if (currentPath.startsWith("/admin/articles/")) {
+			const slug = currentPath.slice(16).split("?")[0];
+			return slug ? <AdminArticleEditPage slug={slug} /> : <AdminArticlesPage />;
+		}
+		if (currentPath === "/admin/articles") return <AdminArticlesPage />;
+		if (currentPath === "/admin/publish") return <AdminPublishPage />;
+		if (currentPath === "/admin/paths" || currentPath.startsWith("/admin/paths?")) return <AdminPathsPage />;
 		if (currentPath.startsWith("/paths/")) {
 			const slug = currentPath.slice(7).split("?")[0];
 			return slug ? <PathPage slug={slug} /> : <PathsPage />;

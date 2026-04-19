@@ -48,7 +48,7 @@ export default function AdminView() {
 				size="lg"
 				dismissOnBackdrop={!deleting}
 				dismissOnEscape={!deleting}
-				onAdcClose={() => setModalOpen(false)}
+				onadcClose={() => setModalOpen(false)}
 			>
 				<div className="flex flex-col items-center py-6 px-2">
 					<div className="flex items-center justify-center w-16 h-16 rounded-full bg-danger mb-4">

@@ -207,14 +207,19 @@ function generate(libPath) {
 			}
 
 			// For Stencil custom events, replace ComponentCustomEvent<T> with CustomEvent<T>
+			// and lowercase the prefix (onAdcRate → onadcRate) so React 19 wires it to
+			// addEventListener("adcRate", ...). React preserves casing after "on", and
+			// Stencil emits event names starting with lowercase (e.g. "adcRate").
+			let emittedName = propName;
 			if (propName.startsWith("onAdc")) {
 				resolvedType = resolvedType.replaceAll(/\w+CustomEvent<([^>]+)>/g, "CustomEvent<$1>");
+				emittedName = "on" + propName.charAt(2).toLowerCase() + propName.slice(3);
 			}
 
 			// Emit JSDoc + prop
 			for (const jl of jsdocBuffer) propLines.push(jl);
 			jsdocBuffer = [];
-			propLines.push(`\t"${propName}"?: ${resolvedType};`);
+			propLines.push(`\t"${emittedName}"?: ${resolvedType};`);
 		}
 
 		componentInterfaces.push({ name, props: propLines });

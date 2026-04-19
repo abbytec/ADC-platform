@@ -1,23 +1,10 @@
 import { Component, Prop, State, h, Event, EventEmitter, Listen, Element } from "@stencil/core";
 import { isPrivateHost } from "../../../utils/url.js";
+import type { SessionUser, SessionResponse } from "@common/types/identity/Session.js";
 
 interface OrgOption {
 	orgId: string;
 	slug: string;
-}
-
-interface SessionUser {
-	id: string;
-	username: string;
-	email: string;
-	avatar?: string;
-	orgId?: string;
-	orgSlug?: string;
-}
-
-interface SessionResponse {
-	authenticated: boolean;
-	user?: SessionUser;
 }
 
 export interface AccessMenuItem {
@@ -108,6 +95,12 @@ export class AdcAccessButton {
 
 	private hoverTimeout?: ReturnType<typeof setTimeout>;
 
+	/** Canal para sincronizar login/logout entre pestañas */
+	private logoutChannel?: BroadcastChannel;
+
+	/** Listener de fallback vía localStorage (para navegadores sin BroadcastChannel) */
+	private storageListener?: (ev: StorageEvent) => void;
+
 	@Listen("mouseenter")
 	@Listen("focusin")
 	handleOpen() {
@@ -143,10 +136,58 @@ export class AdcAccessButton {
 
 	componentWillLoad() {
 		this.checkSession();
+		this.setupAuthSync();
 	}
 
 	disconnectedCallback() {
 		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+		this.logoutChannel?.close();
+		this.logoutChannel = undefined;
+		if (this.storageListener) {
+			globalThis.removeEventListener?.("storage", this.storageListener);
+			this.storageListener = undefined;
+		}
+	}
+
+	/**
+	 * Suscribe a eventos de logout/login emitidos por otras pestañas.
+	 * Al recibir uno, recarga la pestaña para sincronizar el estado de sesión.
+	 */
+	private setupAuthSync() {
+		const onRemoteAuthChange = () => {
+			globalThis.location?.reload();
+		};
+
+		if (typeof BroadcastChannel !== "undefined") {
+			try {
+				this.logoutChannel = new BroadcastChannel("adc-auth");
+				this.logoutChannel.onmessage = (ev) => {
+					if (ev.data === "logout" || ev.data === "login") onRemoteAuthChange();
+				};
+			} catch {
+				/* ignore */
+			}
+		}
+
+		// Fallback: algunos navegadores privados o contextos restringen BroadcastChannel
+		this.storageListener = (ev: StorageEvent) => {
+			if (ev.key === "adc-auth-event" && ev.newValue) onRemoteAuthChange();
+		};
+		globalThis.addEventListener?.("storage", this.storageListener);
+	}
+
+	/** Notifica a otras pestañas un cambio de sesión. */
+	private broadcastAuthChange(type: "logout" | "login") {
+		try {
+			this.logoutChannel?.postMessage(type);
+		} catch {
+			/* ignore */
+		}
+		try {
+			globalThis.localStorage?.setItem("adc-auth-event", `${type}:${Date.now()}`);
+		} catch {
+			/* ignore */
+		}
 	}
 
 	/** Construye URL completa para la API */
@@ -155,12 +196,11 @@ export class AdcAccessButton {
 	}
 
 	private getDefaultAccountUrl(): string {
-		return isPrivateHost(globalThis.location?.hostname ?? "")
-			? "http://localhost:3016"
-			: "https://my-account.adigitalcafe.com";
+		return isPrivateHost(globalThis.location?.hostname ?? "") ? "http://localhost:3016" : "https://my-account.adigitalcafe.com";
 	}
 
 	private async checkSession() {
+		let authenticatedUserId: string | null = null;
 		try {
 			const response = await fetch(this.getApiUrl(this.sessionApiUrl), {
 				method: "GET",
@@ -178,11 +218,46 @@ export class AdcAccessButton {
 
 			this.isAuthenticated = data.authenticated;
 			this.user = data.user || null;
+			if (data.authenticated && data.user?.id) {
+				authenticatedUserId = data.user.id;
+			}
 		} catch {
 			this.isAuthenticated = false;
 			this.user = null;
 		} finally {
 			this.loading = false;
+			this.syncLoginState(authenticatedUserId);
+		}
+	}
+
+	/**
+	 * Sincroniza el estado de login entre pestañas.
+	 * Sólo hace broadcast cuando detecta una transición real (usuario distinto al último conocido),
+	 * evitando spam de mensajes y recargas cruzadas por cada re-render.
+	 */
+	private syncLoginState(currentUserId: string | null) {
+		let previousUserId: string | null = null;
+		try {
+			previousUserId = globalThis.localStorage?.getItem("adc-auth-user") ?? null;
+		} catch {
+			/* storage no disponible */
+		}
+		if (currentUserId === previousUserId) return;
+
+		try {
+			if (currentUserId) {
+				globalThis.localStorage?.setItem("adc-auth-user", currentUserId);
+			} else {
+				globalThis.localStorage?.removeItem("adc-auth-user");
+			}
+		} catch {
+			/* ignore */
+		}
+
+		// Sólo notificamos cuando efectivamente hay un login nuevo aquí.
+		// (El logout ya emite su propio broadcast en handleLogout).
+		if (currentUserId && previousUserId !== currentUserId) {
+			this.broadcastAuthChange("login");
 		}
 	}
 
@@ -208,6 +283,9 @@ export class AdcAccessButton {
 		this.user = null;
 		this.dropdownOpen = false;
 		this.adcLogout.emit();
+		this.broadcastAuthChange("logout");
+		// Refrescar la pestaña actual para limpiar datos sensibles y re-evaluar rutas protegidas
+		globalThis.location?.reload();
 	};
 
 	private handleOpenOrgSwitcher = async () => {

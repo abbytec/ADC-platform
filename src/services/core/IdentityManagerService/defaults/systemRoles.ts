@@ -89,12 +89,12 @@ export const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; pe
 	{
 		name: SystemRole.DISCORD_VIP,
 		description: "Miembro VIP de la comunidad Discord",
-		permissions: [{ resource: "community", action: CRUDXAction.WRITE, scope: CommunityScopes.COMMENTS }],
+		permissions: [{ resource: "community", action: CRUDXAction.RW, scope: CommunityScopes.COMMENTS }],
 	},
 	{
 		name: SystemRole.DISCORD_NITRO_BOOSTER,
 		description: "Nitro Booster del servidor de Discord",
-		permissions: [{ resource: "community", action: CRUDXAction.WRITE, scope: CommunityScopes.COMMENTS }],
+		permissions: [{ resource: "community", action: CRUDXAction.RW, scope: CommunityScopes.COMMENTS }],
 	},
 	{
 		name: SystemRole.DISCORD_PUBLISHER,

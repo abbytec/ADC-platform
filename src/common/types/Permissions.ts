@@ -88,5 +88,9 @@ export const P = buildAllPermissions() as {
 		readonly REGIONS: ScopePermissions<"identity">;
 		readonly STATS: ScopePermissions<"identity">;
 	};
-	readonly CONTENT: SimplePermissions<"content">;
+	readonly COMMUNITY: {
+		readonly CONTENT: ScopePermissions<"community">;
+		readonly PUBLISH_STATUS: ScopePermissions<"community">;
+		readonly SOCIAL: ScopePermissions<"community">;
+	};
 };

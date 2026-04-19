@@ -122,6 +122,7 @@ npm run start            # Production mode (port 80, no test apps, subdomain rou
 npm run start:prodtests  # Production mode with test apps (port 3000, subdomain routing)
 npm run lint             # ESLint check with zero warnings
 npm run typecheck        # Recursive TypeScript check + knip unused exports
+npm run build:ui         # Compile Stencil UI library (check for build errors)
 npm run cleanup          # Kill orphaned processes
 ```
 

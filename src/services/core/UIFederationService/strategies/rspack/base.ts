@@ -481,6 +481,10 @@ export default {
 	protected buildSharedConfig(usedFrameworks: Set<string>): string {
 		const sharedLibs: string[] = [];
 
+		// Stencil runtime must be shared as singleton to avoid scope mismatch
+		// between host and remotes, which causes intermittent "invalid Stencil runtime" errors
+		sharedLibs.push("'@stencil/core': { singleton: true, eager: true, strictVersion: false }");
+
 		if (usedFrameworks.has("react")) {
 			sharedLibs.push(
 				"react: { singleton: true, requiredVersion: '^19.2.1', eager: true, strictVersion: false }",

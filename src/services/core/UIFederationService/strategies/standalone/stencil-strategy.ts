@@ -120,10 +120,13 @@ export const config: Config = {
 					context.logger?.logDebug(`Error en post-build: ${(err as Error).message}`);
 				});
 			}
+			if (output.includes("[ ERROR ]") || output.includes("build failed")) {
+				context.logger?.logError(`Stencil build error (${module.uiConfig.name}):\n${output.trim()}`);
+			}
 		});
 
 		watcher.stderr?.on("data", (data: Buffer) => {
-			context.logger?.logDebug(`Stencil watch ${module.uiConfig.name}: ${data.toString().slice(0, 200)}`);
+			context.logger?.logWarn(`Stencil ${module.uiConfig.name}: ${data.toString().trim()}`);
 		});
 
 		watcher.on("error", (error: Error) => {
@@ -237,7 +240,13 @@ export const config: Config = {
  */
 import { defineCustomElements } from './loader/index.js';
 
-if (typeof window !== 'undefined') defineCustomElements(window);
+if (typeof window !== 'undefined') {
+	const key = Symbol.for('stencil-init:${module.uiConfig.name}');
+	if (!globalThis[key]) {
+		defineCustomElements(window);
+		globalThis[key] = true;
+	}
+}
 
 export * from './loader/index.js';
 `;

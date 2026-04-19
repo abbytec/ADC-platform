@@ -2,16 +2,21 @@ import { BaseService } from "../../BaseService.js";
 import type { IMongoProvider } from "../../../providers/object/mongo/index.js";
 import { LearningPathSchema } from "./models/path.model.js";
 import { ArticleSchema } from "./models/article.model.js";
+import { CommentSchema } from "./models/comment.model.js";
+import { RatingSchema } from "./models/rating.model.js";
 import { PathEndpoints } from "./endpoints/paths.js";
 import { ArticleEndpoints } from "./endpoints/articles.js";
+import { CommentEndpoints } from "./endpoints/comments.js";
+import { RatingEndpoints } from "./endpoints/ratings.js";
 import { EnableEndpoints, DisableEndpoints } from "../../core/EndpointManagerService/index.js";
 import type { LearningPath, Article } from "../../../common/ADC/types/learning.js";
+import type { Comment, Rating } from "../../../common/ADC/types/community.js";
 
 export default class ContentService extends BaseService {
 	public readonly name = "content-service";
 	private mongoProvider!: IMongoProvider;
 
-	@EnableEndpoints({ managers: () => [PathEndpoints, ArticleEndpoints] })
+	@EnableEndpoints({ managers: () => [PathEndpoints, ArticleEndpoints, CommentEndpoints, RatingEndpoints] })
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
 		this.logger.logInfo("Iniciando servicio de contenido...");
@@ -22,9 +27,13 @@ export default class ContentService extends BaseService {
 
 		const PathModel = this.mongoProvider.createModel<LearningPath>("LearningPath", LearningPathSchema);
 		const ArticleModel = this.mongoProvider.createModel<Article>("Article", ArticleSchema);
+		const CommentModel = this.mongoProvider.createModel<Comment>("Comment", CommentSchema);
+		const RatingModel = this.mongoProvider.createModel<Rating>("Rating", RatingSchema);
 
 		PathEndpoints.init(PathModel, ArticleModel);
 		ArticleEndpoints.init(ArticleModel, PathModel);
+		CommentEndpoints.init(CommentModel, ArticleModel);
+		RatingEndpoints.init(RatingModel, ArticleModel);
 
 		this.logger.logOk("[ContentService] Servicio de contenido iniciado correctamente");
 	}

@@ -1,16 +1,10 @@
-import type { Model, PipelineStage } from "mongoose";
-import type { Article, LearningPath, PathItem, Block } from "../../../../common/ADC/types/learning.js";
+import type { Model } from "mongoose";
+import type { Article, LearningPath, Block } from "../../../../common/ADC/types/learning.js";
 import { RegisterEndpoint, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
 import { HttpError } from "@common/types/ADCCustomError.ts";
 import { P } from "@common/types/Permissions.ts";
-
-interface ListArticlesQuery {
-	pathSlug?: string;
-	listed?: string;
-	q?: string;
-	limit?: string;
-	skip?: string;
-}
+import { buildArticleListPipeline } from "../utils/article-query.js";
+import { canPublish, isOwner } from "../utils/community-perms.js";
 
 interface CreateArticleBody {
 	slug: string;
@@ -19,7 +13,7 @@ interface CreateArticleBody {
 	blocks?: Block[];
 	videoUrl?: string;
 	image?: { url: string; width?: number; height?: number; alt?: string };
-	authorId: string;
+	authorId?: string;
 	listed?: boolean;
 	description?: string;
 }
@@ -38,6 +32,8 @@ interface SlugParams {
 	slug: string;
 }
 
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,98}[a-z0-9]$/;
+
 export class ArticleEndpoints {
 	private static model: Model<Article>;
 	private static pathModel: Model<LearningPath>;
@@ -48,139 +44,78 @@ export class ArticleEndpoints {
 	}
 
 	@RegisterEndpoint({ method: "GET", url: "/api/learning/articles" })
-	static async list(ctx: EndpointCtx<Record<string, string>, never>): Promise<{ articles: Article[] }> {
-		const query = ctx.query as ListArticlesQuery;
-		const where: Record<string, any> = {};
-
-		// Filtro por path (incluye artículos de sub-paths)
-		if (query.pathSlug) {
-			const parentPath = await ArticleEndpoints.pathModel.findOne({ slug: query.pathSlug }).select("items").lean();
-
-			if (parentPath?.items?.length) {
-				const targetArticleSlugs: string[] = [];
-
-				const directArticles = parentPath.items.filter((i: PathItem) => i.type === "article").map((i: PathItem) => i.slug);
-				targetArticleSlugs.push(...directArticles);
-
-				const subPathSlugs = parentPath.items.filter((i: PathItem) => i.type === "path").map((i: PathItem) => i.slug);
-
-				if (subPathSlugs.length > 0) {
-					const subPaths = await ArticleEndpoints.pathModel
-						.find({ slug: { $in: subPathSlugs } })
-						.select("items")
-						.lean();
-
-					subPaths.forEach((sp) => {
-						if (sp.items) {
-							const subArticles = sp.items.filter((i: PathItem) => i.type === "article").map((i: PathItem) => i.slug);
-							targetArticleSlugs.push(...subArticles);
-						}
-					});
-				}
-
-				where.slug = { $in: [...new Set(targetArticleSlugs)] };
-			} else return { articles: [] };
-		}
-
-		if (query.listed !== undefined) where.listed = query.listed === "true";
-
-		if (query.q) {
-			const safe = query.q.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
-			where.title = { $regex: safe, $options: "i" };
-		}
-
-		const pipeline: PipelineStage[] = [
-			{ $match: where },
-			{
-				$lookup: {
-					from: "learningpaths",
-					localField: "pathSlug",
-					foreignField: "slug",
-					as: "lp",
-				},
-			},
-			{ $unwind: { path: "$lp", preserveNullAndEmptyArrays: true } },
-			{ $addFields: { pathColor: "$lp.color" } },
-			{
-				$project: {
-					_id: 0,
-					slug: 1,
-					title: 1,
-					pathSlug: 1,
-					pathColor: 1,
-					description: 1,
-					blocks: 1,
-					videoUrl: 1,
-					image: 1,
-					authorId: 1,
-					createdAt: 1,
-					updatedAt: 1,
-					listed: 1,
-				},
-			},
-			{ $sort: { createdAt: -1 } },
-		];
-
-		const limit = query.limit ? Number.parseInt(query.limit) : undefined;
-		const skip = query.skip ? Number.parseInt(query.skip) : undefined;
-
-		if (limit) pipeline.push({ $limit: limit });
-		if (skip) pipeline.push({ $skip: skip });
-
-		const docs = await ArticleEndpoints.model.aggregate(pipeline);
-
-		return { articles: docs };
+	static async list(ctx: EndpointCtx): Promise<{ articles: Article[] }> {
+		const articles = await buildArticleListPipeline(ArticleEndpoints.model, ArticleEndpoints.pathModel, ctx.query as any);
+		return { articles };
 	}
 
 	@RegisterEndpoint({ method: "GET", url: "/api/learning/articles/:slug" })
 	static async getBySlug(ctx: EndpointCtx<SlugParams>): Promise<{ article: Article }> {
 		const { slug } = ctx.params;
 		const doc = await ArticleEndpoints.model.findOne({ slug }).lean();
-
 		if (!doc) throw new HttpError(404, "ARTICLE_NOT_FOUND", "Article not found");
-
 		return { article: doc as Article };
 	}
 
-	@RegisterEndpoint({ method: "POST", url: "/api/learning/articles", permissions: [P.CONTENT.WRITE] })
+	@RegisterEndpoint({ method: "POST", url: "/api/learning/articles", permissions: [P.COMMUNITY.CONTENT.WRITE] })
 	static async create(ctx: EndpointCtx<Record<string, string>, CreateArticleBody>): Promise<{ article: Article }> {
 		const data = ctx.data;
+		const user = ctx.user;
+		if (!data.slug || !data.title) throw new HttpError(400, "MISSING_FIELDS", "slug and title are required");
+		if (!SLUG_RE.test(data.slug)) throw new HttpError(400, "INVALID_SLUG", "Invalid slug format");
 
-		if (!data.slug || !data.title || !data.authorId) throw new HttpError(400, "MISSING_FIELDS", "slug, title and authorId are required");
+		const authorId = user?.id ?? data.authorId;
+		if (!authorId) throw new HttpError(400, "MISSING_AUTHOR", "authorId is required");
 
-		const doc = await ArticleEndpoints.model.create({
-			...data,
-			listed: data.listed ?? true,
-		});
+		const allowPublish = canPublish(user);
+		const listed = allowPublish ? (data.listed ?? false) : false;
 
-		return { article: doc.toObject() as Article };
+		try {
+			const doc = await ArticleEndpoints.model.create({ ...data, authorId, listed });
+			return { article: doc.toObject() as Article };
+		} catch (err: any) {
+			if (err?.code === 11000) throw new HttpError(409, "SLUG_TAKEN", "Slug already exists");
+			throw err;
+		}
 	}
 
-	@RegisterEndpoint({ method: "PUT", url: "/api/learning/articles/:slug", permissions: [P.CONTENT.WRITE] })
+	@RegisterEndpoint({ method: "PUT", url: "/api/learning/articles/:slug", permissions: [P.COMMUNITY.CONTENT.WRITE] })
 	static async update(ctx: EndpointCtx<SlugParams, UpdateArticleBody>): Promise<{ article: Article }> {
 		const { slug } = ctx.params;
-		const updateData = ctx.data;
+		const user = ctx.user;
+		const existing = await ArticleEndpoints.model.findOne({ slug }).select("authorId").lean();
+		if (!existing) throw new HttpError(404, "ARTICLE_NOT_FOUND", `Article with slug "${slug}" not found`);
 
-		// Filtrar campos undefined
+		const owner = isOwner(user, existing.authorId);
+		const allowPublish = canPublish(user);
+		if (!owner && !allowPublish) throw new HttpError(403, "FORBIDDEN", "Not allowed to edit this article");
+
 		const cleanData: Record<string, any> = {};
-		for (const [key, value] of Object.entries(updateData || {})) {
-			if (value !== undefined) cleanData[key] = value;
+		for (const [key, value] of Object.entries(ctx.data || {})) {
+			if (value === undefined) continue;
+			if ((key === "listed" || key === "description") && !allowPublish) continue;
+			if (key === "authorId" || key === "slug") continue;
+			cleanData[key] = value;
 		}
 
 		const doc = await ArticleEndpoints.model.findOneAndUpdate({ slug }, cleanData, { new: true }).lean();
-
 		if (!doc) throw new HttpError(404, "ARTICLE_NOT_FOUND", `Article with slug "${slug}" not found`);
-
 		return { article: doc as Article };
 	}
 
-	@RegisterEndpoint({ method: "DELETE", url: "/api/learning/articles/:slug", permissions: [P.CONTENT.DELETE] })
+	@RegisterEndpoint({ method: "DELETE", url: "/api/learning/articles/:slug", permissions: [P.COMMUNITY.CONTENT.DELETE] })
 	static async delete(ctx: EndpointCtx<SlugParams>): Promise<{ success: boolean }> {
 		const { slug } = ctx.params;
-		const result = await ArticleEndpoints.model.deleteOne({ slug });
+		const user = ctx.user;
+		const existing = await ArticleEndpoints.model.findOne({ slug }).select("authorId listed").lean();
+		if (!existing) throw new HttpError(404, "ARTICLE_NOT_FOUND", `Article with slug "${slug}" not found`);
 
-		if (result.deletedCount === 0) throw new HttpError(404, "ARTICLE_NOT_FOUND", `Article with slug "${slug}" not found`);
+		const owner = isOwner(user, existing.authorId);
+		const allowPublish = canPublish(user);
+		if (existing.listed && !allowPublish) throw new HttpError(403, "FORBIDDEN", "Cannot delete a published article");
+		if (!owner && !allowPublish) throw new HttpError(403, "FORBIDDEN", "Not allowed to delete this article");
 
+		await ArticleEndpoints.model.deleteOne({ slug });
 		return { success: true };
 	}
 }

@@ -46,6 +46,19 @@ const IDENTITY_SCOPES: ScopeDef[] = [
 	{ key: "stats", value: 1 << 6 },
 ];
 
+/** Community-specific scopes (Discord autoroles) - alineados con CommunityScopes en systemRoles.ts */
+export const COMMUNITY_SCOPES_MAP = {
+	CONTENT: 1,
+	PUBLISH_STATUS: 1 << 1,
+	SOCIAL: 1 << 2,
+} as const;
+
+const COMMUNITY_SCOPES: ScopeDef[] = [
+	{ key: "content", value: COMMUNITY_SCOPES_MAP.CONTENT },
+	{ key: "publish_status", value: COMMUNITY_SCOPES_MAP.PUBLISH_STATUS },
+	{ key: "social", value: COMMUNITY_SCOPES_MAP.SOCIAL },
+];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Resource registry — only resources that have real endpoints
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,6 +66,7 @@ const IDENTITY_SCOPES: ScopeDef[] = [
 export const RESOURCES: ResourceDef[] = [
 	{ id: "identity", label: "resources.identity", scopes: IDENTITY_SCOPES },
 	{ id: "content", label: "resources.content", scopes: [], simple: true },
+	{ id: "community", label: "resources.community", scopes: COMMUNITY_SCOPES },
 ];
 
 /**

@@ -1,13 +1,24 @@
 import { useEffect, useState } from "react";
 import { router } from "@common/utils/router.js";
+import { getSession, type SessionData } from "@ui-library/utils/session";
+import { canComment, canRate, canDeleteSocial, canEditContent } from "@ui-library/utils/permissions";
 import { contentAPI, type Article, type LearningPath } from "../utils/content-api";
+import { socialApi, type Comment, type RatingStats } from "../utils/social-api";
 import { AUTHORS } from "../utils/constants";
+
+const DISCORD_URL = "https://discord.gg/vShXpyWTTq";
 
 export function ArticlePage({ slug }: { readonly slug: string }) {
 	const [article, setArticle] = useState<Article | null>(null);
 	const [fromPath, setFromPath] = useState<LearningPath | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [session, setSession] = useState<SessionData>({ authenticated: false });
+	const [comments, setComments] = useState<Comment[]>([]);
+	const [rating, setRating] = useState<RatingStats>({ average: 0, count: 0, myRating: null });
+	const [socialLoading, setSocialLoading] = useState(true);
+	const [postingComment, setPostingComment] = useState(false);
+	const [ratingPending, setRatingPending] = useState(false);
 
 	// Obtener fromPath query param
 	const urlParams = new URLSearchParams(globalThis.location?.search);
@@ -18,7 +29,45 @@ export function ArticlePage({ slug }: { readonly slug: string }) {
 
 	useEffect(() => {
 		loadArticle();
+		loadSocial();
+		getSession().then(setSession);
 	}, [slug]);
+
+	async function loadSocial() {
+		setSocialLoading(true);
+		try {
+			const [cs, rs] = await Promise.all([socialApi.listComments(slug), socialApi.getRating(slug)]);
+			setComments(cs);
+			setRating(rs);
+		} finally {
+			setSocialLoading(false);
+		}
+	}
+
+	async function handlePostComment(content: string) {
+		setPostingComment(true);
+		try {
+			const c = await socialApi.createComment(slug, content);
+			if (c) setComments((prev) => [c, ...prev]);
+		} finally {
+			setPostingComment(false);
+		}
+	}
+
+	async function handleDeleteComment(id: string) {
+		const ok = await socialApi.deleteComment(slug, id);
+		if (ok) setComments((prev) => prev.filter((c) => c._id !== id));
+	}
+
+	async function handleRate(value: number) {
+		setRatingPending(true);
+		try {
+			const ok = await socialApi.rate(slug, value);
+			if (ok) setRating(await socialApi.getRating(slug));
+		} finally {
+			setRatingPending(false);
+		}
+	}
 
 	async function loadArticle() {
 		setLoading(true);
@@ -157,6 +206,17 @@ export function ArticlePage({ slug }: { readonly slug: string }) {
 				{author && <p style={{ color: "#666666" }}>por {author.name}</p>}
 				<div className="flex items-center gap-2">
 					<adc-share-buttons title={article.title} description={article.description || ""} url={shareUrl} />
+					{session.authenticated && canEditContent(session.user?.permissions || []) && (
+						<button
+							type="button"
+							title="Editar artículo"
+							aria-label="Editar artículo"
+							onClick={() => router.navigate(`/admin/articles/${article.slug}`)}
+							className="ml-2 p-3 bg-surface cursor-pointer text-button rounded-full hover:brightness-105 min-h-11 min-w-11 flex items-center justify-center"
+						>
+							<adc-icon-edit />
+						</button>
+					)}
 				</div>
 			</div>
 
@@ -174,7 +234,14 @@ export function ArticlePage({ slug }: { readonly slug: string }) {
 						{pathTitle}
 					</a>
 				)}
-				<adc-star-rating average={null} count={null} myRating={null} canRate={false} pending={false} />
+				<adc-star-rating
+					average={rating.average || null}
+					count={rating.count || null}
+					myRating={rating.myRating}
+					canRate={session.authenticated && canRate(session.user?.permissions || [])}
+					pending={ratingPending}
+					onadcRate={(ev: CustomEvent<number>) => handleRate(ev.detail)}
+				/>
 			</div>
 
 			{/* Video si existe */}
@@ -190,24 +257,41 @@ export function ArticlePage({ slug }: { readonly slug: string }) {
 			{/* Sección de comentarios */}
 			<div className="mt-8">
 				<h3>Comentarios</h3>
-				{/* TODO: Verificar permiso community.social con acción WRITE (2) para habilitar comentarios.
-				     Ejemplo: permissions.some(p => { const [r,,a] = p.split("."); return r === "community.social" && (Number(a) & 2) !== 0; })
-				     Los roles Discord VIP y Discord Nitro Booster otorgan este permiso automáticamente via autoroles.
-				     Ver docs/auth/discord.md para detalles. */}
-				<div className="paperWarn rounded-xxl border-default p-6">
-					<p className="text-sm">
-						Solo los usuarios con rol VIP o Server Booster pueden comentar. Obtén estos roles en nuestro servidor de Discord para
-						habilitar comentarios.
-					</p>
-					<a
-						href="https://discord.gg/vShXpyWTTq"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="inline-block mt-4 px-4 py-2 bg-twarn text-warn rounded-xxl hover:brightness-105"
-					>
-						Unirse al Discord
-					</a>
-				</div>
+				{!session.authenticated && (
+					<div className="bg-twarn rounded-xxl p-4 text-warn">
+						<p className="text-sm">Inicia sesión para comentar.</p>
+					</div>
+				)}
+				{session.authenticated && !canComment(session.user?.permissions || []) && (
+					<div className="bg-twarn rounded-xxl p-6 text-warn">
+						<p className="text-sm">
+							Solo los usuarios con rol VIP o Server Booster pueden comentar. Obtén estos roles en nuestro servidor de Discord para
+							habilitar comentarios.
+						</p>
+						<a
+							href={DISCORD_URL}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="inline-block mt-4 px-4 py-2 bg-button text-tprimary rounded-xxl no-underline hover:brightness-105"
+						>
+							Unirse al Discord
+						</a>
+					</div>
+				)}
+				<adc-comments-section
+					comments={comments}
+					session={{
+						authenticated: session.authenticated,
+						userId: session.user?.id,
+						canComment: session.authenticated && canComment(session.user?.permissions || []),
+						canModerate: session.authenticated && canDeleteSocial(session.user?.permissions || []),
+					}}
+					submitting={postingComment}
+					loading={socialLoading}
+					articleAuthorId={article.authorId || undefined}
+					onadcSubmit={(ev: CustomEvent<string>) => handlePostComment(ev.detail)}
+					onadcDelete={(ev: CustomEvent<string>) => handleDeleteComment(ev.detail)}
+				/>
 			</div>
 		</div>
 	);

@@ -3,6 +3,9 @@ import type { LearningPath, Article, PathItem } from "../../../../common/ADC/typ
 import { RegisterEndpoint, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
 import { HttpError } from "@common/types/ADCCustomError.ts";
 import { P } from "@common/types/Permissions.ts";
+import { canPublish } from "../utils/community-perms.js";
+
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,98}[a-z0-9]$/;
 
 interface ListPathsQuery {
 	public?: string;
@@ -110,47 +113,56 @@ export class PathEndpoints {
 		return { path: { ...doc, items: populatedItems } };
 	}
 
-	@RegisterEndpoint({ method: "POST", url: "/api/learning/paths", permissions: [P.CONTENT.WRITE] })
+	@RegisterEndpoint({ method: "POST", url: "/api/learning/paths", permissions: [P.COMMUNITY.CONTENT.WRITE] })
 	static async create(ctx: EndpointCtx<Record<string, string>, CreatePathBody>): Promise<{ path: LearningPath }> {
 		const data = ctx.data;
+		const user = ctx.user;
 
-		if (!data.slug || !data.title || !data.description || !data.color)
-			throw new HttpError(400, "MISSING_FIELDS", "slug, title, description and color are required");
+		if (!data.slug || !data.title || !data.color) throw new HttpError(400, "MISSING_FIELDS", "slug, title and color are required");
+		if (!SLUG_RE.test(data.slug)) throw new HttpError(400, "INVALID_SLUG", "Invalid slug format");
 
-		const doc = await PathEndpoints.model.create({
-			...data,
-			public: data.public ?? true,
-			listed: data.listed ?? true,
-		});
-
-		return { path: doc.toObject() as LearningPath };
+		const allowPublish = canPublish(user);
+		try {
+			const doc = await PathEndpoints.model.create({
+				...data,
+				description: allowPublish ? (data.description ?? "") : "",
+				public: data.public ?? true,
+				listed: allowPublish ? (data.listed ?? false) : false,
+			});
+			return { path: doc.toObject() as LearningPath };
+		} catch (err: any) {
+			if (err?.code === 11000) throw new HttpError(409, "SLUG_TAKEN", "Slug already exists");
+			throw err;
+		}
 	}
 
-	@RegisterEndpoint({ method: "PUT", url: "/api/learning/paths/:slug", permissions: [P.CONTENT.WRITE] })
+	@RegisterEndpoint({ method: "PUT", url: "/api/learning/paths/:slug", permissions: [P.COMMUNITY.CONTENT.WRITE] })
 	static async update(ctx: EndpointCtx<SlugParams, UpdatePathBody>): Promise<{ path: LearningPath }> {
 		const { slug } = ctx.params;
-		const updateData = ctx.data;
+		const user = ctx.user;
+		const allowPublish = canPublish(user);
 
-		// Filtrar campos undefined
 		const cleanData: Record<string, any> = {};
-		for (const [key, value] of Object.entries(updateData || {})) {
-			if (value !== undefined) cleanData[key] = value;
+		for (const [key, value] of Object.entries(ctx.data || {})) {
+			if (value === undefined) continue;
+			if ((key === "listed" || key === "description") && !allowPublish) continue;
+			if (key === "slug") continue;
+			cleanData[key] = value;
 		}
 
 		const doc = await PathEndpoints.model.findOneAndUpdate({ slug }, cleanData, { new: true }).lean();
-
 		if (!doc) throw new HttpError(404, "PATH_NOT_FOUND", `Path with slug "${slug}" not found`);
-
 		return { path: doc as LearningPath };
 	}
 
-	@RegisterEndpoint({ method: "DELETE", url: "/api/learning/paths/:slug", permissions: [P.CONTENT.DELETE] })
+	@RegisterEndpoint({ method: "DELETE", url: "/api/learning/paths/:slug", permissions: [P.COMMUNITY.CONTENT.DELETE] })
 	static async delete(ctx: EndpointCtx<SlugParams>): Promise<{ success: boolean }> {
 		const { slug } = ctx.params;
-		const result = await PathEndpoints.model.deleteOne({ slug });
+		const existing = await PathEndpoints.model.findOne({ slug }).select("listed").lean();
+		if (!existing) throw new HttpError(404, "PATH_NOT_FOUND", `Path with slug "${slug}" not found`);
+		if (existing.listed && !canPublish(ctx.user)) throw new HttpError(403, "FORBIDDEN", "Cannot delete a published path");
 
-		if (result.deletedCount === 0) throw new HttpError(404, "PATH_NOT_FOUND", `Path with slug "${slug}" not found`);
-
+		await PathEndpoints.model.deleteOne({ slug });
 		return { success: true };
 	}
 }

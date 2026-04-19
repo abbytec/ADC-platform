@@ -39,6 +39,17 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 const MUTATIVE_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+/**
+ * Deterministic hash for idempotency keys.
+ * Produces the same key for the same data, enabling safe retries.
+ */
+export function hashIdempotency(data: unknown): string {
+	const str = JSON.stringify(data);
+	let h = 5381;
+	for (const ch of str) h = ((h << 5) + h + ch.codePointAt(0)!) >>> 0;
+	return h.toString(36);
+}
+
 export interface RequestOptions<TData = Record<string, unknown>> {
 	/** Query parameters */
 	params?: Record<string, string | number | boolean | undefined | null>;
@@ -50,10 +61,15 @@ export interface RequestOptions<TData = Record<string, unknown>> {
 	translateParams?: (data: TData) => Record<string, string>;
 	/**
 	 * Idempotency key for mutative requests (POST/PUT/PATCH/DELETE).
-	 * Generate once per logical operation and reuse on retries.
-	 * Use `crypto.randomUUID()` at the call site, not here.
+	 * Use a stable string (e.g. resource ID, or `hashIdempotency(data)`).
 	 */
 	idempotencyKey?: string;
+	/**
+	 * Auto-generates a deterministic idempotency key by hashing this data.
+	 * Shorthand for `idempotencyKey: hashIdempotency(data)`.
+	 * Takes precedence over `idempotencyKey` if both are provided.
+	 */
+	idempotencyData?: unknown;
 }
 
 /**
@@ -124,7 +140,8 @@ export function createAdcApi(config: AdcApiConfig) {
 		path: string,
 		options: RequestOptions<TData> = {}
 	): Promise<AdcFetchResult<T>> {
-		const { params, body, headers, translateParams, idempotencyKey } = options;
+		const { params, body, headers, translateParams, idempotencyKey, idempotencyData } = options;
+		const resolvedIdempotencyKey = idempotencyData !== undefined ? hashIdempotency(idempotencyData) : idempotencyKey;
 
 		const url = `${baseUrl}${path}${buildQueryString(params)}`;
 
@@ -134,7 +151,7 @@ export function createAdcApi(config: AdcApiConfig) {
 			headers: {
 				...defaultHeaders,
 				...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-				...(MUTATIVE_METHODS.has(method) && idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+				...(MUTATIVE_METHODS.has(method) && resolvedIdempotencyKey ? { "Idempotency-Key": resolvedIdempotencyKey } : {}),
 				...headers,
 			},
 			...(body !== undefined ? { body: JSON.stringify(body) } : {}),

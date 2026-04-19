@@ -1,16 +1,11 @@
 export { AuthError } from "@common/types/custom-errors/AuthError.js";
-import type { LinkedAccount } from "@common/types/identity/User.js";
+import type { SessionUser, SessionResponse } from "@common/types/identity/Session.js";
 import { createAdcApi, type RequestOptions } from "@ui-library/utils/adc-fetch";
 
-export interface AuthUser {
-	id: string;
-	username: string;
-	email: string;
-	avatar?: string;
-	permissions?: string[];
-	orgId?: string;
-	linkedAccounts?: LinkedAccount[];
-}
+/** @deprecated Usa SessionUser directamente. */
+export type AuthUser = SessionUser;
+
+export type { SessionUser, SessionResponse };
 
 export interface OrgOption {
 	orgId: string;
@@ -19,20 +14,13 @@ export interface OrgOption {
 
 export interface AuthResponse {
 	success: boolean;
-	user?: AuthUser;
+	user?: SessionUser;
 	error?: string;
 	/** Indica que el usuario debe seleccionar una organización antes de concretar el login */
 	requiresOrgSelection?: boolean;
 	userId?: string;
 	username?: string;
 	orgOptions?: OrgOption[];
-}
-
-export interface SessionResponse {
-	authenticated: boolean;
-	user?: AuthUser;
-	expiresAt?: number;
-	error?: string;
 }
 
 /** Error data returned when account is blocked */

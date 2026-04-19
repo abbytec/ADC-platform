@@ -28,6 +28,7 @@
         --c-primary: oklch(33.72% 0.063 var(--palette-tone-2));
         --c-tprimary: oklch(97.5% 0.05 var(--palette-tone-2));
         --c-accent: oklch(64.21% 0.063 var(--palette-tone-2));
+        --c-alt: oklch(98% 0.09 var(--palette-tone-1) / 90%);
 
         --r-xxl: 16px;
         --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
@@ -52,6 +53,7 @@
         --c-primary: oklch(75% 0.25 var(--palette-tone-2));
         --c-tprimary: oklch(18% 0 var(--palette-tone-2));
         --c-accent: oklch(78% 0.129 var(--palette-tone-2));
+        --c-alt: oklch(33% 0.045 var(--palette-tone-1));
 
         --c-text: oklch(97% 0.046 var(--palette-tone-2));
         --c-muted: oklch(60% 0.02 var(--palette-tone-1));
@@ -85,6 +87,7 @@
         --c-primary: oklch(38% 0.15 var(--palette-tone-2));
         --c-tprimary: oklch(97% 0.015 var(--palette-tone-1));
         --c-accent: oklch(58% 0.22 var(--palette-tone-2));
+        --c-alt: oklch(98.39% 0.03 var(--palette-tone-1) / 75%);
 
         --r-xxl: 6px;
         --shadow: 0 4px 32px rgba(100, 110, 160, 0.12), 0 1px 3px rgba(100, 110, 160, 0.08);
@@ -109,6 +112,7 @@
         --c-primary: oklch(72% 0.22 var(--palette-tone-2));
         --c-tprimary: oklch(14% 0.03 var(--palette-tone-2));
         --c-accent: oklch(76% 0.22 var(--palette-tone-2));
+        --c-alt: oklch(27% 0.085 var(--palette-tone-1) / 68%);
 
         --c-text: oklch(93% 0.03 var(--palette-tone-1));
         --c-muted: oklch(60% 0.025 var(--palette-tone-1));
@@ -167,6 +171,13 @@
         display: contents;
     }
 
+    /* Botones: inline-flex para participar en flex/grid sin romper Stencil slots */
+    adc-button,
+    adc-button-rounded {
+        display: inline-flex;
+        vertical-align: middle;
+    }
+
     .paperWarn {
         background-color: var(--c-warn);
         color: var(--c-twarn);
@@ -195,7 +206,7 @@
         border-style: solid;
     }
 
-    .bg-surface .shadow-cozy {
+    .custom-surface {
         box-shadow: 0 8px 8px rgba(0, 0, 0, 0.15);
         margin-bottom: 18px;
     }
@@ -263,5 +274,29 @@
     .breadcumb > * + li::before {
         margin-left: 8px;
         content: "/ ";
+    }
+
+    /* ── Scrollbar minimalista ── */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--c-accent) transparent;
+    }
+
+    *::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background-color: var(--c-accent);
+        border-radius: 9999px;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+        background-color: var(--c-primary);
     }
 }

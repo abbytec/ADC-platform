@@ -33,11 +33,6 @@ body {
     line-height: 1.5;
 }
 
-/* Mejorar el espaciado entre elementos interactivos */
-.flex.gap-3 > * + * {
-    margin-left: 12px;
-}
-
 /* Asegurar que los iconos decorativos no interfieran con lectores de pantalla */
 [aria-hidden="true"] {
     pointer-events: none;

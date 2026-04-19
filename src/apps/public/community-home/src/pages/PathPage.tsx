@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { router } from "@common/utils/router.js";
+import { getSession } from "@ui-library/utils/session";
+import { canEditContent } from "@ui-library/utils/permissions";
 import { contentAPI, type LearningPath, type Article, type PathItemLevel } from "../utils/content-api";
 
 type Level = PathItemLevel;
@@ -41,10 +43,15 @@ export function PathPage({ slug }: { readonly slug: string }) {
 	const [items, setItems] = useState<ExpandedItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [canEdit, setCanEdit] = useState(false);
 
 	useEffect(() => {
 		loadPath();
 	}, [slug]);
+
+	useEffect(() => {
+		getSession().then((s) => setCanEdit(s.authenticated && canEditContent(s.user?.permissions || [])));
+	}, []);
 
 	async function loadPath() {
 		setLoading(true);
@@ -157,6 +164,17 @@ export function PathPage({ slug }: { readonly slug: string }) {
 				<h1>{path.title}</h1>
 				<div className="flex items-center gap-2">
 					<adc-share-buttons title={path.title} description={path.description || ""} url={shareUrl} />
+					{canEdit && (
+						<button
+							type="button"
+							title="Editar path"
+							aria-label="Editar path"
+							onClick={() => router.navigate(`/admin/paths?slug=${path.slug}`)}
+							className="ml-2 p-3 bg-surface cursor-pointer text-button rounded-full hover:brightness-105 min-h-11 min-w-11 flex items-center justify-center"
+						>
+							<adc-icon-edit />
+						</button>
+					)}
 				</div>
 			</div>
 
@@ -232,7 +250,7 @@ export function PathPage({ slug }: { readonly slug: string }) {
 										<img
 											src={article.image.url}
 											alt={article.image.alt || article.title}
-											className="w-24 object-cover rounded-xxl flex-shrink-0 aspect-[4/3]"
+											className="w-24 object-cover rounded-xxl shrink-0 aspect-4/3"
 										/>
 									)}
 									<div className="flex flex-col">

@@ -101,12 +101,17 @@ export class PermissionManager {
 
 		const isGroupInContext = (group: { orgId?: string | null } | null): boolean => {
 			if (!group) return false;
-			if (!orgId) return !group.orgId;
-			return !group.orgId || group.orgId === orgId;
+			// En contexto de organización: sólo grupos de esa org (no bleed de grupos personales)
+			if (orgId) return group.orgId === orgId;
+			// En contexto personal: sólo grupos sin org
+			return !group.orgId;
 		};
 
 		const isDirectRoleInContext = (role: { orgId?: string | null } | null): boolean => {
 			if (!role) return false;
+			// Los roles directos del usuario (sin orgId) sólo aplican en contexto personal.
+			// Al cambiar a una org, se ignoran para que los permisos estén acotados a esa org.
+			if (orgId) return false;
 			return !role.orgId;
 		};
 
@@ -219,7 +224,8 @@ export class PermissionManager {
 		}
 
 		// 1. User direct permissions (mayor prioridad)
-		if (user.permissions?.length) {
+		// Sólo aplican en contexto personal — dentro de una org no deben filtrarse.
+		if (!orgId && user.permissions?.length) {
 			applyLevel(user.permissions, "user");
 		}
 

@@ -1,4 +1,4 @@
-import { createAdcApi } from "@ui-library/utils/adc-fetch";
+import { createAdcApi, hashIdempotency } from "@ui-library/utils/adc-fetch";
 import type { ClientUser } from "@common/types/identity/User.ts";
 import type { Role } from "@common/types/identity/Role.ts";
 import type { Permission } from "@common/types/identity/Permission.ts";
@@ -18,10 +18,7 @@ const api = createAdcApi({
 
 /** Deterministic hash for idempotency keys on create operations */
 function hashBody(data: unknown): string {
-	const str = JSON.stringify(data);
-	let h = 5381;
-	for (const ch of str) h = ((h << 5) + h + ch.codePointAt(0)!) >>> 0;
-	return h.toString(36);
+	return hashIdempotency(data);
 }
 
 // ── API methods ──────────────────────────────────────────────────────────────
