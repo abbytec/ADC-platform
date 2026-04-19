@@ -56,7 +56,7 @@ export class RatingEndpoints {
 		method: "POST",
 		url: "/api/learning/articles/:slug/rating",
 		permissions: [P.COMMUNITY.SOCIAL.WRITE],
-		options: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+		options: { skipIdempotency: true, rateLimit: { max: 5, timeWindow: 60_000 } },
 	})
 	static async rate(ctx: EndpointCtx<SlugParams, RateBody>): Promise<{ success: boolean }> {
 		const { slug } = ctx.params;
@@ -66,9 +66,18 @@ export class RatingEndpoints {
 		const article = await RatingEndpoints.articleModel.findOne({ slug, listed: true }).select("slug").lean();
 		if (!article) throw new HttpError(404, "ARTICLE_NOT_FOUND", "Article not found or not published");
 
-		const value = parseRatingValue(ctx.data?.value);
+		const value = Number(ctx.data?.value);
 
-		await RatingEndpoints.model.findOneAndUpdate({ articleSlug: slug, userId: user.id }, { $set: { value } }, { upsert: true, new: true });
+		if (value === 0) {
+			await RatingEndpoints.model.deleteOne({ articleSlug: slug, userId: user.id });
+		} else {
+			const clamped = parseRatingValue(value);
+			await RatingEndpoints.model.findOneAndUpdate(
+				{ articleSlug: slug, userId: user.id },
+				{ $set: { value: clamped } },
+				{ upsert: true, new: true }
+			);
+		}
 
 		return { success: true };
 	}

@@ -33,7 +33,7 @@ export const socialApi = {
 	rate: async (slug: string, value: number): Promise<boolean> => {
 		const r = await api.post<{ success: boolean }>(`/articles/${slug}/rating`, {
 			body: { value },
-			idempotencyData: { slug, value },
+			idempotencyKey: crypto.randomUUID(),
 		});
 		return r.data?.success === true;
 	},

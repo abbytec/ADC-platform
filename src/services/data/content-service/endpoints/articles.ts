@@ -57,7 +57,12 @@ export class ArticleEndpoints {
 		return { article: doc as Article };
 	}
 
-	@RegisterEndpoint({ method: "POST", url: "/api/learning/articles", permissions: [P.COMMUNITY.CONTENT.WRITE] })
+	@RegisterEndpoint({
+		method: "POST",
+		url: "/api/learning/articles",
+		permissions: [P.COMMUNITY.CONTENT.WRITE],
+		options: { rateLimit: { max: 4, timeWindow: 3_600_000 } },
+	})
 	static async create(ctx: EndpointCtx<Record<string, string>, CreateArticleBody>): Promise<{ article: Article }> {
 		const data = ctx.data;
 		const user = ctx.user;

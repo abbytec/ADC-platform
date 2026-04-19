@@ -113,7 +113,12 @@ export class PathEndpoints {
 		return { path: { ...doc, items: populatedItems } };
 	}
 
-	@RegisterEndpoint({ method: "POST", url: "/api/learning/paths", permissions: [P.COMMUNITY.CONTENT.WRITE] })
+	@RegisterEndpoint({
+		method: "POST",
+		url: "/api/learning/paths",
+		permissions: [P.COMMUNITY.CONTENT.WRITE],
+		options: { rateLimit: { max: 1, timeWindow: 86_400_000 } },
+	})
 	static async create(ctx: EndpointCtx<Record<string, string>, CreatePathBody>): Promise<{ path: LearningPath }> {
 		const data = ctx.data;
 		const user = ctx.user;

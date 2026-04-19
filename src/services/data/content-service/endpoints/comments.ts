@@ -50,7 +50,7 @@ export class CommentEndpoints {
 		method: "POST",
 		url: "/api/learning/articles/:slug/comments",
 		permissions: [P.COMMUNITY.SOCIAL.WRITE],
-		options: { rateLimit: { max: 5, timeWindow: "1 minute" } },
+		options: { rateLimit: { max: 5, timeWindow: 3_600_000 } },
 	})
 	static async create(ctx: EndpointCtx<SlugParams, CreateCommentBody>): Promise<{ comment: Comment }> {
 		const { slug } = ctx.params;

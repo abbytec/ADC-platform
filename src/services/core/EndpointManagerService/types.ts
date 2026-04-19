@@ -14,7 +14,8 @@ export interface EndpointConfig {
 
 /** Optional endpoint configuration */
 export interface EndpointOptions {
-	rateLimit?: { max: number; timeWindow: string };
+	/** Rate limit per IP. timeWindow is in milliseconds. */
+	rateLimit?: { max: number; timeWindow: number };
 	schema?: {
 		body?: Record<string, unknown>;
 		querystring?: Record<string, unknown>;

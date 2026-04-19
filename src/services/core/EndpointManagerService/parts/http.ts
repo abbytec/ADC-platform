@@ -45,8 +45,29 @@ export function createHttpWrapper(
 ): (req: FastifyRequest<any>, reply: FastifyReply<any>) => Promise<void> {
 	const requiresIdempotency = MUTATIVE_METHODS.has(endpoint.method) && endpoint.options?.skipIdempotency !== true;
 	const shouldEnqueue = MUTATIVE_METHODS.has(endpoint.method) && endpoint.options?.enqueue === true && rabbitmq !== null;
+	const rl = endpoint.options?.rateLimit;
+	const rlTtlSeconds = rl ? Math.max(1, Math.ceil(rl.timeWindow / 1000)) : 0;
+	const rlKeyPrefix = rl ? `rl:${endpoint.method}:${endpoint.url}:` : "";
 
 	return async (req: FastifyRequest<any>, reply: FastifyReply<any>) => {
+		// ── Rate limiting (Redis INCR + EXPIRE) ─────────────────────────
+		if (rl && redis) {
+			const key = rlKeyPrefix + req.ip;
+			const count = await redis.incr(key);
+			if (count === 1) await redis.expire(key, rlTtlSeconds);
+
+			reply.header("X-RateLimit-Limit", rl.max);
+			reply.header("X-RateLimit-Remaining", Math.max(0, rl.max - count));
+
+			if (count > rl.max) {
+				reply.status(429).send({
+					error: "RATE_LIMIT_EXCEEDED",
+					message: `Too many requests. Limit: ${rl.max} per ${rlTtlSeconds}s`,
+				});
+				return;
+			}
+		}
+
 		// Extraer token si existe
 		const token = extractToken(req, getSessionManager);
 
