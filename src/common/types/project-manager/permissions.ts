@@ -1,5 +1,3 @@
-import { CRUDXAction } from "../Actions.ts";
-
 export const PM_RESOURCE_NAME = "project-manager" as const;
 
 /**
@@ -20,16 +18,3 @@ export const PMScopes = {
 } as const;
 
 export type PMScopeValue = (typeof PMScopes)[keyof typeof PMScopes];
-
-const SCOPE_NAMES: Record<number, string> = Object.fromEntries(Object.entries(PMScopes).map(([k, v]) => [v, k]));
-const ACTION_NAMES: Record<number, string> = Object.fromEntries(Object.entries(CRUDXAction).map(([k, v]) => [v, k]));
-
-export function humanizePMPermission(perm: string): string {
-	const parts = perm.split(".");
-	if (parts.length !== 3) return perm;
-	const [resource, scopeStr, actionStr] = parts;
-	const scope = Number(scopeStr);
-	const action = Number(actionStr);
-	if (Number.isNaN(scope) || Number.isNaN(action)) return perm;
-	return `${resource}.${SCOPE_NAMES[scope] ?? scopeStr}.${ACTION_NAMES[action] ?? actionStr}`;
-}

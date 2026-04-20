@@ -1,5 +1,3 @@
-import { CRUDXAction } from "../Actions.ts";
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Resource
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,30 +33,4 @@ export const IdentityScopes = {
  */
 export function hasFlags(value: number, required: number): boolean {
 	return (value & required) === required;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Reverse maps (numeric value → name)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Mapa inverso de valor numérico de scope a nombre legible */
-const SCOPE_NAMES: Record<number, string> = Object.fromEntries(Object.entries(IdentityScopes).map(([k, v]) => [v, k]));
-
-/** Mapa inverso de valor numérico de action a nombre legible */
-const ACTION_NAMES: Record<number, string> = Object.fromEntries(Object.entries(CRUDXAction).map(([k, v]) => [v, k]));
-
-/**
- * Traduce un permission string numérico a formato legible.
- * @example humanizePermission("identity.4.1") → "identity.ROLES.READ (scope: 4, action: 1)"
- */
-export function humanizePermission(perm: string): string {
-	const parts = perm.split(".");
-	if (parts.length !== 3) return perm;
-	const [resource, scopeStr, actionStr] = parts;
-	const scope = Number(scopeStr);
-	const action = Number(actionStr);
-	if (Number.isNaN(scope) || Number.isNaN(action)) return perm;
-	const scopeName = SCOPE_NAMES[scope] ?? scopeStr;
-	const actionName = ACTION_NAMES[action] ?? actionStr;
-	return `${resource}.${scopeName}.${actionName} (scope: ${scope}, action: ${action})`;
 }

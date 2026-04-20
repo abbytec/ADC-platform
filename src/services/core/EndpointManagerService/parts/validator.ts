@@ -1,6 +1,38 @@
 import type { AuthenticatedUserInfo } from "../types.js";
-import { humanizePermission } from "@common/types/identity/permissions.ts";
+import { CRUDXAction } from "@common/types/Actions.ts";
+import { RESOURCE_MAP } from "@common/types/resources.ts";
 import type SessionManagerService from "../../../security/SessionManagerService/index.ts";
+
+const ACTION_NAMES: Record<number, string> = Object.fromEntries(Object.entries(CRUDXAction).map(([key, value]) => [value, key]));
+
+function humanizeScope(resource: string, scope: number, fallback: string): string {
+	if (scope === 0) return "NONE";
+
+	const scopeDefs = RESOURCE_MAP.get(resource)?.scopes ?? [];
+	const exactScope = scopeDefs.find((scopeDef) => scopeDef.value === scope);
+	if (exactScope) return exactScope.key.toUpperCase();
+
+	const matchedScopes = scopeDefs
+		.filter((scopeDef) => scopeDef.value !== 0 && (scope & scopeDef.value) === scopeDef.value)
+		.sort((left, right) => left.value - right.value)
+		.map((scopeDef) => scopeDef.key.toUpperCase());
+
+	return matchedScopes.length > 0 ? matchedScopes.join("|") : fallback;
+}
+
+function humanizePermission(perm: string): string {
+	const parts = perm.split(".");
+	if (parts.length !== 3) return perm;
+
+	const [resource, scopeStr, actionStr] = parts;
+	const scope = Number(scopeStr);
+	const action = Number(actionStr);
+	if (Number.isNaN(scope) || Number.isNaN(action)) return perm;
+
+	const readableScope = humanizeScope(resource, scope, scopeStr);
+	const readableAction = ACTION_NAMES[action] ?? actionStr;
+	return `${resource}.${readableScope}.${readableAction} (scope: ${scope}, action: ${action})`;
+}
 
 /**
  * Verifica si un usuario tiene al menos uno de los permisos requeridos.
