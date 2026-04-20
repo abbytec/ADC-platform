@@ -108,7 +108,7 @@ export class AdcCombobox {
 			<div class="relative w-full">
 				<input
 					type="text"
-					class="w-full px-3 py-2 pr-14 rounded-lg border border-border bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted disabled:opacity-40 disabled:cursor-not-allowed"
+					class="w-full px-3 py-2 pr-14 rounded-lg border border-text/15 bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted disabled:opacity-40 disabled:cursor-not-allowed"
 					placeholder={this.placeholder}
 					value={displayValue}
 					onFocus={this.handleFocus}
