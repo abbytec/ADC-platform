@@ -17,11 +17,11 @@ interface UsersViewProps {
 	readonly scopes: Permission[];
 	readonly orgId?: string;
 	readonly isAdmin?: boolean;
-	readonly isTokenOrgContext?: boolean;
+	readonly isScopedOrgView?: boolean;
 	readonly organizations?: Organization[];
 }
 
-export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizations = [] }: UsersViewProps) {
+export function UsersView({ scopes, orgId, isAdmin, isScopedOrgView = false, organizations = [] }: UsersViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [users, setUsers] = useState<ClientUser[]>([]);
 	const [filteredUsers, setFilteredUsers] = useState<ClientUser[]>([]);
@@ -89,8 +89,8 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 	};
 
 	useEffect(() => {
-		// No validar si estamos en contexto org (no se puede cambiar username)
-		if (isTokenOrgContext) {
+		// No validar si estamos en vista scopeada por org (no se puede cambiar username al editar)
+		if (isScopedOrgView && editingUser) {
 			setUsernameStatus("idle");
 			return;
 		}
@@ -111,7 +111,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 		}, 500);
 
 		return () => clearTimeout(timeout);
-	}, [formUsername, editingUser, isTokenOrgContext]);
+	}, [formUsername, editingUser, isScopedOrgView]);
 
 	const loadData = useCallback(async () => {
 		setLoading(true);
@@ -162,6 +162,11 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 		return membership?.roleIds || [];
 	};
 
+	const assignablePickerRoles = React.useMemo(() => {
+		if (!orgId || !isScopedOrgView) return pickerRoles;
+		return pickerRoles.filter((role) => role.orgId === orgId || formRoleIds.includes(role.id));
+	}, [formRoleIds, isScopedOrgView, orgId, pickerRoles]);
+
 	const loadPickerRoles = useCallback(async () => {
 		const rolesRes = await identityApi.listRoles(orgId);
 		if (rolesRes.success && rolesRes.data) {
@@ -201,20 +206,18 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 		setSubmitting(true);
 
 		if (editingUser) {
-			const result = await identityApi.updateUser(
-				editingUser.id,
-				orgId
-					? {
-							roleIds: formRoleIds,
-						}
-					: {
-							username: formUsername,
-							email: formEmail || undefined,
-							roleIds: formRoleIds,
-							isActive: formIsActive,
-							permissions: formPermissions,
-						}
-			);
+			const payload = isScopedOrgView
+				? {
+						roleIds: formRoleIds,
+					}
+				: {
+						username: formUsername,
+						email: formEmail || undefined,
+						roleIds: formRoleIds,
+						isActive: formIsActive,
+						permissions: formPermissions,
+					};
+			const result = await identityApi.updateUser(editingUser.id, payload, isScopedOrgView ? orgId : undefined);
 			if (result.success) {
 				setModalOpen(false);
 				loadData();
@@ -237,7 +240,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 	const handleDelete = async () => {
 		if (!deleteConfirm) return;
 		clearErrors();
-		const result = await identityApi.deleteUser(deleteConfirm.id);
+		const result = await identityApi.deleteUser(deleteConfirm.id, isScopedOrgView ? orgId : undefined);
 		if (result.success) {
 			setDeleteConfirm(null);
 			loadData();
@@ -331,7 +334,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 			{modalOpen && (
 				<adc-modal ref={editModalRef} open modalTitle={editingUser ? t("users.editUser") : t("users.addUser")} size="lg">
 					<form onSubmit={handleSubmit} className="space-y-4">
-						{(!isTokenOrgContext || !editingUser) && (
+						{(!isScopedOrgView || !editingUser) && (
 							<div>
 								<label className="block text-sm font-medium mb-1 text-text">{t("users.username")}</label>
 								<adc-input
@@ -340,7 +343,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 									placeholder={t("users.usernamePlaceholder")}
 									onInput={(e: any) => setFormUsername(e.target.value)}
 								/>
-								{!isTokenOrgContext && (
+								{!isScopedOrgView && (
 									<>
 										{usernameStatus === "checking" && <p className="text-xs text-muted mt-1">Verificando...</p>}
 										{usernameStatus === "available" && (
@@ -367,7 +370,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 							</div>
 						)}
 
-						{!isTokenOrgContext && (
+						{!isScopedOrgView && (
 							<div>
 								<label className="block text-sm font-medium mb-1 text-text">{t("users.email")}</label>
 								<adc-input
@@ -380,7 +383,7 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 							</div>
 						)}
 
-						{editingUser && !isTokenOrgContext && (
+						{editingUser && !isScopedOrgView && (
 							<div>
 								<label className="block text-sm font-medium mb-1 text-text">{t("users.status")}</label>
 								<adc-toggle
@@ -393,10 +396,10 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 
 						<div>
 							<label className="block text-sm font-medium mb-1 text-text">{t("users.roles")}</label>
-							<RolePicker roles={pickerRoles} selectedIds={formRoleIds} onToggle={toggleRoleId} />
+							<RolePicker roles={assignablePickerRoles} selectedIds={formRoleIds} onToggle={toggleRoleId} />
 						</div>
 
-						{editingUser && !isTokenOrgContext && (
+						{editingUser && !isScopedOrgView && (
 							<div>
 								<label className="block text-sm font-medium mb-1 text-text">{t("permissions.directTitle")}</label>
 								<p className="text-xs text-muted mb-2">{t("permissions.directHint")}</p>

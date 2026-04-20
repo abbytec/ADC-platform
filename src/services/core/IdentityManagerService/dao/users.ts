@@ -1,8 +1,8 @@
 import type { Model } from "mongoose";
 import type { User, LinkedAccount } from "@common/types/identity/User.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import { generateId, hashPassword, verifyPassword } from "../utils/crypto.ts";
-import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
+import { generateId, hashPassword, verifyPassword } from "@common/utils/crypto.ts";
+import { type AuthVerifierGetter, PermissionChecker } from "@common/types/auth-verifier.ts";
 import { IdentityScopes } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
 
@@ -306,6 +306,23 @@ export class UserManager {
 			this.logger.logError(`Error actualizando usuario: ${error}`);
 			throw error;
 		}
+	}
+
+	/**
+	 * Actualiza (merge shallow por clave top-level) el objeto `metadata` del propio usuario.
+	 */
+	async updateOwnMetadata(userId: string, partial: Record<string, unknown>, token?: string): Promise<User> {
+		const callerId = await this.#permissionChecker.resolveUserId(token);
+		if (callerId && callerId !== userId) {
+			throw new Error(`[UserManager] No se puede actualizar metadata de otro usuario (caller=${callerId}, target=${userId})`);
+		}
+		const current = await this.userModel.findOne({ id: userId });
+		if (!current) throw new Error(`Usuario ${userId} no encontrado`);
+		const currentMeta = (current.toObject?.() || current).metadata || {};
+		const nextMeta = { ...currentMeta, ...partial };
+		const updated = await this.userModel.findOneAndUpdate({ id: userId }, { metadata: nextMeta, updatedAt: new Date() }, { new: true });
+		if (!updated) throw new Error(`Usuario ${userId} no encontrado`);
+		return updated.toObject?.() || updated;
 	}
 
 	/**

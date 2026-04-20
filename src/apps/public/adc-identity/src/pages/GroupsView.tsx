@@ -74,6 +74,11 @@ export function GroupsView({ scopes, orgId, organizations = [] }: GroupsViewProp
 		return role?.name || roleId;
 	};
 
+	const assignableRoles = React.useMemo(() => {
+		if (!orgId) return allRoles;
+		return allRoles.filter((role) => role.orgId === orgId || formRoleIds.includes(role.id));
+	}, [allRoles, formRoleIds, orgId]);
+
 	const toggleRole = (roleId: string) => {
 		setFormRoleIds((prev) => (prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]));
 	};
@@ -228,7 +233,7 @@ export function GroupsView({ scopes, orgId, organizations = [] }: GroupsViewProp
 						</div>
 						<div>
 							<label className="block text-sm font-medium mb-1 text-text">{t("groups.roles")}</label>
-							<RolePicker roles={allRoles} selectedIds={formRoleIds} onToggle={toggleRole} />
+							<RolePicker roles={assignableRoles} selectedIds={formRoleIds} onToggle={toggleRole} />
 						</div>
 						<div>
 							<label className="block text-sm font-medium mb-1 text-text">{t("permissions.directTitle")}</label>
@@ -246,17 +251,18 @@ export function GroupsView({ scopes, orgId, organizations = [] }: GroupsViewProp
 					searchPlaceholder={t("groups.searchUserPlaceholder")}
 					noMembersText={t("groups.noMembers")}
 					entityId={membersModal.id}
+					orgId={membersModal.orgId || orgId}
 					onClose={() => setMembersModal(null)}
 					fetchMembers={async (id) => {
 						const res = await identityApi.listGroupMembers(id);
 						return res.success && res.data ? res.data : [];
 					}}
 					onAddMember={async (id, userId) => {
-						const result = await identityApi.addUserToGroup(id, userId);
+						const result = await identityApi.addUserToGroup(id, userId, membersModal.orgId || orgId);
 						return result.success;
 					}}
 					onRemoveMember={async (id, userId) => {
-						const result = await identityApi.removeUserFromGroup(id, userId);
+						const result = await identityApi.removeUserFromGroup(id, userId, membersModal.orgId || orgId);
 						return result.success;
 					}}
 				/>

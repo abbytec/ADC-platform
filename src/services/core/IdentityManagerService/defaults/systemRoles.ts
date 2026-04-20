@@ -1,6 +1,6 @@
 import { CRUDXAction } from "@common/types/Actions.ts";
-import { Permission } from "@common/types/identity/Permission.ts";
 import { RESOURCE_NAME, IdentityScopes } from "@common/types/identity/permissions.ts";
+import { BaseRole } from "@common/types/identity/Role.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Community scopes (bitfield) — Alcances para recursos community
@@ -28,16 +28,11 @@ export enum SystemRole {
 	DISCORD_REVIEWER = "Discord Reviewer",
 }
 
-export const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; permissions: Permission[] }> = [
-	{
-		name: SystemRole.SYSTEM,
-		description: "Usuario del sistema con acceso total",
-		permissions: [{ resource: RESOURCE_NAME, action: CRUDXAction.CRUD, scope: IdentityScopes.ALL }],
-	},
+export const ORG_PREDEFINED_ROLES: Array<BaseRole> = [
 	{
 		name: SystemRole.ADMIN,
 		description: "Administrador del sistema",
-		permissions: [{ resource: RESOURCE_NAME, action: CRUDXAction.CRUD, scope: IdentityScopes.ALL }],
+		permissions: [{ resource: "*", action: CRUDXAction.ALL, scope: 0xffff }],
 	},
 	{
 		name: SystemRole.NETWORK_MANAGER,
@@ -85,6 +80,15 @@ export const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; pe
 		description: "Usuario estándar del sistema",
 		permissions: [{ resource: RESOURCE_NAME, action: CRUDXAction.READ, scope: IdentityScopes.SELF }],
 	},
+];
+
+export const PREDEFINED_ROLES: Array<BaseRole> = [
+	{
+		name: SystemRole.SYSTEM,
+		description: "Usuario del sistema con acceso total",
+		permissions: [{ resource: "*", action: CRUDXAction.ALL, scope: 0xffff }],
+	},
+	...ORG_PREDEFINED_ROLES,
 	// ─── Community roles (Discord autoroles) ─────────────────────────────────
 	{
 		name: SystemRole.DISCORD_VIP,
@@ -112,12 +116,3 @@ export const PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; pe
 		],
 	},
 ];
-
-/**
- * Roles predefinidos para organizaciones.
- * Mismos nombres que los globales pero con alcance limitado a la organización.
- * Excluye SYSTEM (siempre global) — los roles globales cascadean a orgs.
- */
-export const ORG_PREDEFINED_ROLES: Array<{ name: SystemRole; description: string; permissions: Permission[] }> = PREDEFINED_ROLES.filter(
-	(r) => r.name !== SystemRole.SYSTEM
-);

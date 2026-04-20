@@ -44,7 +44,7 @@ async function assertUserOrgAccess(identity: IdentityManagerService, targetUserI
 /**
  * Valida que todos los roleIds sean accesibles para el caller.
  * Admin global: acceso irrestricto a cualquier rol.
- * Admin de org: solo roles predefinidos globales + roles de su org.
+ * Admin de org: solo roles de su org.
  */
 async function validateRoleIdsContext(identity: IdentityManagerService, roleIds: string[], callerOrgId?: string, token?: string): Promise<void> {
 	if (!roleIds?.length) return;
@@ -55,9 +55,8 @@ async function validateRoleIdsContext(identity: IdentityManagerService, roleIds:
 		const role = await identity.roles.getRole(rid, token);
 		if (!role) throw new IdentityError(400, "INVALID_ROLE", `Rol ${rid} no encontrado`);
 
-		const isGlobalPredefined = !role.orgId && !role.isCustom;
 		const isOwnOrg = role.orgId === callerOrgId;
-		if (!isGlobalPredefined && !isOwnOrg) {
+		if (!isOwnOrg) {
 			throw new IdentityError(403, "CROSS_ORG_ROLE", `No puedes asignar el rol ${role.name} de otro contexto`);
 		}
 	}
@@ -219,7 +218,7 @@ export class UserEndpoints {
 	static async searchUsers(ctx: EndpointCtx) {
 		const q = ctx.query?.q?.trim();
 		if (!q || q.length < 2) return [];
-		const orgId = ctx.user?.orgId;
+		const orgId = ctx.user?.orgId || ctx.query?.orgId || undefined;
 		const users = await UserEndpoints.#identity.users.searchUsers(q, 10, ctx.token!, orgId);
 
 		return users.map((user) => sanitizeUserForContext(user, orgId));
@@ -240,6 +239,36 @@ export class UserEndpoints {
 		}
 
 		return sanitizeUserForContext(user, ctx.user.orgId);
+	}
+
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/identity/users/me/preferences",
+	})
+	static async getMyPreferences(ctx: EndpointCtx) {
+		if (!ctx.user) throw new AuthError(401, "UNAUTHORIZED", "No hay usuario autenticado");
+		const user = await UserEndpoints.#identity.users.getUser(ctx.user.id, ctx.token!);
+		if (!user) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+		const preferences = (user.metadata?.preferences as Record<string, unknown>) ?? {};
+		return { preferences };
+	}
+
+	@RegisterEndpoint({
+		method: "PATCH",
+		url: "/api/identity/users/me/preferences",
+	})
+	static async patchMyPreferences(ctx: EndpointCtx<Record<string, string>, Record<string, unknown>>) {
+		if (!ctx.user) throw new AuthError(401, "UNAUTHORIZED", "No hay usuario autenticado");
+		const patch = ctx.data ?? {};
+		if (typeof patch !== "object" || Array.isArray(patch)) {
+			throw new IdentityError(400, "INVALID_BODY", "El body debe ser un objeto plano");
+		}
+		const user = await UserEndpoints.#identity.users.getUser(ctx.user.id, ctx.token!);
+		if (!user) throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+		const currentPrefs = (user.metadata?.preferences as Record<string, unknown>) ?? {};
+		const nextPrefs = { ...currentPrefs, ...patch };
+		const updated = await UserEndpoints.#identity.users.updateOwnMetadata(ctx.user.id, { preferences: nextPrefs }, ctx.token!);
+		return { preferences: (updated.metadata?.preferences as Record<string, unknown>) ?? {} };
 	}
 
 	@RegisterEndpoint({
@@ -337,7 +366,7 @@ export class UserEndpoints {
 			}>
 		>
 	) {
-		const callerOrgId = ctx.user?.orgId;
+		const callerOrgId = ctx.user?.orgId || ctx.query?.orgId || undefined;
 
 		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId, ctx.token!);
 
@@ -396,7 +425,7 @@ export class UserEndpoints {
 		permissions: [P.IDENTITY.USERS.DELETE],
 	})
 	static async deleteUser(ctx: EndpointCtx<{ userId: string }>) {
-		const callerOrgId = ctx.user?.orgId;
+		const callerOrgId = ctx.user?.orgId || ctx.query?.orgId || undefined;
 		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId, ctx.token!);
 		if (callerOrgId) {
 			await UserEndpoints.#identity.users.removeOrgMembership(ctx.params.userId, callerOrgId, ctx.token!);

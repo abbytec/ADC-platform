@@ -1,6 +1,6 @@
 import { BaseApp } from "../../BaseApp.js";
 import type IdentityManagerService from "../../../services/core/IdentityManagerService/index.js";
-import { AuthorizationError } from "../../../services/core/IdentityManagerService/index.js";
+import { AuthorizationError } from "@common/types/custom-errors/AuthorizationError.js";
 import type { Role, User } from "@common/types/identity/index.js";
 import type SessionManagerService from "../../../services/security/SessionManagerService/index.js";
 import { Logger } from "../../../utils/logger/Logger.js";
@@ -225,7 +225,7 @@ export default class UserProfileApp extends BaseApp {
 				Logger.error(`[${this.name}] ✗ Usuario limitado pudo crear (NO debería poder)`);
 			} catch (authError: any) {
 				if (authError instanceof AuthorizationError) {
-					Logger.ok(`[${this.name}] ✓ Usuario limitado bloqueado correctamente para WRITE: ${authError.code}`);
+					Logger.ok(`[${this.name}] ✓ Usuario limitado bloqueado correctamente para WRITE: ${authError.errorKey}`);
 				} else {
 					throw authError;
 				}
@@ -237,7 +237,7 @@ export default class UserProfileApp extends BaseApp {
 				Logger.error(`[${this.name}] ✗ Usuario limitado pudo eliminar (NO debería poder)`);
 			} catch (authError: any) {
 				if (authError instanceof AuthorizationError) {
-					Logger.ok(`[${this.name}] ✓ Usuario limitado bloqueado correctamente para DELETE: ${authError.code}`);
+					Logger.ok(`[${this.name}] ✓ Usuario limitado bloqueado correctamente para DELETE: ${authError.errorKey}`);
 				} else {
 					throw authError;
 				}
@@ -258,7 +258,7 @@ export default class UserProfileApp extends BaseApp {
 			Logger.error(`[${this.name}] ✗ Token inválido fue aceptado (NO debería)`);
 		} catch (error: any) {
 			if (error instanceof AuthorizationError) {
-				Logger.ok(`[${this.name}] ✓ Token inválido rechazado correctamente: ${error.code}`);
+				Logger.ok(`[${this.name}] ✓ Token inválido rechazado correctamente: ${error.errorKey}`);
 			} else {
 				Logger.ok(`[${this.name}] ✓ Token inválido rechazado: ${error.message}`);
 			}

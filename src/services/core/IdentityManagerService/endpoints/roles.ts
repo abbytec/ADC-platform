@@ -38,6 +38,9 @@ export class RoleEndpoints {
 	static async listRoles(ctx: EndpointCtx) {
 		// Org admin usa orgId del token; global admin puede filtrar por query param
 		const orgId = ctx.user?.orgId || ctx.query?.orgId || undefined;
+		if (orgId) {
+			await RoleEndpoints.#identity.roles.initializePredefinedRoles(orgId);
+		}
 		return RoleEndpoints.#identity.roles.getAllRoles(ctx.token!, orgId);
 	}
 

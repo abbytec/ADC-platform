@@ -1,7 +1,7 @@
 import type { Model } from "mongoose";
 import type { User } from "@common/types/identity/User.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import { generateId, hashPassword, generateRandomCredentials } from "../utils/crypto.ts";
+import { generateId, hashPassword, generateRandomCredentials } from "@common/utils/crypto.ts";
 import { SystemRole } from "../defaults/systemRoles.ts";
 import { OnlyKernel } from "../../../../utils/decorators/OnlyKernel.ts";
 

@@ -6,6 +6,7 @@ import type { Group } from "@common/types/identity/Group.ts";
 import type { Organization } from "@common/types/identity/Organization.ts";
 import LRUCache from "../../../../utils/performance/LRUCache.ts";
 import { RESOURCE_NAME, hasFlags } from "@common/types/identity/permissions.ts";
+import { SystemRole } from "../defaults/systemRoles.js";
 
 interface PermissionCacheEntry {
 	permissions: ResolvedPermission[];
@@ -61,10 +62,11 @@ export class PermissionManager {
 	 * @param action - Bitfield de acciones requeridas (Action.READ | Action.WRITE)
 	 * @param scope - Bitfield de scope requerido (Scope.USERS | Scope.GROUPS)
 	 * @param orgId - ID de organización (opcional)
+	 * @param resource - Nombre del recurso a verificar (default: "identity"). Wildcard "*" siempre coincide.
 	 */
-	async hasPermission(userId: string, action: number, scope: number, orgId?: string): Promise<boolean> {
+	async hasPermission(userId: string, action: number, scope: number, orgId?: string, resource?: string): Promise<boolean> {
 		const resolved = await this.resolvePermissions(userId, orgId);
-		return this.#checkPermission(resolved, action, scope);
+		return this.#checkPermission(resolved, action, scope, resource);
 	}
 
 	/**
@@ -218,6 +220,12 @@ export class PermissionManager {
 			if (role && isDirectRoleInContext(role)) {
 				userRolePerms.push(...role.permissions);
 			}
+			// En contexto de org: SYSTEM y ADMIN (roles globales) siempre aplican,
+			// para permitir gestión cross-org. Otros roles globales quedan confinados
+			// al contexto personal.
+			if (orgId && role && !role.orgId && (role.name === SystemRole.SYSTEM || role.name === SystemRole.ADMIN)) {
+				userRolePerms.push(...role.permissions);
+			}
 		}
 		if (userRolePerms.length) {
 			applyLevel(userRolePerms, "userRole");
@@ -249,10 +257,10 @@ export class PermissionManager {
 	/**
 	 * Verifica si los permisos resueltos cubren las acciones y scope requeridos
 	 */
-	#checkPermission(resolved: ResolvedPermission[], requiredAction: number, requiredScope: number): boolean {
+	#checkPermission(resolved: ResolvedPermission[], requiredAction: number, requiredScope: number, resource: string = RESOURCE_NAME): boolean {
 		for (const perm of resolved) {
-			// Solo consideramos permisos del recurso "identity" o permisos que coincidan
-			if (perm.resource !== RESOURCE_NAME && perm.resource !== "*") continue;
+			// Wildcard "*" coincide con cualquier recurso
+			if (perm.resource !== resource && perm.resource !== "*") continue;
 
 			if (perm.granted && hasFlags(perm.action, requiredAction) && hasFlags(perm.scope, requiredScope)) {
 				return true;

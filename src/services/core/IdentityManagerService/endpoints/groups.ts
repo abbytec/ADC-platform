@@ -38,9 +38,8 @@ async function validateRoleIdsContext(identity: IdentityManagerService, roleIds:
 		const role = await identity.roles.getRole(rid, token);
 		if (!role) throw new IdentityError(400, "INVALID_ROLE", `Rol ${rid} no encontrado`);
 
-		const isGlobalPredefined = !role.orgId && !role.isCustom;
 		const isOwnOrg = role.orgId === callerOrgId;
-		if (!isGlobalPredefined && !isOwnOrg) {
+		if (!isOwnOrg) {
 			throw new IdentityError(403, "CROSS_ORG_ROLE", `No puedes asignar el rol ${role.name} de otro contexto`);
 		}
 	}
@@ -156,7 +155,7 @@ export class GroupEndpoints {
 		permissions: [`identity.${IdentityScopes.GROUPS | IdentityScopes.USERS}.${CRUDXAction.WRITE}`],
 	})
 	static async addUserToGroup(ctx: EndpointCtx<{ groupId: string; userId: string }>) {
-		const callerOrgId = ctx.user?.orgId;
+		const callerOrgId = ctx.user?.orgId || ctx.query?.orgId || undefined;
 		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId, ctx.token!);
 		await assertUserInOrg(GroupEndpoints.#identity, ctx.params.userId, callerOrgId, ctx.token!);
 		await GroupEndpoints.#identity.groups.addUserToGroup(ctx.params.userId, ctx.params.groupId, ctx.token!);
@@ -170,7 +169,7 @@ export class GroupEndpoints {
 		permissions: [`identity.${IdentityScopes.GROUPS | IdentityScopes.USERS}.${CRUDXAction.DELETE}`],
 	})
 	static async removeUserFromGroup(ctx: EndpointCtx<{ groupId: string; userId: string }>) {
-		const callerOrgId = ctx.user?.orgId;
+		const callerOrgId = ctx.user?.orgId || ctx.query?.orgId || undefined;
 		await assertGroupOrgAccess(GroupEndpoints.#identity, ctx.params.groupId, callerOrgId, ctx.token!);
 		await assertUserInOrg(GroupEndpoints.#identity, ctx.params.userId, callerOrgId, ctx.token!);
 		await GroupEndpoints.#identity.groups.removeUserFromGroup(ctx.params.userId, ctx.params.groupId, ctx.token!);

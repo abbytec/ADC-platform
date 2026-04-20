@@ -13,6 +13,8 @@ export default {
 		// Errores globales (no específicos de dominio)
 		FORBIDDEN: "Acceso denegado",
 		UNAUTHORIZED: "No autorizado",
+		INVALID_BODY: "Cuerpo de solicitud inválido",
+		USER_NOT_FOUND: "Usuario no encontrado",
 		UNHANDLED_ERROR: "Ha ocurrido un error inesperado",
 		UNKNOWN_ERROR: "Error desconocido",
 		CONNECTION_REFUSED: "No se pudo conectar con el servidor. Verifica tu conexión o inténtalo más tarde.",

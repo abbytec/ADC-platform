@@ -16,7 +16,7 @@ export class StatsEndpoints {
 
 	static #mapIdentityScopes(resolved: Awaited<ReturnType<IdentityManagerService["permissions"]["resolvePermissions"]>>) {
 		return resolved
-			.filter((permission) => permission.resource === "identity" && permission.granted)
+			.filter((permission) => (permission.resource === "identity" || permission.resource === "*") && permission.granted)
 			.map((permission) => ({
 				action: permission.action,
 				scope: permission.scope,

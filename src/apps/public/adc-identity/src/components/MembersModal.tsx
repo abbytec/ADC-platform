@@ -9,6 +9,7 @@ interface MembersModalProps {
 	readonly searchPlaceholder: string;
 	readonly noMembersText: string;
 	readonly entityId: string;
+	readonly orgId?: string;
 	readonly onClose: () => void;
 	readonly fetchMembers: (entityId: string) => Promise<ClientUser[]>;
 	readonly onAddMember: (entityId: string, userId: string) => Promise<boolean>;
@@ -20,6 +21,7 @@ export function MembersModal({
 	searchPlaceholder,
 	noMembersText,
 	entityId,
+	orgId,
 	onClose,
 	fetchMembers,
 	onAddMember,
@@ -58,16 +60,19 @@ export function MembersModal({
 		setAddingMember(false);
 	};
 
-	const handleUserSearch = useCallback(async (query: string) => {
-		if (!query || query.length < 2) {
-			setUserSearchResults([]);
-			return;
-		}
-		setUserSearching(true);
-		const res = await identityApi.searchUsers(query);
-		if (res.success && res.data) setUserSearchResults(res.data);
-		setUserSearching(false);
-	}, []);
+	const handleUserSearch = useCallback(
+		async (query: string) => {
+			if (!query || query.length < 2) {
+				setUserSearchResults([]);
+				return;
+			}
+			setUserSearching(true);
+			const res = await identityApi.searchUsers(query, orgId);
+			if (res.success && res.data) setUserSearchResults(res.data);
+			setUserSearching(false);
+		},
+		[orgId]
+	);
 
 	const userSearchRef = useCallback(
 		(el: HTMLElement | null) => {

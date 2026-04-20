@@ -44,8 +44,9 @@ export function RolesView({ scopes, orgId, organizations = [] }: RolesViewProps)
 		setLoading(true);
 		const result = await identityApi.listRoles(orgId);
 		if (result.success && result.data) {
-			setRoles(result.data);
-			setFilteredRoles(result.data);
+			const scopedRoles = orgId ? result.data.filter((role) => role.orgId === orgId) : result.data;
+			setRoles(scopedRoles);
+			setFilteredRoles(scopedRoles);
 		}
 		setLoading(false);
 	}, [orgId]);
