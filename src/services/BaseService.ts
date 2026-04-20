@@ -20,7 +20,10 @@ export abstract class BaseService extends BaseModule implements IService {
 
 	#kernel: Kernel;
 
-	constructor(kernel: Kernel, protected readonly options?: IModuleConfig) {
+	constructor(
+		kernel: Kernel,
+		protected readonly options?: IModuleConfig
+	) {
 		super(kernel, options);
 		this.#kernel = kernel;
 	}
@@ -85,7 +88,7 @@ export abstract class BaseService extends BaseModule implements IService {
 							}
 
 							// Agregar como dependencia de la app actual
-							this.#kernel.registry.addModuleDependency("provider", providerConfig.name, providerConfig.config);
+							this.#kernel.registry.addModuleDependency("provider", providerConfig.name, providerConfig.custom);
 						} catch (error) {
 							const message = `Error cargando provider ${providerConfig.name}: ${error}`;
 							// failOnError puede venir del config.json del servicio
