@@ -34,7 +34,7 @@ Conclusión: vamos a replicar exactamente ese layering: **service backend** + **
 ## 2. Entregables (resumen)
 
 1. **Service backend** `src/services/data/ProjectManagerService/`
-2. **App UI** `src/apps/public/adc-project-manager/` (subdominio `pm.adigitalcafe.com` — a confirmar)
+2. **App UI** `src/apps/public/adc-project-manager/` (subdominio `projects.adigitalcafe.com`)
 3. **Tipos y utilidades compartidas** `src/common/types/project-manager/**` y `src/common/utils/project-manager/**`
 4. **Componentes nuevos genéricos** en `00-adc-ui-library` (kanban board, gantt/calendar, priority picker, color-label, etc.)
 5. **Registro del recurso** `project-manager` en `src/common/types/resources.ts` con sus scopes
@@ -45,14 +45,26 @@ Conclusión: vamos a replicar exactamente ese layering: **service backend** + **
 
 Todas las entidades se almacenan en la **DB de la organización** (mismo patrón que Identity `forOrg()`), excepto `Project`, que tiene `orgId` indexado.
 
+> **Visibilidad org-scoped vs global**: ver §3.6 para las reglas de acceso.
+
 ### 3.1. `Project`
-- `id`, `orgId`, `slug` (único por org), `name`, `description`
+- `id`, `orgId` (nullable — `null` = proyecto **global**), `slug` (único por org, o único global si `orgId` es null), `name`, `description`
 - `ownerId` (userId), `visibility` (`private | org | public`)
 - `memberUserIds[]`, `memberGroupIds[]` — asignación directa a usuarios o grupos (ver `IdentityManagerService.groups`)
 - `roleOverrides[]` — `{ roleId, permissions[] }` para permisos por rol dentro del proyecto
 - `kanbanColumns[]` — `{ id, key, name, order, color, isDone, isAuto }` (ver defaults §6)
-- `customFieldDefs[]` — `{ id, name, type: "date" | "label" | "text" | "user" | "number", options?, required? }`
-- `labels[]` — `{ id, name, color }` (paleta del preset: `primary`, `accent`, `info`, `success`, `warn`, `danger`, etc.)
+- `customFieldDefs[]` — definiciones de metadatos extra disponibles para todas las issues del proyecto. Cada definición tiene:
+    - `id` — identificador único del campo dentro del proyecto
+    - `name` — nombre visible (ej. "Fecha de entrega", "Componente", "Revisor")
+    - `type` — tipo del valor, uno de:
+        - `"date"` — fecha (renderiza date-picker, se almacena como ISO 8601)
+        - `"label"` — selección de una lista cerrada de opciones (`options: string[]`); renderiza como chip/badge de color
+        - `"text"` — texto libre (string, renderiza input/textarea)
+        - `"user"` — referencia a un userId de Identity (renderiza user-picker vía `AssigneePicker`)
+        - `"number"` — valor numérico (renderiza input numérico)
+    - `options?: string[]` — solo aplica cuando `type = "label"` (las opciones seleccionables)
+    - `required?: boolean` — si el campo es obligatorio al crear/editar issues
+- `labels[]` — `{ id, name, color }` (ver paleta §3.7)
 - `issueLinkTypes[]` — `{ id, name, inverseName, color }` (ej. "blocks/blocked by", "duplicates", "relates to", "child of/parent of")
 - `priorityStrategy` — `{ urgency, importance, difficulty, weights? }` (ver §8)
 - `settings.wipLimits` — `{ columnKey → max }` (para el modo neurodivergente, §7)
@@ -80,14 +92,53 @@ Todas las entidades se almacenan en la **DB de la organización** (mismo patrón
 - `customFields: Record<fieldId, value>`
 - `linkedIssues[]` — `{ linkTypeId, targetIssueId }` (agrupados en la UI por `linkTypeId`)
 - `attachments[]` — `{ id, fileName, mimeType, size, storageKey, uploadedBy, uploadedAt }`
-  - **Integración futura**: `storageKey` apunta a `internal-s3-provider`. Mientras no exista, persistir solo metadatos y dejar el upload detrás de un flag (stubs de endpoint preparados).
+  - **Integración futura**: `storageKey` apunta a `internal-s3-provider`. Mientras no exista, la UI muestra attachments en **modo read-only** (visualizar metadatos, sin upload). Los endpoints de upload devuelven 501 y la UI oculta el botón de subir/adjuntar.
 - `updateLog[]` — append-only: `{ at, byUserId, field, oldValue, newValue, reason? }`
   - Rango especial `description` → guarda snapshot completo para el popup de versiones viejas.
 - `createdAt`, `updatedAt`, `closedAt?`
 
 ### 3.5. Índices recomendados
 - `Issue`: `{ projectId, columnKey }`, `{ projectId, sprintId }`, `{ projectId, milestoneId }`, `{ projectId, key }` único, texto sobre `title/description`.
-- `Project`: `{ orgId, slug }` único.
+- `Project`: `{ orgId, slug }` único (constraint compuesto, soporta `orgId: null` para globales).
+
+### 3.6. Visibilidad: proyectos org-scoped vs globales
+
+Los proyectos **pertenecen a una organización** de Identity (`orgId`). Un usuario solo puede ver/acceder a proyectos de la organización a la que pertenece (según sus `orgMemberships`). **No se deben mostrar proyectos de otras organizaciones.**
+
+Excepción: **proyectos globales** (`orgId: null`). Estos no pertenecen a ninguna organización y están disponibles para:
+- Roles **globales** (no de organización) que tengan el permiso `project-manager` asignado. Ejemplo: roles del sistema como `Admin`, `App Manager` u otros roles custom globales definidos en `src/services/core/IdentityManagerService/defaults/systemRoles.ts`.
+- Los proyectos globales se gestionan y listan **solo** para usuarios con esos roles. Un usuario de organización sin rol global con permiso PM no ve proyectos globales.
+
+**Flujo de resolución** en endpoints `GET /projects`:
+1. Del token se obtiene `userId` y `orgId` (si tiene).
+2. Si el usuario tiene **rol global** con scope `project-manager.PROJECTS.READ`:
+   - Se incluyen proyectos donde `orgId = null` (globales).
+   - Si además tiene `orgMemberships`, se incluyen los de cada una de sus orgs.
+3. Si el usuario es **miembro de una org** (sin rol global PM): solo ve proyectos de su org + proyectos donde es `memberUserId` o pertenece a un `memberGroupId`.
+4. Admin global (`SystemRole.ADMIN`) ve todo (misma lógica que Identity).
+
+### 3.7. Paleta de colores para Labels
+
+Los colores de `Project.labels[]` y `Issue.labelIds[]` usan una paleta **arcoíris** alineada con las variantes de Tailwind CSS y expresada en oklch (compatible con los temas `coffee-theme` / `crystal-theme` de `src/apps/public/00-adc-ui-library/src/global/tailwind.css`).
+
+Paleta base (12 colores, light/dark friendly — se usa la luminosidad del tema activo):
+
+| Nombre     | Hue (oklch) | Referencia Tailwind |
+|------------|-------------|---------------------|
+| `red`      | 25          | red-500             |
+| `orange`   | 55          | orange-500          |
+| `amber`    | 80          | amber-500           |
+| `yellow`   | 95          | yellow-500          |
+| `lime`     | 130         | lime-500            |
+| `green`    | 155         | green-500           |
+| `teal`     | 175         | teal-500            |
+| `cyan`     | 200         | cyan-500            |
+| `blue`     | 245         | blue-500            |
+| `indigo`   | 270         | indigo-500          |
+| `purple`   | 295         | purple-500          |
+| `pink`     | 350         | pink-500            |
+
+Implementación: se definen como constante exportada en `src/common/types/project-manager/LabelColors.ts` con valores oklch (lightness y chroma adaptados por tema via CSS custom properties, igual que `--c-info`, `--c-warn`, etc. en `tailwind.css`). Cada label almacena solo el nombre del color (`"red"`, `"blue"`, etc.) y el frontend resuelve el valor oklch vía una utility CSS class (ej. `.label-red`, `.label-blue`).
 
 ---
 
@@ -120,12 +171,14 @@ Registrar un nuevo recurso en `src/common/types/resources.ts`:
     - `PROJECTS` (1), `ISSUES` (2), `SPRINTS` (4), `MILESTONES` (8), `LABELS` (16), `CUSTOM_FIELDS` (32), `ATTACHMENTS` (64), `SETTINGS` (128), `STATS` (256)
 - Acciones: las estándar `CRUDXAction`.
 - Además, chequeo complementario **por proyecto**: membresía (`memberUserIds`/`memberGroupIds`) o `roleOverrides`. Se implementa en un `PermissionChecker` local que combina bitfield global + ACL por proyecto.
+- **Roles globales predefinidos**: agregar a `PREDEFINED_ROLES` en `systemRoles.ts` el permiso `{ resource: "project-manager", action: CRUDXAction.CRUD, scope: PM_SCOPES.ALL }` para `ADMIN`, y `READ` para `USER` (proyectos globales). Los roles de organización reciben permisos PM via `ORG_PREDEFINED_ROLES` según corresponda.
 
 ### 4.4. Endpoints (REST, bajo `/api/pm`)
 - Proyectos: `GET/POST /projects`, `GET/PUT/DELETE /projects/:id`, `POST /projects/:id/members`, `PUT /projects/:id/columns`, `PUT /projects/:id/labels`, `PUT /projects/:id/custom-fields`, `PUT /projects/:id/link-types`.
+  - `GET /projects` implementa el filtro org-scoped/global descrito en §3.6.
 - Sprints: `GET/POST /projects/:id/sprints`, `PUT/DELETE /sprints/:id`, `POST /sprints/:id/start|complete`.
 - Milestones: `GET/POST /projects/:id/milestones`, `PUT/DELETE /milestones/:id`.
-- Issues: `GET /projects/:id/issues` (con filtros: `sprintId`, `milestoneId`, `assigneeId`, `labelIds`, `columnKey`, `q`, `orderBy`), `POST /projects/:id/issues`, `GET/PUT/DELETE /issues/:id`, `POST /issues/:id/move` (cambio de columna con validación WIP), `POST /issues/:id/links`, `DELETE /issues/:id/links/:linkId`, `GET /issues/:id/history` (update log), `POST /issues/:id/attachments` (stub hasta que exista S3 interno).
+- Issues: `GET /projects/:id/issues` (con filtros: `sprintId`, `milestoneId`, `assigneeId`, `labelIds`, `columnKey`, `q`, `orderBy`), `POST /projects/:id/issues`, `GET/PUT/DELETE /issues/:id`, `POST /issues/:id/move` (cambio de columna con validación WIP), `POST /issues/:id/links`, `DELETE /issues/:id/links/:linkId`, `GET /issues/:id/history` (update log), `POST /issues/:id/attachments` (retorna 501 hasta que exista `internal-s3-provider`; la UI oculta el botón de upload).
 - Stats: `GET /projects/:id/stats` (burndown por sprint, throughput, WIP por columna).
 
 ### 4.5. Update log
@@ -139,7 +192,7 @@ Registrar un nuevo recurso en `src/common/types/resources.ts`:
 ## 5. App UI — `src/apps/public/adc-project-manager/`
 
 ### 5.1. `config.json`
-- `uiModule`: `framework: "react"`, `isHost: true`, `serviceWorker: true`, `uiDependencies: ["adc-ui-library"]`, `uiNamespace: "adc-platform"`, `devPort` libre (ej. 3018), `sharedLibs: ["react", "tailwind"]`, `i18n: true`, `hosting.subdomains: ["pm"]`.
+- `uiModule`: `framework: "react"`, `isHost: true`, `serviceWorker: true`, `uiDependencies: ["adc-ui-library"]`, `uiNamespace: "adc-platform"`, `devPort` libre (ej. 3018), `sharedLibs: ["react", "tailwind"]`, `i18n: true`, `hosting.subdomains: ["projects"]`.
 - `services`: `ProjectManagerService` + `IdentityManagerService` (si expone cliente).
 
 ### 5.2. Estructura
@@ -228,7 +281,7 @@ Restricciones: siempre debe existir al menos una columna `isAuto` y al menos una
 ### 8.1. Ejes
 - `urgency`: `none | low | medium | high | critical` → `0..4`
 - `importance`: `none | low | medium | high | critical` → `0..4`
-- `difficulty`: `1..5` (opcional; algunos proyectos lo usan como “motivación” y lo excluyen del score)
+- `difficulty`: `1..5` (opcional — concepto nuevo, no existe algo previo en la plataforma; algunos proyectos lo usan como “motivación” y lo excluyen del score)
 
 ### 8.2. Strategies (configurables por proyecto en `priorityStrategy`)
 - `matrix-eisenhower`: orden lexicográfico `(urgency desc, importance desc)`.
@@ -246,7 +299,7 @@ Restricciones: siempre debe existir al menos una columna `isAuto` y al menos una
 ## 9. Qué va en `src/common/**` (reutilizado por back y front)
 
 - `src/common/types/project-manager/`
-    - `Project.ts`, `Sprint.ts`, `Milestone.ts`, `Issue.ts`, `Label.ts`, `CustomField.ts`, `IssueLink.ts`, `Attachment.ts`, `UpdateLogEntry.ts`
+    - `Project.ts`, `Sprint.ts`, `Milestone.ts`, `Issue.ts`, `Label.ts`, `LabelColors.ts`, `CustomField.ts`, `IssueLink.ts`, `Attachment.ts`, `UpdateLogEntry.ts`
     - `permissions.ts` (scopes/bitfields del recurso `project-manager`)
     - `index.d.ts` (re-export)
 - `src/common/utils/project-manager/`
@@ -288,7 +341,7 @@ Los componentes **específicos del PM** que no serían útiles en otras apps (ej
 ## 11. i18n, routing y hosting
 
 - i18n: `src/apps/public/adc-project-manager/i18n/{es,en}/adc-project-manager.json`. Claves principales: `tabs.*`, `views.board.*`, `views.calendar.*`, `views.backlog.*`, `issue.*`, `priority.*`, `columns.*`, `focusMode.*`, `linkTypes.*`, `customFields.*`.
-- Hosting: subdominio nuevo `pm` (sobre `adigitalcafe.com`) — añadirlo al `config.json` del app.
+- Hosting: subdominio `projects` (sobre `adigitalcafe.com`) — añadirlo al `config.json` del app.
 - i18n de scopes: sumar `resources.project-manager` y `permissions.projects|issues|sprints|...` a los archivos de `adc-identity` para que aparezca bonito en el matrix de roles.
 
 ---
@@ -298,7 +351,7 @@ Los componentes **específicos del PM** que no serían útiles en otras apps (ej
 - Toda mutación pasa por `PermissionChecker` (bitfield) + chequeo de membresía del proyecto.
 - El `reporterId` se autofill desde el token en backend (no se acepta del cliente).
 - `PROJ-key` se genera atómicamente en `IssueManager.create()` usando un contador por proyecto (igual patrón que otros IDs en Identity — ver `utils/crypto.ts`).
-- `attachments`: validar mime/size; en fase 1 solo metadata, sin subida real (stub 501 si se llama al upload).
+- `attachments`: validar mime/size; en fase 1 solo metadata, sin subida real (endpoint de upload retorna 501, UI en **modo read-only** — se oculta el botón de adjuntar hasta que exista `internal-s3-provider`).
 - Update log es append-only; endpoint de edición del log **no existe**.
 
 ---
@@ -327,15 +380,16 @@ Los componentes **específicos del PM** que no serían útiles en otras apps (ej
 5. **Fase 5 – Links, update log rico, focus mode**
     - Issue links con tipos, `UpdateLogPopup` con `adc-diff-viewer`, modo neurodivergente.
 6. **Fase 6 – Attachments**
-    - Metadata + stub de upload; conectar cuando exista `internal-s3-provider`.
+    - Metadata en modo read-only; conectar upload cuando exista `internal-s3-provider`.
 7. **Fase 7 – Stats y pulido**
     - Burndown, throughput, mejoras a11y, i18n EN completo.
 
 ---
 
-## 15. Decisiones abiertas (a confirmar antes de codear)
+## 15. Decisiones resueltas
 
-- Subdominio definitivo (`pm.` / `tasks.` / `projects.`).
-- Si existe algo previo en la plataforma para “difficulty” que debamos reutilizar.
-- Paleta concreta para `Label.color` (proponer: mapear a las variables semánticas del preset + un set extendido neutro).
-- Estrategia definitiva para attachments mientras no exista `internal-s3-provider` (¿ocultar UI o dejarla en modo read-only?).
+- ✅ **Subdominio**: `projects.adigitalcafe.com`.
+- ✅ **Difficulty**: no existe algo previo en la plataforma — es un concepto nuevo del PM.
+- ✅ **Paleta de labels**: colores arcoíris alineados a Tailwind (ver §3.7).
+- ✅ **Attachments sin S3**: UI en modo read-only (sin botón de upload), endpoint retorna 501. Se conectará cuando exista `internal-s3-provider`.
+- ✅ **Visibilidad org-scoped**: proyectos pertenecen a una organización; proyectos globales (`orgId: null`) solo visibles para roles globales con permiso `project-manager` (ver §3.6).
