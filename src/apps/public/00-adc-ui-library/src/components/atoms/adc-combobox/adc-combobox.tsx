@@ -25,6 +25,9 @@ export class AdcCombobox {
 	/** Whether the combobox is disabled */
 	@Prop() disabled: boolean = false;
 
+	/** Whether to show the clear (x) button when a value is selected. Default: true. */
+	@Prop() clearable: boolean = true;
+
 	/** Normalizes options prop — handles both array and JSON string */
 	private get parsedOptions(): ComboboxOption[] {
 		if (typeof this.options === "string") {
@@ -116,7 +119,7 @@ export class AdcCombobox {
 				/>
 
 				{this.isOpen && options.length > 0 && (
-					<ul class="absolute z-50 w-full mt-1 bg-background border border-text/15 rounded-xxl shadow-cozy max-h-60 overflow-auto">
+					<ul class="absolute z-9999 w-full mt-1 bg-background border border-text/15 rounded-xxl shadow-cozy max-h-60 overflow-auto">
 						{options.map((option) => (
 							<li
 								key={option.value}
@@ -133,7 +136,7 @@ export class AdcCombobox {
 				)}
 
 				<div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-					{this.value && (
+					{this.clearable && this.value && (
 						<button
 							type="button"
 							class="pointer-events-auto text-muted hover:text-text transition-colors cursor-pointer"

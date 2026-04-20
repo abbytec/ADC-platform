@@ -17,6 +17,7 @@ type IdentityErrorTypes =
 	| "ORG_NOT_FOUND"
 	| "REGION_NOT_FOUND"
 	// Validation
+	| "INVALID_BODY"
 	| "MISSING_FIELDS"
 	| "INVALID_ROLE"
 	| "INVALID_ROLE_ID"

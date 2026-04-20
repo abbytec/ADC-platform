@@ -62,7 +62,9 @@ function buildResourcePermissions(resource: ResourceDef) {
 function buildAllPermissions() {
 	const result: Record<string, ReturnType<typeof buildResourcePermissions>> = {};
 	for (const resource of RESOURCES) {
-		result[resource.id.toUpperCase()] = buildResourcePermissions(resource);
+		// `project-manager` → `PROJECT_MANAGER` (JS-identifier-friendly property access)
+		const key = resource.id.replace(/-/g, "_").toUpperCase();
+		result[key] = buildResourcePermissions(resource);
 	}
 	return result;
 }
@@ -92,6 +94,17 @@ export const P = buildAllPermissions() as {
 		readonly CONTENT: ScopePermissions<"community">;
 		readonly PUBLISH_STATUS: ScopePermissions<"community">;
 		readonly SOCIAL: ScopePermissions<"community">;
+	};
+	readonly PROJECT_MANAGER: {
+		readonly PROJECTS: ScopePermissions<"project-manager">;
+		readonly ISSUES: ScopePermissions<"project-manager">;
+		readonly SPRINTS: ScopePermissions<"project-manager">;
+		readonly MILESTONES: ScopePermissions<"project-manager">;
+		readonly LABELS: ScopePermissions<"project-manager">;
+		readonly CUSTOM_FIELDS: ScopePermissions<"project-manager">;
+		readonly ATTACHMENTS: ScopePermissions<"project-manager">;
+		readonly SETTINGS: ScopePermissions<"project-manager">;
+		readonly STATS: ScopePermissions<"project-manager">;
 	};
 };
 

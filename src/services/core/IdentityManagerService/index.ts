@@ -6,7 +6,7 @@ import { userSchema, groupSchema, roleSchema, organizationSchema, regionSchema, 
 import type { DiscordGuildConfig } from "./domain/index.js";
 import type { User, Role, Group, Organization, RegionInfo } from "@common/types/identity/index.d.ts";
 import { UserManager, GroupManager, RoleManager, PermissionManager, SystemManager, RegionManager, OrgManager } from "./dao/index.js";
-import { type IAuthVerifier, type AuthVerifierGetter } from "./utils/auth-verifier.js";
+import { type IAuthVerifier, type AuthVerifierGetter } from "@common/types/auth-verifier.ts";
 import type SessionManagerService from "../../security/SessionManagerService/index.js";
 import type OperationsService from "../OperationsService/index.ts";
 import { EnableEndpoints, DisableEndpoints } from "../../core/EndpointManagerService/index.js";
@@ -182,7 +182,7 @@ export default class IdentityManagerService extends BaseService {
 			);
 
 			// Crear el AuthVerifier ahora que tenemos todos los componentes
-			this.#authVerifier = this.#createAuthVerifier();
+			this.#authVerifier = this.createAuthVerifier();
 
 			// Inicializar endpoint managers
 			UserEndpoints.init(this);
@@ -200,9 +200,10 @@ export default class IdentityManagerService extends BaseService {
 	}
 
 	/**
-	 * Crea el AuthVerifier que usa SessionManagerService y PermissionManager
+	 * Crea el AuthVerifier que usa SessionManagerService y PermissionManager.
+	 * Usado internamente y disponible para otros servicios que necesiten delegar auth.
 	 */
-	#createAuthVerifier(): IAuthVerifier {
+	createAuthVerifier(): IAuthVerifier {
 		return {
 			verifyToken: async (token: string) => {
 				// Lazy-load singleton pattern para SessionManagerService Opcional
@@ -221,11 +222,11 @@ export default class IdentityManagerService extends BaseService {
 				return { valid: true, userId: result.session.user.id, orgId: result.session.user.orgId };
 			},
 
-			hasPermission: async (userId: string, action: number, scope: number, orgId?: string) => {
+			hasPermission: async (userId: string, action: number, scope: number, orgId?: string, resource?: string) => {
 				if (!this.#permissionManager) {
 					return false;
 				}
-				return this.#permissionManager.hasPermission(userId, action, scope, orgId);
+				return this.#permissionManager.hasPermission(userId, action, scope, orgId, resource);
 			},
 		};
 	}
@@ -438,12 +439,3 @@ export default class IdentityManagerService extends BaseService {
 		this.logger.logOk("IdentityManagerService detenido");
 	}
 }
-
-// Re-exportar tipos para facilitar uso
-export type { OrgScopedManagers } from "./types.js";
-export type { IdentityManagerService as IIdentityManager };
-// Re-exportar SystemRole para compatibilidad
-export { SystemRole } from "./defaults/systemRoles.js";
-// Re-exportar AuthorizationError
-export { AuthorizationError } from "./utils/auth-verifier.js";
-export { type IAuthVerifier } from "./utils/auth-verifier.js";

@@ -1,7 +1,7 @@
 import type { Model } from "mongoose";
 import { RegionInfo, RegionMetadata } from "@common/types/identity/Region.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
+import { type AuthVerifierGetter, PermissionChecker } from "@common/types/auth-verifier.ts";
 import { IdentityScopes } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
 

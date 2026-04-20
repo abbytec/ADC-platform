@@ -1,9 +1,9 @@
 import type { Model } from "mongoose";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import { generateId } from "../utils/crypto.ts";
+import { generateId } from "@common/utils/crypto.ts";
 import { IdentityScopes } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
-import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
+import { type AuthVerifierGetter, PermissionChecker } from "@common/types/auth-verifier.ts";
 import type { Permission, Role } from "@common/types/identity/index.ts";
 import { PREDEFINED_ROLES, ORG_PREDEFINED_ROLES } from "../defaults/systemRoles.ts";
 import type { UserManager } from "./users.js";

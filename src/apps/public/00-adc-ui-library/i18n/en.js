@@ -13,6 +13,8 @@ export default {
 		// Global errors (not domain-specific)
 		FORBIDDEN: "Access denied",
 		UNAUTHORIZED: "Unauthorized",
+		INVALID_BODY: "Invalid request body",
+		USER_NOT_FOUND: "User not found",
 		UNHANDLED_ERROR: "An unexpected error occurred",
 		UNKNOWN_ERROR: "Unknown error",
 		CONNECTION_REFUSED: "Could not connect to the server. Please check your connection or try again later.",

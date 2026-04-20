@@ -38,6 +38,26 @@ export class OrgEndpoints {
 		return OrgEndpoints.#identity.organizations.getAllOrganizations(ctx.token!);
 	}
 
+	/**
+	 * Comprueba disponibilidad de un slug de organización.
+	 * Se declara antes de `:orgId` para que matchee como ruta específica.
+	 * `default` está reservado para contexto global.
+	 */
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/identity/organizations/check-slug/:slug",
+		permissions: [P.IDENTITY.ORGANIZATIONS.READ],
+	})
+	static async checkOrgSlug(ctx: EndpointCtx<{ slug: string }>) {
+		requireGlobalAccess(ctx);
+		const normalized = ctx.params.slug.toLowerCase().trim();
+		if (normalized === "default" || !/^[a-z0-9-]+$/.test(normalized)) {
+			return { available: false, reserved: normalized === "default" };
+		}
+		const existing = await OrgEndpoints.#identity.organizations.getOrganization(normalized, ctx.token!);
+		return { available: !existing };
+	}
+
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/identity/organizations/:orgId",

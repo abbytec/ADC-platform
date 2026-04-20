@@ -43,7 +43,7 @@ const MUTATIVE_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH
  * Deterministic hash for idempotency keys.
  * Produces the same key for the same data, enabling safe retries.
  */
-export function hashIdempotency(data: unknown): string {
+function hashIdempotency(data: unknown): string {
 	const str = JSON.stringify(data);
 	let h = 5381;
 	for (const ch of str) h = ((h << 5) + h + ch.codePointAt(0)!) >>> 0;

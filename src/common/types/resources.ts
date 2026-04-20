@@ -59,6 +59,19 @@ const COMMUNITY_SCOPES: ScopeDef[] = [
 	{ key: "social", value: COMMUNITY_SCOPES_MAP.SOCIAL },
 ];
 
+/** Project Manager scopes — alineados con PMScopes en types/project-manager/permissions.ts */
+const PROJECT_MANAGER_SCOPES: ScopeDef[] = [
+	{ key: "projects", value: 1 },
+	{ key: "issues", value: 1 << 1 },
+	{ key: "sprints", value: 1 << 2 },
+	{ key: "milestones", value: 1 << 3 },
+	{ key: "labels", value: 1 << 4 },
+	{ key: "custom_fields", value: 1 << 5 },
+	{ key: "attachments", value: 1 << 6 },
+	{ key: "settings", value: 1 << 7 },
+	{ key: "stats", value: 1 << 8 },
+];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Resource registry — only resources that have real endpoints
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,6 +80,7 @@ export const RESOURCES: ResourceDef[] = [
 	{ id: "identity", label: "resources.identity", scopes: IDENTITY_SCOPES },
 	{ id: "content", label: "resources.content", scopes: [], simple: true },
 	{ id: "community", label: "resources.community", scopes: COMMUNITY_SCOPES },
+	{ id: "project-manager", label: "resources.project-manager", scopes: PROJECT_MANAGER_SCOPES },
 ];
 
 /**

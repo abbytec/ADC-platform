@@ -36,6 +36,7 @@ export default function App() {
 
 	// orgId efectivo: viene del token (org admin) o del filtro (global admin)
 	const effectiveOrgId = selectedOrgFilter || tokenOrgId;
+	const isScopedOrgView = Boolean(effectiveOrgId);
 
 	const loadPermissions = useCallback(async () => {
 		setLoading(true);
@@ -159,7 +160,7 @@ export default function App() {
 						scopes={scopes}
 						orgId={effectiveOrgId}
 						isAdmin={isAdmin}
-						isTokenOrgContext={Boolean(tokenOrgId)}
+						isScopedOrgView={isScopedOrgView}
 						organizations={organizations}
 					/>
 				);

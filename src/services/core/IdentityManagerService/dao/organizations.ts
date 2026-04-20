@@ -1,7 +1,7 @@
 import type { Model } from "mongoose";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
-import { generateId } from "../utils/crypto.ts";
-import { type AuthVerifierGetter, PermissionChecker } from "../utils/auth-verifier.ts";
+import { generateId } from "@common/utils/crypto.ts";
+import { type AuthVerifierGetter, PermissionChecker } from "@common/types/auth-verifier.ts";
 import { IdentityScopes } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
 import type { RegionManager } from "./regions.js";
@@ -46,6 +46,9 @@ export class OrgManager {
 		const normalizedSlug = slug.toLowerCase().trim();
 		if (!/^[a-z0-9-]+$/.test(normalizedSlug)) {
 			throw new Error(`Slug inválido: ${slug}. Solo letras minúsculas, números y guiones`);
+		}
+		if (normalizedSlug === "default") {
+			throw new Error(`Slug reservado: 'default' está reservado para contexto global`);
 		}
 
 		try {

@@ -22,3 +22,7 @@ export function generateRandomCredentials(): { username: string; password: strin
 		password: crypto.randomBytes(16).toString("hex"),
 	};
 }
+
+export function shortId(): string {
+	return crypto.randomBytes(6).toString("hex");
+}

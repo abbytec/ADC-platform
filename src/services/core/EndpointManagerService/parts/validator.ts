@@ -19,7 +19,7 @@ function checkUserPermissions(user: AuthenticatedUserInfo, requiredPermissions: 
 		if (userPermissions.has(wildcardPerm)) return true;
 		// 3. Super-wildcard
 		if (userPermissions.has("*")) return true;
-		// 4. Bitwise: "identity.127.15" cubre "identity.4.1"
+		// 4. Bitwise: "identity.127.15" o "*.127.15" cubre "identity.4.1"
 		const reqParts = perm.split(".");
 		if (reqParts.length === 3) {
 			const reqScope = Number(reqParts[1]);
@@ -27,7 +27,8 @@ function checkUserPermissions(user: AuthenticatedUserInfo, requiredPermissions: 
 			if (!Number.isNaN(reqScope) && !Number.isNaN(reqAction)) {
 				for (const up of userPermissions) {
 					const upParts = up.split(".");
-					if (upParts.length !== 3 || upParts[0] !== reqParts[0]) continue;
+					if (upParts.length !== 3) continue;
+					if (upParts[0] !== reqParts[0] && upParts[0] !== "*") continue;
 					const upScope = Number(upParts[1]);
 					const upAction = Number(upParts[2]);
 					if (Number.isNaN(upScope) || Number.isNaN(upAction)) continue;

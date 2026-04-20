@@ -24,6 +24,7 @@ function iconTag(id: string): string {
 const DEFAULT_APPS: AppMenuItem[] = [
 	{ id: "community", name: "Community", url: appUrl(3010, "s-community.adigitalcafe.com") },
 	{ id: "identity", name: "Identity", url: appUrl(3014, "identity.adigitalcafe.com") },
+	{ id: "projects", name: "Projects", url: appUrl(3018, "projects.adigitalcafe.com") },
 ];
 
 @Component({
