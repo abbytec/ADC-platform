@@ -33,17 +33,23 @@ export const accountApi = {
 	updateUser: (userId: string, data: Partial<ClientUser>) =>
 		api.put<ClientUser>(`/users/${userId}`, { body: data, idempotencyKey: createIdempotencyKey(data) }),
 
+	patchUser: (userId: string, data: Partial<ClientUser>) =>
+		api.patch<ClientUser>(`/users/${userId}`, { body: data, idempotencyKey: createIdempotencyKey(data) }),
+
 	deleteUser: (userId: string) => api.delete(`/users/${userId}`, { idempotencyKey: userId }),
 
-	updateCurrentUser: async (metadata: UserProfileMetadata) => {
-		const { data: user } = await api.get<ClientUser>("/users/me");
+	patchCurrentUser: async (metadata: Partial<UserProfileMetadata>) => {
+	const { data: user } = await api.get<ClientUser>("/users/me");
 
-		if (!user) {
-			throw new Error("No se pudo obtener el usuario autenticado");
-		}
+	if (!user) throw new Error("No se pudo obtener el usuario autenticado");
 
-		return accountApi.updateUser(user.id, { metadata });
-	},
+	return accountApi.patchUser(user.id, {
+		metadata: {
+			...(user.metadata || {}),
+			...metadata,
+		},
+	});
+},
 
 	deleteCurrentUser: async () => {
 		const { data: user } = await api.get<ClientUser>("/users/me");

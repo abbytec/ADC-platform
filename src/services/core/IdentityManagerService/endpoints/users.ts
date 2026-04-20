@@ -158,6 +158,7 @@ function sanitizeUserForContext(user: NonNullable<Awaited<ReturnType<IdentityMan
 	};
 }
 
+
 /**
  * Endpoints HTTP para gestión de usuarios
  * Registrados automáticamente por @EnableEndpoints en IdentityManagerService
@@ -386,6 +387,96 @@ export class UserEndpoints {
 
 		// Global admin: permitir todas las actualizaciones validadas
 		const user = await UserEndpoints.#identity.users.updateUser(ctx.params.userId, updates, ctx.token!);
+		UserEndpoints.#identity.permissions.invalidateUser(user.id);
+		return sanitizeUserForContext(user);
+	}
+
+	@RegisterEndpoint({
+		method: "PATCH",
+		url: "/api/identity/users/:userId",
+		permissions: [P.IDENTITY.USERS.UPDATE],
+	})
+	static async patchUser(
+		ctx: EndpointCtx<
+			{ userId: string },
+			Partial<{
+				username: string;
+				email: string;
+				isActive: boolean;
+				roleIds: string[];
+				groupIds: string[];
+				metadata: Record<string, any>;
+				permissions: { resource: string; action: number; scope: number }[];
+			}>
+		>
+	) {
+		const callerOrgId = ctx.user?.orgId;
+
+		await assertUserOrgAccess(UserEndpoints.#identity, ctx.params.userId, callerOrgId, ctx.token!);
+
+		// Usuario actual
+		const currentUser = await UserEndpoints.#identity.users.getUser(ctx.params.userId, ctx.token!);
+
+		if (!currentUser) {
+			throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+		}
+
+		// 🔥 base updates (IMPORTANTE: no redeclarar después)
+		const updates: any = { ...ctx.data };
+
+		// ❌ eliminar campos prohibidos
+		delete updates.passwordHash;
+		delete updates.id;
+
+		// 🔥 FIX CLAVE: MERGE DE METADATA (evita overwrite total)
+		if (updates.metadata) {
+			updates.metadata = {
+				...(currentUser.metadata || {}),
+				...updates.metadata,
+			};
+		}
+
+		// validar roles si existen
+		if (updates.roleIds?.length) {
+			await validateRoleIdsContext(UserEndpoints.#identity, updates.roleIds, callerOrgId, ctx.token!);
+		}
+
+		// org scoped update
+		if (callerOrgId) {
+			const scopedMembership = getScopedMembership(currentUser, callerOrgId);
+
+			if (!scopedMembership) {
+				throw new IdentityError(403, "ORG_ACCESS_DENIED", "No tienes acceso a este usuario");
+			}
+
+			// merge roles dentro de membership
+			const nextMemberships = (currentUser.orgMemberships || []).map((membership) =>
+				membership.orgId === callerOrgId
+					? {
+							...membership,
+							roleIds: updates.roleIds ?? membership.roleIds,
+						}
+					: membership
+			);
+
+			// limpiar campos que no deben ir directo
+			delete updates.roleIds;
+			delete updates.groupIds;
+
+			const patchData = {
+				...updates,
+				orgMemberships: nextMemberships,
+			};
+
+			const user = await UserEndpoints.#identity.users.updateUser(ctx.params.userId, patchData, ctx.token!);
+
+			UserEndpoints.#identity.permissions.invalidateUser(user.id);
+			return sanitizeUserForContext(user, callerOrgId);
+		}
+
+		// global admin update
+		const user = await UserEndpoints.#identity.users.updateUser(ctx.params.userId, updates, ctx.token!);
+
 		UserEndpoints.#identity.permissions.invalidateUser(user.id);
 		return sanitizeUserForContext(user);
 	}
