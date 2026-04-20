@@ -17,9 +17,12 @@ export default function ProfileView() {
 
 	const [loading, setLoading] = useState(true);
 
-	// Detectar cambios
 	const hasChanges = useMemo(() => {
-		return Object.keys(form).some((key) => form[key as keyof typeof form] !== original[key as keyof typeof original]);
+		return (
+			form.name !== original.name ||
+			form.lastName !== original.lastName ||
+			form.birthDate !== original.birthDate
+		);
 	}, [form, original]);
 
 	useEffect(() => {
@@ -65,7 +68,6 @@ export default function ProfileView() {
 			});
 
 			setOriginal(form);
-
 			toast.success("Perfil actualizado correctamente!");
 		} catch (err) {
 			globalThis.dispatchEvent(
@@ -100,7 +102,7 @@ export default function ProfileView() {
 
 			<div className="bg-surface p-8 pb-6 rounded-xxl">
 				<div className="mb-6">
-					<h3 className="mt-0! text-lg font-semibold text-text">Datos del perfil</h3>
+					<h3 className="text-lg font-semibold text-text">Datos del perfil</h3>
 					<p className="text-sm text-muted">Puedes modificar tu información personal</p>
 				</div>
 
@@ -110,11 +112,13 @@ export default function ProfileView() {
 							{initials}
 						</div>
 
-						<adc-button class="mt-4" variant="primary">
+						<adc-button className="mt-4" variant="primary">
 							Subir Avatar
 						</adc-button>
 
-						<p className="text-xs text-muted mt-2 text-center">JPG, PNG o GIF (máx. 2MB)</p>
+						<p className="text-xs text-muted mt-2 text-center">
+							JPG, PNG o GIF (máx. 2MB)
+						</p>
 					</div>
 
 					<form onSubmit={handleSubmit} className="space-y-5">
@@ -126,8 +130,10 @@ export default function ProfileView() {
 								<adc-input
 									inputId="profile-name"
 									value={form.name}
-									class="w-full"
-									onInput={(e) => handleChange("name", (e.target as HTMLInputElement).value)}
+									className="w-full"
+									onInput={(e) =>
+										handleChange("name", (e.target as HTMLInputElement).value)
+									}
 								/>
 							</div>
 
@@ -138,8 +144,10 @@ export default function ProfileView() {
 								<adc-input
 									inputId="profile-lastName"
 									value={form.lastName}
-									class="w-full"
-									onInput={(e) => handleChange("lastName", (e.target as HTMLInputElement).value)}
+									className="w-full"
+									onInput={(e) =>
+										handleChange("lastName", (e.target as HTMLInputElement).value)
+									}
 								/>
 							</div>
 						</div>
@@ -152,20 +160,22 @@ export default function ProfileView() {
 								inputId="profile-birthDate"
 								type="date"
 								value={form.birthDate}
-								class="w-full"
-								onInput={(e) => handleChange("birthDate", (e.target as HTMLInputElement).value)}
+								className="w-full"
+								onInput={(e) =>
+									handleChange("birthDate", (e.target as HTMLInputElement).value)
+								}
 							/>
 						</div>
 
 						<div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
-							<adc-button
-								type="submit"
-								variant="primary"
-								disabled={!hasChanges}
-								class={!hasChanges ? "opacity-50 pointer-events-none" : ""}
-							>
-								Guardar cambios
-							</adc-button>
+						<adc-button
+	type="submit"
+	variant="primary"
+	disabled={!hasChanges}
+	style={{ opacity: !hasChanges ? 0.5 : 1 }}
+>
+	Guardar cambios
+</adc-button>
 						</div>
 					</form>
 				</div>
