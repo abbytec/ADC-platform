@@ -1,0 +1,385 @@
+# Plan: Project Manager tipo Jira para ADC Platform
+
+> Documento de planificación. Describe **qué** construir y **dónde** ubicarlo dentro de la plataforma, siguiendo los mismos patrones que `IdentityManagerService` + `adc-identity` y el patrón UI de `my-account`. No incluye código.
+
+---
+
+## 1. Análisis previo (cómo está hecho Identity / MyAccount)
+
+Patrón observado y replicable:
+
+- **Backend = Service** en `src/services/**` (ej. `core/IdentityManagerService`) con:
+    - `config.json` (providers MongoDB, services dependientes, `kernelMode` si aplica).
+    - `domain/*` — schemas Mongoose.
+    - `dao/*` — Managers con lógica de negocio + `PermissionChecker` inyectado vía `AuthVerifierGetter`.
+    - `endpoints/*` — clases decoradas con `@RegisterEndpoint` y habilitadas con `@EnableEndpoints` / `@DisableEndpoints`.
+    - `utils/*` — helpers (crypto, auth-verifier, etc.).
+    - `types.d.ts` + re-export de tipos desde `@common/types/**`.
+- **Frontend = App UI** en `src/apps/public/**` (ej. `adc-identity`, `my-account`) con:
+    - `config.json` → `uiModule` (React, `isHost: true`, `uiDependencies: ["adc-ui-library"]`, `serviceWorker`, `hosting.subdomains`, `devPort`).
+    - `src/App.tsx` — carga permisos (`getMyPermissions`), resuelve tabs visibles, router interno.
+    - `src/pages/*View.tsx` — una vista por recurso.
+    - `src/utils/{entity}-api.ts` — cliente con `createAdcApi` de `@ui-library/utils/adc-fetch`.
+    - `src/utils/permissions.ts` — matriz tabs ↔ scopes.
+    - i18n por app, namespace `adc-platform`.
+- **Contratos compartidos** en `src/common/types/**` (ej. `identity/User.ts`, `Permissions.ts`, `Actions.ts`, `resources.ts`).
+- **UI reutilizable** en `src/apps/public/00-adc-ui-library/src/components/{atoms,molecules,organisms}` (Stencil web components `adc-*`) + `utils/tailwind-preset.js` con variables CSS semánticas (`primary`, `accent`, `surface`, `info`, `success`, `warn`, `danger`, `muted`, `text`, etc.).
+- **Permisos** = bitfield `resource.scope.action` (ver `common/types/resources.ts`, `Actions.ts`, `identity/permissions.ts`). Los recursos se registran en `RESOURCES`.
+- **Asignación de trabajo** ya soporta usuarios, **grupos** (`GroupManager`) y **roles** con scope global o por `orgId`.
+
+Conclusión: vamos a replicar exactamente ese layering: **service backend** + **app UI** + **tipos en common** + **componentes genéricos en la ui-library**.
+
+---
+
+## 2. Entregables (resumen)
+
+1. **Service backend** `src/services/data/ProjectManagerService/`
+2. **App UI** `src/apps/public/adc-project-manager/` (subdominio `projects.adigitalcafe.com`)
+3. **Tipos y utilidades compartidas** `src/common/types/project-manager/**` y `src/common/utils/project-manager/**`
+4. **Componentes nuevos genéricos** en `00-adc-ui-library` (kanban board, gantt/calendar, priority picker, color-label, etc.)
+5. **Registro del recurso** `project-manager` en `src/common/types/resources.ts` con sus scopes
+
+---
+
+## 3. Modelo de datos (MongoDB — multi-tenant por `orgId`)
+
+Todas las entidades se almacenan en la **DB de la organización** (mismo patrón que Identity `forOrg()`), excepto `Project`, que tiene `orgId` indexado.
+
+> **Visibilidad org-scoped vs global**: ver §3.6 para las reglas de acceso.
+
+### 3.1. `Project`
+- `id`, `orgId` (nullable — `null` = proyecto **global**), `slug` (único por org, o único global si `orgId` es null), `name`, `description`
+- `ownerId` (userId), `visibility` (`private | org | public`)
+- `memberUserIds[]`, `memberGroupIds[]` — asignación directa a usuarios o grupos (ver `IdentityManagerService.groups`)
+- `roleOverrides[]` — `{ roleId, permissions[] }` para permisos por rol dentro del proyecto
+- `kanbanColumns[]` — `{ id, key, name, order, color, isDone, isAuto }` (ver defaults §6)
+- `customFieldDefs[]` — definiciones de metadatos extra disponibles para todas las issues del proyecto. Cada definición tiene:
+    - `id` — identificador único del campo dentro del proyecto
+    - `name` — nombre visible (ej. "Fecha de entrega", "Componente", "Revisor")
+    - `type` — tipo del valor, uno de:
+        - `"date"` — fecha (renderiza date-picker, se almacena como ISO 8601)
+        - `"label"` — selección de una lista cerrada de opciones (`options: string[]`); renderiza como chip/badge de color
+        - `"text"` — texto libre (string, renderiza input/textarea)
+        - `"user"` — referencia a un userId de Identity (renderiza user-picker vía `AssigneePicker`)
+        - `"number"` — valor numérico (renderiza input numérico)
+    - `options?: string[]` — solo aplica cuando `type = "label"` (las opciones seleccionables)
+    - `required?: boolean` — si el campo es obligatorio al crear/editar issues
+- `labels[]` — `{ id, name, color }` (ver paleta §3.7)
+- `issueLinkTypes[]` — `{ id, name, inverseName, color }` (ej. "blocks/blocked by", "duplicates", "relates to", "child of/parent of")
+- `priorityStrategy` — `{ urgency, importance, difficulty, weights? }` (ver §8)
+- `settings.wipLimits` — `{ columnKey → max }` (para el modo neurodivergente, §7)
+- `createdAt`, `updatedAt`
+
+### 3.2. `Sprint`
+- `id`, `projectId`, `name`, `goal?`, `startDate?`, `endDate?`, `status: planned | active | completed`
+- `createdAt`, `completedAt?`
+
+### 3.3. `Milestone`
+- `id`, `projectId`, `name`, `description?`, `startDate?`, `endDate?`, `status`
+- Un issue puede pertenecer a **uno** o **ambos** (sprint y/o milestone).
+
+### 3.4. `Issue`
+- `id`, `projectId`, `key` (ej. `PROJ-123`, autoincremental por proyecto)
+- `title`, `description` (markdown)
+- `columnKey` (estado / columna del kanban)
+- `category` (tipo de tarea: `task | bug | story | epic | ...` — configurable por proyecto)
+- `sprintId?`, `milestoneId?`
+- `reporterId` (userId que la creó — autofill)
+- `assigneeIds[]` (users) y `assigneeGroupIds[]` (groups)
+- `labelIds[]` (referencias a `Project.labels[]`)
+- `priority` — `{ urgency: 0–4, importance: 0–4, difficulty: 1–5 | null }`
+- `storyPoints?: number`
+- `customFields: Record<fieldId, value>`
+- `linkedIssues[]` — `{ linkTypeId, targetIssueId }` (agrupados en la UI por `linkTypeId`)
+- `attachments[]` — `{ id, fileName, mimeType, size, storageKey, uploadedBy, uploadedAt }`
+  - **Integración futura**: `storageKey` apunta a `internal-s3-provider`. Mientras no exista, la UI muestra attachments en **modo read-only** (visualizar metadatos, sin upload). Los endpoints de upload devuelven 501 y la UI oculta el botón de subir/adjuntar.
+- `updateLog[]` — append-only: `{ at, byUserId, field, oldValue, newValue, reason? }`
+  - Rango especial `description` → guarda snapshot completo para el popup de versiones viejas.
+- `createdAt`, `updatedAt`, `closedAt?`
+
+### 3.5. Índices recomendados
+- `Issue`: `{ projectId, columnKey }`, `{ projectId, sprintId }`, `{ projectId, milestoneId }`, `{ projectId, key }` único, texto sobre `title/description`.
+- `Project`: `{ orgId, slug }` único (constraint compuesto, soporta `orgId: null` para globales).
+
+### 3.6. Visibilidad: proyectos org-scoped vs globales
+
+Los proyectos **pertenecen a una organización** de Identity (`orgId`). Un usuario solo puede ver/acceder a proyectos de la organización a la que pertenece (según sus `orgMemberships`). **No se deben mostrar proyectos de otras organizaciones.**
+
+Excepción: **proyectos globales** (`orgId: null`). Estos no pertenecen a ninguna organización y están disponibles para:
+- Roles **globales** (no de organización) que tengan el permiso `project-manager` asignado. Ejemplo: roles del sistema como `Admin`, `App Manager` u otros roles custom globales definidos en `src/services/core/IdentityManagerService/defaults/systemRoles.ts`.
+- Los proyectos globales se gestionan y listan **solo** para usuarios con esos roles. Un usuario de organización sin rol global con permiso PM no ve proyectos globales.
+
+**Flujo de resolución** en endpoints `GET /projects`:
+1. Del token se obtiene `userId` y `orgId` (si tiene).
+2. Si el usuario tiene **rol global** con scope `project-manager.PROJECTS.READ`:
+   - Se incluyen proyectos donde `orgId = null` (globales).
+   - Si además tiene `orgMemberships`, se incluyen los de cada una de sus orgs.
+3. Si el usuario es **miembro de una org** (sin rol global PM): solo ve proyectos de su org + proyectos donde es `memberUserId` o pertenece a un `memberGroupId`.
+4. Admin global (`SystemRole.ADMIN`) ve todo (misma lógica que Identity).
+
+### 3.7. Paleta de colores para Labels
+
+Los colores de `Project.labels[]` y `Issue.labelIds[]` usan una paleta **arcoíris** alineada con las variantes de Tailwind CSS y expresada en oklch (compatible con los temas `coffee-theme` / `crystal-theme` de `src/apps/public/00-adc-ui-library/src/global/tailwind.css`).
+
+Paleta base (12 colores, light/dark friendly — se usa la luminosidad del tema activo):
+
+| Nombre     | Hue (oklch) | Referencia Tailwind |
+|------------|-------------|---------------------|
+| `red`      | 25          | red-500             |
+| `orange`   | 55          | orange-500          |
+| `amber`    | 80          | amber-500           |
+| `yellow`   | 95          | yellow-500          |
+| `lime`     | 130         | lime-500            |
+| `green`    | 155         | green-500           |
+| `teal`     | 175         | teal-500            |
+| `cyan`     | 200         | cyan-500            |
+| `blue`     | 245         | blue-500            |
+| `indigo`   | 270         | indigo-500          |
+| `purple`   | 295         | purple-500          |
+| `pink`     | 350         | pink-500            |
+
+Implementación: se definen como constante exportada en `src/common/types/project-manager/LabelColors.ts` con valores oklch (lightness y chroma adaptados por tema via CSS custom properties, igual que `--c-info`, `--c-warn`, etc. en `tailwind.css`). Cada label almacena solo el nombre del color (`"red"`, `"blue"`, etc.) y el frontend resuelve el valor oklch vía una utility CSS class (ej. `.label-red`, `.label-blue`).
+
+---
+
+## 4. Service backend — `src/services/data/ProjectManagerService/`
+
+### 4.1. Estructura
+```
+ProjectManagerService/
+├── config.json                # providers: object/mongo; services: IdentityManagerService, EndpointManagerService, OperationsService
+├── package.json
+├── index.ts                   # BaseService, @EnableEndpoints
+├── domain/                    # schemas: project, sprint, milestone, issue, (attachment meta)
+├── dao/                       # ProjectManager, SprintManager, MilestoneManager, IssueManager, LabelManager, CustomFieldManager
+├── endpoints/                 # projects.ts, sprints.ts, milestones.ts, issues.ts, links.ts, attachments.ts, custom-fields.ts, stats.ts
+├── utils/                     # priority.ts (strategies), keygen.ts (PROJ-123), diff.ts (update log), perms.ts
+└── types.d.ts
+```
+
+### 4.2. Dependencias
+- `IdentityManagerService` — para resolver usuarios, grupos y verificar permisos (usar `AuthVerifierGetter` como Identity).
+- `OperationsService` — para operaciones con stepper/rollback (ej. crear proyecto + columnas default + roles override).
+- `EndpointManagerService` — para exponer endpoints REST.
+- A futuro: provider `storage/internal-s3` para attachments.
+
+### 4.3. Permisos
+Registrar un nuevo recurso en `src/common/types/resources.ts`:
+
+- `resource: "project-manager"`
+- Scopes (bitfield, mismo patrón que `IdentityScopes`):
+    - `PROJECTS` (1), `ISSUES` (2), `SPRINTS` (4), `MILESTONES` (8), `LABELS` (16), `CUSTOM_FIELDS` (32), `ATTACHMENTS` (64), `SETTINGS` (128), `STATS` (256)
+- Acciones: las estándar `CRUDXAction`.
+- Además, chequeo complementario **por proyecto**: membresía (`memberUserIds`/`memberGroupIds`) o `roleOverrides`. Se implementa en un `PermissionChecker` local que combina bitfield global + ACL por proyecto.
+- **Roles globales predefinidos**: agregar a `PREDEFINED_ROLES` en `systemRoles.ts` el permiso `{ resource: "project-manager", action: CRUDXAction.CRUD, scope: PM_SCOPES.ALL }` para `ADMIN`, y `READ` para `USER` (proyectos globales). Los roles de organización reciben permisos PM via `ORG_PREDEFINED_ROLES` según corresponda.
+
+### 4.4. Endpoints (REST, bajo `/api/pm`)
+- Proyectos: `GET/POST /projects`, `GET/PUT/DELETE /projects/:id`, `POST /projects/:id/members`, `PUT /projects/:id/columns`, `PUT /projects/:id/labels`, `PUT /projects/:id/custom-fields`, `PUT /projects/:id/link-types`.
+  - `GET /projects` implementa el filtro org-scoped/global descrito en §3.6.
+- Sprints: `GET/POST /projects/:id/sprints`, `PUT/DELETE /sprints/:id`, `POST /sprints/:id/start|complete`.
+- Milestones: `GET/POST /projects/:id/milestones`, `PUT/DELETE /milestones/:id`.
+- Issues: `GET /projects/:id/issues` (con filtros: `sprintId`, `milestoneId`, `assigneeId`, `labelIds`, `columnKey`, `q`, `orderBy`), `POST /projects/:id/issues`, `GET/PUT/DELETE /issues/:id`, `POST /issues/:id/move` (cambio de columna con validación WIP), `POST /issues/:id/links`, `DELETE /issues/:id/links/:linkId`, `GET /issues/:id/history` (update log), `POST /issues/:id/attachments` (retorna 501 hasta que exista `internal-s3-provider`; la UI oculta el botón de upload).
+- Stats: `GET /projects/:id/stats` (burndown por sprint, throughput, WIP por columna).
+
+### 4.5. Update log
+- En cada `PUT /issues/:id`, el `IssueManager` calcula diff campo a campo (`utils/diff.ts`) y agrega entradas a `updateLog`. Para `description`, se guarda snapshot para reconstruir versiones históricas en el popup.
+
+### 4.6. Hot-reload / multi-tenant
+- Usar el mismo patrón `forOrg(orgSlug, mode)` que `IdentityManagerService`: conexión por región + DB por org.
+
+---
+
+## 5. App UI — `src/apps/public/adc-project-manager/`
+
+### 5.1. `config.json`
+- `uiModule`: `framework: "react"`, `isHost: true`, `serviceWorker: true`, `uiDependencies: ["adc-ui-library"]`, `uiNamespace: "adc-platform"`, `devPort` libre (ej. 3018), `sharedLibs: ["react", "tailwind"]`, `i18n: true`, `hosting.subdomains: ["projects"]`.
+- `services`: `ProjectManagerService` + `IdentityManagerService` (si expone cliente).
+
+### 5.2. Estructura
+```
+adc-project-manager/
+├── config.json
+├── i18n/{es,en}/adc-project-manager.json
+├── index.html, index.ts, main.tsx
+├── src/
+│   ├── App.tsx                   # carga permisos, selector de proyecto, router
+│   ├── pages/
+│   │   ├── ProjectListView.tsx
+│   │   ├── ProjectSettingsView.tsx  # miembros, columnas, labels, custom fields, link types, priority strategy, WIP limits
+│   │   ├── BoardView.tsx            # kanban
+│   │   ├── CalendarView.tsx         # calendar/gantt
+│   │   ├── BacklogView.tsx          # list
+│   │   ├── SprintsView.tsx
+│   │   └── MilestonesView.tsx
+│   ├── components/
+│   │   ├── IssueDialog.tsx          # crear/editar issue
+│   │   ├── IssueDetailDrawer.tsx    # detalle + update log + links + attachments
+│   │   ├── UpdateLogPopup.tsx       # popup de descripciones viejas
+│   │   ├── PriorityPicker.tsx
+│   │   ├── LabelPicker.tsx
+│   │   ├── AssigneePicker.tsx       # users + groups
+│   │   └── CustomFieldsEditor.tsx
+│   ├── utils/
+│   │   ├── pm-api.ts                # createAdcApi({ basePath: "/api/pm" })
+│   │   ├── permissions.ts           # tabs visibles según scopes
+│   │   ├── priority.ts              # reusa common/utils/project-manager/priority
+│   │   └── focus-mode.ts            # lógica visual para neurodivergentes (§7)
+│   └── styles/tailwind.css
+└── tsconfig.json
+```
+
+### 5.3. Navegación
+- Tabs top-level: **Projects**, y dentro de un proyecto: **Board | Calendar | Backlog | Sprints | Milestones | Settings** (condicionados por permisos).
+- Router interno igual que `adc-identity` (usa `@common/utils/router`).
+
+### 5.4. Vistas
+
+#### Kanban (`BoardView`)
+- Columnas dinámicas desde `Project.kanbanColumns[]`, drag & drop entre columnas → `POST /issues/:id/move`.
+- Filtros (asignado, sprint, label, prioridad, texto).
+- Agrupado por **Sprint activo** por default, con opción de **Milestone** o **sin agrupar**.
+
+#### Calendar / Gantt (`CalendarView`)
+- Eje temporal con barras por issue usando `startDate?` / `dueDate?` (se agregan al schema como custom fields base).
+- Toggle **calendar ↔ gantt**; filas agrupables por sprint / milestone / asignado.
+
+#### Backlog / List (`BacklogView`)
+- Tabla densa con columnas configurables (incluye custom fields).
+- Ordenamiento por **priority strategy** (§8) u otras columnas.
+
+### 5.5. Asignación a usuarios / grupos
+- `AssigneePicker` consume la API de Identity (`GET /api/identity/users/search`, `GET /api/identity/groups?orgId=...`).
+- Guardado en `assigneeIds[]` y `assigneeGroupIds[]`.
+
+---
+
+## 6. Columnas Kanban default
+Al crear un proyecto se persisten estas columnas (editables, reordenables, eliminables desde Settings):
+
+1. **Ideas / Backlog**
+2. **To Do** (por defecto: las issues recién creadas caen aquí automáticamente — `isAuto: true`)
+3. **In Progress**
+4. **Test**
+5. **Finalizado** (marca `isDone: true` → `closedAt` se completa al mover aquí)
+
+Restricciones: siempre debe existir al menos una columna `isAuto` y al menos una `isDone`.
+
+---
+
+## 7. Modo “enfoque para neurodivergentes”
+- En `Project.settings.wipLimits` se define `N` por columna (ej. `in-progress: 3`).
+- En **Kanban** y **Backlog**, si el usuario actual (o el board) tiene **≥ N** issues en `in-progress`:
+    - Las issues de cualquier **otra** columna (incluyendo `finalizado`) se pintan con clase `opacity-40 grayscale` (Tailwind) y `text-muted`.
+    - Las issues de `in-progress` quedan en color normal → foco visual.
+- Toggle manual “Focus mode” en la topbar del board para forzarlo/anularlo.
+- Columna **Finalizado** siempre colapsable y con estilo `muted` por defecto.
+
+---
+
+## 8. Prioridad y estrategias de ordenamiento
+
+### 8.1. Ejes
+- `urgency`: `none | low | medium | high | critical` → `0..4`
+- `importance`: `none | low | medium | high | critical` → `0..4`
+- `difficulty`: `1..5` (opcional — concepto nuevo, no existe algo previo en la plataforma; algunos proyectos lo usan como “motivación” y lo excluyen del score)
+
+### 8.2. Strategies (configurables por proyecto en `priorityStrategy`)
+- `matrix-eisenhower`: orden lexicográfico `(urgency desc, importance desc)`.
+- `weighted-sum`: `score = wU·urgency + wI·importance − wD·difficulty` (pesos configurables, `wD` puede ser 0).
+- `wsjf-like`: `(urgency + importance) / max(difficulty, 1)`.
+- `custom`: función pura registrada en `common/utils/project-manager/priority.ts` (para poder usarse igual en back y front).
+
+### 8.3. Uso
+- Backend: `IssueManager.list()` aplica `orderBy=priority` con la strategy del proyecto.
+- Frontend: mismo helper importado desde `@common/utils/project-manager/priority` para orden local / preview.
+- Dificultad como **filtro**: el Backlog permite excluir tareas por rango de `difficulty` (modo motivación).
+
+---
+
+## 9. Qué va en `src/common/**` (reutilizado por back y front)
+
+- `src/common/types/project-manager/`
+    - `Project.ts`, `Sprint.ts`, `Milestone.ts`, `Issue.ts`, `Label.ts`, `LabelColors.ts`, `CustomField.ts`, `IssueLink.ts`, `Attachment.ts`, `UpdateLogEntry.ts`
+    - `permissions.ts` (scopes/bitfields del recurso `project-manager`)
+    - `index.d.ts` (re-export)
+- `src/common/utils/project-manager/`
+    - `priority.ts` (strategies puras)
+    - `focus.ts` (cálculo de cuáles issues deben “apagarse”)
+    - `diff.ts` (builder de entradas de update log)
+    - `keygen.ts` (formato `PROJ-123`)
+- `src/common/types/resources.ts`
+    - Añadir `{ id: "project-manager", label: "resources.project-manager", scopes: PM_SCOPES }`.
+
+---
+
+## 10. Qué va en `00-adc-ui-library` (componentes genéricos)
+
+Nuevos web components Stencil (siguiendo nomenclatura `adc-*`, usando variables del `tailwind-preset.js`):
+
+- **atoms**
+    - `adc-color-label` — chip con color personalizable de la paleta semántica.
+    - `adc-priority-indicator` — pill urgencia/importancia/dificultad.
+    - `adc-user-chip` — avatar + nombre (ya hay `adc-badge`; este es más rico).
+- **molecules**
+    - `adc-kanban-card` — tarjeta de issue genérica (title, labels, assignees, priority, story points, estado “muted”).
+    - `adc-diff-viewer` — muestra diff old/new (para el popup del update log).
+    - `adc-attachments-list` — lista con preview + acción upload (stub si no hay provider).
+- **organisms**
+    - `adc-kanban-board` — columnas drag&drop, slots para cards, respeta WIP limits y `focusMode`.
+    - `adc-gantt-timeline` — eje temporal, barras, agrupadores, hoy.
+    - `adc-data-table` — tabla ordenable/filtrable (si no existe ya una suficientemente genérica).
+
+Regla: **todos** los nuevos componentes usan:
+- Colores del `tailwind-preset.js` (`primary`, `accent`, `info`, `success`, `warn`, `danger`, `muted`, `text`, `surface`, etc.).
+- Utilidades existentes en `00-adc-ui-library/utils/` (`i18n-react`, `adc-fetch`, `permissions`, `session`, `error-handler`).
+- `adc-modal`, `adc-combobox`, `adc-tabs`, `adc-badge`, `adc-skeleton`, `adc-dropdown-menu`, `adc-toast-manager` ya existentes (no reinventar).
+
+Los componentes **específicos del PM** que no serían útiles en otras apps (ej. selector de link-type, custom-fields editor acoplado al modelo PM) se quedan en `adc-project-manager/src/components/`.
+
+---
+
+## 11. i18n, routing y hosting
+
+- i18n: `src/apps/public/adc-project-manager/i18n/{es,en}/adc-project-manager.json`. Claves principales: `tabs.*`, `views.board.*`, `views.calendar.*`, `views.backlog.*`, `issue.*`, `priority.*`, `columns.*`, `focusMode.*`, `linkTypes.*`, `customFields.*`.
+- Hosting: subdominio `projects` (sobre `adigitalcafe.com`) — añadirlo al `config.json` del app.
+- i18n de scopes: sumar `resources.project-manager` y `permissions.projects|issues|sprints|...` a los archivos de `adc-identity` para que aparezca bonito en el matrix de roles.
+
+---
+
+## 12. Seguridad y validaciones
+
+- Toda mutación pasa por `PermissionChecker` (bitfield) + chequeo de membresía del proyecto.
+- El `reporterId` se autofill desde el token en backend (no se acepta del cliente).
+- `PROJ-key` se genera atómicamente en `IssueManager.create()` usando un contador por proyecto (igual patrón que otros IDs en Identity — ver `utils/crypto.ts`).
+- `attachments`: validar mime/size; en fase 1 solo metadata, sin subida real (endpoint de upload retorna 501, UI en **modo read-only** — se oculta el botón de adjuntar hasta que exista `internal-s3-provider`).
+- Update log es append-only; endpoint de edición del log **no existe**.
+
+---
+
+## 13. Testing / Lint / Build
+
+- TypeScript: incluir el nuevo service y app en `tsconfig.base.json` paths si se usan alias.
+- Correr `npm run typecheck`, `npm run lint` y `npm run build:ui` tras cada fase.
+- Hot-reload: los cambios en `config.json` del app re-spawnean la instancia; ok tal cual el kernel actual.
+
+---
+
+## 14. Fases de entrega
+
+1. **Fase 1 – Fundaciones**
+    - Tipos en `@common/types/project-manager/*`, resource registrado, permissions helpers.
+    - Esqueleto del service + schemas + endpoints vacíos.
+2. **Fase 2 – CRUD core**
+    - Projects, Sprints, Milestones, Issues (sin links ni attachments), update log básico.
+    - App UI: selector de proyecto, Backlog + IssueDialog.
+3. **Fase 3 – Board + Calendar**
+    - `adc-kanban-board` y `adc-gantt-timeline` en ui-library, vistas Board y Calendar, drag&drop + move endpoint.
+4. **Fase 4 – Configuración del proyecto**
+    - Columnas, labels, custom fields, link types, priority strategy, WIP limits (ProjectSettingsView).
+    - Custom fields aplicados en IssueDialog + Backlog.
+5. **Fase 5 – Links, update log rico, focus mode**
+    - Issue links con tipos, `UpdateLogPopup` con `adc-diff-viewer`, modo neurodivergente.
+6. **Fase 6 – Attachments**
+    - Metadata en modo read-only; conectar upload cuando exista `internal-s3-provider`.
+7. **Fase 7 – Stats y pulido**
+    - Burndown, throughput, mejoras a11y, i18n EN completo.
