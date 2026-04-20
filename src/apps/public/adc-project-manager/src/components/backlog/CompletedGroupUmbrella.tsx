@@ -18,7 +18,7 @@ export function CompletedGroupUmbrella({ sections, isCollapsed, onToggleCollapse
 	if (!sections.length) return null;
 	const totalIssues = sections.reduce((acc, s) => acc + s.issues.length, 0);
 	return (
-		<section className="border border-border rounded-md">
+		<section className="border border-text/15 rounded-md">
 			<button
 				type="button"
 				className="w-full flex items-center gap-2 text-left py-2 px-2 hover:bg-surface-alt"
