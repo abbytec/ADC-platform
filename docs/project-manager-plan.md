@@ -383,13 +383,3 @@ Los componentes **específicos del PM** que no serían útiles en otras apps (ej
     - Metadata en modo read-only; conectar upload cuando exista `internal-s3-provider`.
 7. **Fase 7 – Stats y pulido**
     - Burndown, throughput, mejoras a11y, i18n EN completo.
-
----
-
-## 15. Decisiones resueltas
-
-- ✅ **Subdominio**: `projects.adigitalcafe.com`.
-- ✅ **Difficulty**: no existe algo previo en la plataforma — es un concepto nuevo del PM.
-- ✅ **Paleta de labels**: colores arcoíris alineados a Tailwind (ver §3.7).
-- ✅ **Attachments sin S3**: UI en modo read-only (sin botón de upload), endpoint retorna 501. Se conectará cuando exista `internal-s3-provider`.
-- ✅ **Visibilidad org-scoped**: proyectos pertenecen a una organización; proyectos globales (`orgId: null`) solo visibles para roles globales con permiso `project-manager` (ver §3.6).
