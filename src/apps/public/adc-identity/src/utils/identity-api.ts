@@ -33,7 +33,7 @@ export const identityApi = {
 	getUser: (userId: string) => api.get<ClientUser>(`/users/${userId}`),
 	createUser: (data: { username: string; password: string; roleIds?: string[]; orgId?: string }) =>
 		api.post<ClientUser>("/users", { body: data, idempotencyKey: hashBody(data) }),
-	updateUser: (userId: string, data: Partial<ClientUser>) => api.put<ClientUser>(`/users/${userId}`, { body: data, idempotencyKey: userId }),
+	updateUser: (userId: string, data: Partial<ClientUser>) => api.patch<ClientUser>(`/users/${userId}`, { body: data, idempotencyKey: userId }),
 	deleteUser: (userId: string) => api.delete(`/users/${userId}`, { idempotencyKey: userId }),
 
 	// Roles

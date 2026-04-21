@@ -202,23 +202,38 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 		setSubmitting(true);
 
 		if (editingUser) {
-			const result = await identityApi.updateUser(
-				editingUser.id,
-				orgId
-					? {
-							roleIds: formRoleIds,
-						}
-					: {
-							username: formUsername,
-							email: formEmail || undefined,
-							roleIds: formRoleIds,
-							isActive: formIsActive,
-							permissions: formPermissions,
-						}
-			);
-			if (result.success) {
+			// Construir payload solo con campos que realmente cambiaron
+			const payload: Partial<ClientUser> = {};
+
+			if (!orgId) {
+				// Global admin: solo agregar campos que cambiaron
+				if (formUsername !== editingUser.username) payload.username = formUsername;
+				if (formEmail !== editingUser.email) payload.email = formEmail || undefined;
+				if (JSON.stringify(formRoleIds) !== JSON.stringify(editingUser.roleIds || [])) {
+					payload.roleIds = formRoleIds;
+				}
+				if (formIsActive !== editingUser.isActive) payload.isActive = formIsActive;
+				if (JSON.stringify(formPermissions) !== JSON.stringify(editingUser.permissions || [])) {
+					payload.permissions = formPermissions;
+				}
+			} else {
+				// Org context: solo roleIds puede cambiar
+				const currentRoleIds = editingUser.orgMemberships?.find((m) => m.orgId === orgId)?.roleIds || [];
+				if (JSON.stringify(formRoleIds) !== JSON.stringify(currentRoleIds)) {
+					payload.roleIds = formRoleIds;
+				}
+			}
+
+			// Solo hacer request si hay cambios
+			if (Object.keys(payload).length > 0) {
+				const result = await identityApi.updateUser(editingUser.id, payload);
+				if (result.success) {
+					setModalOpen(false);
+					loadData();
+				}
+			} else {
+				// Sin cambios, solo cerrar
 				setModalOpen(false);
-				loadData();
 			}
 		} else {
 			const result = await identityApi.createUser({
