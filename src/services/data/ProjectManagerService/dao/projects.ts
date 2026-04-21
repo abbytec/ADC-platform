@@ -9,7 +9,7 @@ import { CRUDXAction } from "@common/types/Actions.ts";
 import { ProjectManagerError } from "@common/types/custom-errors/ProjectManagerError.ts";
 import { filterVisibleProjects } from "../utils/project-access.ts";
 
-export interface ListProjectsContext {
+interface ListProjectsContext {
 	userId: string;
 	groupIds: string[];
 	callerOrgId?: string;

@@ -1,6 +1,6 @@
 import ADCCustomError from "../ADCCustomError.ts";
 
-export type AuthorizationErrorCode = "NO_TOKEN" | "INVALID_TOKEN" | "INSUFFICIENT_PERMISSIONS";
+type AuthorizationErrorCode = "NO_TOKEN" | "INVALID_TOKEN" | "INSUFFICIENT_PERMISSIONS";
 
 const AUTH_STATUS_MAP: Record<AuthorizationErrorCode, number> = {
 	NO_TOKEN: 401,

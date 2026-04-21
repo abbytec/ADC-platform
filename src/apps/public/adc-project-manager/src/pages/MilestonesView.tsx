@@ -88,6 +88,7 @@ export function MilestonesView({ project, scopes }: Props) {
 								totalCount={c.total}
 								scopes={scopes}
 								onDelete={handleDelete}
+								onUpdated={load}
 							/>
 						);
 					})}

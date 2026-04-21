@@ -2,7 +2,9 @@ import { RegisterEndpoint, type EndpointCtx } from "../../../core/EndpointManage
 import { P } from "@common/types/Permissions.ts";
 import { ProjectManagerError } from "@common/types/custom-errors/ProjectManagerError.ts";
 import type ProjectManagerService from "../index.js";
-import type { Project } from "@common/types/project-manager/Project.ts";
+import type { Project, KanbanColumn, ProjectSettings, PriorityStrategy } from "@common/types/project-manager/Project.ts";
+import type { CustomFieldDef } from "@common/types/project-manager/CustomField.ts";
+import type { IssueLinkType } from "@common/types/project-manager/IssueLink.ts";
 
 /** Resuelve un orgSlug a un orgId (null si es "default" = contexto global). */
 async function resolveOrgSlug(service: ProjectManagerService, orgSlug: string, token?: string): Promise<string | null> {
@@ -110,5 +112,84 @@ export class ProjectEndpoints {
 	static async delete(ctx: EndpointCtx<{ id: string }>) {
 		await ProjectEndpoints.#service.projects.deleteProject(ctx.params.id, ctx.token ?? undefined);
 		return { ok: true };
+	}
+
+	@RegisterEndpoint({
+		method: "PUT",
+		url: "/api/pm/projects/:id/members",
+		permissions: [P.PROJECT_MANAGER.PROJECTS.UPDATE],
+	})
+	static async updateMembers(ctx: EndpointCtx<{ id: string }, { memberUserIds: string[]; memberGroupIds: string[] }>) {
+		const data = ctx.data ?? { memberUserIds: [], memberGroupIds: [] };
+		if (!Array.isArray(data.memberUserIds) || !Array.isArray(data.memberGroupIds)) {
+			throw new ProjectManagerError(400, "INVALID_FIELD", "`memberUserIds` y `memberGroupIds` deben ser arrays");
+		}
+		return ProjectEndpoints.#service.projects.updateProject(
+			ctx.params.id,
+			{ memberUserIds: data.memberUserIds, memberGroupIds: data.memberGroupIds },
+			ctx.token ?? undefined
+		);
+	}
+
+	@RegisterEndpoint({
+		method: "PUT",
+		url: "/api/pm/projects/:id/columns",
+		permissions: [P.PROJECT_MANAGER.SETTINGS.UPDATE],
+	})
+	static async updateColumns(ctx: EndpointCtx<{ id: string }, { kanbanColumns: KanbanColumn[] }>) {
+		const columns = ctx.data?.kanbanColumns;
+		if (!Array.isArray(columns)) throw new ProjectManagerError(400, "INVALID_FIELD", "`kanbanColumns` debe ser un array");
+		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, { kanbanColumns: columns }, ctx.token ?? undefined);
+	}
+
+	@RegisterEndpoint({
+		method: "PUT",
+		url: "/api/pm/projects/:id/custom-fields",
+		permissions: [P.PROJECT_MANAGER.CUSTOM_FIELDS.UPDATE],
+	})
+	static async updateCustomFields(ctx: EndpointCtx<{ id: string }, { customFieldDefs: CustomFieldDef[] }>) {
+		const defs = ctx.data?.customFieldDefs;
+		if (!Array.isArray(defs)) throw new ProjectManagerError(400, "INVALID_FIELD", "`customFieldDefs` debe ser un array");
+		for (const def of defs) {
+			if (def.type === "label" && (!Array.isArray(def.options) || def.options.length === 0)) {
+				throw new ProjectManagerError(400, "INVALID_FIELD", `Campo '${def.name}' tipo 'label' requiere opciones`);
+			}
+		}
+		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, { customFieldDefs: defs }, ctx.token ?? undefined);
+	}
+
+	@RegisterEndpoint({
+		method: "PUT",
+		url: "/api/pm/projects/:id/link-types",
+		permissions: [P.PROJECT_MANAGER.SETTINGS.UPDATE],
+	})
+	static async updateLinkTypes(ctx: EndpointCtx<{ id: string }, { issueLinkTypes: IssueLinkType[] }>) {
+		const types = ctx.data?.issueLinkTypes;
+		if (!Array.isArray(types)) throw new ProjectManagerError(400, "INVALID_FIELD", "`issueLinkTypes` debe ser un array");
+		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, { issueLinkTypes: types }, ctx.token ?? undefined);
+	}
+
+	@RegisterEndpoint({
+		method: "PUT",
+		url: "/api/pm/projects/:id/priority-strategy",
+		permissions: [P.PROJECT_MANAGER.SETTINGS.UPDATE],
+	})
+	static async updatePriorityStrategy(ctx: EndpointCtx<{ id: string }, { priorityStrategy: PriorityStrategy }>) {
+		const strategy = ctx.data?.priorityStrategy;
+		if (!strategy || !strategy.id) throw new ProjectManagerError(400, "INVALID_FIELD", "`priorityStrategy.id` es requerido");
+		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, { priorityStrategy: strategy }, ctx.token ?? undefined);
+	}
+
+	@RegisterEndpoint({
+		method: "PUT",
+		url: "/api/pm/projects/:id/settings",
+		permissions: [P.PROJECT_MANAGER.SETTINGS.UPDATE],
+	})
+	static async updateSettings(ctx: EndpointCtx<{ id: string }, { settings: ProjectSettings }>) {
+		const settings = ctx.data?.settings;
+		if (!settings || typeof settings !== "object") {
+			throw new ProjectManagerError(400, "INVALID_FIELD", "`settings` debe ser un objeto");
+		}
+		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, { settings }, ctx.token ?? undefined);
 	}
 }

@@ -16,7 +16,7 @@ export function BacklogFilters({ q, onQChange, orderBy, onOrderByChange, groupBy
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	return (
 		<div className="flex gap-3 items-end flex-wrap">
-			<div className="flex-1 min-w-60">
+			<div className="flex-1 min-w-60 max-w-100">
 				<label className="block text-sm font-medium mb-1 text-text">{t("issues.filter")}</label>
 				<adc-input placeholder={t("issues.searchPlaceholder")} value={q} onInput={(e: any) => onQChange(e.target.value)} />
 			</div>

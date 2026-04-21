@@ -18,12 +18,12 @@ import { clearErrors } from "@ui-library/utils/adc-fetch";
  *   /:orgSlug/:projectSlug/:tab            → Issues | Sprints | Milestones
  *   orgSlug === "default" ⇒ proyecto global
  */
-const VALID_TABS = new Set(["issues", "sprints", "milestones"]);
+const VALID_TABS = new Set(["board", "issues", "calendar", "sprints", "milestones", "settings"]);
 
 function parseRoute(path: string): { orgSlug?: string; projectSlug?: string; tab?: string } {
 	const parts = path.replace(/^\/+/, "").split("/").filter(Boolean);
 	if (parts.length >= 2) {
-		const tab = parts[2] && VALID_TABS.has(parts[2]) ? parts[2] : "issues";
+		const tab = parts[2] && VALID_TABS.has(parts[2]) ? parts[2] : "board";
 		return { orgSlug: parts[0], projectSlug: parts[1], tab };
 	}
 	return {};
@@ -75,7 +75,7 @@ export default function App() {
 				if (res.success && res.data) {
 					setSelectedProject(res.data);
 					setSelectedOrgSlug(route.orgSlug);
-					setActiveTab(route.tab || "issues");
+					setActiveTab(route.tab || "board");
 				}
 			}
 		} else {
@@ -105,7 +105,7 @@ export default function App() {
 			const orgSlug = await resolveOrgSlug(project.orgId);
 			setSelectedProject(project);
 			setSelectedOrgSlug(orgSlug);
-			setActiveTab("issues");
+			setActiveTab("board");
 			router.navigate(`/${orgSlug}/${project.slug}`);
 		},
 		[resolveOrgSlug]
@@ -119,7 +119,7 @@ export default function App() {
 
 	if (!ready || loading) {
 		return (
-			<div className="max-w-6xl mx-auto px-4 py-8">
+			<div className="mx-auto px-4 py-8">
 				<adc-skeleton variant="rectangular" height="48px" class="mb-6" />
 				<adc-skeleton variant="rectangular" height="400px" />
 			</div>
@@ -136,7 +136,7 @@ export default function App() {
 	}
 
 	return (
-		<div className="max-w-6xl mx-auto px-4 py-8">
+		<div className="mx-auto px-4 py-8">
 			{selectedProject ? (
 				<ProjectDetailView
 					project={selectedProject}

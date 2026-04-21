@@ -114,8 +114,6 @@ export function BacklogView({ project, scopes }: Props) {
 				onGroupByChange={updateGroupBy}
 			/>
 
-			{isDragEnabled && <p className="text-xs text-muted">{t("issues.moveHint")}</p>}
-
 			{loading || !prefsLoaded ? (
 				<adc-skeleton variant="rectangular" height="400px" />
 			) : issues.length === 0 ? (
@@ -142,7 +140,7 @@ export function BacklogView({ project, scopes }: Props) {
 					{sections.filter((s) => !s.isCompleted).map((s) => renderSection(s, false))}
 				</div>
 			)}
-
+			{isDragEnabled && <p className="text-xs text-muted">{t("issues.moveHint")}</p>}
 			{showDialog && (
 				<IssueDialog
 					project={project}

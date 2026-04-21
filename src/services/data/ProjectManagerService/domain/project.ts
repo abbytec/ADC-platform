@@ -35,16 +35,10 @@ export const projectSchema = new Schema<Project>(
 			{
 				id: String,
 				name: String,
-				type: { type: String, enum: ["date", "label", "text", "user", "number"] },
+				type: { type: String, enum: ["date", "label", "text", "user", "number", "badge"] },
 				options: [String],
+				badgeOptions: [{ name: String, color: String }],
 				required: { type: Boolean, default: false },
-			},
-		],
-		labels: [
-			{
-				id: String,
-				name: String,
-				color: String,
 			},
 		],
 		issueLinkTypes: [

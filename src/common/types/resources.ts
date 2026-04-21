@@ -65,7 +65,6 @@ const PROJECT_MANAGER_SCOPES: ScopeDef[] = [
 	{ key: "issues", value: 1 << 1 },
 	{ key: "sprints", value: 1 << 2 },
 	{ key: "milestones", value: 1 << 3 },
-	{ key: "labels", value: 1 << 4 },
 	{ key: "custom_fields", value: 1 << 5 },
 	{ key: "attachments", value: 1 << 6 },
 	{ key: "settings", value: 1 << 7 },

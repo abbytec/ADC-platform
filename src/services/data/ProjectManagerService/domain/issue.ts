@@ -20,7 +20,6 @@ export const issueSchema = new Schema<Issue>(
 		assigneeIds: [String],
 		assigneeGroupIds: [String],
 
-		labelIds: [String],
 		priority: {
 			urgency: { type: Number, default: 0 },
 			importance: { type: Number, default: 0 },

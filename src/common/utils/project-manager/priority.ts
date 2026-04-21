@@ -1,7 +1,7 @@
 import type { Issue, IssuePriority, UrgencyImportance, Difficulty } from "@common/types/project-manager/Issue.ts";
 import type { PriorityStrategy, PriorityStrategyId } from "@common/types/project-manager/Project.ts";
 
-export type PriorityScoreFn = (priority: IssuePriority) => number;
+type PriorityScoreFn = (priority: IssuePriority) => number;
 
 const DEFAULT_WEIGHTS = { urgency: 2, importance: 3, difficulty: 1 } as const;
 
@@ -12,17 +12,9 @@ const STRATEGIES: Record<PriorityStrategyId, (s: PriorityStrategy) => PrioritySc
 		return (p) => w.urgency * p.urgency + w.importance * p.importance - w.difficulty * (p.difficulty ?? 0);
 	},
 	"wsjf-like": () => (p) => (p.urgency + p.importance) / Math.max(p.difficulty ?? 1, 1),
-	custom: (s) => customRegistry.get(s.customFnId ?? "") ?? (() => 0),
 };
 
-const customRegistry = new Map<string, PriorityScoreFn>();
-
-/** Registra una función custom reutilizable por backend y frontend. */
-export function registerPriorityFn(id: string, fn: PriorityScoreFn): void {
-	customRegistry.set(id, fn);
-}
-
-/** Devuelve una función de score para la estrategia configurada. */
+/** @public Devuelve una función de score para la estrategia configurada. **/
 export function resolvePriorityFn(strategy: PriorityStrategy): PriorityScoreFn {
 	const factory = STRATEGIES[strategy.id] ?? STRATEGIES["matrix-eisenhower"];
 	return factory(strategy);

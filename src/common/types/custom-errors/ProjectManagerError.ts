@@ -11,7 +11,6 @@ type ProjectManagerErrorTypes =
 	| "SPRINT_NOT_FOUND"
 	| "MILESTONE_NOT_FOUND"
 	| "COLUMN_NOT_FOUND"
-	| "LABEL_NOT_FOUND"
 	| "LINK_TYPE_NOT_FOUND"
 	| "CUSTOM_FIELD_NOT_FOUND"
 	// Validation

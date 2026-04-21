@@ -2,7 +2,7 @@ import type { Project, KanbanColumn } from "@common/types/project-manager/Projec
 import { shortId } from "@common/utils/crypto.ts";
 
 /** Columnas kanban default según plan (ideas, to-do=auto, in-progress, test, finalizado=done). */
-export function defaultKanbanColumns(): KanbanColumn[] {
+function defaultKanbanColumns(): KanbanColumn[] {
 	return [
 		{ id: shortId(), key: "ideas", name: "Ideas / Backlog", order: 0 },
 		{ id: shortId(), key: "todo", name: "To Do", order: 1, isAuto: true },
@@ -13,7 +13,7 @@ export function defaultKanbanColumns(): KanbanColumn[] {
 }
 
 /** Estrategia de prioridad default. */
-export function defaultPriorityStrategy(): Project["priorityStrategy"] {
+function defaultPriorityStrategy(): Project["priorityStrategy"] {
 	return { id: "matrix-eisenhower" };
 }
 
@@ -35,7 +35,6 @@ export function applyProjectDefaults(partial: Partial<Project> & Pick<Project, "
 
 		kanbanColumns: partial.kanbanColumns?.length ? partial.kanbanColumns : defaultKanbanColumns(),
 		customFieldDefs: partial.customFieldDefs ?? [],
-		labels: partial.labels ?? [],
 		issueLinkTypes: partial.issueLinkTypes ?? [],
 		priorityStrategy: partial.priorityStrategy ?? defaultPriorityStrategy(),
 		settings: partial.settings ?? {},

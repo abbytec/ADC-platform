@@ -27,7 +27,6 @@ export class IssueEndpoints {
 			columnKey: ctx.query.columnKey || undefined,
 			q: ctx.query.q || undefined,
 			orderBy: (ctx.query.orderBy as IssueListFilters["orderBy"]) || undefined,
-			labelIds: ctx.query.labelIds ? ctx.query.labelIds.split(",") : undefined,
 		};
 
 		const issues = await IssueEndpoints.#service.issues.list(project, filters, ctx.token ?? undefined);

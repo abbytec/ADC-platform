@@ -100,6 +100,7 @@ export function SprintsView({ project, scopes }: Props) {
 								onStart={handleStart}
 								onComplete={handleComplete}
 								onDelete={handleDelete}
+								onUpdated={load}
 							/>
 						);
 					})}

@@ -1,4 +1,3 @@
-import type { ProjectLabel } from "./Label.ts";
 import type { CustomFieldDef } from "./CustomField.ts";
 import type { IssueLinkType } from "./IssueLink.ts";
 
@@ -26,15 +25,13 @@ export interface KanbanColumn {
 }
 
 /** Estrategias soportadas para calcular prioridad. */
-export type PriorityStrategyId = "matrix-eisenhower" | "weighted-sum" | "wsjf-like" | "custom";
+export type PriorityStrategyId = "matrix-eisenhower" | "weighted-sum" | "wsjf-like";
 
 /** Configuración de estrategia de prioridad del proyecto. */
 export interface PriorityStrategy {
 	id: PriorityStrategyId;
 	/** Pesos (solo usados por `weighted-sum`). */
 	weights?: { urgency: number; importance: number; difficulty: number };
-	/** Nombre de una función custom registrada en `@common/utils/project-manager/priority`. */
-	customFnId?: string;
 }
 
 /** Configuración general del proyecto. */
@@ -60,7 +57,6 @@ export interface Project {
 
 	kanbanColumns: KanbanColumn[];
 	customFieldDefs: CustomFieldDef[];
-	labels: ProjectLabel[];
 	issueLinkTypes: IssueLinkType[];
 	priorityStrategy: PriorityStrategy;
 	settings: ProjectSettings;

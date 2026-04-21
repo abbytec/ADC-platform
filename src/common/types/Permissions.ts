@@ -1,5 +1,5 @@
-import { CRUDXAction } from "./Actions.ts";
-import { RESOURCES, type ResourceDef, type ScopeDef } from "./resources.ts";
+import { CRUDXAction } from "./Actions.js";
+import { RESOURCES, type ResourceDef, type ScopeDef } from "./resources.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Typed permission builder
@@ -100,7 +100,6 @@ export const P = buildAllPermissions() as {
 		readonly ISSUES: ScopePermissions<"project-manager">;
 		readonly SPRINTS: ScopePermissions<"project-manager">;
 		readonly MILESTONES: ScopePermissions<"project-manager">;
-		readonly LABELS: ScopePermissions<"project-manager">;
 		readonly CUSTOM_FIELDS: ScopePermissions<"project-manager">;
 		readonly ATTACHMENTS: ScopePermissions<"project-manager">;
 		readonly SETTINGS: ScopePermissions<"project-manager">;
