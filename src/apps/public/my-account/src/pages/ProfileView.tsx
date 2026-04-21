@@ -18,11 +18,7 @@ export default function ProfileView() {
 	const [loading, setLoading] = useState(true);
 
 	const hasChanges = useMemo(() => {
-		return (
-			form.name !== original.name ||
-			form.lastName !== original.lastName ||
-			form.birthDate !== original.birthDate
-		);
+		return form.name !== original.name || form.lastName !== original.lastName || form.birthDate !== original.birthDate;
 	}, [form, original]);
 
 	useEffect(() => {
@@ -116,9 +112,7 @@ export default function ProfileView() {
 							Subir Avatar
 						</adc-button>
 
-						<p className="text-xs text-muted mt-2 text-center">
-							JPG, PNG o GIF (máx. 2MB)
-						</p>
+						<p className="text-xs text-muted mt-2 text-center">JPG, PNG o GIF (máx. 2MB)</p>
 					</div>
 
 					<form onSubmit={handleSubmit} className="space-y-5">
@@ -131,9 +125,7 @@ export default function ProfileView() {
 									inputId="profile-name"
 									value={form.name}
 									className="w-full"
-									onInput={(e) =>
-										handleChange("name", (e.target as HTMLInputElement).value)
-									}
+									onInput={(e) => handleChange("name", (e.target as HTMLInputElement).value)}
 								/>
 							</div>
 
@@ -145,9 +137,7 @@ export default function ProfileView() {
 									inputId="profile-lastName"
 									value={form.lastName}
 									className="w-full"
-									onInput={(e) =>
-										handleChange("lastName", (e.target as HTMLInputElement).value)
-									}
+									onInput={(e) => handleChange("lastName", (e.target as HTMLInputElement).value)}
 								/>
 							</div>
 						</div>
@@ -161,21 +151,14 @@ export default function ProfileView() {
 								type="date"
 								value={form.birthDate}
 								className="w-full"
-								onInput={(e) =>
-									handleChange("birthDate", (e.target as HTMLInputElement).value)
-								}
+								onInput={(e) => handleChange("birthDate", (e.target as HTMLInputElement).value)}
 							/>
 						</div>
 
 						<div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
-						<adc-button
-	type="submit"
-	variant="primary"
-	disabled={!hasChanges}
-	style={{ opacity: !hasChanges ? 0.5 : 1 }}
->
-	Guardar cambios
-</adc-button>
+							<adc-button type="submit" variant="primary" disabled={!hasChanges} style={{ opacity: !hasChanges ? 0.5 : 1 }}>
+								Guardar cambios
+							</adc-button>
 						</div>
 					</form>
 				</div>
