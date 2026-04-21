@@ -1,5 +1,7 @@
 import { createAdcApi } from "@ui-library/utils/adc-fetch";
-import type { Project, KanbanColumn, ProjectSettings } from "@common/types/project-manager/Project.ts";
+import type { Project, KanbanColumn, ProjectSettings, PriorityStrategy } from "@common/types/project-manager/Project.ts";
+import type { CustomFieldDef } from "@common/types/project-manager/CustomField.ts";
+import type { IssueLinkType } from "@common/types/project-manager/IssueLink.ts";
 import type { Sprint } from "@common/types/project-manager/Sprint.ts";
 import type { Milestone } from "@common/types/project-manager/Milestone.ts";
 import type { Issue } from "@common/types/project-manager/Issue.ts";
@@ -18,7 +20,6 @@ export interface IssueListParams {
 	columnKey?: string;
 	q?: string;
 	orderBy?: "priority" | "createdAt" | "updatedAt";
-	labelIds?: string;
 	[key: string]: string | number | boolean | null | undefined;
 }
 
@@ -43,6 +44,20 @@ export const pmApi = {
 	getProject: (id: string) => api.get<Project>(`/projects/${id}`),
 	updateProject: (id: string, data: Partial<Project>) => api.put<Project>(`/projects/${id}`, { body: data, idempotencyKey: id }),
 	deleteProject: (id: string) => api.delete(`/projects/${id}`, { idempotencyKey: id }),
+
+	// Project settings (granulares — Fase 4)
+	updateMembers: (id: string, memberUserIds: string[], memberGroupIds: string[]) =>
+		api.put<Project>(`/projects/${id}/members`, { body: { memberUserIds, memberGroupIds }, idempotencyKey: `members:${id}` }),
+	updateColumns: (id: string, kanbanColumns: KanbanColumn[]) =>
+		api.put<Project>(`/projects/${id}/columns`, { body: { kanbanColumns }, idempotencyKey: `columns:${id}` }),
+	updateCustomFields: (id: string, customFieldDefs: CustomFieldDef[]) =>
+		api.put<Project>(`/projects/${id}/custom-fields`, { body: { customFieldDefs }, idempotencyKey: `cfields:${id}` }),
+	updateLinkTypes: (id: string, issueLinkTypes: IssueLinkType[]) =>
+		api.put<Project>(`/projects/${id}/link-types`, { body: { issueLinkTypes }, idempotencyKey: `links:${id}` }),
+	updatePriorityStrategy: (id: string, priorityStrategy: PriorityStrategy) =>
+		api.put<Project>(`/projects/${id}/priority-strategy`, { body: { priorityStrategy }, idempotencyKey: `prio:${id}` }),
+	updateSettings: (id: string, settings: ProjectSettings) =>
+		api.put<Project>(`/projects/${id}/settings`, { body: { settings }, idempotencyKey: `settings:${id}` }),
 
 	// Sprints
 	listSprints: (projectId: string) => api.get<{ sprints: Sprint[] }>(`/projects/${projectId}/sprints`),

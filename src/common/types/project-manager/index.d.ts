@@ -2,7 +2,6 @@ export * from "./Project.ts";
 export * from "./Sprint.ts";
 export * from "./Milestone.ts";
 export * from "./Issue.ts";
-export * from "./Label.ts";
 export * from "./LabelColors.ts";
 export * from "./CustomField.ts";
 export * from "./IssueLink.ts";

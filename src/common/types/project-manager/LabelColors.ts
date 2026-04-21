@@ -1,22 +1,9 @@
 /**
  * Paleta arcoíris para labels del Project Manager.
  * Alineada con las variantes Tailwind y expresada en hue oklch.
- * El valor concreto oklch se resuelve en CSS via clases `.pm-label-<name>`.
+ * El valor concreto oklch se resuelve en CSS via clases `.adc-label-<name>`.
  */
-export const LABEL_COLORS = [
-	"red",
-	"orange",
-	"amber",
-	"yellow",
-	"lime",
-	"green",
-	"teal",
-	"cyan",
-	"blue",
-	"indigo",
-	"purple",
-	"pink",
-] as const;
+export const LABEL_COLORS = ["red", "orange", "amber", "yellow", "lime", "green", "teal", "cyan", "blue", "indigo", "purple", "pink"] as const;
 
 export type LabelColor = (typeof LABEL_COLORS)[number];
 

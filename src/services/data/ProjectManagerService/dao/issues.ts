@@ -16,7 +16,6 @@ export interface IssueListFilters {
 	sprintId?: string;
 	milestoneId?: string;
 	assigneeId?: string;
-	labelIds?: string[];
 	columnKey?: string;
 	q?: string;
 	orderBy?: "priority" | "createdAt" | "updatedAt";
@@ -73,7 +72,6 @@ export class IssueManager {
 			reporterId: reporterId || input.reporterId || "",
 			assigneeIds: input.assigneeIds ?? [],
 			assigneeGroupIds: input.assigneeGroupIds ?? [],
-			labelIds: input.labelIds ?? [],
 			priority,
 			storyPoints: input.storyPoints,
 			customFields: input.customFields ?? {},
@@ -103,7 +101,6 @@ export class IssueManager {
 		if (filters.milestoneId) query.milestoneId = filters.milestoneId;
 		if (filters.columnKey) query.columnKey = filters.columnKey;
 		if (filters.assigneeId) query.assigneeIds = filters.assigneeId;
-		if (filters.labelIds?.length) query.labelIds = { $in: filters.labelIds };
 		if (filters.q) query.$text = { $search: filters.q };
 
 		const docs = await this.issueModel.find(query);

@@ -38,7 +38,6 @@ export interface Issue {
 	assigneeIds: string[];
 	assigneeGroupIds: string[];
 
-	labelIds: string[];
 	priority: IssuePriority;
 	storyPoints?: number;
 

@@ -1,39 +1,8 @@
 /**
  * Tailwind CSS - Extensiones para ADC Project Manager.
- * El CSS base viene de @ui-library/styles.
+ * El CSS base (incluyendo la paleta de labels `.adc-label-*`) viene de @ui-library/styles.
  */
 @import "tailwindcss";
-
-/* Paleta de colores para labels (oklch, hue variable) */
-.pm-label {
-	--pm-chroma: 0.12;
-	background: oklch(0.85 var(--pm-chroma) var(--pm-hue, 250));
-	color: oklch(0.25 var(--pm-chroma) var(--pm-hue, 250));
-	border-radius: 9999px;
-	padding: 0.125rem 0.5rem;
-	font-size: 0.75rem;
-	display: inline-flex;
-	align-items: center;
-	gap: 0.25rem;
-}
-
-[dark-mode] .pm-label {
-	background: oklch(0.35 var(--pm-chroma) var(--pm-hue, 250));
-	color: oklch(0.92 var(--pm-chroma) var(--pm-hue, 250));
-}
-
-.pm-label-red { --pm-hue: 25; }
-.pm-label-orange { --pm-hue: 55; }
-.pm-label-amber { --pm-hue: 80; }
-.pm-label-yellow { --pm-hue: 95; }
-.pm-label-lime { --pm-hue: 130; }
-.pm-label-green { --pm-hue: 155; }
-.pm-label-teal { --pm-hue: 175; }
-.pm-label-cyan { --pm-hue: 200; }
-.pm-label-blue { --pm-hue: 245; }
-.pm-label-indigo { --pm-hue: 270; }
-.pm-label-purple { --pm-hue: 295; }
-.pm-label-pink { --pm-hue: 350; }
 
 /* Issue muted (focus-mode neurodivergente) */
 .pm-issue-muted {

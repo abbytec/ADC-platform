@@ -1,12 +1,16 @@
 import { Permission } from "./Permission.ts";
 
+export interface ClientGroup {
+	id: string;
+	name: string;
+	description?: string;
+	orgId?: string | null;
+}
+
 /**
  * Grupo de usuarios
  */
-export interface Group {
-	id: string;
-	name: string;
-	description: string;
+export interface Group extends ClientGroup {
 	roleIds: string[];
 	permissions?: Permission[];
 	/** Organización a la que pertenece (null = global) */

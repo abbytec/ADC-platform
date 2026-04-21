@@ -6,8 +6,14 @@ import type { Issue, UrgencyImportance, Difficulty } from "@common/types/project
 import type { Sprint } from "@common/types/project-manager/Sprint.ts";
 import type { Milestone } from "@common/types/project-manager/Milestone.ts";
 import type { UpdateLogEntry } from "@common/types/project-manager/UpdateLogEntry.ts";
+import type { CustomFieldValue } from "@common/types/project-manager/CustomField.ts";
+import type { IssueLink } from "@common/types/project-manager/IssueLink.ts";
 import { pmApi } from "../utils/pm-api.ts";
 import { canUpdate, canWrite, Scope } from "../utils/permissions.ts";
+import { UserPicker } from "./pickers/UserPicker.tsx";
+import { GroupPicker } from "./pickers/GroupPicker.tsx";
+import { CustomFieldsEditor } from "./pickers/CustomFieldsEditor.tsx";
+import { IssueLinksEditor } from "./pickers/IssueLinksEditor.tsx";
 
 interface Props {
 	project: Project;
@@ -42,6 +48,10 @@ export function IssueDialog({ project, issue, scopes, sprints = [], milestones =
 		importance: number;
 		difficulty: number;
 		reason: string;
+		assigneeIds: string[];
+		assigneeGroupIds: string[];
+		customFields: Record<string, CustomFieldValue>;
+		linkedIssues: IssueLink[];
 	}>({
 		title: issue?.title ?? "",
 		description: issue?.description ?? "",
@@ -52,10 +62,15 @@ export function IssueDialog({ project, issue, scopes, sprints = [], milestones =
 		importance: issue?.priority.importance ?? 2,
 		difficulty: (issue?.priority.difficulty ?? 3) as number,
 		reason: "",
+		assigneeIds: issue?.assigneeIds ?? [],
+		assigneeGroupIds: issue?.assigneeGroupIds ?? [],
+		customFields: issue?.customFields ?? {},
+		linkedIssues: issue?.linkedIssues ?? [],
 	});
 	const [saving, setSaving] = useState(false);
 	const [history, setHistory] = useState<UpdateLogEntry[]>([]);
 	const [showHistory, setShowHistory] = useState(false);
+	const [projectIssues, setProjectIssues] = useState<Issue[]>([]);
 
 	const modalRef = useCallback(
 		(el: HTMLElement | null) => {
@@ -70,6 +85,13 @@ export function IssueDialog({ project, issue, scopes, sprints = [], milestones =
 			if (r.success && r.data) setHistory(r.data.updateLog);
 		});
 	}, [issue]);
+
+	useEffect(() => {
+		if (project.issueLinkTypes.length === 0) return;
+		pmApi.listIssues(project.id).then((r) => {
+			if (r.success && r.data) setProjectIssues(r.data.issues);
+		});
+	}, [project.id, project.issueLinkTypes.length]);
 
 	const canEdit = isNew ? canWrite(scopes, Scope.ISSUES) : canUpdate(scopes, Scope.ISSUES);
 
@@ -88,6 +110,10 @@ export function IssueDialog({ project, issue, scopes, sprints = [], milestones =
 				sprintId: form.sprintId || undefined,
 				milestoneId: form.milestoneId || undefined,
 				priority: payloadPriority,
+				assigneeIds: form.assigneeIds,
+				assigneeGroupIds: form.assigneeGroupIds,
+				customFields: form.customFields,
+				linkedIssues: form.linkedIssues,
 			});
 		} else if (issue) {
 			await pmApi.updateIssue(issue.id, {
@@ -97,6 +123,10 @@ export function IssueDialog({ project, issue, scopes, sprints = [], milestones =
 				sprintId: form.sprintId || undefined,
 				milestoneId: form.milestoneId || undefined,
 				priority: payloadPriority,
+				assigneeIds: form.assigneeIds,
+				assigneeGroupIds: form.assigneeGroupIds,
+				customFields: form.customFields,
+				linkedIssues: form.linkedIssues,
 				reason: form.reason || undefined,
 			});
 		}
@@ -180,6 +210,38 @@ export function IssueDialog({ project, issue, scopes, sprints = [], milestones =
 						/>
 					</div>
 				</div>
+				<UserPicker
+					label={t("issues.assignees")}
+					selectedIds={form.assigneeIds}
+					onChange={(ids) => setForm({ ...form, assigneeIds: ids })}
+					disabled={!canEdit}
+				/>
+				<GroupPicker
+					label={t("issues.assigneeGroups")}
+					selectedIds={form.assigneeGroupIds}
+					orgId={project.orgId}
+					onChange={(ids) => setForm({ ...form, assigneeGroupIds: ids })}
+					disabled={!canEdit}
+				/>
+				<CustomFieldsEditor
+					defs={project.customFieldDefs}
+					values={form.customFields}
+					onChange={(values) => setForm({ ...form, customFields: values })}
+					disabled={!canEdit}
+				/>
+				{project.issueLinkTypes.length > 0 && (
+					<div>
+						<label className="block text-sm font-medium mb-1 text-text">{t("issues.links")}</label>
+						<IssueLinksEditor
+							linkTypes={project.issueLinkTypes}
+							currentIssueId={issue?.id}
+							allIssues={projectIssues}
+							value={form.linkedIssues}
+							onChange={(links) => setForm({ ...form, linkedIssues: links })}
+							disabled={!canEdit}
+						/>
+					</div>
+				)}
 				{!isNew && canEdit && (
 					<div>
 						<label className="block text-sm font-medium mb-1 text-text">{t("issues.reason")}</label>

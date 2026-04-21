@@ -299,4 +299,65 @@
     *::-webkit-scrollbar-thumb:hover {
         background-color: var(--c-primary);
     }
+
+    /* ── Paleta arcoíris para labels (global, reutilizable en toda la plataforma) ── */
+    /* Se aplica como .adc-label-<name> a <adc-color-label>. Las variables de
+       lightness/chroma se adaptan al tema activo (light/dark) via data-attrs. */
+    :root {
+        --adc-label-lightness-bg: 92%;
+        --adc-label-lightness-text: 35%;
+        --adc-label-chroma-bg: 0.08;
+        --adc-label-chroma-text: 0.16;
+    }
+    :root[dark-mode] {
+        --adc-label-lightness-bg: 30%;
+        --adc-label-lightness-text: 85%;
+        --adc-label-chroma-bg: 0.07;
+        --adc-label-chroma-text: 0.13;
+    }
+
+    .adc-label-red {
+        --adc-label-hue: 25;
+    }
+    .adc-label-orange {
+        --adc-label-hue: 55;
+    }
+    .adc-label-amber {
+        --adc-label-hue: 80;
+    }
+    .adc-label-yellow {
+        --adc-label-hue: 95;
+    }
+    .adc-label-lime {
+        --adc-label-hue: 130;
+    }
+    .adc-label-green {
+        --adc-label-hue: 155;
+    }
+    .adc-label-teal {
+        --adc-label-hue: 175;
+    }
+    .adc-label-cyan {
+        --adc-label-hue: 200;
+    }
+    .adc-label-blue {
+        --adc-label-hue: 245;
+    }
+    .adc-label-indigo {
+        --adc-label-hue: 270;
+    }
+    .adc-label-purple {
+        --adc-label-hue: 295;
+    }
+    .adc-label-pink {
+        --adc-label-hue: 350;
+    }
+
+    [class*="adc-label-"] {
+        background-color: oklch(var(--adc-label-lightness-bg) var(--adc-label-chroma-bg) var(--adc-label-hue, 245));
+        color: oklch(var(--adc-label-lightness-text) var(--adc-label-chroma-text) var(--adc-label-hue, 245));
+        border-color: oklch(
+            var(--adc-label-lightness-text) var(--adc-label-chroma-text) var(--adc-label-hue, 245) / 35%
+        );
+    }
 }

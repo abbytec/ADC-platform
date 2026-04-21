@@ -14,7 +14,9 @@ export interface PMTab {
 
 /** Tabs dentro de un proyecto */
 export const PROJECT_TABS: PMTab[] = [
+	{ id: "board", label: "board", requiredScope: PMScopes.ISSUES, requiredAction: CRUDXAction.READ },
 	{ id: "issues", label: "issues", requiredScope: PMScopes.ISSUES, requiredAction: CRUDXAction.READ },
+	{ id: "calendar", label: "calendar", requiredScope: PMScopes.ISSUES, requiredAction: CRUDXAction.READ },
 	{ id: "sprints", label: "sprints", requiredScope: PMScopes.SPRINTS, requiredAction: CRUDXAction.READ },
 	{ id: "milestones", label: "milestones", requiredScope: PMScopes.MILESTONES, requiredAction: CRUDXAction.READ },
 	{ id: "settings", label: "settings", requiredScope: PMScopes.SETTINGS, requiredAction: CRUDXAction.READ },

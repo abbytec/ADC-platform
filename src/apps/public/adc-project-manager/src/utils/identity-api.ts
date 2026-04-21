@@ -1,5 +1,5 @@
 import { createAdcApi } from "@ui-library/utils/adc-fetch";
-import type { Permission } from "@common/types/identity/Permission.ts";
+import type { Permission, ClientUser, ClientGroup } from "@common/types/identity/index";
 
 /**
  * Cliente dedicado a endpoints de `IdentityManagerService` consumidos por el app PM.
@@ -33,4 +33,13 @@ export const identityPmApi = {
 			body: patch,
 			idempotencyData: patch,
 		}),
+
+	/** Búsqueda incremental de usuarios por username/displayName (min 2 chars). */
+	searchUsers: (q: string) => identityApi.get<ClientUser[]>("/users/search", { params: { q } }),
+
+	/** Lookup individual por id (para resolver chips de miembros ya seleccionados). */
+	getUser: (userId: string) => identityApi.get<ClientUser>(`/users/${userId}`),
+
+	/** Lista grupos visibles al caller. Opcionalmente filtrable por org. */
+	listGroups: (orgId?: string) => identityApi.get<ClientGroup[]>("/groups", orgId ? { params: { orgId } } : undefined),
 };

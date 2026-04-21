@@ -1,6 +1,6 @@
 import { P, hasPermission } from "@common/types/Permissions.ts";
 
-export interface UserLike {
+interface UserLike {
 	id?: string;
 	permissions?: string[];
 }
