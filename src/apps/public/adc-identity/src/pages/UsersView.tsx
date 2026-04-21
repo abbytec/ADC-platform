@@ -67,16 +67,17 @@ export function UsersView({ scopes, orgId, isAdmin, isTokenOrgContext, organizat
 		try {
 			setUsernameStatus("checking");
 
-			const res = await fetch(`${API_BASE}/api/identity/users/username/${encodeURIComponent(username)}`, {
+			const res = await fetch(`${API_BASE}/api/identity/users/username/${encodeURIComponent(username)}/exists`, {
 				method: "HEAD",
 				signal: controller.signal,
+				credentials: "include",
 			});
-
-			if (res.status === 200) {
-				// Usuario existe
+			
+			if (res.ok) {
+				// 200 OK = username exists
 				setUsernameStatus(editingUser?.username === username ? "available" : "unavailable");
 			} else if (res.status === 404) {
-				// Usuario no existe
+				// 404 = username doesn't exist
 				setUsernameStatus("available");
 			} else {
 				setUsernameStatus("idle");

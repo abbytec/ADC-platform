@@ -158,7 +158,6 @@ function sanitizeUserForContext(user: NonNullable<Awaited<ReturnType<IdentityMan
 	};
 }
 
-
 /**
  * Endpoints HTTP para gestión de usuarios
  * Registrados automáticamente por @EnableEndpoints en IdentityManagerService
@@ -172,18 +171,15 @@ export class UserEndpoints {
 
 	@RegisterEndpoint({
 		method: "HEAD",
-		url: "/api/identity/users/username/:username",
+		url: "/api/identity/users/username/:username/exists",
 	})
 	static async checkUsername(ctx: EndpointCtx<{ username: string }>) {
 		const { username } = ctx.params;
 
-		const user = await UserEndpoints.#identity.users.getUserByUsername(username);
-
-		if (!user) {
-			throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
+		const exists = await UserEndpoints.#identity.users.publicExistsByUsername(username);
+		if (!exists) {
+			throw new IdentityError(404, "USER_NOT_FOUND", "Username no encontrado");
 		}
-
-		return {};
 	}
 
 	@RegisterEndpoint({

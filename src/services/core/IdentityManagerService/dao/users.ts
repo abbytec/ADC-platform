@@ -108,6 +108,11 @@ export class UserManager {
 		}
 	}
 
+	async publicExistsByUsername(username: string): Promise<boolean> {
+		const doc = await this.userModel.findOne({ username });
+		return !!doc;
+	}
+
 	/**
 	 * Obtiene un usuario por email
 	 * @param token Token de autenticación (requerido para verificar permisos)

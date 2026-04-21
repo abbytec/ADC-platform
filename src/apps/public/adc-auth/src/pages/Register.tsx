@@ -36,33 +36,39 @@ export function Register({ onNavigateToLogin, returnUrl }: RegisterProps) {
 
 	const controllerRef = useRef<AbortController | null>(null);
 
-	const checkUsername = async (username: string) => {
-		controllerRef.current?.abort(); // cancelar request anterior
+const checkUsername = async (username: string) => {
+	controllerRef.current?.abort();
 
-		const controller = new AbortController();
-		controllerRef.current = controller;
+	const controller = new AbortController();
+	controllerRef.current = controller;
 
-		try {
-			setUsernameStatus("checking");
+	try {
+		setUsernameStatus("checking");
 
-			const res = await fetch(`${API_BASE}/api/identity/users/username/${encodeURIComponent(username)}`, {
+		const res = await fetch(
+			`${API_BASE}/api/identity/users/username/${encodeURIComponent(username)}/exists`,
+			{
 				method: "HEAD",
 				signal: controller.signal,
-			});
+				credentials: "include",
+			}
+		);
 
-			if (res.status === 200) {
-				setUsernameStatus("unavailable");
-			} else if (res.status === 404) {
-				setUsernameStatus("available");
-			} else {
-				setUsernameStatus("idle");
-			}
-		} catch (err: any) {
-			if (err?.name !== "AbortError") {
-				setUsernameStatus("idle");
-			}
+		if (res.ok) {
+			// 200 OK = username exists
+			setUsernameStatus("unavailable");
+		} else if (res.status === 404) {
+			// 404 = username doesn't exist
+			setUsernameStatus("available");
+		} else {
+			setUsernameStatus("idle");
 		}
-	};
+	} catch (err: any) {
+		if (err?.name !== "AbortError") {
+			setUsernameStatus("idle");
+		}
+	}
+};
 
 	useEffect(() => {
 		if (username.length < 3) {
