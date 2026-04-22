@@ -21,7 +21,9 @@ type ProjectManagerErrorTypes =
 	| "INVALID_PRIORITY"
 	| "WIP_LIMIT_REACHED"
 	// Feature flags
-	| "ATTACHMENTS_NOT_IMPLEMENTED";
+	| "ATTACHMENTS_NOT_IMPLEMENTED"
+	// Auth
+	| "NO_TOKEN";
 
 export class ProjectManagerError extends ADCCustomError<Record<string, unknown>, ProjectManagerErrorTypes> {
 	public readonly name = "ProjectManagerError";

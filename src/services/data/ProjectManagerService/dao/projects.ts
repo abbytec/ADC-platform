@@ -7,7 +7,8 @@ import { type AuthVerifierGetter, PermissionChecker } from "@common/types/auth-v
 import { PMScopes, PM_RESOURCE_NAME } from "@common/types/project-manager/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
 import { ProjectManagerError } from "@common/types/custom-errors/ProjectManagerError.ts";
-import { filterVisibleProjects } from "../utils/project-access.ts";
+import { OnlyKernel } from "../../../../utils/decorators/OnlyKernel.ts";
+import { filterVisibleProjects, isProjectMember } from "../utils/project-access.ts";
 
 interface ListProjectsContext {
 	userId: string;
@@ -17,14 +18,33 @@ interface ListProjectsContext {
 	isGlobalAdmin: boolean;
 }
 
+/** Contexto del caller para evaluar acceso alternativo por membresía. */
+export interface CallerMembership {
+	userId: string;
+	groupIds: string[];
+}
+
+/**
+ * Accesores internos para otros DAOs del mismo service. No consumirlos desde
+ * endpoints: las operaciones aquí expuestas no pasan por `requirePermission`.
+ */
+export interface ProjectInternals {
+	fetchProject: (projectId: string) => Promise<Project | null>;
+	incrementIssueCounter: (projectId: string) => Promise<number>;
+}
+
 export class ProjectManager {
 	#permissionChecker: PermissionChecker;
+	/** Usado por `@OnlyKernel()` para verificar el caller. */
+	protected readonly kernelKey: symbol;
 
 	constructor(
 		private readonly projectModel: Model<Project>,
+		kernelKey: symbol,
 		private readonly logger: ILogger,
 		getAuthVerifier: AuthVerifierGetter = () => null
 	) {
+		this.kernelKey = kernelKey;
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "ProjectManager", PM_RESOURCE_NAME);
 	}
 
@@ -53,35 +73,52 @@ export class ProjectManager {
 		return project;
 	}
 
-	async getProject(projectId: string, token?: string): Promise<Project | null> {
-		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.PROJECTS);
+	async #fetchProject(projectId: string): Promise<Project | null> {
 		const doc = await this.projectModel.findOne({ id: projectId });
 		return doc?.toObject?.() || doc || null;
 	}
 
-	async getProjectBySlug(slug: string, orgId: string | null, token?: string): Promise<Project | null> {
-		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.PROJECTS);
+	async #fetchProjectBySlug(slug: string, orgId: string | null): Promise<Project | null> {
 		const doc = await this.projectModel.findOne({ slug, orgId });
 		return doc?.toObject?.() || doc || null;
 	}
 
-	/**
-	 * Lista proyectos aplicando el filtro org-scoped/global del plan §3.6.
-	 * Carga TODOS los que podrían ser visibles y luego filtra in-memory.
-	 */
-	async listVisibleProjects(ctx: ListProjectsContext, token?: string): Promise<Project[]> {
-		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.PROJECTS);
+	async getProject(projectId: string, token?: string, caller?: CallerMembership): Promise<Project | null> {
+		const project = await this.#fetchProject(projectId);
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.PROJECTS, {
+			ownerId: project?.ownerId,
+			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds: caller?.groupIds ?? [] }),
+		});
+		return project;
+	}
 
-		const orConditions: Record<string, unknown>[] = [];
+	async getProjectBySlug(slug: string, orgId: string | null, token?: string, caller?: CallerMembership): Promise<Project | null> {
+		const project = await this.#fetchProjectBySlug(slug, orgId);
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.PROJECTS, {
+			ownerId: project?.ownerId,
+			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds: caller?.groupIds ?? [] }),
+		});
+		return project;
+	}
+
+	/** Comprobación pública de existencia de slug (no expone el proyecto). */
+	async isSlugAvailable(slug: string, orgId: string | null, token?: string): Promise<boolean> {
+		await this.#permissionChecker.resolveUserId(token);
+		const existing = await this.#fetchProjectBySlug(slug, orgId);
+		return !existing;
+	}
+
+	async listVisibleProjects(ctx: ListProjectsContext, token?: string): Promise<Project[]> {
+		await this.#permissionChecker.resolveUserId(token);
+
 		if (ctx.isGlobalAdmin) {
 			const docs = await this.projectModel.find({});
 			return docs.map((d) => d.toObject?.() || d);
 		}
 
+		const orConditions: Record<string, unknown>[] = [];
 		if (ctx.hasGlobalPMRead) orConditions.push({ orgId: null });
 		if (ctx.callerOrgId) orConditions.push({ orgId: ctx.callerOrgId });
-
-		// Membresía explícita (siempre consultar)
 		orConditions.push({ memberUserIds: ctx.userId });
 		orConditions.push({ ownerId: ctx.userId });
 		if (ctx.groupIds.length) orConditions.push({ memberGroupIds: { $in: ctx.groupIds } });
@@ -91,13 +128,19 @@ export class ProjectManager {
 		return filterVisibleProjects(projects, ctx);
 	}
 
-	async updateProject(projectId: string, updates: Partial<Project>, token?: string): Promise<Project> {
-		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.PROJECTS);
+	async updateProject(projectId: string, updates: Partial<Project>, token?: string, caller?: CallerMembership): Promise<Project> {
+		const project = await this.#fetchProject(projectId);
+		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", `Proyecto ${projectId} no encontrado`);
+
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.PROJECTS, {
+			ownerId: project.ownerId,
+			allowIf: (uid) =>
+				project.ownerId === uid || (caller?.userId === uid && isProjectMember(project, { id: uid, groupIds: caller.groupIds })),
+		});
 
 		if (updates.kanbanColumns) validateKanbanColumns(updates.kanbanColumns);
 
 		const safeUpdates: Partial<Project> = { ...updates, updatedAt: new Date() };
-		// Campos inmutables
 		delete (safeUpdates as any).id;
 		delete (safeUpdates as any).createdAt;
 		delete (safeUpdates as any).issueCounter;
@@ -116,13 +159,22 @@ export class ProjectManager {
 		this.logger.logDebug(`Proyecto eliminado: ${projectId}`);
 	}
 
-	/**
-	 * Incrementa atómicamente el contador del proyecto y devuelve el nuevo número.
-	 * Usado por IssueManager al crear issues para generar keys tipo `SLUG-123`.
-	 */
-	async incrementIssueCounter(projectId: string): Promise<number> {
+	async #incrementIssueCounter(projectId: string): Promise<number> {
 		const updated = await this.projectModel.findOneAndUpdate({ id: projectId }, { $inc: { issueCounter: 1 } }, { new: true });
 		if (!updated) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", `Proyecto ${projectId} no encontrado`);
 		return (updated.toObject?.() || updated).issueCounter;
+	}
+
+	/**
+	 * Devuelve accesores sin autorización para uso exclusivo de otros DAOs del
+	 * mismo service. Protegido por `kernelKey`: sólo el service que creó este
+	 * manager puede obtenerlos.
+	 */
+	@OnlyKernel()
+	getInternals(_kernelKey: symbol): ProjectInternals {
+		return {
+			fetchProject: (id) => this.#fetchProject(id),
+			incrementIssueCounter: (id) => this.#incrementIssueCounter(id),
+		};
 	}
 }

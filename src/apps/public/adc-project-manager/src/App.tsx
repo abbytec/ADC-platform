@@ -32,6 +32,7 @@ function parseRoute(path: string): { orgSlug?: string; projectSlug?: string; tab
 export default function App() {
 	const { t, ready } = useTranslation({ namespace: "adc-project-manager", autoLoad: true });
 	const [perms, setPerms] = useState<Permission[]>([]);
+	const [caller, setCaller] = useState<{ userId: string; groupIds: string[] } | undefined>(undefined);
 	const [loading, setLoading] = useState(true);
 	const [unauthorized, setUnauthorized] = useState(false);
 	const [orgId, setOrgId] = useState<string | undefined>(undefined);
@@ -60,11 +61,24 @@ export default function App() {
 		if (result.success && result.data) {
 			setPerms(result.data.perms);
 			setOrgId(result.data.orgId || undefined);
-			if (!canAccessProjects(result.data.perms)) {
+			if (result.data.userId) {
+				setCaller({ userId: result.data.userId, groupIds: result.data.groupIds ?? [] });
+			}
+
+			// El acceso al app no requiere permiso formal PM.READ: un usuario que
+			// sea miembro de al menos un proyecto también debe poder entrar.
+			// Si no tiene permiso formal, consultamos la lista de proyectos visibles.
+			let allowed = canAccessProjects(result.data.perms);
+			if (!allowed) {
+				const listRes = await pmApi.listProjects();
+				allowed = !!(listRes.success && listRes.data?.projects?.length);
+			}
+			if (!allowed) {
 				setUnauthorized(true);
 				setLoading(false);
 				return;
 			}
+
 			// Resolver slug de la org propia (o "default" para contexto global)
 			const ownSlug = await resolveOrgSlug(result.data.orgId);
 			setOwnOrgSlug(ownSlug);
@@ -142,6 +156,7 @@ export default function App() {
 					project={selectedProject}
 					orgSlug={selectedOrgSlug}
 					perms={perms}
+					caller={caller}
 					activeTab={activeTab}
 					onBack={backToProjects}
 				/>

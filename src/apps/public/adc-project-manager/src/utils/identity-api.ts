@@ -14,8 +14,19 @@ const identityApi = createAdcApi({
 export type UserPreferences = Record<string, unknown>;
 
 export const identityPmApi = {
-	/** Permisos del usuario actual filtrados al recurso `project-manager`. */
-	getMyPermissions: () => identityApi.get<{ perms: Permission[]; orgId?: string; isAdmin?: boolean; isOrgAdmin?: boolean }>("/my-permissions"),
+	/**
+	 * Permisos del usuario actual sobre `project-manager`.
+	 * También incluye `userId` y `groupIds` para resolver membership sin un request extra a `/users/me`.
+	 */
+	getMyPermissions: () =>
+		identityApi.get<{
+			perms: Permission[];
+			orgId?: string;
+			isAdmin?: boolean;
+			isOrgAdmin?: boolean;
+			userId?: string | null;
+			groupIds?: string[];
+		}>("/my-permissions"),
 
 	/** Resuelve `orgId → { orgId, slug }` para construir URLs del PM. */
 	getOrganization: (orgId: string) => identityApi.get<{ orgId: string; slug: string }>(`/organizations/${orgId}`),

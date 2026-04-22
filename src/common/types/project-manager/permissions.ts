@@ -13,6 +13,7 @@ export const PMScopes = {
 	ATTACHMENTS: 1 << 6, // 64
 	SETTINGS: 1 << 7, // 128
 	STATS: 1 << 8, // 256
+	SELF: 1 << 15, // 32768
 	ALL: 1 | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8), // 495
 } as const;
 

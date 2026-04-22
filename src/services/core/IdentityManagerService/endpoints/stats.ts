@@ -11,7 +11,7 @@ export class StatsEndpoints {
 	static #identity: IdentityManagerService;
 
 	static #emptyPermissions() {
-		return { scopes: [], orgId: null, isAdmin: false, isOrgAdmin: false };
+		return { scopes: [], orgId: null, isAdmin: false, isOrgAdmin: false, userId: null, groupIds: [] };
 	}
 
 	static async #hasGlobalAdminRole(user: Awaited<ReturnType<IdentityManagerService["users"]["getUser"]>>, token?: string) {
@@ -88,6 +88,8 @@ export class StatsEndpoints {
 				orgId,
 				isAdmin: !orgId && hasGlobalAdminRole,
 				isOrgAdmin,
+				userId: ctx.user.id,
+				groupIds: user?.groupIds ?? [],
 			};
 		} catch {
 			return StatsEndpoints.#emptyPermissions();

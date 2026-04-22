@@ -1,5 +1,6 @@
 import { CRUDXAction } from "@common/types/Actions.ts";
 import { RESOURCE_NAME, IdentityScopes } from "@common/types/identity/permissions.ts";
+import { PMScopes, PM_RESOURCE_NAME } from "@common/types/project-manager/permissions.ts";
 import { BaseRole } from "@common/types/identity/Role.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,6 +21,7 @@ export enum SystemRole {
 	DATA_MANAGER = "Data Manager",
 	APP_MANAGER = "App Manager",
 	CONFIG_MANAGER = "Config Manager",
+	PROJECT_MANAGER = "Project Manager",
 	USER = "User",
 	// Community roles (Discord autoroles)
 	DISCORD_VIP = "Discord VIP",
@@ -74,6 +76,11 @@ export const ORG_PREDEFINED_ROLES: Array<BaseRole> = [
 			{ resource: "config", action: CRUDXAction.CRUD, scope: 0xff },
 			{ resource: "system", action: CRUDXAction.READ, scope: 0xff },
 		],
+	},
+	{
+		name: SystemRole.PROJECT_MANAGER,
+		description: "Gestor de proyectos (CRUD completo sobre project-manager)",
+		permissions: [{ resource: PM_RESOURCE_NAME, action: CRUDXAction.CRUD, scope: PMScopes.ALL }],
 	},
 	{
 		name: SystemRole.USER,

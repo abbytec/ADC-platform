@@ -18,29 +18,30 @@ async function resolveOrgSlug(service: ProjectManagerService, orgSlug: string, t
 
 export class ProjectEndpoints {
 	static #service: ProjectManagerService;
-	static init(service: ProjectManagerService): void {
+	static #kernelKey: symbol;
+	static init(service: ProjectManagerService, kernelKey: symbol): void {
 		ProjectEndpoints.#service ??= service;
+		ProjectEndpoints.#kernelKey ??= kernelKey;
 	}
 
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/pm/projects",
-		permissions: [P.PROJECT_MANAGER.PROJECTS.READ],
+		deferAuth: true,
 	})
 	static async list(ctx: EndpointCtx) {
 		const service = ProjectEndpoints.#service;
-		const projects = await service.listProjectsForCaller(ctx);
+		if (!ctx.user?.id) {
+			throw new ProjectManagerError(401, "NO_TOKEN", "Token de autenticación requerido");
+		}
+		const projects = await service.listProjectsForCaller(ProjectEndpoints.#kernelKey, ctx);
 		return { projects };
 	}
 
-	/**
-	 * Comprueba disponibilidad de un slug de proyecto dentro de un contexto org.
-	 * `orgSlug` = "default" para proyectos globales.
-	 */
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/pm/projects/check-slug/:orgSlug/:projectSlug",
-		permissions: [P.PROJECT_MANAGER.PROJECTS.READ],
+		deferAuth: true,
 	})
 	static async checkSlug(ctx: EndpointCtx<{ orgSlug: string; projectSlug: string }>) {
 		const service = ProjectEndpoints.#service;
@@ -49,20 +50,20 @@ export class ProjectEndpoints {
 			return { available: false };
 		}
 		const orgId = await resolveOrgSlug(service, ctx.params.orgSlug, ctx.token ?? undefined);
-		const existing = await service.projects.getProjectBySlug(projectSlug, orgId, ctx.token ?? undefined);
-		return { available: !existing };
+		const available = await service.projects.isSlugAvailable(projectSlug, orgId, ctx.token ?? undefined);
+		return { available };
 	}
 
-	/** Lookup de proyecto por slug dentro de un contexto org ("default" = global). */
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/pm/projects/by-slug/:orgSlug/:projectSlug",
-		permissions: [P.PROJECT_MANAGER.PROJECTS.READ],
+		deferAuth: true,
 	})
 	static async getBySlug(ctx: EndpointCtx<{ orgSlug: string; projectSlug: string }>) {
 		const service = ProjectEndpoints.#service;
+		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
 		const orgId = await resolveOrgSlug(service, ctx.params.orgSlug, ctx.token ?? undefined);
-		const project = await service.projects.getProjectBySlug(ctx.params.projectSlug.toLowerCase(), orgId, ctx.token ?? undefined);
+		const project = await service.projects.getProjectBySlug(ctx.params.projectSlug.toLowerCase(), orgId, ctx.token ?? undefined, caller);
 		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", "Proyecto no encontrado");
 		return project;
 	}
@@ -87,10 +88,12 @@ export class ProjectEndpoints {
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/pm/projects/:id",
-		permissions: [P.PROJECT_MANAGER.PROJECTS.READ],
+		deferAuth: true,
 	})
 	static async get(ctx: EndpointCtx<{ id: string }>) {
-		const project = await ProjectEndpoints.#service.projects.getProject(ctx.params.id, ctx.token ?? undefined);
+		const service = ProjectEndpoints.#service;
+		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
+		const project = await service.projects.getProject(ctx.params.id, ctx.token ?? undefined, caller);
 		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", "Proyecto no encontrado");
 		return project;
 	}
@@ -98,10 +101,12 @@ export class ProjectEndpoints {
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/pm/projects/:id",
-		permissions: [P.PROJECT_MANAGER.PROJECTS.UPDATE],
+		deferAuth: true,
 	})
 	static async update(ctx: EndpointCtx<{ id: string }, Partial<Project>>) {
-		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, ctx.data ?? {}, ctx.token ?? undefined);
+		const service = ProjectEndpoints.#service;
+		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
+		return service.projects.updateProject(ctx.params.id, ctx.data ?? {}, ctx.token ?? undefined, caller);
 	}
 
 	@RegisterEndpoint({

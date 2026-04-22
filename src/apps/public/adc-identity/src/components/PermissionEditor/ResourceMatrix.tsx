@@ -17,6 +17,23 @@ interface ResourceMatrixProps {
 export function ResourceMatrix({ resource, scopes, permMap, onToggle, onToggleRow, onToggleCol, onRemove, disabled, t }: ResourceMatrixProps) {
 	const allActions = ACTIONS.reduce((acc, a) => acc | a.value, 0);
 
+	/**
+	 * Resuelve la etiqueta de un scope probando primero la subclave específica
+	 * del recurso y cayendo al key plano si no existe traducción.
+	 *   1) permissions.{resource}.{scope.key}
+	 *   2) permissions.{scope.key}
+	 *   3) scope.key (último recurso)
+	 */
+	const scopeLabel = (scopeKey: string): string => {
+		const nested = `permissions.${resource}.${scopeKey}`;
+		const nestedTr = t(nested);
+		if (nestedTr !== nested) return nestedTr;
+		const flat = `permissions.${scopeKey}`;
+		const flatTr = t(flat);
+		if (flatTr !== flat) return flatTr;
+		return scopeKey;
+	};
+
 	return (
 		<div className="border border-surface rounded-xl overflow-hidden">
 			<ResourceHeader resource={resource} onRemove={onRemove} disabled={disabled} t={t} />
@@ -54,7 +71,7 @@ export function ResourceMatrix({ resource, scopes, permMap, onToggle, onToggleRo
 										disabled={disabled}
 										title={t("permissions.toggleRow")}
 									>
-										{t(`permissions.${scope.key}`)}
+										{scopeLabel(scope.key)}
 									</button>
 								</td>
 								{ACTIONS.map((action) => (

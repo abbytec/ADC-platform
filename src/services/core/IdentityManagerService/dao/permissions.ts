@@ -6,6 +6,7 @@ import type { Group } from "@common/types/identity/Group.ts";
 import type { Organization } from "@common/types/identity/Organization.ts";
 import LRUCache from "../../../../utils/performance/LRUCache.ts";
 import { RESOURCE_NAME, hasFlags } from "@common/types/identity/permissions.ts";
+import { PMScopes, PM_RESOURCE_NAME } from "@common/types/project-manager/permissions.ts";
 import { SystemRole } from "../defaults/systemRoles.js";
 
 interface PermissionCacheEntry {
@@ -64,9 +65,16 @@ export class PermissionManager {
 	 * @param orgId - ID de organización (opcional)
 	 * @param resource - Nombre del recurso a verificar (default: "identity"). Wildcard "*" siempre coincide.
 	 */
-	async hasPermission(userId: string, action: number, scope: number, orgId?: string, resource?: string): Promise<boolean> {
+	async hasPermission(
+		userId: string,
+		action: number,
+		scope: number,
+		orgId?: string,
+		resource?: string,
+		opts?: { ownerId?: string }
+	): Promise<boolean> {
 		const resolved = await this.resolvePermissions(userId, orgId);
-		return this.#checkPermission(resolved, action, scope, resource);
+		return this.#checkPermission(resolved, action, scope, resource, { selfId: userId, ownerId: opts?.ownerId });
 	}
 
 	/**
@@ -255,16 +263,31 @@ export class PermissionManager {
 	}
 
 	/**
-	 * Verifica si los permisos resueltos cubren las acciones y scope requeridos
+	 * Verifica si los permisos resueltos cubren las acciones y scope requeridos.
+	 * Soporta el bit `SELF` de `project-manager` como modificador: cuando está
+	 * presente en un permiso y se pasa `opts.ownerId`/`opts.selfId`, el permiso
+	 * sólo aplica si ambos coinciden.
 	 */
-	#checkPermission(resolved: ResolvedPermission[], requiredAction: number, requiredScope: number, resource: string = RESOURCE_NAME): boolean {
-		for (const perm of resolved) {
-			// Wildcard "*" coincide con cualquier recurso
-			if (perm.resource !== resource && perm.resource !== "*") continue;
+	#checkPermission(
+		resolved: ResolvedPermission[],
+		requiredAction: number,
+		requiredScope: number,
+		resource: string = RESOURCE_NAME,
+		opts?: { selfId?: string; ownerId?: string }
+	): boolean {
+		const selfBit = resource === PM_RESOURCE_NAME ? PMScopes.SELF : 0;
 
-			if (perm.granted && hasFlags(perm.action, requiredAction) && hasFlags(perm.scope, requiredScope)) {
-				return true;
+		for (const perm of resolved) {
+			if (perm.resource !== resource && perm.resource !== "*") continue;
+			if (!perm.granted) continue;
+			if (!hasFlags(perm.action, requiredAction)) continue;
+			if (!hasFlags(perm.scope, requiredScope)) continue;
+
+			const permHasSelf = selfBit !== 0 && (perm.scope & selfBit) !== 0;
+			if (permHasSelf && opts?.selfId !== undefined && opts?.ownerId !== undefined && opts.selfId !== opts.ownerId) {
+				continue;
 			}
+			return true;
 		}
 		return false;
 	}
