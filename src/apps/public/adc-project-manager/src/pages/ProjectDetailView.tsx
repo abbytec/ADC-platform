@@ -16,14 +16,15 @@ interface Props {
 	project: Project;
 	orgSlug: string;
 	perms: Permission[];
+	caller?: { userId: string; groupIds: string[] };
 	activeTab: string;
 	onBack: () => void;
 }
 
-export function ProjectDetailView({ project, orgSlug, perms, activeTab, onBack }: Props) {
+export function ProjectDetailView({ project, orgSlug, perms, caller, activeTab, onBack }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [currentProject, setCurrentProject] = useState<Project>(project);
-	const visibleTabs = getVisibleProjectTabs(perms);
+	const visibleTabs = getVisibleProjectTabs(perms, currentProject, caller);
 	const tabItems = visibleTabs.map((tab) => ({ id: tab.id, label: t(`tabs.${tab.label}`) }));
 
 	// Sincroniza cuando cambia el prop (ej. reselección desde ProjectListView)

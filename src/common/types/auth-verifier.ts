@@ -1,20 +1,24 @@
 import { AuthorizationError } from "./custom-errors/AuthorizationError.ts";
 
-/**
- * Interfaz para verificación de autenticación y autorización.
- * Implementada por cada servicio que necesita auth (delegando a IdentityManagerService).
- */
+export interface HasPermissionOpts {
+	/** ID del owner del recurso; usado para evaluar el bit `SELF`. */
+	ownerId?: string;
+}
+
 export interface IAuthVerifier {
 	verifyToken(token: string): Promise<{ valid: boolean; userId?: string; orgId?: string; error?: string }>;
-	hasPermission(userId: string, action: number, scope: number, orgId?: string, resource?: string): Promise<boolean>;
+	hasPermission(userId: string, action: number, scope: number, orgId?: string, resource?: string, opts?: HasPermissionOpts): Promise<boolean>;
 }
 
 export type AuthVerifierGetter = () => IAuthVerifier | null;
 
-/**
- * Verificador de permisos reutilizable.
- * Cada DAO recibe un AuthVerifierGetter y un nombre de recurso.
- */
+export interface RequirePermissionOpts {
+	orgId?: string;
+	ownerId?: string;
+	/** Vía alternativa: si retorna `true`, concede acceso sin chequear el permiso formal. */
+	allowIf?: (userId: string) => boolean | Promise<boolean>;
+}
+
 export class PermissionChecker {
 	constructor(
 		private readonly getAuthVerifier: AuthVerifierGetter,
@@ -22,11 +26,10 @@ export class PermissionChecker {
 		private readonly resource?: string
 	) {}
 
-	/**
-	 * Verifica que el usuario del token tiene permisos para la operación.
-	 * @returns userId del usuario autenticado, o "" si no hay auth system configurado
-	 */
-	async requirePermission(token: string | undefined, action: number, scope: number, orgId?: string): Promise<string> {
+	async requirePermission(token: string | undefined, action: number, scope: number, opts?: RequirePermissionOpts | string): Promise<string> {
+		// Compat con firma antigua `(token, action, scope, orgId)`.
+		const options: RequirePermissionOpts = typeof opts === "string" ? { orgId: opts } : (opts ?? {});
+
 		const authVerifier = this.getAuthVerifier();
 		if (!authVerifier) return "";
 		if (!token) {
@@ -36,8 +39,19 @@ export class PermissionChecker {
 		if (!result.valid || !result.userId) {
 			throw new AuthorizationError(result.error || "Token inválido", "INVALID_TOKEN");
 		}
-		const effectiveOrgId = orgId ?? result.orgId;
-		const hasPermission = await authVerifier.hasPermission(result.userId, action, scope, effectiveOrgId, this.resource);
+
+		if (options.allowIf) {
+			try {
+				if (await options.allowIf(result.userId)) return result.userId;
+			} catch {
+				// Si allowIf falla, continuamos al chequeo de permiso formal.
+			}
+		}
+
+		const effectiveOrgId = options.orgId ?? result.orgId;
+		const hasPermission = await authVerifier.hasPermission(result.userId, action, scope, effectiveOrgId, this.resource, {
+			ownerId: options.ownerId,
+		});
 		if (!hasPermission) {
 			throw new AuthorizationError(
 				`Usuario ${result.userId} no tiene permisos (action=${action}, scope=${scope})`,
@@ -47,10 +61,6 @@ export class PermissionChecker {
 		return result.userId;
 	}
 
-	/**
-	 * Resuelve el userId del token sin requerir un permiso específico.
-	 * Útil cuando la autorización se chequea por otra vía (membresía de proyecto, etc.).
-	 */
 	async resolveUserId(token: string | undefined): Promise<string> {
 		const authVerifier = this.getAuthVerifier();
 		if (!authVerifier) return "";

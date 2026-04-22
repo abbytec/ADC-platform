@@ -126,6 +126,7 @@ export function RegisterEndpoint(config: Omit<EndpointConfig, "handler">): Metho
 		const methodName = String(propertyKey);
 		const originalMethod = descriptor.value;
 		const permissions = config.permissions || [];
+		const deferAuth = config.deferAuth === true;
 
 		// Guardar metadata del endpoint
 		const endpoints = getEndpointMetadata(target);
@@ -140,8 +141,14 @@ export function RegisterEndpoint(config: Omit<EndpointConfig, "handler">): Metho
 
 		// Wrap del método para validar permisos SIEMPRE (incluso llamadas directas)
 		descriptor.value = async function (this: any, ctx: EndpointCtx<any, any>) {
-			// Si hay permisos requeridos, validar
-			if (permissions.length > 0) {
+			// deferAuth: solo verificar token (si hay) y poblar ctx.user. El DAO autoriza.
+			if (deferAuth) {
+				const validator = getPermissionValidator(this);
+				if (validator) {
+					const result = await validator(ctx.token, []);
+					(ctx as any).user = result.user;
+				}
+			} else if (permissions.length > 0) {
 				const validator = getPermissionValidator(this);
 
 				if (validator) {

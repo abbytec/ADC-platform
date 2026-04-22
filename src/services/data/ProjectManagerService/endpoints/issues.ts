@@ -7,17 +7,21 @@ import type { IssueListFilters } from "../dao/issues.ts";
 
 export class IssueEndpoints {
 	static #service: ProjectManagerService;
-	static init(service: ProjectManagerService): void {
+	static #kernelKey: symbol;
+	static init(service: ProjectManagerService, kernelKey: symbol): void {
 		IssueEndpoints.#service ??= service;
+		IssueEndpoints.#kernelKey ??= kernelKey;
 	}
 
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/pm/projects/:projectId/issues",
-		permissions: [P.PROJECT_MANAGER.ISSUES.READ],
+		deferAuth: true,
 	})
 	static async list(ctx: EndpointCtx<{ projectId: string }>) {
-		const project = await IssueEndpoints.#service.projects.getProject(ctx.params.projectId, ctx.token ?? undefined);
+		const service = IssueEndpoints.#service;
+		const caller = await service.resolveCaller(IssueEndpoints.#kernelKey, ctx);
+		const project = await service.projects.getProject(ctx.params.projectId, ctx.token ?? undefined, caller);
 		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", "Proyecto no encontrado");
 
 		const filters: IssueListFilters = {
@@ -29,29 +33,33 @@ export class IssueEndpoints {
 			orderBy: (ctx.query.orderBy as IssueListFilters["orderBy"]) || undefined,
 		};
 
-		const issues = await IssueEndpoints.#service.issues.list(project, filters, ctx.token ?? undefined);
+		const issues = await service.issues.list(project, filters, ctx.token ?? undefined, caller);
 		return { issues, project };
 	}
 
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/pm/projects/:projectId/issues",
-		permissions: [P.PROJECT_MANAGER.ISSUES.WRITE],
+		deferAuth: true,
 	})
 	static async create(ctx: EndpointCtx<{ projectId: string }, Partial<Issue> & { title: string }>) {
 		if (!ctx.data?.title) throw new ProjectManagerError(400, "MISSING_FIELDS", "`title` es requerido");
-		const project = await IssueEndpoints.#service.projects.getProject(ctx.params.projectId, ctx.token ?? undefined);
+		const service = IssueEndpoints.#service;
+		const caller = await service.resolveCaller(IssueEndpoints.#kernelKey, ctx);
+		const project = await service.projects.getProject(ctx.params.projectId, ctx.token ?? undefined, caller);
 		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", "Proyecto no encontrado");
-		return IssueEndpoints.#service.issues.create(project, ctx.data, ctx.token ?? undefined);
+		return service.issues.create(project, ctx.data, ctx.token ?? undefined, caller);
 	}
 
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/pm/issues/:id",
-		permissions: [P.PROJECT_MANAGER.ISSUES.READ],
+		deferAuth: true,
 	})
 	static async get(ctx: EndpointCtx<{ id: string }>) {
-		const issue = await IssueEndpoints.#service.issues.get(ctx.params.id, ctx.token ?? undefined);
+		const service = IssueEndpoints.#service;
+		const caller = await service.resolveCaller(IssueEndpoints.#kernelKey, ctx);
+		const issue = await service.issues.get(ctx.params.id, ctx.token ?? undefined, caller);
 		if (!issue) throw new ProjectManagerError(404, "ISSUE_NOT_FOUND", "Issue no encontrado");
 		return issue;
 	}
@@ -59,11 +67,13 @@ export class IssueEndpoints {
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/pm/issues/:id",
-		permissions: [P.PROJECT_MANAGER.ISSUES.UPDATE],
+		deferAuth: true,
 	})
 	static async update(ctx: EndpointCtx<{ id: string }, Partial<Issue> & { reason?: string }>) {
+		const service = IssueEndpoints.#service;
+		const caller = await service.resolveCaller(IssueEndpoints.#kernelKey, ctx);
 		const { reason, ...updates } = ctx.data ?? {};
-		return IssueEndpoints.#service.issues.update(ctx.params.id, updates, reason, ctx.token ?? undefined);
+		return service.issues.update(ctx.params.id, updates, reason, ctx.token ?? undefined, caller);
 	}
 
 	@RegisterEndpoint({
@@ -79,24 +89,24 @@ export class IssueEndpoints {
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/pm/issues/:id/move",
-		permissions: [P.PROJECT_MANAGER.ISSUES.UPDATE],
+		deferAuth: true,
 	})
 	static async move(ctx: EndpointCtx<{ id: string }, { columnKey: string; reason?: string }>) {
 		if (!ctx.data?.columnKey) throw new ProjectManagerError(400, "MISSING_FIELDS", "`columnKey` es requerido");
-		const issue = await IssueEndpoints.#service.issues.get(ctx.params.id, ctx.token ?? undefined);
-		if (!issue) throw new ProjectManagerError(404, "ISSUE_NOT_FOUND", "Issue no encontrado");
-		const project = await IssueEndpoints.#service.projects.getProject(issue.projectId, ctx.token ?? undefined);
-		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", "Proyecto no encontrado");
-		return IssueEndpoints.#service.issues.move(project, ctx.params.id, ctx.data.columnKey, ctx.data.reason, ctx.token ?? undefined);
+		const service = IssueEndpoints.#service;
+		const caller = await service.resolveCaller(IssueEndpoints.#kernelKey, ctx);
+		return service.issues.move(ctx.params.id, ctx.data.columnKey, ctx.data.reason, ctx.token ?? undefined, caller);
 	}
 
 	@RegisterEndpoint({
 		method: "GET",
 		url: "/api/pm/issues/:id/history",
-		permissions: [P.PROJECT_MANAGER.ISSUES.READ],
+		deferAuth: true,
 	})
 	static async history(ctx: EndpointCtx<{ id: string }>) {
-		const issue = await IssueEndpoints.#service.issues.get(ctx.params.id, ctx.token ?? undefined);
+		const service = IssueEndpoints.#service;
+		const caller = await service.resolveCaller(IssueEndpoints.#kernelKey, ctx);
+		const issue = await service.issues.get(ctx.params.id, ctx.token ?? undefined, caller);
 		if (!issue) throw new ProjectManagerError(404, "ISSUE_NOT_FOUND", "Issue no encontrado");
 		return { updateLog: issue.updateLog };
 	}

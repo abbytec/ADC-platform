@@ -9,6 +9,11 @@ export interface EndpointConfig {
 	method: HttpMethod;
 	url: string;
 	permissions?: string[];
+	/**
+	 * Si es `true`, el validador verifica el token (pobla `ctx.user`)
+	 * Si no, El DAO debe autorizar vía Requests.
+	 */
+	deferAuth?: boolean;
 	options?: EndpointOptions;
 }
 

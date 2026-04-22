@@ -12,18 +12,14 @@ import { MilestoneEndpoints } from "./endpoints/milestones.js";
 import { IssueEndpoints } from "./endpoints/issues.js";
 import { PMScopes } from "@common/types/project-manager/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
+import { OnlyKernel } from "../../../utils/decorators/OnlyKernel.ts";
 import type { Project } from "@common/types/project-manager/Project.ts";
 import type { Sprint } from "@common/types/project-manager/Sprint.ts";
 import type { Milestone } from "@common/types/project-manager/Milestone.ts";
 import type { Issue } from "@common/types/project-manager/Issue.ts";
+import type { CallerMembership } from "./dao/projects.ts";
 import { Kernel } from "../../../kernel.ts";
 
-/**
- * ProjectManagerService — gestión de proyectos tipo Jira.
- *
- * Usa IdentityManagerService para auth/permisos (delega verifyToken/hasPermission).
- * Persiste en la DB global `adc-core` (multi-tenant por campo `orgId`).
- */
 export default class ProjectManagerService extends BaseService {
 	public readonly name = "ProjectManagerService";
 
@@ -54,66 +50,68 @@ export default class ProjectManagerService extends BaseService {
 		this.mongoProvider = this.getMyProvider<IMongoProvider>("object/mongo");
 		await this.waitForMongo();
 
-		// Identity para delegar auth/permisos (kernel service, acceso via registry)
 		this.#identity = this.#kernelRef.registry.getService<IdentityManagerService>("IdentityManagerService");
 
-		// Crear modelos
 		const ProjectModel = this.mongoProvider.createModel<Project>("projects", projectSchema);
 		const SprintModel = this.mongoProvider.createModel<Sprint>("sprints", sprintSchema);
 		const MilestoneModel = this.mongoProvider.createModel<Milestone>("milestones", milestoneSchema);
 		const IssueModel = this.mongoProvider.createModel<Issue>("issues", issueSchema);
 
-		// Managers
-		this.#projectManager = new ProjectManager(ProjectModel, this.logger, this.#getAuthVerifier);
+		this.#projectManager = new ProjectManager(ProjectModel, kernelKey, this.logger, this.#getAuthVerifier);
 		this.#sprintManager = new SprintManager(SprintModel, this.logger, this.#getAuthVerifier);
 		this.#milestoneManager = new MilestoneManager(MilestoneModel, this.logger, this.#getAuthVerifier);
-		this.#issueManager = new IssueManager(IssueModel, this.#projectManager, this.logger, this.#getAuthVerifier);
+		this.#issueManager = new IssueManager(IssueModel, this.#projectManager.getInternals(kernelKey), this.logger, this.#getAuthVerifier);
 
-		// AuthVerifier delegado a Identity
 		this.#authVerifier = this.#identity.createAuthVerifier();
 
-		// Init endpoints
-		ProjectEndpoints.init(this);
+		ProjectEndpoints.init(this, kernelKey);
 		SprintEndpoints.init(this);
 		MilestoneEndpoints.init(this);
-		IssueEndpoints.init(this);
+		IssueEndpoints.init(this, kernelKey);
 
 		this.logger.logOk("ProjectManagerService iniciado");
 	}
 
-	// ─────────────────────────────────────────────────────────────────────────
-	// Contexto de listado de proyectos (endpoint-level helper)
-	// ─────────────────────────────────────────────────────────────────────────
-
 	/**
-	 * Resuelve el contexto del caller (userId, groupIds, global PM read, admin)
-	 * y delega a ProjectManager.listVisibleProjects.
+	 * Resuelve `userId` + `groupIds` del caller desde el token y cachea en `ctx`.
+	 * Restringido a llamadas que posean la `kernelKey` del service (típicamente,
+	 * los endpoints registrados vía `init(this, kernelKey)`).
 	 */
-	async listProjectsForCaller(ctx: EndpointCtx): Promise<Project[]> {
-		const user = ctx.user;
-		const userId = user?.id ?? "";
-		const callerOrgId = user?.orgId;
-		const identity = this.#identity!;
+	@OnlyKernel()
+	async resolveCaller(_kernelKey: symbol, ctx: EndpointCtx): Promise<CallerMembership> {
+		const cacheKey = Symbol.for("PMCallerMembership");
+		const cached = (ctx as any)[cacheKey];
+		if (cached) return cached;
 
-		// Resolver groupIds del usuario (best-effort: Identity puede no estar disponible)
+		const userId = ctx.user?.id ?? "";
 		let groupIds: string[] = [];
-		try {
-			const full = userId ? await identity.users.getUser(userId, ctx.token ?? undefined) : null;
-			groupIds = full?.groupIds ?? [];
-		} catch {
-			groupIds = [];
+		if (userId) {
+			try {
+				const full = await this.identity.users.getUser(userId, ctx.token ?? undefined);
+				groupIds = full?.groupIds ?? [];
+			} catch {
+				groupIds = [];
+			}
 		}
-
-		const hasGlobalPMRead = await identity.permissions.hasPermission(userId, CRUDXAction.READ, PMScopes.PROJECTS);
-		// Admin global = usuario sin orgId con permisos completos sobre el recurso
-		const isGlobalAdmin = !callerOrgId && (await identity.permissions.hasPermission(userId, CRUDXAction.CRUD, PMScopes.ALL));
-
-		return this.projects.listVisibleProjects({ userId, groupIds, callerOrgId, hasGlobalPMRead, isGlobalAdmin }, ctx.token ?? undefined);
+		const caller: CallerMembership = { userId, groupIds };
+		Object.defineProperty(ctx, cacheKey, { value: caller, enumerable: false });
+		return caller;
 	}
 
-	// ─────────────────────────────────────────────────────────────────────────
-	// Getters
-	// ─────────────────────────────────────────────────────────────────────────
+	@OnlyKernel()
+	async listProjectsForCaller(_kernelKey: symbol, ctx: EndpointCtx): Promise<Project[]> {
+		const caller = await this.resolveCaller(_kernelKey, ctx);
+		const identity = this.#identity!;
+		const orgId = ctx.user?.orgId;
+
+		const hasGlobalPMRead = await identity.permissions.hasPermission(caller.userId, CRUDXAction.READ, PMScopes.PROJECTS);
+		const isGlobalAdmin = !orgId && (await identity.permissions.hasPermission(caller.userId, CRUDXAction.CRUD, PMScopes.ALL));
+
+		return this.projects.listVisibleProjects(
+			{ userId: caller.userId, groupIds: caller.groupIds, callerOrgId: orgId, hasGlobalPMRead, isGlobalAdmin },
+			ctx.token ?? undefined
+		);
+	}
 
 	get projects(): ProjectManager {
 		if (!this.#projectManager) throw new Error("ProjectManager not initialized");

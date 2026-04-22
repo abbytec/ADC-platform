@@ -1,6 +1,5 @@
 import type { Model } from "mongoose";
 import type { Issue, IssuePriority } from "@common/types/project-manager/Issue.ts";
-import type { Project } from "@common/types/project-manager/Project.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "@common/utils/crypto.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "@common/types/auth-verifier.ts";
@@ -10,7 +9,9 @@ import { ProjectManagerError } from "@common/types/custom-errors/ProjectManagerE
 import { formatIssueKey, deriveProjectKey } from "@common/utils/project-manager/keygen.ts";
 import { buildDiffEntries } from "@common/utils/project-manager/diff.ts";
 import { sortIssuesByPriority, normalizeUrgency, normalizeDifficulty } from "@common/utils/project-manager/priority.ts";
-import type { ProjectManager } from "./projects.ts";
+import { isProjectMember } from "../utils/project-access.ts";
+import type { ProjectInternals, CallerMembership } from "./projects.ts";
+import type { Project } from "@common/types/project-manager/Project.ts";
 
 export interface IssueListFilters {
 	sprintId?: string;
@@ -25,29 +26,36 @@ function defaultPriority(): IssuePriority {
 	return { urgency: 0, importance: 0, difficulty: null };
 }
 
+function isAssignee(issue: Issue | null | undefined, userId: string, groupIds: string[]): boolean {
+	if (!issue) return false;
+	if (issue.assigneeIds?.includes(userId)) return true;
+	return issue.assigneeGroupIds?.some((gid) => groupIds.includes(gid)) ?? false;
+}
+
 export class IssueManager {
 	#permissionChecker: PermissionChecker;
 
 	constructor(
 		private readonly issueModel: Model<Issue>,
-		private readonly projectManager: ProjectManager,
+		private readonly projectInternals: ProjectInternals,
 		private readonly logger: ILogger,
 		getAuthVerifier: AuthVerifierGetter = () => null
 	) {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "IssueManager", PM_RESOURCE_NAME);
 	}
 
-	async create(project: Project, input: Partial<Issue> & Pick<Issue, "title">, token?: string): Promise<Issue> {
-		const reporterId = await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, PMScopes.ISSUES);
+	async create(project: Project, input: Partial<Issue> & Pick<Issue, "title">, token?: string, caller?: CallerMembership): Promise<Issue> {
+		const reporterId = await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, PMScopes.ISSUES, {
+			ownerId: project.ownerId,
+			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds: caller?.groupIds ?? [] }),
+		});
 
-		// Determinar columna inicial (isAuto)
 		const autoColumn = project.kanbanColumns.find((c) => c.isAuto) ?? project.kanbanColumns[0];
 		if (!autoColumn) {
 			throw new ProjectManagerError(500, "INVALID_COLUMN", "Proyecto sin columna inicial configurada");
 		}
 
-		// Generar key atómicamente
-		const number = await this.projectManager.incrementIssueCounter(project.id);
+		const number = await this.projectInternals.incrementIssueCounter(project.id);
 		const prefix = deriveProjectKey(project.slug || project.name);
 		const key = formatIssueKey(prefix, number);
 
@@ -87,14 +95,23 @@ export class IssueManager {
 		return issue;
 	}
 
-	async get(issueId: string, token?: string): Promise<Issue | null> {
-		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.ISSUES);
+	async get(issueId: string, token?: string, caller?: CallerMembership): Promise<Issue | null> {
 		const doc = await this.issueModel.findOne({ id: issueId });
-		return doc?.toObject?.() || doc || null;
+		const issue = doc?.toObject?.() || doc || null;
+		const project = issue ? await this.projectInternals.fetchProject(issue.projectId) : null;
+		const groupIds = caller?.groupIds ?? [];
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.ISSUES, {
+			ownerId: issue?.reporterId ?? project?.ownerId,
+			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds }) || isAssignee(issue, uid, groupIds),
+		});
+		return issue;
 	}
 
-	async list(project: Project, filters: IssueListFilters = {}, token?: string): Promise<Issue[]> {
-		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.ISSUES);
+	async list(project: Project, filters: IssueListFilters = {}, token?: string, caller?: CallerMembership): Promise<Issue[]> {
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.ISSUES, {
+			ownerId: project.ownerId,
+			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds: caller?.groupIds ?? [] }),
+		});
 
 		const query: Record<string, unknown> = { projectId: project.id };
 		if (filters.sprintId) query.sprintId = filters.sprintId;
@@ -112,14 +129,24 @@ export class IssueManager {
 		return issues;
 	}
 
-	async update(issueId: string, updates: Partial<Issue>, reason: string | undefined, token?: string): Promise<Issue> {
-		const actorId = await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.ISSUES);
-
+	async update(
+		issueId: string,
+		updates: Partial<Issue>,
+		reason: string | undefined,
+		token?: string,
+		caller?: CallerMembership
+	): Promise<Issue> {
 		const currentDoc = await this.issueModel.findOne({ id: issueId });
 		if (!currentDoc) throw new ProjectManagerError(404, "ISSUE_NOT_FOUND", `Issue ${issueId} no encontrado`);
 		const current: Issue = currentDoc.toObject?.() || currentDoc;
+		const project = await this.projectInternals.fetchProject(current.projectId);
 
-		// Normalizar prioridad si viene
+		const groupIds = caller?.groupIds ?? [];
+		const actorId = await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.ISSUES, {
+			ownerId: current.reporterId ?? project?.ownerId,
+			allowIf: (uid) => isAssignee(current, uid, groupIds) || project?.ownerId === uid,
+		});
+
 		if (updates.priority) {
 			updates.priority = {
 				urgency: normalizeUrgency(updates.priority.urgency),
@@ -128,7 +155,6 @@ export class IssueManager {
 			};
 		}
 
-		// Inmutables
 		const safe: Partial<Issue> = { ...updates, updatedAt: new Date() };
 		delete (safe as any).id;
 		delete (safe as any).projectId;
@@ -155,17 +181,22 @@ export class IssueManager {
 		if (result.deletedCount === 0) throw new ProjectManagerError(404, "ISSUE_NOT_FOUND", `Issue ${issueId} no encontrado`);
 	}
 
-	/**
-	 * Mueve un issue a otra columna. Valida WIP limits y marca `closedAt` cuando
-	 * la columna destino es `isDone`.
-	 */
-	async move(project: Project, issueId: string, targetColumnKey: string, reason: string | undefined, token?: string): Promise<Issue> {
-		const actorId = await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.ISSUES);
+	async move(issueId: string, targetColumnKey: string, reason: string | undefined, token?: string, caller?: CallerMembership): Promise<Issue> {
+		const currentDoc = await this.issueModel.findOne({ id: issueId });
+		if (!currentDoc) throw new ProjectManagerError(404, "ISSUE_NOT_FOUND", `Issue ${issueId} no encontrado`);
+		const current: Issue = currentDoc.toObject?.() || currentDoc;
+		const project = await this.projectInternals.fetchProject(current.projectId);
+		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", `Proyecto ${current.projectId} no encontrado`);
+
+		const groupIds = caller?.groupIds ?? [];
+		const actorId = await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.ISSUES, {
+			ownerId: current.reporterId ?? project.ownerId,
+			allowIf: (uid) => isAssignee(current, uid, groupIds) || project.ownerId === uid,
+		});
 
 		const column = project.kanbanColumns.find((c) => c.key === targetColumnKey);
 		if (!column) throw new ProjectManagerError(400, "COLUMN_NOT_FOUND", `Columna '${targetColumnKey}' no existe en el proyecto`);
 
-		// WIP limit check
 		const wipLimit = project.settings?.wipLimits?.[targetColumnKey];
 		if (wipLimit !== undefined) {
 			const count = await this.issueModel.countDocuments({ projectId: project.id, columnKey: targetColumnKey });
@@ -173,10 +204,6 @@ export class IssueManager {
 				throw new ProjectManagerError(400, "WIP_LIMIT_REACHED", `Columna '${targetColumnKey}' alcanzó su WIP limit (${wipLimit})`);
 			}
 		}
-
-		const currentDoc = await this.issueModel.findOne({ id: issueId });
-		if (!currentDoc) throw new ProjectManagerError(404, "ISSUE_NOT_FOUND", `Issue ${issueId} no encontrado`);
-		const current: Issue = currentDoc.toObject?.() || currentDoc;
 
 		if (current.columnKey === targetColumnKey) return current;
 

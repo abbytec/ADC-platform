@@ -8,8 +8,8 @@ import type { User } from "@common/types/identity/User.ts";
  * No reemplaza el chequeo de permisos del recurso `project-manager`; lo complementa.
  * Un usuario con permiso global PM (`PROJECTS.READ`) ve proyectos incluso sin membresía.
  */
-export function isProjectMember(project: Project, user: Pick<User, "id" | "groupIds"> | null): boolean {
-	if (!user) return false;
+export function isProjectMember(project: Project | null | undefined, user: Pick<User, "id" | "groupIds"> | null): boolean {
+	if (!project || !user) return false;
 	if (project.ownerId === user.id) return true;
 	if (project.memberUserIds?.includes(user.id)) return true;
 	const groupIds = user.groupIds ?? [];

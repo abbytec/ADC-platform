@@ -143,6 +143,21 @@ export default {
 		organizations: "Organizaciones",
 		regions: "Regiones",
 		stats: "Estadísticas",
+		community: {
+			content: "Contenido",
+			publish_status: "Estado de publicación",
+			social: "Redes sociales"
+		},
+		"project-manager": {
+			projects: "Proyectos",
+			issues: "Issues",
+			sprints: "Sprints",
+			milestones: "Hitos",
+			custom_fields: "Campos personalizados",
+			attachments: "Adjuntos",
+			settings: "Configuración",
+			stats: "Estadísticas"
+		},
 		toggleAll: "Alternar toda la columna",
 		toggleRow: "Alternar toda la fila",
 		addResource: "Agregar recurso",
@@ -156,7 +171,9 @@ export default {
 	},
 	resources: {
 		identity: "Identidad",
-		content: "Contenido"
+		content: "Contenido",
+		community: "Comunidad",
+		"project-manager": "Project Manager"
 	},
 	errors: {
 		// Acceso / aislamiento de org
