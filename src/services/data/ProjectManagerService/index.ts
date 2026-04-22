@@ -58,10 +58,10 @@ export default class ProjectManagerService extends BaseService {
 		this.#identity = this.#kernelRef.registry.getService<IdentityManagerService>("IdentityManagerService");
 
 		// Crear modelos
-		const ProjectModel = this.mongoProvider.createModel<Project>("PMProject", projectSchema);
-		const SprintModel = this.mongoProvider.createModel<Sprint>("PMSprint", sprintSchema);
-		const MilestoneModel = this.mongoProvider.createModel<Milestone>("PMMilestone", milestoneSchema);
-		const IssueModel = this.mongoProvider.createModel<Issue>("PMIssue", issueSchema);
+		const ProjectModel = this.mongoProvider.createModel<Project>("projects", projectSchema);
+		const SprintModel = this.mongoProvider.createModel<Sprint>("sprints", sprintSchema);
+		const MilestoneModel = this.mongoProvider.createModel<Milestone>("milestones", milestoneSchema);
+		const IssueModel = this.mongoProvider.createModel<Issue>("issues", issueSchema);
 
 		// Managers
 		this.#projectManager = new ProjectManager(ProjectModel, this.logger, this.#getAuthVerifier);
