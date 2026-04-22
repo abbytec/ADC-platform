@@ -9,11 +9,7 @@ import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { RowActions } from "../components/RowActions.tsx";
 
-interface RegionsViewProps {
-	readonly scopes: Permission[];
-}
-
-export function RegionsView({ scopes }: RegionsViewProps) {
+export function RegionsView({ perms }: { readonly perms: Permission[] }) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [regions, setRegions] = useState<RegionInfo[]>([]);
 	const [filteredRegions, setFilteredRegions] = useState<RegionInfo[]>([]);
@@ -30,9 +26,9 @@ export function RegionsView({ scopes }: RegionsViewProps) {
 	const [formCacheUri, setFormCacheUri] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 
-	const writable = canWrite(scopes, Scope.REGIONS);
-	const updatable = canUpdate(scopes, Scope.REGIONS);
-	const deletable = canDelete(scopes, Scope.REGIONS);
+	const writable = canWrite(perms, Scope.REGIONS);
+	const updatable = canUpdate(perms, Scope.REGIONS);
+	const deletable = canDelete(perms, Scope.REGIONS);
 
 	const editModalRef = useCallback((el: HTMLElement | null) => {
 		if (el) el.addEventListener("adcClose", () => setModalOpen(false));

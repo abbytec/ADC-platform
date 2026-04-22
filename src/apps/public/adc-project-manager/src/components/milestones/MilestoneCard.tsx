@@ -9,7 +9,7 @@ interface Props {
 	milestone: Milestone;
 	doneCount: number;
 	totalCount: number;
-	scopes: Permission[];
+	perms: Permission[];
 	onDelete: (id: string) => void;
 	onUpdated: () => void | Promise<void>;
 }
@@ -29,9 +29,9 @@ function toDateInput(v?: Date | string): string {
 	return d.toISOString().slice(0, 10);
 }
 
-export function MilestoneCard({ milestone, doneCount, totalCount, scopes, onDelete, onUpdated }: Props) {
+export function MilestoneCard({ milestone, doneCount, totalCount, perms, onDelete, onUpdated }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
-	const canEdit = canUpdate(scopes, Scope.MILESTONES);
+	const canEdit = canUpdate(perms, Scope.MILESTONES);
 	const [editing, setEditing] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [form, setForm] = useState({
@@ -133,7 +133,7 @@ export function MilestoneCard({ milestone, doneCount, totalCount, scopes, onDele
 						{t("common.edit")}
 					</adc-button>
 				)}
-				{canDelete(scopes, Scope.MILESTONES) && (
+				{canDelete(perms, Scope.MILESTONES) && (
 					<adc-button variant="accent" onClick={() => onDelete(milestone.id)}>
 						{t("common.delete")}
 					</adc-button>

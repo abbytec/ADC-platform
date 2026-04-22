@@ -31,7 +31,7 @@ function parseRoute(path: string): { orgSlug?: string; projectSlug?: string; tab
 
 export default function App() {
 	const { t, ready } = useTranslation({ namespace: "adc-project-manager", autoLoad: true });
-	const [scopes, setScopes] = useState<Permission[]>([]);
+	const [perms, setPerms] = useState<Permission[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [unauthorized, setUnauthorized] = useState(false);
 	const [orgId, setOrgId] = useState<string | undefined>(undefined);
@@ -58,9 +58,9 @@ export default function App() {
 		clearErrors();
 		const result = await identityPmApi.getMyPermissions();
 		if (result.success && result.data) {
-			setScopes(result.data.scopes);
+			setPerms(result.data.perms);
 			setOrgId(result.data.orgId || undefined);
-			if (!canAccessProjects(result.data.scopes)) {
+			if (!canAccessProjects(result.data.perms)) {
 				setUnauthorized(true);
 				setLoading(false);
 				return;
@@ -141,14 +141,14 @@ export default function App() {
 				<ProjectDetailView
 					project={selectedProject}
 					orgSlug={selectedOrgSlug}
-					scopes={scopes}
+					perms={perms}
 					activeTab={activeTab}
 					onBack={backToProjects}
 				/>
 			) : (
 				<>
 					<h1 className="font-heading text-2xl font-bold text-text mb-6">{t("common.title")}</h1>
-					<ProjectListView scopes={scopes} orgId={orgId} orgSlug={ownOrgSlug} onOpen={openProject} />
+					<ProjectListView perms={perms} orgId={orgId} orgSlug={ownOrgSlug} onOpen={openProject} />
 				</>
 			)}
 		</div>

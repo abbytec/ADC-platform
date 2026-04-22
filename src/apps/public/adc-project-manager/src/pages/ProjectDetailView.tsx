@@ -15,15 +15,15 @@ import { ProjectSettingsView } from "./ProjectSettingsView.tsx";
 interface Props {
 	project: Project;
 	orgSlug: string;
-	scopes: Permission[];
+	perms: Permission[];
 	activeTab: string;
 	onBack: () => void;
 }
 
-export function ProjectDetailView({ project, orgSlug, scopes, activeTab, onBack }: Props) {
+export function ProjectDetailView({ project, orgSlug, perms, activeTab, onBack }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [currentProject, setCurrentProject] = useState<Project>(project);
-	const visibleTabs = getVisibleProjectTabs(scopes);
+	const visibleTabs = getVisibleProjectTabs(perms);
 	const tabItems = visibleTabs.map((tab) => ({ id: tab.id, label: t(`tabs.${tab.label}`) }));
 
 	// Sincroniza cuando cambia el prop (ej. reselección desde ProjectListView)
@@ -62,19 +62,19 @@ export function ProjectDetailView({ project, orgSlug, scopes, activeTab, onBack 
 	const renderTab = () => {
 		switch (activeTab) {
 			case "board":
-				return <BoardView project={currentProject} scopes={scopes} />;
+				return <BoardView project={currentProject} perms={perms} />;
 			case "issues":
-				return <BacklogView project={currentProject} scopes={scopes} />;
+				return <BacklogView project={currentProject} perms={perms} />;
 			case "calendar":
-				return <CalendarView project={currentProject} scopes={scopes} />;
+				return <CalendarView project={currentProject} perms={perms} />;
 			case "sprints":
-				return <SprintsView project={currentProject} scopes={scopes} />;
+				return <SprintsView project={currentProject} perms={perms} />;
 			case "milestones":
-				return <MilestonesView project={currentProject} scopes={scopes} />;
+				return <MilestonesView project={currentProject} perms={perms} />;
 			case "settings":
-				return <ProjectSettingsView project={currentProject} scopes={scopes} onChanged={reloadProject} />;
+				return <ProjectSettingsView project={currentProject} perms={perms} onChanged={reloadProject} />;
 			default:
-				return <BoardView project={currentProject} scopes={scopes} />;
+				return <BoardView project={currentProject} perms={perms} />;
 		}
 	};
 

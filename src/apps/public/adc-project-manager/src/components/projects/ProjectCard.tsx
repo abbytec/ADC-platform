@@ -5,12 +5,12 @@ import { canDelete, Scope } from "../../utils/permissions.ts";
 
 interface Props {
 	project: Project;
-	scopes: Permission[];
+	perms: Permission[];
 	onOpen: (project: Project) => void;
 	onDelete: (id: string) => void;
 }
 
-export function ProjectCard({ project, scopes, onOpen, onDelete }: Props) {
+export function ProjectCard({ project, perms, onOpen, onDelete }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	return (
 		<adc-card class="p-4 flex flex-col gap-2">
@@ -38,7 +38,7 @@ export function ProjectCard({ project, scopes, onOpen, onDelete }: Props) {
 				<adc-button variant="accent" onClick={() => onOpen(project)}>
 					{t("common.open")}
 				</adc-button>
-				{canDelete(scopes, Scope.PROJECTS) && (
+				{canDelete(perms, Scope.PROJECTS) && (
 					<adc-button variant="accent" onClick={() => onDelete(project.id)}>
 						{t("common.delete")}
 					</adc-button>

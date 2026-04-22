@@ -4,6 +4,7 @@ export { CRUDXAction as Action } from "@common/types/Actions";
 import { IdentityScopes } from "@common/types/identity/permissions.ts";
 import type { Permission } from "@common/types/identity/Permission.js";
 import { CRUDXAction } from "@common/types/Actions";
+import { hasPermission } from "@common/utils/perms.ts";
 
 /**
  * Tab definition for the identity management panel
@@ -26,35 +27,30 @@ export const IDENTITY_TABS: IdentityTab[] = [
 	{ id: "regions", label: "regions", requiredScope: IdentityScopes.REGIONS, requiredAction: CRUDXAction.READ },
 ];
 
-/**
- * Checks if the user's resolved scopes grant a specific permission
- */
-export function hasPermission(scopes: Permission[], requiredAction: number, requiredScope: number): boolean {
-	return scopes.some((s) => (s.action & requiredAction) === requiredAction && (s.scope & requiredScope) === requiredScope);
-}
+const RESOURCE = "identity";
 
 /**
  * Filters tabs based on user's permissions.
  * When orgId is set (org mode), organizations and regions tabs are hidden.
  */
-export function getVisibleTabs(scopes: Permission[], orgId?: string): IdentityTab[] {
+export function getVisibleTabs(perms: Permission[], orgId?: string): IdentityTab[] {
 	return IDENTITY_TABS.filter((tab) => {
 		if (orgId && (tab.id === "organizations" || tab.id === "regions")) return false;
-		return hasPermission(scopes, tab.requiredAction, tab.requiredScope);
+		return hasPermission(perms, RESOURCE, tab.requiredAction, tab.requiredScope);
 	});
 }
 
 /**
  * Checks if user can perform a specific action on a scope
  */
-export function canWrite(scopes: Permission[], scope: number): boolean {
-	return hasPermission(scopes, CRUDXAction.WRITE, scope);
+export function canWrite(perms: Permission[], scope: number): boolean {
+	return hasPermission(perms, RESOURCE, CRUDXAction.WRITE, scope);
 }
 
-export function canUpdate(scopes: Permission[], scope: number): boolean {
-	return hasPermission(scopes, CRUDXAction.UPDATE, scope);
+export function canUpdate(perms: Permission[], scope: number): boolean {
+	return hasPermission(perms, RESOURCE, CRUDXAction.UPDATE, scope);
 }
 
-export function canDelete(scopes: Permission[], scope: number): boolean {
-	return hasPermission(scopes, CRUDXAction.DELETE, scope);
+export function canDelete(perms: Permission[], scope: number): boolean {
+	return hasPermission(perms, RESOURCE, CRUDXAction.DELETE, scope);
 }

@@ -12,7 +12,7 @@ import { IssueDialog } from "../components/IssueDialog.tsx";
 
 interface Props {
 	project: Project;
-	scopes: Permission[];
+	perms: Permission[];
 }
 
 type RangeType = "sprint" | "milestone";
@@ -23,7 +23,7 @@ function pickDefault(entities: Array<{ id: string; status: string }>): string | 
 	return entities[0]?.id;
 }
 
-export function CalendarView({ project, scopes }: Props) {
+export function CalendarView({ project, perms }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [rangeType, setRangeType] = useState<RangeType>("sprint");
 	const [entityId, setEntityId] = useState<string | undefined>();
@@ -101,7 +101,7 @@ export function CalendarView({ project, scopes }: Props) {
 				<IssueDialog
 					project={project}
 					issue={editingIssue}
-					scopes={scopes}
+					perms={perms}
 					sprints={sprints}
 					milestones={milestones}
 					onClose={() => setEditingIssue(null)}

@@ -13,19 +13,19 @@ import { WipLimitsSection } from "../components/settings/WipLimitsSection.tsx";
 
 interface Props {
 	project: Project;
-	scopes: Permission[];
+	perms: Permission[];
 	onChanged: () => void | Promise<void>;
 }
 
 type SettingsTab = "general" | "members" | "columns" | "customFields" | "linkTypes" | "priority" | "wip";
 
-export function ProjectSettingsView({ project, scopes, onChanged }: Props) {
+export function ProjectSettingsView({ project, perms, onChanged }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [tab, setTab] = useState<SettingsTab>("general");
 
-	const canEditProject = canUpdate(scopes, Scope.PROJECTS);
-	const canEditSettings = canUpdate(scopes, Scope.SETTINGS);
-	const canEditCustomFields = canUpdate(scopes, Scope.CUSTOM_FIELDS);
+	const canEditProject = canUpdate(perms, Scope.PROJECTS);
+	const canEditSettings = canUpdate(perms, Scope.SETTINGS);
+	const canEditCustomFields = canUpdate(perms, Scope.CUSTOM_FIELDS);
 
 	const tabs: Array<{ id: SettingsTab; label: string; enabled: boolean }> = [
 		{ id: "general", label: t("settings.generalTab"), enabled: true },

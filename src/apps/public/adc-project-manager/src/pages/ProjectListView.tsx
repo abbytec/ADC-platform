@@ -8,14 +8,14 @@ import { ProjectCard } from "../components/projects/ProjectCard.tsx";
 import { CreateProjectModal, type ProjectFormState } from "../components/projects/CreateProjectModal.tsx";
 
 interface Props {
-	scopes: Permission[];
+	perms: Permission[];
 	orgId?: string;
 	/** Slug de la organización propia (o "default" en contexto global). Se usa para el check de slug. */
 	orgSlug: string;
 	onOpen: (project: Project) => void;
 }
 
-export function ProjectListView({ scopes, orgId, orgSlug, onOpen }: Props) {
+export function ProjectListView({ perms, orgId, orgSlug, onOpen }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -58,7 +58,7 @@ export function ProjectListView({ scopes, orgId, orgSlug, onOpen }: Props) {
 		<div className="space-y-4">
 			<div className="flex justify-between items-center">
 				<h2 className="font-heading text-xl font-semibold text-text">{t("projects.title")}</h2>
-				{canWrite(scopes, Scope.PROJECTS) && (
+				{canWrite(perms, Scope.PROJECTS) && (
 					<adc-button variant="primary" onClick={() => setShowCreate(true)}>
 						{t("projects.newProject")}
 					</adc-button>
@@ -70,7 +70,7 @@ export function ProjectListView({ scopes, orgId, orgSlug, onOpen }: Props) {
 			) : (
 				<div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
 					{projects.map((p) => (
-						<ProjectCard key={p.id} project={p} scopes={scopes} onOpen={onOpen} onDelete={handleDelete} />
+						<ProjectCard key={p.id} project={p} perms={perms} onOpen={onOpen} onDelete={handleDelete} />
 					))}
 				</div>
 			)}

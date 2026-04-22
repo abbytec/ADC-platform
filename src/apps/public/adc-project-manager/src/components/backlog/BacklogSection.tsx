@@ -16,7 +16,7 @@ export interface GroupSection {
 interface Props {
 	section: GroupSection;
 	project: Project;
-	scopes: Permission[];
+	perms: Permission[];
 	isCollapsed: boolean;
 	isDragEnabled: boolean;
 	isDropActive: boolean;
@@ -32,7 +32,7 @@ interface Props {
 export function BacklogSection({
 	section,
 	project,
-	scopes,
+	perms,
 	isCollapsed,
 	isDragEnabled,
 	isDropActive,
@@ -94,7 +94,7 @@ export function BacklogSection({
 							<BacklogTable
 								issues={section.issues}
 								project={project}
-								scopes={scopes}
+								perms={perms}
 								isDragEnabled={isDragEnabled}
 								onOpen={onOpenIssue}
 								onMove={onMoveIssue}

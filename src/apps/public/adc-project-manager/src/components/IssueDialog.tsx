@@ -18,7 +18,7 @@ import { IssueLinksEditor } from "./pickers/IssueLinksEditor.tsx";
 interface Props {
 	project: Project;
 	issue: Issue | null;
-	scopes: Permission[];
+	perms: Permission[];
 	sprints?: Sprint[];
 	milestones?: Milestone[];
 	onClose: () => void;
@@ -35,7 +35,7 @@ function toD(n: number): Difficulty {
 	return v as Difficulty;
 }
 
-export function IssueDialog({ project, issue, scopes, sprints = [], milestones = [], onClose, onSaved }: Props) {
+export function IssueDialog({ project, issue, perms, sprints = [], milestones = [], onClose, onSaved }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const isNew = !issue;
 	const [form, setForm] = useState<{
@@ -93,7 +93,7 @@ export function IssueDialog({ project, issue, scopes, sprints = [], milestones =
 		});
 	}, [project.id, project.issueLinkTypes.length]);
 
-	const canEdit = isNew ? canWrite(scopes, Scope.ISSUES) : canUpdate(scopes, Scope.ISSUES);
+	const canEdit = isNew ? canWrite(perms, Scope.ISSUES) : canUpdate(perms, Scope.ISSUES);
 
 	const save = async () => {
 		setSaving(true);

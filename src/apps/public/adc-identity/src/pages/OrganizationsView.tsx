@@ -10,10 +10,6 @@ import { MembersModal } from "../components/MembersModal.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { RowActions } from "../components/RowActions.tsx";
 
-interface OrganizationsViewProps {
-	readonly scopes: Permission[];
-}
-
 const ORG_STATUSES = ["active", "inactive", "blocked"] as const;
 
 const statusColors: Record<string, "green" | "gray" | "red"> = {
@@ -22,7 +18,7 @@ const statusColors: Record<string, "green" | "gray" | "red"> = {
 	blocked: "red",
 };
 
-export function OrganizationsView({ scopes }: OrganizationsViewProps) {
+export function OrganizationsView({ perms }: { readonly perms: Permission[] }) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [orgs, setOrgs] = useState<Organization[]>([]);
 	const [filteredOrgs, setFilteredOrgs] = useState<Organization[]>([]);
@@ -40,9 +36,9 @@ export function OrganizationsView({ scopes }: OrganizationsViewProps) {
 	const [formStatus, setFormStatus] = useState<string>("active");
 	const [submitting, setSubmitting] = useState(false);
 
-	const writable = canWrite(scopes, Scope.ORGANIZATIONS);
-	const updatable = canUpdate(scopes, Scope.ORGANIZATIONS);
-	const deletable = canDelete(scopes, Scope.ORGANIZATIONS);
+	const writable = canWrite(perms, Scope.ORGANIZATIONS);
+	const updatable = canUpdate(perms, Scope.ORGANIZATIONS);
+	const deletable = canDelete(perms, Scope.ORGANIZATIONS);
 
 	const editModalRef = useCallback((el: HTMLElement | null) => {
 		if (el) el.addEventListener("adcClose", () => setModalOpen(false));

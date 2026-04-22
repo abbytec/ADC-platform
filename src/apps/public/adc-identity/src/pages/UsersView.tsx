@@ -14,14 +14,14 @@ import { getBaseUrl } from "@common/utils/url-utils.js";
 import { ClientUser } from "@common/types/identity/User.ts";
 
 interface UsersViewProps {
-	readonly scopes: Permission[];
+	readonly perms: Permission[];
 	readonly orgId?: string;
 	readonly isAdmin?: boolean;
 	readonly isScopedOrgView?: boolean;
 	readonly organizations?: Organization[];
 }
 
-export function UsersView({ scopes, orgId, isAdmin, isScopedOrgView = false, organizations = [] }: UsersViewProps) {
+export function UsersView({ perms, orgId, isAdmin, isScopedOrgView = false, organizations = [] }: UsersViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [users, setUsers] = useState<ClientUser[]>([]);
 	const [filteredUsers, setFilteredUsers] = useState<ClientUser[]>([]);
@@ -46,9 +46,9 @@ export function UsersView({ scopes, orgId, isAdmin, isScopedOrgView = false, org
 	const controllerRef = useRef<AbortController | null>(null);
 	const API_BASE = getBaseUrl(3000);
 
-	const writable = canWrite(scopes, Scope.USERS);
-	const updatable = canUpdate(scopes, Scope.USERS);
-	const deletable = canDelete(scopes, Scope.USERS);
+	const writable = canWrite(perms, Scope.USERS);
+	const updatable = canUpdate(perms, Scope.USERS);
+	const deletable = canDelete(perms, Scope.USERS);
 
 	// Ref callbacks for Stencil web component events (React 19 lowercases event names)
 	const editModalRef = useCallback((el: HTMLElement | null) => {
