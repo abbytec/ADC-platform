@@ -1,13 +1,19 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { type Model, Schema } from "mongoose";
 import { BaseService } from "../../BaseService.js";
 import { Kernel } from "../../../kernel.js";
-import { ILogManagerService } from "./types.js";
+import { ILogManagerService, type HttpLogEntry, type HttpRequestLog } from "./types.js";
 import { ModuleTypes } from "../../../utils/registry/ModuleRegistry.js";
+import type { IMongoProvider } from "../../../providers/object/mongo/index.js";
+import { AuthError } from "@common/types/custom-errors/AuthError.js";
+import { HttpError } from "@common/types/ADCCustomError.js";
 
 export default class LogManagerService extends BaseService implements ILogManagerService {
 	public readonly name = "LogManagerService";
 	private cleanupInterval: NodeJS.Timeout | null = null;
+	#mongo: IMongoProvider | null = null;
+	#httpLogModel: Model<HttpLogEntry> | null = null;
 
 	constructor(kernel: Kernel, options?: any) {
 		super(kernel, options);
@@ -22,6 +28,34 @@ export default class LogManagerService extends BaseService implements ILogManage
 			await fs.mkdir(logsDir, { recursive: true });
 		} catch (error: any) {
 			this.logger.logError(`Could not create logs directory: ${error.message}`);
+		}
+
+		// Initialize MongoDB connection and HTTP log model
+		try {
+			this.#mongo = this.getMyProvider<IMongoProvider>("object/mongo");
+			await this.#mongo.connect();
+
+			// Create HTTP log schema with indexes
+			const httpLogSchema = new Schema<HttpLogEntry>(
+				{
+					endpoint: { type: String, required: true, index: true },
+					method: { type: String, required: true },
+					status: { type: String, enum: ["success", "refused", "failed"], required: true, index: true },
+					statusCode: { type: Number, required: true },
+					message: { type: String, required: true },
+					timestamp: { type: Date, default: Date.now, index: true },
+				},
+				{ collection: "http_logs" }
+			);
+
+			// Add compound index for queries
+			httpLogSchema.index({ endpoint: 1, status: 1, timestamp: -1 });
+
+			this.#httpLogModel = this.#mongo.createModel<HttpLogEntry>("HttpLog", httpLogSchema);
+			this.logger.logOk("HTTP logging initialized with MongoDB");
+		} catch (error: any) {
+			this.logger.logError(`Failed to initialize HTTP logging: ${error.message}`);
+			// Service continues to work with file-based logs
 		}
 
 		// Run cleanup on start
@@ -43,12 +77,109 @@ export default class LogManagerService extends BaseService implements ILogManage
 		if (this.cleanupInterval) {
 			clearInterval(this.cleanupInterval);
 		}
+		this.#mongo = null;
+		this.#httpLogModel = null;
 	}
 
 	getLogsDir(moduleType?: ModuleTypes): string {
 		const configDir = this.config.custom?.logsDir || "temp/logs";
 		if (!moduleType) return path.resolve(process.cwd(), configDir);
 		return path.resolve(process.cwd(), moduleType, configDir);
+	}
+
+	/**
+	 * Log an HTTP request
+	 * - Silently fails if MongoDB is unavailable
+	 * - Async non-blocking operation
+	 */
+	async logHttpRequest(request: HttpRequestLog): Promise<void> {
+		if (!this.#httpLogModel) {
+			return; // MongoDB not available
+		}
+
+		try {
+			const { endpoint, method, statusCode, error } = request;
+
+			// Skip logging GET requests without error
+			if (!error && method === "GET") {
+				return;
+			}
+
+			// Determine status based on error type
+			let status: "success" | "refused" | "failed";
+			let message = "";
+
+			if (!error) {
+				// Success only for mutative operations without error
+				status = "success";
+				message = "Request successful";
+			} else {
+				// Check error type: AuthError or HttpError are "refused", others are "failed"
+				if (error instanceof AuthError || error instanceof HttpError) {
+					status = "refused";
+				} else {
+					status = "failed";
+				}
+
+				// Limit message length to 500 chars
+				message = error.message.slice(0, 500);
+			}
+
+			// Create and save log entry (non-blocking)
+			const logEntry: HttpLogEntry = {
+				endpoint,
+				method,
+				status,
+				statusCode,
+				message,
+				timestamp: new Date(),
+			};
+
+			// Fire and forget - don't await to avoid blocking response
+			this.#httpLogModel
+				.create(logEntry)
+				.catch((err: any) => {
+					this.logger.logDebug(`Failed to save HTTP log: ${err.message}`);
+				});
+		} catch (error: any) {
+			this.logger.logDebug(`Error in logHttpRequest: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Get HTTP log statistics
+	 */
+	async getHttpLogStats(): Promise<{ total: number; byStatus: Record<string, number>; byEndpoint: Record<string, number> }> {
+		if (!this.#httpLogModel) {
+			return { total: 0, byStatus: {}, byEndpoint: {} };
+		}
+
+		try {
+			const total = await this.#httpLogModel.countDocuments();
+
+			const byStatusDocs = await this.#httpLogModel.aggregate([
+				{ $group: { _id: "$status", count: { $sum: 1 } } },
+			]);
+			const byStatus: Record<string, number> = {};
+			byStatusDocs.forEach((doc: any) => {
+				byStatus[doc._id] = doc.count;
+			});
+
+			const byEndpointDocs = await this.#httpLogModel.aggregate([
+				{ $group: { _id: "$endpoint", count: { $sum: 1 } } },
+				{ $sort: { count: -1 } },
+				{ $limit: 20 },
+			]);
+			const byEndpoint: Record<string, number> = {};
+			byEndpointDocs.forEach((doc: any) => {
+				byEndpoint[doc._id] = doc.count;
+			});
+
+			return { total, byStatus, byEndpoint };
+		} catch (error: any) {
+			this.logger.logError(`Error getting HTTP log stats: ${error.message}`);
+			return { total: 0, byStatus: {}, byEndpoint: {} };
+		}
 	}
 
 	/**
@@ -67,6 +198,19 @@ export default class LogManagerService extends BaseService implements ILogManage
 			await this.#processDirectoryForCleanup(logsDir, now, maxAge, retentionCount);
 		} catch (error: any) {
 			this.logger.logError(`Error during log cleanup: ${error.message}`);
+		}
+
+		// Cleanup old HTTP logs from MongoDB
+		if (this.#httpLogModel) {
+			try {
+				const cutoffDate = new Date(Date.now() - maxAge);
+				const result = await this.#httpLogModel.deleteMany({ timestamp: { $lt: cutoffDate } });
+				if (result.deletedCount > 0) {
+					this.logger.logDebug(`Cleaned up ${result.deletedCount} old HTTP logs from MongoDB`);
+				}
+			} catch (error: any) {
+				this.logger.logError(`Error cleaning HTTP logs from MongoDB: ${error.message}`);
+			}
 		}
 	}
 

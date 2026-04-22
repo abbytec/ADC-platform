@@ -2,6 +2,7 @@
 	"name": "LogManagerService",
 	"type": "service",
 	"version": "1.0.0",
+	"kernelMode": true,
 	"global": true,
 	"language": "typescript",
 	"custom": {
@@ -9,6 +10,11 @@
 		"retentionCount": 10,
 		"logsDir": "temp/logs"
 	},
-	"providers": [],
+	"providers": [
+		{
+			"name": "object/mongo",
+			"global": true
+		}
+	],
 	"utilities": []
 }

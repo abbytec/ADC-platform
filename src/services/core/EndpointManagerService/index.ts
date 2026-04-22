@@ -40,6 +40,8 @@ export default class EndpointManagerService extends BaseService {
 	#httpProvider: IHostBasedHttpProvider | null = null;
 	// SessionManager se carga con lazy-load pattern en #getSessionManager()
 	#sessionManager: SessionManagerService | null = null;
+	// LogManager se carga con lazy-load pattern en #getLogManager()
+	#logManager: any = null;
 	#operationsService: OperationsService | null = null;
 	#registry = new EndpointRegistry(this.logger);
 	#jobManager: JobManager | null = null;
@@ -86,6 +88,21 @@ export default class EndpointManagerService extends BaseService {
 	}
 
 	/**
+	 * Lazy-load singleton getter para LogManagerService
+	 * Intenta obtener el servicio solo si no está cargado
+	 */
+	#getLogManager(): any {
+		if (!this.#logManager) {
+			try {
+				this.#logManager = this.getMyService("LogManagerService");
+			} catch {
+				// LogManagerService no disponible todavía
+			}
+		}
+		return this.#logManager;
+	}
+
+	/**
 	 * Registra un endpoint en Fastify con wrapper de permisos
 	 * El handler es puro: recibe EndpointCtx y devuelve datos
 	 */
@@ -116,7 +133,8 @@ export default class EndpointManagerService extends BaseService {
 			this.#operationsService!,
 			this.logger,
 			this.getMyProvider<RabbitMQProvider>("queue/rabbitmq"),
-			this.getMyProvider<IRedisProvider>("queue/redis")
+			this.getMyProvider<IRedisProvider>("queue/redis"),
+			this.#getLogManager.bind(this)
 		);
 
 		// Registrar en Fastify
@@ -167,6 +185,7 @@ export default class EndpointManagerService extends BaseService {
 
 		this.#httpProvider = null;
 		this.#sessionManager = null;
+		this.#logManager = null;
 		this.#operationsService = null;
 
 		await super.stop(kernelKey);

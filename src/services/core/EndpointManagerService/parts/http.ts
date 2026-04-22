@@ -41,7 +41,8 @@ export function createHttpWrapper(
 	operationsService: OperationsService,
 	logger: ILogger,
 	rabbitmq: RabbitMQProvider | null = null,
-	redis: IRedisProvider | null = null
+	redis: IRedisProvider | null = null,
+	getLogManager: (() => any) | null = null
 ): (req: FastifyRequest<any>, reply: FastifyReply<any>) => Promise<void> {
 	const requiresIdempotency = MUTATIVE_METHODS.has(endpoint.method) && endpoint.options?.skipIdempotency !== true;
 	const shouldEnqueue = MUTATIVE_METHODS.has(endpoint.method) && endpoint.options?.enqueue === true && rabbitmq !== null;
@@ -151,6 +152,17 @@ export function createHttpWrapper(
 					});
 
 					reply.status(202).send(result);
+
+					// Log queued request (fire and forget)
+					if (getLogManager) {
+						const logMgr = getLogManager();
+						logMgr?.logHttpRequest({
+							endpoint: endpoint.url,
+							method: endpoint.method,
+							statusCode: 202,
+						});
+					}
+
 					return;
 				}
 
@@ -161,10 +173,22 @@ export function createHttpWrapper(
 			}
 
 			// El handler devuelve datos, nosotros manejamos la respuesta HTTP
+			let statusCode = 200;
 			if (result === undefined || result === null) {
-				reply.status(204).send();
+				statusCode = 204;
+				reply.status(statusCode).send();
 			} else {
-				reply.status(200).send(result);
+				reply.status(statusCode).send(result);
+			}
+
+			// Log successful request (fire and forget - non-blocking)
+			if (getLogManager) {
+				const logMgr = getLogManager();
+				logMgr?.logHttpRequest({
+					endpoint: endpoint.url,
+					method: endpoint.method,
+					statusCode,
+				});
 			}
 		} catch (error: any) {
 			// Capturar UncommonResponse para respuestas especiales (cookies, redirects)
@@ -183,27 +207,62 @@ export function createHttpWrapper(
 					reply.header(name, value);
 				}
 				// Redirect o JSON
+				let statusCode = error.status;
 				if (error.type === "redirect") {
-					reply.status(error.status).redirect(error.redirectUrl!);
+					reply.status(statusCode).redirect(error.redirectUrl!);
 				} else {
-					reply.status(error.status).send(error.body);
+					reply.status(statusCode).send(error.body);
+				}
+
+				// Log UncommonResponse (usually success with special handling)
+				if (getLogManager) {
+					const logMgr = getLogManager();
+					logMgr?.logHttpRequest({
+						endpoint: endpoint.url,
+						method: endpoint.method,
+						statusCode,
+					});
 				}
 				return;
 			}
 
 			// Capturar ADCCustomError (HttpError, IdempotencyError y otros) para errores de negocio
-			else if (error instanceof ADCCustomError) {
-				reply.status(error.status).send(error.toJSON());
+			if (error instanceof ADCCustomError) {
+				const statusCode = error.status;
+				reply.status(statusCode).send(error.toJSON());
+
+				// Log error with error object (fire and forget - non-blocking)
+				if (getLogManager) {
+					const logMgr = getLogManager();
+					logMgr?.logHttpRequest({
+						endpoint: endpoint.url,
+						method: endpoint.method,
+						statusCode,
+						error,
+					});
+				}
 				return;
 			}
 
-			// Error inesperado
+			// Error inesperado (status 500)
 			logger.logError(`Error en endpoint ${endpoint.method} ${endpoint.url}: ${error.message}`);
 
-			reply.status(500).send({
+			const statusCode = 500;
+			reply.status(statusCode).send({
 				error: "INTERNAL_ERROR",
 				message: process.env.NODE_ENV === "development" ? error.message : "Error interno del servidor",
 			});
+
+			// Log unexpected error (fire and forget - non-blocking)
+			if (getLogManager) {
+				const logMgr = getLogManager();
+				logMgr?.logHttpRequest({
+					endpoint: endpoint.url,
+					method: endpoint.method,
+					statusCode,
+					error,
+				});
+			}
 		}
 	};
 }
