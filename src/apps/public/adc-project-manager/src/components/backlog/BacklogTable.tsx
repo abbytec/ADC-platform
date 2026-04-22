@@ -8,13 +8,13 @@ import { canUpdate, Scope } from "../../utils/permissions.ts";
 interface Props {
 	issues: Issue[];
 	project: Project;
-	scopes: Permission[];
+	perms: Permission[];
 	isDragEnabled: boolean;
 	onOpen: (issue: Issue) => void;
 	onMove: (issue: Issue, columnKey: string) => void;
 }
 
-export function BacklogTable({ issues, project, scopes, isDragEnabled, onOpen, onMove }: Props) {
+export function BacklogTable({ issues, project, perms, isDragEnabled, onOpen, onMove }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const scoreFn = resolvePriorityFn(project.priorityStrategy);
 	const columnOptions = JSON.stringify(project.kanbanColumns.map((c) => ({ label: c.name, value: c.key })));
@@ -50,7 +50,7 @@ export function BacklogTable({ issues, project, scopes, isDragEnabled, onOpen, o
 							<td className="p-2 font-mono text-xs">{issue.key}</td>
 							<td className="p-2 text-sm">{issue.title}</td>
 							<td className="p-2 text-sm">
-								{canUpdate(scopes, Scope.ISSUES) ? (
+								{canUpdate(perms, Scope.ISSUES) ? (
 									<adc-combobox
 										value={issue.columnKey}
 										clearable={false}

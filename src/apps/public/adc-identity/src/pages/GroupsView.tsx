@@ -13,12 +13,12 @@ import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { RowActions } from "../components/RowActions.tsx";
 
 interface GroupsViewProps {
-	readonly scopes: Permission[];
+	readonly perms: Permission[];
 	readonly orgId?: string;
 	readonly organizations?: Organization[];
 }
 
-export function GroupsView({ scopes, orgId, organizations = [] }: GroupsViewProps) {
+export function GroupsView({ perms, orgId, organizations = [] }: GroupsViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [groups, setGroups] = useState<Group[]>([]);
 	const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
@@ -37,9 +37,9 @@ export function GroupsView({ scopes, orgId, organizations = [] }: GroupsViewProp
 	const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
 	const [submitting, setSubmitting] = useState(false);
 
-	const writable = canWrite(scopes, Scope.GROUPS);
-	const updatable = canUpdate(scopes, Scope.GROUPS);
-	const deletable = canDelete(scopes, Scope.GROUPS);
+	const writable = canWrite(perms, Scope.GROUPS);
+	const updatable = canUpdate(perms, Scope.GROUPS);
+	const deletable = canDelete(perms, Scope.GROUPS);
 
 	const editModalRef = useCallback((el: HTMLElement | null) => {
 		if (el) el.addEventListener("adcClose", () => setModalOpen(false));
@@ -66,7 +66,7 @@ export function GroupsView({ scopes, orgId, organizations = [] }: GroupsViewProp
 			return;
 		}
 		const q = query.toLowerCase();
-		setFilteredGroups(groups.filter((g) => g.name.toLowerCase().includes(q) || g.description.toLowerCase().includes(q)));
+		setFilteredGroups(groups.filter((g) => g.name.toLowerCase().includes(q) || g.description?.toLowerCase().includes(q)));
 	};
 
 	const getRoleName = (roleId: string) => {
@@ -95,7 +95,7 @@ export function GroupsView({ scopes, orgId, organizations = [] }: GroupsViewProp
 	const openEditModal = (group: Group) => {
 		setEditingGroup(group);
 		setFormName(group.name);
-		setFormDescription(group.description);
+		setFormDescription(group.description ?? "");
 		setFormRoleIds([...group.roleIds]);
 		setFormPermissions(group.permissions ? [...group.permissions] : []);
 		setModalOpen(true);

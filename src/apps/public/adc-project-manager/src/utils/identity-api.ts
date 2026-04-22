@@ -15,8 +15,7 @@ export type UserPreferences = Record<string, unknown>;
 
 export const identityPmApi = {
 	/** Permisos del usuario actual filtrados al recurso `project-manager`. */
-	getMyPermissions: () =>
-		identityApi.get<{ scopes: Permission[]; orgId?: string; isAdmin?: boolean; isOrgAdmin?: boolean }>("/my-permissions"),
+	getMyPermissions: () => identityApi.get<{ perms: Permission[]; orgId?: string; isAdmin?: boolean; isOrgAdmin?: boolean }>("/my-permissions"),
 
 	/** Resuelve `orgId → { orgId, slug }` para construir URLs del PM. */
 	getOrganization: (orgId: string) => identityApi.get<{ orgId: string; slug: string }>(`/organizations/${orgId}`),

@@ -11,12 +11,12 @@ import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { RowActions } from "../components/RowActions.tsx";
 
 interface RolesViewProps {
-	readonly scopes: Permission[];
+	readonly perms: Permission[];
 	readonly orgId?: string;
 	readonly organizations?: Organization[];
 }
 
-export function RolesView({ scopes, orgId, organizations = [] }: RolesViewProps) {
+export function RolesView({ perms, orgId, organizations = [] }: RolesViewProps) {
 	const { t } = useTranslation({ namespace: "adc-identity", autoLoad: true });
 	const [roles, setRoles] = useState<Role[]>([]);
 	const [filteredRoles, setFilteredRoles] = useState<Role[]>([]);
@@ -32,9 +32,9 @@ export function RolesView({ scopes, orgId, organizations = [] }: RolesViewProps)
 	const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
 	const [submitting, setSubmitting] = useState(false);
 
-	const writable = canWrite(scopes, Scope.ROLES);
-	const updatable = canUpdate(scopes, Scope.ROLES);
-	const deletable = canDelete(scopes, Scope.ROLES);
+	const writable = canWrite(perms, Scope.ROLES);
+	const updatable = canUpdate(perms, Scope.ROLES);
+	const deletable = canDelete(perms, Scope.ROLES);
 
 	const editModalRef = useCallback((el: HTMLElement | null) => {
 		if (el) el.addEventListener("adcClose", () => setModalOpen(false));

@@ -14,7 +14,7 @@ import { canWrite, canUpdate, Scope } from "../utils/permissions.ts";
 
 interface Props {
 	project: Project;
-	scopes: Permission[];
+	perms: Permission[];
 }
 
 function applyFilters(issues: Issue[], f: BoardFilterState, q: string): Issue[] {
@@ -30,7 +30,7 @@ function applyFilters(issues: Issue[], f: BoardFilterState, q: string): Issue[] 
 	});
 }
 
-export function BoardView({ project, scopes }: Props) {
+export function BoardView({ project, perms }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [q, setQ] = useState("");
 	const [filters, setFilters] = useState<BoardFilterState>({});
@@ -70,14 +70,14 @@ export function BoardView({ project, scopes }: Props) {
 		[issues, setIssues, reload]
 	);
 
-	const isDragEnabled = canUpdate(scopes, Scope.ISSUES);
+	const isDragEnabled = canUpdate(perms, Scope.ISSUES);
 	const showDialog = editingIssue || creating;
 
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between gap-3">
 				<h3 className="font-heading text-lg font-semibold text-text">{t("board.title")}</h3>
-				{canWrite(scopes, Scope.ISSUES) && (
+				{canWrite(perms, Scope.ISSUES) && (
 					<adc-button variant="primary" onClick={() => setCreating(true)}>
 						{t("issues.newIssue")}
 					</adc-button>
@@ -125,7 +125,7 @@ export function BoardView({ project, scopes }: Props) {
 				<IssueDialog
 					project={project}
 					issue={editingIssue}
-					scopes={scopes}
+					perms={perms}
 					sprints={sprints}
 					milestones={milestones}
 					onClose={() => {

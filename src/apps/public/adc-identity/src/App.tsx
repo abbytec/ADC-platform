@@ -20,7 +20,7 @@ function getTabFromPath(path: string): string {
 
 export default function App() {
 	const { t, ready } = useTranslation({ namespace: "adc-identity", autoLoad: true });
-	const [scopes, setScopes] = useState<Permission[]>([]);
+	const [perms, setPerms] = useState<Permission[]>([]);
 	const [visibleTabs, setVisibleTabs] = useState<IdentityTab[]>([]);
 	const [activeTab, setActiveTab] = useState<string>("");
 	const [loading, setLoading] = useState(true);
@@ -45,13 +45,13 @@ export default function App() {
 		const result = await identityApi.getMyPermissions();
 
 		if (result.success && result.data) {
-			const userScopes = result.data.scopes;
-			setScopes(userScopes);
+			const userPerms = result.data.perms;
+			setPerms(userPerms);
 			const currentOrgId = result.data.orgId || undefined;
 			setTokenOrgId(currentOrgId);
 			setIsAdmin(result.data.isAdmin ?? false);
 
-			const tabs = getVisibleTabs(userScopes, currentOrgId);
+			const tabs = getVisibleTabs(userPerms, currentOrgId);
 			setVisibleTabs(tabs);
 
 			if (tabs.length > 0) {
@@ -157,7 +157,7 @@ export default function App() {
 			case "users":
 				return (
 					<UsersView
-						scopes={scopes}
+						perms={perms}
 						orgId={effectiveOrgId}
 						isAdmin={isAdmin}
 						isScopedOrgView={isScopedOrgView}
@@ -165,13 +165,13 @@ export default function App() {
 					/>
 				);
 			case "roles":
-				return <RolesView scopes={scopes} orgId={effectiveOrgId} organizations={organizations} />;
+				return <RolesView perms={perms} orgId={effectiveOrgId} organizations={organizations} />;
 			case "groups":
-				return <GroupsView scopes={scopes} orgId={effectiveOrgId} organizations={organizations} />;
+				return <GroupsView perms={perms} orgId={effectiveOrgId} organizations={organizations} />;
 			case "organizations":
-				return <OrganizationsView scopes={scopes} />;
+				return <OrganizationsView perms={perms} />;
 			case "regions":
-				return <RegionsView scopes={scopes} />;
+				return <RegionsView perms={perms} />;
 			default:
 				return null;
 		}

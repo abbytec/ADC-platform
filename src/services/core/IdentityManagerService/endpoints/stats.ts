@@ -14,16 +14,6 @@ export class StatsEndpoints {
 		return { scopes: [], orgId: null, isAdmin: false, isOrgAdmin: false };
 	}
 
-	static #mapIdentityScopes(resolved: Awaited<ReturnType<IdentityManagerService["permissions"]["resolvePermissions"]>>) {
-		return resolved
-			.filter((permission) => (permission.resource === "identity" || permission.resource === "*") && permission.granted)
-			.map((permission) => ({
-				action: permission.action,
-				scope: permission.scope,
-				source: permission.source,
-			}));
-	}
-
 	static async #hasGlobalAdminRole(user: Awaited<ReturnType<IdentityManagerService["users"]["getUser"]>>, token?: string) {
 		if (!user?.roleIds?.length) return false;
 
@@ -94,7 +84,7 @@ export class StatsEndpoints {
 			]);
 
 			return {
-				scopes: StatsEndpoints.#mapIdentityScopes(resolved),
+				perms: resolved,
 				orgId,
 				isAdmin: !orgId && hasGlobalAdminRole,
 				isOrgAdmin,

@@ -11,10 +11,10 @@ import { SimpleCreateModal } from "../components/SimpleCreateModal.tsx";
 
 interface Props {
 	project: Project;
-	scopes: Permission[];
+	perms: Permission[];
 }
 
-export function MilestonesView({ project, scopes }: Props) {
+export function MilestonesView({ project, perms }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [milestones, setMilestones] = useState<Milestone[]>([]);
 	const [issues, setIssues] = useState<Issue[]>([]);
@@ -67,7 +67,7 @@ export function MilestonesView({ project, scopes }: Props) {
 		<div className="space-y-4">
 			<div className="flex justify-between items-center">
 				<h3 className="font-heading text-lg font-semibold text-text">{t("milestones.title")}</h3>
-				{canWrite(scopes, Scope.MILESTONES) && (
+				{canWrite(perms, Scope.MILESTONES) && (
 					<adc-button variant="primary" onClick={() => setShowCreate(true)}>
 						{t("common.add")}
 					</adc-button>
@@ -86,7 +86,7 @@ export function MilestonesView({ project, scopes }: Props) {
 								milestone={m}
 								doneCount={c.done}
 								totalCount={c.total}
-								scopes={scopes}
+								perms={perms}
 								onDelete={handleDelete}
 								onUpdated={load}
 							/>

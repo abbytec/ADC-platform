@@ -16,12 +16,12 @@ import { canWrite, canUpdate, Scope } from "../utils/permissions.ts";
 
 interface Props {
 	project: Project;
-	scopes: Permission[];
+	perms: Permission[];
 }
 
 const COMPLETED_UMBRELLA_KEY = "__completed__";
 
-export function BacklogView({ project, scopes }: Props) {
+export function BacklogView({ project, perms }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [q, setQ] = useState("");
 	const [orderBy, setOrderBy] = useState<IssueListParams["orderBy"]>("priority");
@@ -63,7 +63,7 @@ export function BacklogView({ project, scopes }: Props) {
 	};
 
 	const showDialog = editingIssue || creating;
-	const isDragEnabled = groupBy === "sprint" && canUpdate(scopes, Scope.ISSUES);
+	const isDragEnabled = groupBy === "sprint" && canUpdate(perms, Scope.ISSUES);
 
 	const renderSection = (section: GroupSection, defaultCollapsed: boolean) => {
 		const collapseKey = `${groupBy}:${section.id}`;
@@ -72,7 +72,7 @@ export function BacklogView({ project, scopes }: Props) {
 				key={section.id}
 				section={section}
 				project={project}
-				scopes={scopes}
+				perms={perms}
 				isCollapsed={collapsed[collapseKey] ?? defaultCollapsed}
 				isDragEnabled={isDragEnabled}
 				isDropActive={dragTargetId === section.id && isDragEnabled}
@@ -98,7 +98,7 @@ export function BacklogView({ project, scopes }: Props) {
 		<div className="space-y-4">
 			<div className="flex items-center justify-between gap-3">
 				<h3 className="font-heading text-lg font-semibold text-text">{t("issues.backlog")}</h3>
-				{canWrite(scopes, Scope.ISSUES) && (
+				{canWrite(perms, Scope.ISSUES) && (
 					<adc-button variant="primary" onClick={() => setCreating(true)}>
 						{t("issues.newIssue")}
 					</adc-button>
@@ -123,7 +123,7 @@ export function BacklogView({ project, scopes }: Props) {
 					<BacklogTable
 						issues={issues}
 						project={project}
-						scopes={scopes}
+						perms={perms}
 						isDragEnabled={false}
 						onOpen={setEditingIssue}
 						onMove={handleMove}
@@ -145,7 +145,7 @@ export function BacklogView({ project, scopes }: Props) {
 				<IssueDialog
 					project={project}
 					issue={editingIssue}
-					scopes={scopes}
+					perms={perms}
 					sprints={sprints}
 					milestones={milestones}
 					onClose={() => {

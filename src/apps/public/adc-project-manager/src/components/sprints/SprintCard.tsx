@@ -19,16 +19,16 @@ interface Props {
 	sprint: Sprint;
 	doneCount: number;
 	totalCount: number;
-	scopes: Permission[];
+	perms: Permission[];
 	onStart: (id: string) => void;
 	onComplete: (id: string) => void;
 	onDelete: (id: string) => void;
 	onUpdated: () => void | Promise<void>;
 }
 
-export function SprintCard({ sprint, doneCount, totalCount, scopes, onStart, onComplete, onDelete, onUpdated }: Props) {
+export function SprintCard({ sprint, doneCount, totalCount, perms, onStart, onComplete, onDelete, onUpdated }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
-	const canEdit = canUpdate(scopes, Scope.SPRINTS);
+	const canEdit = canUpdate(perms, Scope.SPRINTS);
 	const [editing, setEditing] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [form, setForm] = useState({
@@ -138,7 +138,7 @@ export function SprintCard({ sprint, doneCount, totalCount, scopes, onStart, onC
 						{t("common.edit")}
 					</adc-button>
 				)}
-				{canDelete(scopes, Scope.SPRINTS) && (
+				{canDelete(perms, Scope.SPRINTS) && (
 					<adc-button variant="accent" onClick={() => onDelete(sprint.id)}>
 						{t("common.delete")}
 					</adc-button>

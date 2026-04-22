@@ -20,7 +20,7 @@ const api = createAdcApi({
 
 export const identityApi = {
 	// My Permissions
-	getMyPermissions: () => api.get<{ scopes: Permission[]; orgId?: string; isAdmin?: boolean; isOrgAdmin?: boolean }>("/my-permissions"),
+	getMyPermissions: () => api.get<{ perms: Permission[]; orgId?: string; isAdmin?: boolean; isOrgAdmin?: boolean }>("/my-permissions"),
 
 	// Users
 	listUsers: (orgId?: string) => api.get<{ users: ClientUser[]; roles: Role[] }>("/users", orgId ? { params: { orgId } } : undefined),
