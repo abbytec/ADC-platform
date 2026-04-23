@@ -10,7 +10,7 @@ const SELF_MODIFIER_BY_RESOURCE: Record<string, number> = {
 	[PM_RESOURCE_NAME]: PMScopes.SELF,
 };
 
-export interface HasPermissionOpts {
+interface HasPermissionOpts {
 	selfId?: string;
 	ownerId?: string;
 }
@@ -47,7 +47,7 @@ export function hasPermission(
 }
 
 /**
- * Chequea un permiso bitfield usando una constante de `P` (e.g. `P.COMMUNITY.SOCIAL.WRITE`).
+ * @public Chequea un permiso bitfield usando una constante de `P` (e.g. `P.COMMUNITY.SOCIAL.WRITE`).
  *
  * Formato de `required`:
  *   - Scoped: `"resource.scope.action"` (e.g. `"community.5.2"`)

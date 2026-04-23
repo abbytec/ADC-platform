@@ -1,6 +1,6 @@
 import { AuthorizationError } from "./custom-errors/AuthorizationError.ts";
 
-export interface HasPermissionOpts {
+interface HasPermissionOpts {
 	/** ID del owner del recurso; usado para evaluar el bit `SELF`. */
 	ownerId?: string;
 }
