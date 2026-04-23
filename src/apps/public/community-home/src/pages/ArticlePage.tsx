@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { router } from "@common/utils/router.js";
 import { getSession, type SessionData } from "@ui-library/utils/session";
-import { canComment, canRate, canDeleteSocial, canEditContent } from "@ui-library/utils/permissions";
+import { canComment, canRate, canDeleteSocial, canEditContent } from "../utils/permissions";
 import { contentAPI, type Article, type LearningPath } from "../utils/content-api";
 import { socialApi, type Comment, type RatingStats } from "../utils/social-api";
 import { AUTHORS } from "../utils/constants";

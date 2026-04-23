@@ -1,7 +1,7 @@
 import "@ui-library/utils/react-jsx";
 import { useEffect, useState } from "react";
 import { getSession } from "@ui-library/utils/session";
-import { canEditContent, canPublish } from "@ui-library/utils/permissions";
+import { canEditContent, canPublish } from "../utils/permissions";
 
 /**
  * Contenido dinámico para el header del layout.

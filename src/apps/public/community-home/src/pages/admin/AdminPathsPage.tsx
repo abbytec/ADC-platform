@@ -1,7 +1,7 @@
 import "@ui-library/utils/react-jsx";
 import { useEffect, useState } from "react";
 import { getSession } from "@ui-library/utils/session";
-import { canPublish } from "@ui-library/utils/permissions";
+import { canPublish } from "../../utils/permissions";
 import { contentAPI, type LearningPath } from "../../utils/content-api";
 import { adminApi } from "../../utils/admin-api";
 import { AdminGate } from "../../components/admin/AdminGate";

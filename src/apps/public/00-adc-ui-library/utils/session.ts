@@ -7,7 +7,7 @@
  */
 
 import { createAdcApi } from "./adc-fetch.js";
-import { hasPermission } from "./permissions";
+import { hasPermission } from "@common/types/Permissions.js";
 import type { SessionUser, SessionResponse } from "@common/types/identity/Session.js";
 
 /** @deprecated Usa SessionResponse directamente. */

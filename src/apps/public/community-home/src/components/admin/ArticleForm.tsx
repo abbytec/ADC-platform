@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { router } from "@common/utils/router.js";
 import { getSession } from "@ui-library/utils/session";
-import { canPublish } from "@ui-library/utils/permissions";
+import { canPublish } from "../../utils/permissions";
 import { adminApi, type Article, type Block, type LearningPath, type PathItemLevel } from "../../utils/admin-api";
 import { contentAPI } from "../../utils/content-api";
 import { BlocksEditor } from "./BlocksEditor";
