@@ -12,7 +12,7 @@ export interface IAuthVerifier {
 
 export type AuthVerifierGetter = () => IAuthVerifier | null;
 
-export interface RequirePermissionOpts {
+interface RequirePermissionOpts {
 	orgId?: string;
 	ownerId?: string;
 	/** Vía alternativa: si retorna `true`, concede acceso sin chequear el permiso formal. */

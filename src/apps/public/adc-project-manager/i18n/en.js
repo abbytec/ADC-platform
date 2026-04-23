@@ -41,6 +41,8 @@ export default {
 		ownerId: "Owner",
 		visibility: "Visibility",
 		public: "Public",
+		org: "Organization",
+		tierLimitReached: "Plan limit reached.",
 		members: "Members",
 		private: "Private",
 		orgId: "Organization",

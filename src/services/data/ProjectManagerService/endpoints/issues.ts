@@ -79,10 +79,12 @@ export class IssueEndpoints {
 	@RegisterEndpoint({
 		method: "DELETE",
 		url: "/api/pm/issues/:id",
-		permissions: [P.PROJECT_MANAGER.ISSUES.DELETE],
+		deferAuth: true,
 	})
 	static async delete(ctx: EndpointCtx<{ id: string }>) {
-		await IssueEndpoints.#service.issues.delete(ctx.params.id, ctx.token ?? undefined);
+		const service = IssueEndpoints.#service;
+		const caller = await service.resolveCaller(IssueEndpoints.#kernelKey, ctx);
+		await service.issues.delete(ctx.params.id, ctx.token ?? undefined, caller);
 		return { ok: true };
 	}
 

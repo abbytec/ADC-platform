@@ -27,7 +27,7 @@ export function filterVisibleProjects(
 	ctx: {
 		userId: string;
 		groupIds: string[];
-		callerOrgId?: string;
+		tokenOrgId: string | null;
 		hasGlobalPMRead: boolean;
 		isGlobalAdmin: boolean;
 	}
@@ -35,17 +35,21 @@ export function filterVisibleProjects(
 	if (ctx.isGlobalAdmin) return projects;
 
 	return projects.filter((p) => {
-		// Proyectos globales: solo visibles para roles globales con permiso PM
+		// Membresía explícita (owner, miembro directo o por grupo) siempre concede visibilidad,
+		// sin importar si el proyecto es global u org-scoped.
+		const isExplicitMember =
+			p.ownerId === ctx.userId ||
+			(p.memberUserIds?.includes(ctx.userId) ?? false) ||
+			(p.memberGroupIds?.some((gid) => ctx.groupIds.includes(gid)) ?? false);
+		if (isExplicitMember) return true;
+
+		// Proyectos privados: sólo owner/miembros o admin global (ya filtrado arriba).
+		if (p.visibility === "private") return false;
+
+		// Proyectos globales (orgId=null) no privados: visibles para roles con PM read.
 		if (p.orgId === null) return ctx.hasGlobalPMRead;
 
-		// Proyectos de org: el caller debe pertenecer a la org...
-		if (ctx.callerOrgId && p.orgId === ctx.callerOrgId) return true;
-
-		// ...o ser miembro explícito del proyecto
-		return (
-			p.ownerId === ctx.userId ||
-			p.memberUserIds?.includes(ctx.userId) ||
-			(p.memberGroupIds?.some((gid) => ctx.groupIds.includes(gid)) ?? false)
-		);
+		// Proyectos de org: el caller debe pertenecer a la org.
+		return !!(ctx.tokenOrgId && p.orgId === ctx.tokenOrgId);
 	});
 }

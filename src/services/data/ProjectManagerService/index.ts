@@ -17,8 +17,9 @@ import type { Project } from "@common/types/project-manager/Project.ts";
 import type { Sprint } from "@common/types/project-manager/Sprint.ts";
 import type { Milestone } from "@common/types/project-manager/Milestone.ts";
 import type { Issue } from "@common/types/project-manager/Issue.ts";
-import type { CallerMembership } from "./dao/projects.ts";
+import type { CallerMembership, PMCtx } from "./dao/projects.ts";
 import { Kernel } from "../../../kernel.ts";
+import { hasGlobalAdminRole, isOrgAdminOrPM } from "./utils/pm-roles.ts";
 
 export default class ProjectManagerService extends BaseService {
 	public readonly name = "ProjectManagerService";
@@ -58,15 +59,16 @@ export default class ProjectManagerService extends BaseService {
 		const IssueModel = this.mongoProvider.createModel<Issue>("issues", issueSchema);
 
 		this.#projectManager = new ProjectManager(ProjectModel, kernelKey, this.logger, this.#getAuthVerifier);
-		this.#sprintManager = new SprintManager(SprintModel, this.logger, this.#getAuthVerifier);
-		this.#milestoneManager = new MilestoneManager(MilestoneModel, this.logger, this.#getAuthVerifier);
-		this.#issueManager = new IssueManager(IssueModel, this.#projectManager.getInternals(kernelKey), this.logger, this.#getAuthVerifier);
+		const projectInternals = this.#projectManager.getInternals(kernelKey);
+		this.#sprintManager = new SprintManager(SprintModel, projectInternals, this.logger, this.#getAuthVerifier);
+		this.#milestoneManager = new MilestoneManager(MilestoneModel, projectInternals, this.logger, this.#getAuthVerifier);
+		this.#issueManager = new IssueManager(IssueModel, projectInternals, this.logger, this.#getAuthVerifier);
 
 		this.#authVerifier = this.#identity.createAuthVerifier();
 
 		ProjectEndpoints.init(this, kernelKey);
-		SprintEndpoints.init(this);
-		MilestoneEndpoints.init(this);
+		SprintEndpoints.init(this, kernelKey);
+		MilestoneEndpoints.init(this, kernelKey);
 		IssueEndpoints.init(this, kernelKey);
 
 		this.logger.logOk("ProjectManagerService iniciado");
@@ -100,17 +102,55 @@ export default class ProjectManagerService extends BaseService {
 
 	@OnlyKernel()
 	async listProjectsForCaller(_kernelKey: symbol, ctx: EndpointCtx): Promise<Project[]> {
+		const pmCtx = await this.buildPMCtx(_kernelKey, ctx);
+		return this.projects.listVisibleProjects(pmCtx, ctx.token ?? undefined);
+	}
+
+	/**
+	 * Construye el contexto PM del caller (roles, permisos globales, tokenOrgId,
+	 * helper `isOrgAdminOrPM`). Cacheado en `ctx` para evitar relecturas.
+	 *
+	 * Válido para list / create / update / delete y reutilizable desde otros
+	 * scopes (sprints/milestones/issues) cuando necesiten los flags de rol.
+	 */
+	@OnlyKernel()
+	async buildPMCtx(_kernelKey: symbol, ctx: EndpointCtx): Promise<PMCtx> {
+		const cacheKey = Symbol.for("PMCtx");
+		const cached = (ctx as any)[cacheKey];
+		if (cached) return cached;
+
 		const caller = await this.resolveCaller(_kernelKey, ctx);
 		const identity = this.#identity!;
-		const orgId = ctx.user?.orgId;
+		const tokenOrgId = ctx.user?.orgId ?? null;
+		const user = caller.userId ? await identity.users.getUser(caller.userId, ctx.token ?? undefined) : null;
+		const [globalAdminRole, hasGlobalPMRead, hasGlobalPMWrite] = await Promise.all([
+			hasGlobalAdminRole(identity, user, ctx.token ?? undefined),
+			identity.permissions.hasPermission(caller.userId, CRUDXAction.READ, PMScopes.PROJECTS),
+			identity.permissions.hasPermission(caller.userId, CRUDXAction.WRITE, PMScopes.PROJECTS),
+		]);
+		const isGlobalAdmin = !tokenOrgId && globalAdminRole;
 
-		const hasGlobalPMRead = await identity.permissions.hasPermission(caller.userId, CRUDXAction.READ, PMScopes.PROJECTS);
-		const isGlobalAdmin = !orgId && (await identity.permissions.hasPermission(caller.userId, CRUDXAction.CRUD, PMScopes.ALL));
+		// Memoizar `isOrgAdminOrPM` por orgId para no repetir lookup en una misma request.
+		const orgRoleCache = new Map<string, Promise<boolean>>();
 
-		return this.projects.listVisibleProjects(
-			{ userId: caller.userId, groupIds: caller.groupIds, callerOrgId: orgId, hasGlobalPMRead, isGlobalAdmin },
-			ctx.token ?? undefined
-		);
+		const pmCtx: PMCtx = {
+			userId: caller.userId,
+			groupIds: caller.groupIds,
+			tokenOrgId,
+			isGlobalAdmin,
+			hasGlobalPMRead,
+			hasGlobalPMWrite,
+			isOrgAdminOrPM: (orgId: string) => {
+				let p = orgRoleCache.get(orgId);
+				if (!p) {
+					p = isOrgAdminOrPM(identity, user, orgId, ctx.token ?? undefined);
+					orgRoleCache.set(orgId, p);
+				}
+				return p;
+			},
+		};
+		Object.defineProperty(ctx, cacheKey, { value: pmCtx, enumerable: false });
+		return pmCtx;
 	}
 
 	get projects(): ProjectManager {

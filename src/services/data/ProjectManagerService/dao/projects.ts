@@ -1,5 +1,5 @@
 import type { Model } from "mongoose";
-import type { Project } from "@common/types/project-manager/Project.ts";
+import type { Project, ProjectVisibility } from "@common/types/project-manager/Project.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "@common/utils/crypto.ts";
 import { applyProjectDefaults, validateKanbanColumns } from "../utils/defaults.ts";
@@ -9,11 +9,25 @@ import { CRUDXAction } from "@common/types/Actions.ts";
 import { ProjectManagerError } from "@common/types/custom-errors/ProjectManagerError.ts";
 import { OnlyKernel } from "../../../../utils/decorators/OnlyKernel.ts";
 import { filterVisibleProjects, isProjectMember } from "../utils/project-access.ts";
+import { getPMTierLimits } from "@common/types/project-manager/tier-limits.ts";
+import { docToPlain, stripImmutableFields } from "./shared.ts";
+
+/** Campos que nunca deben mutarse vía un PUT genérico. */
+const PROJECT_IMMUTABLE_FIELDS: readonly (keyof Project)[] = [
+	"id",
+	"createdAt",
+	"issueCounter",
+	// El ownership / visibilidad / contexto org se gestionan por endpoints dedicados.
+	"ownerId",
+	"orgId",
+	"visibility",
+	"slug",
+];
 
 interface ListProjectsContext {
 	userId: string;
 	groupIds: string[];
-	callerOrgId?: string;
+	tokenOrgId: string | null;
 	hasGlobalPMRead: boolean;
 	isGlobalAdmin: boolean;
 }
@@ -22,6 +36,25 @@ interface ListProjectsContext {
 export interface CallerMembership {
 	userId: string;
 	groupIds: string[];
+}
+
+/**
+ * Contexto PM resuelto del caller. Unificado para list/create/update/delete y
+ * reutilizable por otros scopes (sprints/milestones/issues) que quieran
+ * consultar flags de rol o quota sin repetir resolución.
+ *
+ * Campos derivados:
+ *  - `isGlobalAdmin`: rol `Admin` a nivel global (token sin orgId).
+ *  - `hasGlobalPMRead` / `hasGlobalPMWrite`: permisos formales globales.
+ *  - `tokenOrgId`: `orgId` del token actual (modo org) o `null`.
+ *  - `isOrgAdminOrPM(orgId)`: función memoizable para chequear admin/PM en una org.
+ */
+export interface PMCtx extends CallerMembership {
+	tokenOrgId: string | null;
+	isGlobalAdmin: boolean;
+	hasGlobalPMRead: boolean;
+	hasGlobalPMWrite: boolean;
+	isOrgAdminOrPM: (orgId: string) => Promise<boolean>;
 }
 
 /**
@@ -48,14 +81,64 @@ export class ProjectManager {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "ProjectManager", PM_RESOURCE_NAME);
 	}
 
-	async createProject(input: Partial<Project> & Pick<Project, "name" | "slug">, token?: string): Promise<Project> {
-		const userId = await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, PMScopes.PROJECTS);
+	async createProject(input: Partial<Project> & Pick<Project, "name" | "slug">, ctx: PMCtx, token?: string): Promise<Project> {
+		// Toda creación requiere al menos token válido.
+		const userId = await this.#permissionChecker.resolveUserId(token);
+		const callerId = ctx.userId || userId || "";
+
+		const visibility: ProjectVisibility = input.visibility ?? "private";
+		const requestedOrgId = input.orgId ?? null;
+
+		// Resolver orgId final + autorización según visibilidad
+		let orgId: string | null;
+		switch (visibility) {
+			case "public": {
+				// Solo admin global o usuario con PM.WRITE global (token sin orgId).
+				const allowed = ctx.isGlobalAdmin || (ctx.tokenOrgId === null && ctx.hasGlobalPMWrite);
+				if (!allowed) {
+					throw new ProjectManagerError(403, "PROJECT_ACCESS_DENIED", "Solo un admin global puede crear proyectos públicos");
+				}
+				orgId = null;
+				break;
+			}
+			case "org": {
+				// Admin global elige org explícitamente; en modo org usa la del token.
+				const targetOrg = ctx.isGlobalAdmin ? requestedOrgId : (ctx.tokenOrgId ?? requestedOrgId);
+				if (!targetOrg) {
+					throw new ProjectManagerError(400, "MISSING_FIELDS", "`orgId` requerido para proyecto de organización");
+				}
+				if (!ctx.isGlobalAdmin) {
+					if (ctx.tokenOrgId && ctx.tokenOrgId !== targetOrg) {
+						throw new ProjectManagerError(403, "ORG_ACCESS_DENIED", "No tienes acceso a esa organización");
+					}
+					const isOrgAdmin = await ctx.isOrgAdminOrPM(targetOrg);
+					if (!isOrgAdmin) {
+						throw new ProjectManagerError(
+							403,
+							"PROJECT_ACCESS_DENIED",
+							"Solo un Admin o Project Manager de la organización puede crear proyectos de organización"
+						);
+					}
+				}
+				await this.#enforceOrgProjectLimit(targetOrg);
+				orgId = targetOrg;
+				break;
+			}
+			case "private": {
+				await this.#enforcePrivateProjectLimit(callerId);
+				orgId = null;
+				break;
+			}
+			default:
+				throw new ProjectManagerError(400, "INVALID_VISIBILITY", `Visibilidad desconocida: ${String(visibility)}`);
+		}
 
 		const project = applyProjectDefaults({
 			...input,
 			id: generateId(),
-			ownerId: input.ownerId ?? userId ?? "",
-			orgId: input.orgId ?? null,
+			ownerId: input.ownerId ?? callerId,
+			orgId,
+			visibility,
 		});
 
 		validateKanbanColumns(project.kanbanColumns);
@@ -69,18 +152,33 @@ export class ProjectManager {
 			throw error;
 		}
 
-		this.logger.logDebug(`Proyecto creado: ${project.slug} (org=${project.orgId ?? "GLOBAL"})`);
+		this.logger.logDebug(`Proyecto creado: ${project.slug} (org=${project.orgId ?? "GLOBAL"}, vis=${project.visibility})`);
 		return project;
 	}
 
+	async #enforcePrivateProjectLimit(userId: string): Promise<void> {
+		if (!userId) return;
+		const { maxPrivateProjectsPerUser } = getPMTierLimits();
+		const count = await this.projectModel.countDocuments({ visibility: "private", ownerId: userId });
+		if (count >= maxPrivateProjectsPerUser) {
+			throw new ProjectManagerError(403, "TIER_LIMIT_REACHED", `Límite de proyectos privados alcanzado (${maxPrivateProjectsPerUser})`);
+		}
+	}
+
+	async #enforceOrgProjectLimit(orgId: string): Promise<void> {
+		const { maxProjectsPerOrg } = getPMTierLimits();
+		const count = await this.projectModel.countDocuments({ orgId });
+		if (count >= maxProjectsPerOrg) {
+			throw new ProjectManagerError(403, "TIER_LIMIT_REACHED", `Límite de proyectos de la organización alcanzado (${maxProjectsPerOrg})`);
+		}
+	}
+
 	async #fetchProject(projectId: string): Promise<Project | null> {
-		const doc = await this.projectModel.findOne({ id: projectId });
-		return doc?.toObject?.() || doc || null;
+		return docToPlain<Project>(await this.projectModel.findOne({ id: projectId }));
 	}
 
 	async #fetchProjectBySlug(slug: string, orgId: string | null): Promise<Project | null> {
-		const doc = await this.projectModel.findOne({ slug, orgId });
-		return doc?.toObject?.() || doc || null;
+		return docToPlain<Project>(await this.projectModel.findOne({ slug, orgId }));
 	}
 
 	async getProject(projectId: string, token?: string, caller?: CallerMembership): Promise<Project | null> {
@@ -113,45 +211,50 @@ export class ProjectManager {
 
 		if (ctx.isGlobalAdmin) {
 			const docs = await this.projectModel.find({});
-			return docs.map((d) => d.toObject?.() || d);
+			return docs.map((d) => docToPlain<Project>(d)!);
 		}
 
 		const orConditions: Record<string, unknown>[] = [];
-		if (ctx.hasGlobalPMRead) orConditions.push({ orgId: null });
-		if (ctx.callerOrgId) orConditions.push({ orgId: ctx.callerOrgId });
+		// Lectura global: sólo proyectos públicos (no privados) de contexto global.
+		if (ctx.hasGlobalPMRead) orConditions.push({ orgId: null, visibility: { $ne: "private" } });
+		if (ctx.tokenOrgId) orConditions.push({ orgId: ctx.tokenOrgId });
 		orConditions.push({ memberUserIds: ctx.userId });
 		orConditions.push({ ownerId: ctx.userId });
 		if (ctx.groupIds.length) orConditions.push({ memberGroupIds: { $in: ctx.groupIds } });
 
 		const docs = orConditions.length ? await this.projectModel.find({ $or: orConditions }) : [];
-		const projects = docs.map((d) => d.toObject?.() || d);
+		const projects = docs.map((d) => docToPlain<Project>(d)!);
 		return filterVisibleProjects(projects, ctx);
 	}
 
-	async updateProject(projectId: string, updates: Partial<Project>, token?: string, caller?: CallerMembership): Promise<Project> {
+	async updateProject(projectId: string, updates: Partial<Project>, token?: string, _caller?: CallerMembership): Promise<Project> {
 		const project = await this.#fetchProject(projectId);
 		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", `Proyecto ${projectId} no encontrado`);
 
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.PROJECTS, {
 			ownerId: project.ownerId,
-			allowIf: (uid) =>
-				project.ownerId === uid || (caller?.userId === uid && isProjectMember(project, { id: uid, groupIds: caller.groupIds })),
+			allowIf: (uid) => project.ownerId === uid,
 		});
 
 		if (updates.kanbanColumns) validateKanbanColumns(updates.kanbanColumns);
 
-		const safeUpdates: Partial<Project> = { ...updates, updatedAt: new Date() };
-		delete (safeUpdates as any).id;
-		delete (safeUpdates as any).createdAt;
-		delete (safeUpdates as any).issueCounter;
+		const safeUpdates = { ...stripImmutableFields(updates, PROJECT_IMMUTABLE_FIELDS), updatedAt: new Date() };
 
 		const updated = await this.projectModel.findOneAndUpdate({ id: projectId }, safeUpdates, { new: true });
 		if (!updated) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", `Proyecto ${projectId} no encontrado`);
-		return updated.toObject?.() || updated;
+		return docToPlain<Project>(updated)!;
 	}
 
-	async deleteProject(projectId: string, token?: string): Promise<void> {
-		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, PMScopes.PROJECTS);
+	async deleteProject(projectId: string, token?: string, caller?: CallerMembership): Promise<void> {
+		const project = await this.#fetchProject(projectId);
+		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", `Proyecto ${projectId} no encontrado`);
+
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, PMScopes.PROJECTS, {
+			ownerId: project.ownerId,
+			// El owner de un proyecto privado puede eliminarlo aunque no tenga PM.DELETE global.
+			allowIf: (uid) => project.visibility === "private" && project.ownerId === uid && uid === (caller?.userId ?? uid),
+		});
+
 		const result = await this.projectModel.deleteOne({ id: projectId });
 		if (result.deletedCount === 0) {
 			throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", `Proyecto ${projectId} no encontrado`);
@@ -162,7 +265,7 @@ export class ProjectManager {
 	async #incrementIssueCounter(projectId: string): Promise<number> {
 		const updated = await this.projectModel.findOneAndUpdate({ id: projectId }, { $inc: { issueCounter: 1 } }, { new: true });
 		if (!updated) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", `Proyecto ${projectId} no encontrado`);
-		return (updated.toObject?.() || updated).issueCounter;
+		return docToPlain<Project>(updated)!.issueCounter;
 	}
 
 	/**

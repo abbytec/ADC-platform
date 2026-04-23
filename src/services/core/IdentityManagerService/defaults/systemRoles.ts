@@ -2,16 +2,7 @@ import { CRUDXAction } from "@common/types/Actions.ts";
 import { RESOURCE_NAME, IdentityScopes } from "@common/types/identity/permissions.ts";
 import { PMScopes, PM_RESOURCE_NAME } from "@common/types/project-manager/permissions.ts";
 import { BaseRole } from "@common/types/identity/Role.ts";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Community scopes (bitfield) — Alcances para recursos community
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const CommunityScopes = {
-	CONTENT: 1,
-	PUBLISH_STATUS: 1 << 1, // 2
-	COMMENTS: 1 << 2, // 4
-} as const;
+import { COMMUNITY_SCOPES_BITS } from "@common/types/resources.ts";
 
 export enum SystemRole {
 	SYSTEM = "SYSTEM",
@@ -100,26 +91,26 @@ export const PREDEFINED_ROLES: Array<BaseRole> = [
 	{
 		name: SystemRole.DISCORD_VIP,
 		description: "Miembro VIP de la comunidad Discord",
-		permissions: [{ resource: "community", action: CRUDXAction.RW, scope: CommunityScopes.COMMENTS }],
+		permissions: [{ resource: "community", action: CRUDXAction.RW, scope: COMMUNITY_SCOPES_BITS.SOCIAL }],
 	},
 	{
 		name: SystemRole.DISCORD_NITRO_BOOSTER,
 		description: "Nitro Booster del servidor de Discord",
-		permissions: [{ resource: "community", action: CRUDXAction.RW, scope: CommunityScopes.COMMENTS }],
+		permissions: [{ resource: "community", action: CRUDXAction.RW, scope: COMMUNITY_SCOPES_BITS.SOCIAL }],
 	},
 	{
 		name: SystemRole.DISCORD_PUBLISHER,
 		description: "Publicador de contenido de la comunidad",
 		permissions: [
-			{ resource: "community", action: CRUDXAction.READ | CRUDXAction.WRITE | CRUDXAction.UPDATE, scope: CommunityScopes.CONTENT },
+			{ resource: "community", action: CRUDXAction.READ | CRUDXAction.WRITE | CRUDXAction.UPDATE, scope: COMMUNITY_SCOPES_BITS.CONTENT },
 		],
 	},
 	{
 		name: SystemRole.DISCORD_REVIEWER,
 		description: "Revisor de contenido de la comunidad",
 		permissions: [
-			{ resource: "community", action: CRUDXAction.CRUD, scope: CommunityScopes.CONTENT },
-			{ resource: "community", action: CRUDXAction.CRUD, scope: CommunityScopes.PUBLISH_STATUS },
+			{ resource: "community", action: CRUDXAction.CRUD, scope: COMMUNITY_SCOPES_BITS.CONTENT },
+			{ resource: "community", action: CRUDXAction.CRUD, scope: COMMUNITY_SCOPES_BITS.PUBLISH_STATUS },
 		],
 	},
 ];
