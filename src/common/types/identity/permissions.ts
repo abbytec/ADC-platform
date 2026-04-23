@@ -23,14 +23,3 @@ export const IdentityScopes = {
 	STATS: 1 << 6, // 64
 	ALL: 1 | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6), // 127
 } as const;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Verifica si un bitfield contiene todos los flags requeridos
- */
-export function hasFlags(value: number, required: number): boolean {
-	return (value & required) === required;
-}

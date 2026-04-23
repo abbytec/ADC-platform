@@ -2,7 +2,7 @@ import type { ClientUser, User, Role } from "@common/types/identity/index.ts";
 import { SystemRole } from "../../../core/IdentityManagerService/defaults/systemRoles.ts";
 
 type AnyUser = ClientUser | User | null | undefined;
-export interface RoleReader {
+interface RoleReader {
 	getRole(roleId: string): Promise<Role | null>;
 }
 
