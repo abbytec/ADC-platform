@@ -17,9 +17,13 @@ type ProjectManagerErrorTypes =
 	| "MISSING_FIELDS"
 	| "INVALID_FIELD"
 	| "SLUG_TAKEN"
+	| "INVALID_SLUG"
 	| "INVALID_COLUMN"
 	| "INVALID_PRIORITY"
 	| "WIP_LIMIT_REACHED"
+	| "INVALID_VISIBILITY"
+	// Tier / quota
+	| "TIER_LIMIT_REACHED"
 	// Feature flags
 	| "ATTACHMENTS_NOT_IMPLEMENTED"
 	// Auth

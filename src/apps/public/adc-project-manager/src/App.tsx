@@ -36,6 +36,8 @@ export default function App() {
 	const [loading, setLoading] = useState(true);
 	const [unauthorized, setUnauthorized] = useState(false);
 	const [orgId, setOrgId] = useState<string | undefined>(undefined);
+	const [isAdmin, setIsAdmin] = useState(false);
+	const [isOrgAdmin, setIsOrgAdmin] = useState(false);
 	const [ownOrgSlug, setOwnOrgSlug] = useState<string>("default");
 	const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 	const [selectedOrgSlug, setSelectedOrgSlug] = useState<string>("default");
@@ -61,6 +63,8 @@ export default function App() {
 		if (result.success && result.data) {
 			setPerms(result.data.perms);
 			setOrgId(result.data.orgId || undefined);
+			setIsAdmin(!!result.data.isAdmin);
+			setIsOrgAdmin(!!result.data.isOrgAdmin);
 			if (result.data.userId) {
 				setCaller({ userId: result.data.userId, groupIds: result.data.groupIds ?? [] });
 			}
@@ -73,6 +77,9 @@ export default function App() {
 				const listRes = await pmApi.listProjects();
 				allowed = !!(listRes.success && listRes.data?.projects?.length);
 			}
+			// Cualquier usuario autenticado puede crear un proyecto privado, así
+			// que admitimos el acceso aunque todavía no tenga proyectos.
+			if (!allowed && result.data.userId) allowed = true;
 			if (!allowed) {
 				setUnauthorized(true);
 				setLoading(false);
@@ -163,7 +170,15 @@ export default function App() {
 			) : (
 				<>
 					<h1 className="font-heading text-2xl font-bold text-text mb-6">{t("common.title")}</h1>
-					<ProjectListView perms={perms} orgId={orgId} orgSlug={ownOrgSlug} onOpen={openProject} />
+					<ProjectListView
+						perms={perms}
+						caller={caller}
+						isAdmin={isAdmin}
+						isOrgAdmin={isOrgAdmin}
+						orgId={orgId}
+						orgSlug={ownOrgSlug}
+						onOpen={openProject}
+					/>
 				</>
 			)}
 		</div>

@@ -83,6 +83,40 @@ export function canDelete(perms: Permission[], scope: number, opts?: { ownerId?:
 	return hasPermission(perms, RESOURCE, CRUDXAction.DELETE, scope, opts);
 }
 
+export interface ProjectCreatePerms {
+	/** El caller es admin global (rol Admin sin orgId). */
+	isAdmin: boolean;
+	/** El caller es Admin o PM dentro de su propia org (según token). */
+	isOrgAdmin: boolean;
+	/** orgId del token actual (modo org). `undefined` = modo global/personal. */
+	orgId?: string;
+	/** Permisos del caller para fallback. */
+	perms: Permission[];
+}
+
+/** ¿Puede crear proyectos públicos? Solo admin global o PM.WRITE global. */
+export function canCreatePublicProject({ isAdmin, orgId, perms }: ProjectCreatePerms): boolean {
+	if (isAdmin) return true;
+	return !orgId && canWrite(perms, PMScopes.PROJECTS);
+}
+
+/** ¿Puede crear proyectos de organización? Admin global, admin de org, o PM de org (con PROJECTS.WRITE formal). */
+export function canCreateOrgProject({ isAdmin, isOrgAdmin, orgId, perms }: ProjectCreatePerms): boolean {
+	if (isAdmin || isOrgAdmin) return true;
+	return !!orgId && canWrite(perms, PMScopes.PROJECTS);
+}
+
+/**
+ * Un miembro puede eliminar un proyecto si:
+ *  - tiene permiso formal PM.DELETE, o
+ *  - es owner del proyecto y éste es privado (cuota personal).
+ */
+export function canDeleteProject(perms: Permission[], project: Project | null | undefined, caller?: CallerCtx): boolean {
+	if (!project) return false;
+	if (canDelete(perms, PMScopes.PROJECTS, { selfId: caller?.userId, ownerId: project.ownerId })) return true;
+	return project.visibility === "private" && !!caller?.userId && project.ownerId === caller.userId;
+}
+
 /**
  * Un issue puede ser actualizado si el usuario tiene permiso formal UPDATE o si
  * es asignado al issue. (Los logs son inmutables por contrato del backend.)

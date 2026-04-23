@@ -47,16 +47,16 @@ const IDENTITY_SCOPES: ScopeDef[] = [
 ];
 
 /** Community-specific scopes (Discord autoroles) - alineados con CommunityScopes en systemRoles.ts */
-export const COMMUNITY_SCOPES_MAP = {
+export const COMMUNITY_SCOPES_BITS = {
 	CONTENT: 1,
 	PUBLISH_STATUS: 1 << 1,
 	SOCIAL: 1 << 2,
 } as const;
 
 const COMMUNITY_SCOPES: ScopeDef[] = [
-	{ key: "content", value: COMMUNITY_SCOPES_MAP.CONTENT },
-	{ key: "publish_status", value: COMMUNITY_SCOPES_MAP.PUBLISH_STATUS },
-	{ key: "social", value: COMMUNITY_SCOPES_MAP.SOCIAL },
+	{ key: "content", value: COMMUNITY_SCOPES_BITS.CONTENT },
+	{ key: "publish_status", value: COMMUNITY_SCOPES_BITS.PUBLISH_STATUS },
+	{ key: "social", value: COMMUNITY_SCOPES_BITS.SOCIAL },
 ];
 
 /** Project Manager scopes — alineados con PMScopes en types/project-manager/permissions.ts */

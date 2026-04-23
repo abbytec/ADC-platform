@@ -1,31 +1,80 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import type { ProjectVisibility } from "@common/types/project-manager/Project.ts";
 import { pmApi } from "../../utils/pm-api.ts";
 
-const VISIBILITIES: ProjectVisibility[] = ["private", "org", "public"];
 const SLUG_DEBOUNCE_MS = 400;
 
 type SlugStatus = "idle" | "checking" | "available" | "taken" | "invalid";
+
+export interface AllowedVisibilities {
+	private: boolean;
+	org: boolean;
+	public: boolean;
+}
+
+export interface OrganizationOption {
+	orgId: string;
+	slug: string;
+}
 
 interface ProjectFormState {
 	name: string;
 	slug: string;
 	description: string;
 	visibility: ProjectVisibility;
+	orgId: string | null;
 }
 
 interface Props {
+	/** Slug de la org del propio caller (o "default" si es contexto global). Se usa para el chequeo de slug cuando el admin global no eligió todavía una org. */
 	orgSlug: string;
+	/** Visibilidades habilitadas para el caller. */
+	allowed: AllowedVisibilities;
+	/** Lista de orgs disponibles cuando el caller puede elegir (admin global). */
+	organizations?: OrganizationOption[];
+	/** orgId preseleccionado (token del caller en modo org). */
+	defaultOrgId?: string | null;
 	onClose: () => void;
 	onSubmit: (form: ProjectFormState) => Promise<void> | void;
 }
 
-export function CreateProjectModal({ orgSlug, onClose, onSubmit }: Props) {
+export function CreateProjectModal({ orgSlug, allowed, organizations, defaultOrgId, onClose, onSubmit }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
-	const [form, setForm] = useState<ProjectFormState>({ name: "", slug: "", description: "", visibility: "org" });
+
+	const defaultVisibility: ProjectVisibility = useMemo(() => {
+		if (allowed.org) return "org";
+		if (allowed.private) return "private";
+		if (allowed.public) return "public";
+		return "private";
+	}, [allowed]);
+
+	const [form, setForm] = useState<ProjectFormState>({
+		name: "",
+		slug: "",
+		description: "",
+		visibility: defaultVisibility,
+		orgId: defaultOrgId ?? null,
+	});
 	const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
 	const slugCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const visibilityOptions = useMemo(
+		() =>
+			(["private", "org", "public"] as ProjectVisibility[])
+				.filter((v) => allowed[v])
+				.map((v) => ({ label: t(`projects.${v}`), value: v })),
+		[allowed, t]
+	);
+
+	const needsOrgPicker = form.visibility === "org" && !!organizations?.length;
+	const currentOrgSlug = useMemo(() => {
+		if (form.visibility !== "org") return "default";
+		if (form.orgId && organizations?.length) {
+			return organizations.find((o) => o.orgId === form.orgId)?.slug ?? orgSlug;
+		}
+		return orgSlug;
+	}, [form.visibility, form.orgId, organizations, orgSlug]);
 
 	const modalRef = useCallback(
 		(el: HTMLElement | null) => {
@@ -34,28 +83,37 @@ export function CreateProjectModal({ orgSlug, onClose, onSubmit }: Props) {
 		[onClose]
 	);
 
+	const runSlugCheck = useCallback((slugValue: string, forOrgSlug: string) => {
+		if (slugCheckTimer.current) clearTimeout(slugCheckTimer.current);
+		if (!slugValue) {
+			setSlugStatus("idle");
+			return;
+		}
+		if (!/^[a-z0-9-]+$/.test(slugValue)) {
+			setSlugStatus("invalid");
+			return;
+		}
+		setSlugStatus("checking");
+		slugCheckTimer.current = setTimeout(async () => {
+			const res = await pmApi.checkProjectSlug(forOrgSlug, slugValue);
+			if (res.success && res.data) setSlugStatus(res.data.available ? "available" : "taken");
+			else setSlugStatus("idle");
+		}, SLUG_DEBOUNCE_MS);
+	}, []);
+
 	const handleSlugInput = useCallback(
 		(value: string) => {
 			const normalized = value.toLowerCase().trim();
 			setForm((f) => ({ ...f, slug: normalized }));
-			if (slugCheckTimer.current) clearTimeout(slugCheckTimer.current);
-			if (!normalized) {
-				setSlugStatus("idle");
-				return;
-			}
-			if (!/^[a-z0-9-]+$/.test(normalized)) {
-				setSlugStatus("invalid");
-				return;
-			}
-			setSlugStatus("checking");
-			slugCheckTimer.current = setTimeout(async () => {
-				const res = await pmApi.checkProjectSlug(orgSlug, normalized);
-				if (res.success && res.data) setSlugStatus(res.data.available ? "available" : "taken");
-				else setSlugStatus("idle");
-			}, SLUG_DEBOUNCE_MS);
+			runSlugCheck(normalized, currentOrgSlug);
 		},
-		[orgSlug]
+		[runSlugCheck, currentOrgSlug]
 	);
+
+	// Re-validar slug cuando cambia el scope (visibility u org elegida).
+	useEffect(() => {
+		if (form.slug) runSlugCheck(form.slug, currentOrgSlug);
+	}, [currentOrgSlug]);
 
 	useEffect(() => {
 		return () => {
@@ -65,8 +123,11 @@ export function CreateProjectModal({ orgSlug, onClose, onSubmit }: Props) {
 
 	const handleSave = async () => {
 		if (!form.name || slugStatus !== "available") return;
+		if (form.visibility === "org" && !form.orgId) return;
 		await onSubmit(form);
 	};
+
+	const canSave = !!form.name && slugStatus === "available" && (form.visibility !== "org" || !!form.orgId);
 
 	return (
 		<adc-modal ref={modalRef} open modalTitle={t("projects.newProject")} size="md">
@@ -104,15 +165,25 @@ export function CreateProjectModal({ orgSlug, onClose, onSubmit }: Props) {
 					<label className="block text-sm font-medium mb-1 text-text">{t("projects.visibility")}</label>
 					<adc-combobox
 						value={form.visibility}
-						options={JSON.stringify(VISIBILITIES.map((v) => ({ label: v, value: v })))}
+						options={JSON.stringify(visibilityOptions)}
 						onadcChange={(e: any) => setForm({ ...form, visibility: e.detail as ProjectVisibility })}
 					/>
 				</div>
+				{needsOrgPicker && (
+					<div>
+						<label className="block text-sm font-medium mb-1 text-text">{t("projects.orgId")}</label>
+						<adc-combobox
+							value={form.orgId ?? ""}
+							options={JSON.stringify(organizations!.map((o) => ({ label: o.slug, value: o.orgId })))}
+							onadcChange={(e: any) => setForm((f) => ({ ...f, orgId: (e.detail as string) || null }))}
+						/>
+					</div>
+				)}
 				<div className="flex gap-2 justify-end pt-2">
 					<adc-button variant="accent" onClick={onClose}>
 						{t("common.cancel")}
 					</adc-button>
-					<adc-button variant="primary" onClick={handleSave} disabled={slugStatus !== "available" || !form.name}>
+					<adc-button variant="primary" onClick={handleSave} disabled={!canSave}>
 						{t("common.save")}
 					</adc-button>
 				</div>

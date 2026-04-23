@@ -1,5 +1,6 @@
 import { createAdcApi } from "@ui-library/utils/adc-fetch";
 import type { Permission, ClientUser, ClientGroup } from "@common/types/identity/index";
+import type { Organization } from "@common/types/identity/Organization.ts";
 
 /**
  * Cliente dedicado a endpoints de `IdentityManagerService` consumidos por el app PM.
@@ -30,6 +31,9 @@ export const identityPmApi = {
 
 	/** Resuelve `orgId → { orgId, slug }` para construir URLs del PM. */
 	getOrganization: (orgId: string) => identityApi.get<{ orgId: string; slug: string }>(`/organizations/${orgId}`),
+
+	/** Lista todas las organizaciones. Solo accesible en modo global (admin). */
+	listOrganizations: () => identityApi.get<Organization[]>("/organizations"),
 
 	/** Verifica si un slug de organización está disponible (para flujos de onboarding/edición). */
 	checkOrgSlug: (slug: string) => identityApi.get<{ available: boolean; reserved?: boolean }>(`/organizations/check-slug/${slug}`),

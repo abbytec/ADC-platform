@@ -1,14 +1,15 @@
 import { RegisterEndpoint, type EndpointCtx } from "../../../core/EndpointManagerService/index.js";
-import { P } from "@common/types/Permissions.ts";
 import { ProjectManagerError } from "@common/types/custom-errors/ProjectManagerError.ts";
 import type ProjectManagerService from "../index.js";
 import type { Project, KanbanColumn, ProjectSettings, PriorityStrategy } from "@common/types/project-manager/Project.ts";
 import type { CustomFieldDef } from "@common/types/project-manager/CustomField.ts";
 import type { IssueLinkType } from "@common/types/project-manager/IssueLink.ts";
+import { normalizeSlug } from "@common/utils/project-manager/slug.ts";
 
 /** Resuelve un orgSlug a un orgId (null si es "default" = contexto global). */
 async function resolveOrgSlug(service: ProjectManagerService, orgSlug: string, token?: string): Promise<string | null> {
-	const slug = orgSlug.toLowerCase();
+	const slug = normalizeSlug(orgSlug);
+	if (!slug) throw new ProjectManagerError(400, "INVALID_SLUG", `Slug de organización inválido: '${orgSlug}'`);
 	if (slug === "default") return null;
 	const identity = service.identity;
 	const org = await identity.organizations.getOrganization(slug, token);
@@ -31,9 +32,6 @@ export class ProjectEndpoints {
 	})
 	static async list(ctx: EndpointCtx) {
 		const service = ProjectEndpoints.#service;
-		if (!ctx.user?.id) {
-			throw new ProjectManagerError(401, "NO_TOKEN", "Token de autenticación requerido");
-		}
 		const projects = await service.listProjectsForCaller(ProjectEndpoints.#kernelKey, ctx);
 		return { projects };
 	}
@@ -45,10 +43,8 @@ export class ProjectEndpoints {
 	})
 	static async checkSlug(ctx: EndpointCtx<{ orgSlug: string; projectSlug: string }>) {
 		const service = ProjectEndpoints.#service;
-		const projectSlug = ctx.params.projectSlug.toLowerCase().trim();
-		if (!/^[a-z0-9-]+$/.test(projectSlug)) {
-			return { available: false };
-		}
+		const projectSlug = normalizeSlug(ctx.params.projectSlug);
+		if (!projectSlug) return { available: false };
 		const orgId = await resolveOrgSlug(service, ctx.params.orgSlug, ctx.token ?? undefined);
 		const available = await service.projects.isSlugAvailable(projectSlug, orgId, ctx.token ?? undefined);
 		return { available };
@@ -62,8 +58,10 @@ export class ProjectEndpoints {
 	static async getBySlug(ctx: EndpointCtx<{ orgSlug: string; projectSlug: string }>) {
 		const service = ProjectEndpoints.#service;
 		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
+		const projectSlug = normalizeSlug(ctx.params.projectSlug);
+		if (!projectSlug) throw new ProjectManagerError(400, "INVALID_SLUG", `Slug de proyecto inválido: '${ctx.params.projectSlug}'`);
 		const orgId = await resolveOrgSlug(service, ctx.params.orgSlug, ctx.token ?? undefined);
-		const project = await service.projects.getProjectBySlug(ctx.params.projectSlug.toLowerCase(), orgId, ctx.token ?? undefined, caller);
+		const project = await service.projects.getProjectBySlug(projectSlug, orgId, ctx.token ?? undefined, caller);
 		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", "Proyecto no encontrado");
 		return project;
 	}
@@ -71,17 +69,21 @@ export class ProjectEndpoints {
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/pm/projects",
-		permissions: [P.PROJECT_MANAGER.PROJECTS.WRITE],
+		// La autorización depende de `visibility`: público requiere admin global,
+		// org requiere admin/PM de la org, privado cualquier usuario autenticado.
+		deferAuth: true,
 	})
 	static async create(ctx: EndpointCtx<Record<string, string>, Partial<Project> & { name: string; slug: string }>) {
 		if (!ctx.data?.name || !ctx.data?.slug) {
 			throw new ProjectManagerError(400, "MISSING_FIELDS", "`name` y `slug` son requeridos");
 		}
-		const orgId = ctx.data.orgId ?? ctx.user?.orgId ?? null;
-		const project = await ProjectEndpoints.#service.projects.createProject(
-			{ ...ctx.data, orgId, ownerId: ctx.data.ownerId ?? ctx.user?.id ?? "" },
-			ctx.token ?? undefined
-		);
+		const slug = normalizeSlug(ctx.data.slug);
+		if (!slug) throw new ProjectManagerError(400, "INVALID_SLUG", `Slug inválido: '${ctx.data.slug}'`);
+		const service = ProjectEndpoints.#service;
+		const pmCtx = await service.buildPMCtx(ProjectEndpoints.#kernelKey, ctx);
+		// Defensa en profundidad: ignoramos `ownerId` provisto por el cliente.
+		const { ownerId: _ignored, ...safeInput } = ctx.data;
+		const project = await service.projects.createProject({ ...safeInput, slug, ownerId: pmCtx.userId }, pmCtx, ctx.token ?? undefined);
 		return project;
 	}
 
@@ -112,45 +114,52 @@ export class ProjectEndpoints {
 	@RegisterEndpoint({
 		method: "DELETE",
 		url: "/api/pm/projects/:id",
-		permissions: [P.PROJECT_MANAGER.PROJECTS.DELETE],
+		deferAuth: true,
 	})
 	static async delete(ctx: EndpointCtx<{ id: string }>) {
-		await ProjectEndpoints.#service.projects.deleteProject(ctx.params.id, ctx.token ?? undefined);
+		const service = ProjectEndpoints.#service;
+		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
+		await service.projects.deleteProject(ctx.params.id, ctx.token ?? undefined, caller);
 		return { ok: true };
 	}
 
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/pm/projects/:id/members",
-		permissions: [P.PROJECT_MANAGER.PROJECTS.UPDATE],
+		deferAuth: true,
 	})
 	static async updateMembers(ctx: EndpointCtx<{ id: string }, { memberUserIds: string[]; memberGroupIds: string[] }>) {
 		const data = ctx.data ?? { memberUserIds: [], memberGroupIds: [] };
 		if (!Array.isArray(data.memberUserIds) || !Array.isArray(data.memberGroupIds)) {
 			throw new ProjectManagerError(400, "INVALID_FIELD", "`memberUserIds` y `memberGroupIds` deben ser arrays");
 		}
-		return ProjectEndpoints.#service.projects.updateProject(
+		const service = ProjectEndpoints.#service;
+		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
+		return service.projects.updateProject(
 			ctx.params.id,
 			{ memberUserIds: data.memberUserIds, memberGroupIds: data.memberGroupIds },
-			ctx.token ?? undefined
+			ctx.token ?? undefined,
+			caller
 		);
 	}
 
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/pm/projects/:id/columns",
-		permissions: [P.PROJECT_MANAGER.SETTINGS.UPDATE],
+		deferAuth: true,
 	})
 	static async updateColumns(ctx: EndpointCtx<{ id: string }, { kanbanColumns: KanbanColumn[] }>) {
 		const columns = ctx.data?.kanbanColumns;
 		if (!Array.isArray(columns)) throw new ProjectManagerError(400, "INVALID_FIELD", "`kanbanColumns` debe ser un array");
-		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, { kanbanColumns: columns }, ctx.token ?? undefined);
+		const service = ProjectEndpoints.#service;
+		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
+		return service.projects.updateProject(ctx.params.id, { kanbanColumns: columns }, ctx.token ?? undefined, caller);
 	}
 
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/pm/projects/:id/custom-fields",
-		permissions: [P.PROJECT_MANAGER.CUSTOM_FIELDS.UPDATE],
+		deferAuth: true,
 	})
 	static async updateCustomFields(ctx: EndpointCtx<{ id: string }, { customFieldDefs: CustomFieldDef[] }>) {
 		const defs = ctx.data?.customFieldDefs;
@@ -160,41 +169,49 @@ export class ProjectEndpoints {
 				throw new ProjectManagerError(400, "INVALID_FIELD", `Campo '${def.name}' tipo 'label' requiere opciones`);
 			}
 		}
-		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, { customFieldDefs: defs }, ctx.token ?? undefined);
+		const service = ProjectEndpoints.#service;
+		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
+		return service.projects.updateProject(ctx.params.id, { customFieldDefs: defs }, ctx.token ?? undefined, caller);
 	}
 
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/pm/projects/:id/link-types",
-		permissions: [P.PROJECT_MANAGER.SETTINGS.UPDATE],
+		deferAuth: true,
 	})
 	static async updateLinkTypes(ctx: EndpointCtx<{ id: string }, { issueLinkTypes: IssueLinkType[] }>) {
 		const types = ctx.data?.issueLinkTypes;
 		if (!Array.isArray(types)) throw new ProjectManagerError(400, "INVALID_FIELD", "`issueLinkTypes` debe ser un array");
-		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, { issueLinkTypes: types }, ctx.token ?? undefined);
+		const service = ProjectEndpoints.#service;
+		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
+		return service.projects.updateProject(ctx.params.id, { issueLinkTypes: types }, ctx.token ?? undefined, caller);
 	}
 
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/pm/projects/:id/priority-strategy",
-		permissions: [P.PROJECT_MANAGER.SETTINGS.UPDATE],
+		deferAuth: true,
 	})
 	static async updatePriorityStrategy(ctx: EndpointCtx<{ id: string }, { priorityStrategy: PriorityStrategy }>) {
 		const strategy = ctx.data?.priorityStrategy;
 		if (!strategy || !strategy.id) throw new ProjectManagerError(400, "INVALID_FIELD", "`priorityStrategy.id` es requerido");
-		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, { priorityStrategy: strategy }, ctx.token ?? undefined);
+		const service = ProjectEndpoints.#service;
+		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
+		return service.projects.updateProject(ctx.params.id, { priorityStrategy: strategy }, ctx.token ?? undefined, caller);
 	}
 
 	@RegisterEndpoint({
 		method: "PUT",
 		url: "/api/pm/projects/:id/settings",
-		permissions: [P.PROJECT_MANAGER.SETTINGS.UPDATE],
+		deferAuth: true,
 	})
 	static async updateSettings(ctx: EndpointCtx<{ id: string }, { settings: ProjectSettings }>) {
 		const settings = ctx.data?.settings;
 		if (!settings || typeof settings !== "object") {
 			throw new ProjectManagerError(400, "INVALID_FIELD", "`settings` debe ser un objeto");
 		}
-		return ProjectEndpoints.#service.projects.updateProject(ctx.params.id, { settings }, ctx.token ?? undefined);
+		const service = ProjectEndpoints.#service;
+		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
+		return service.projects.updateProject(ctx.params.id, { settings }, ctx.token ?? undefined, caller);
 	}
 }
