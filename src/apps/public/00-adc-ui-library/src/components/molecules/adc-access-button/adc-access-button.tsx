@@ -1,5 +1,6 @@
 import { Component, Prop, State, h, Event, EventEmitter, Listen, Element } from "@stencil/core";
 import { isPrivateHost } from "../../../utils/url.js";
+import { broadcastAuthChange, forceLogoutAndRefresh, getStoredAuthUser, setStoredAuthUser, setupAuthSync } from "../../../../utils/auth-sync.js";
 import type { SessionUser, SessionResponse } from "@common/types/identity/Session.js";
 
 interface OrgOption {
@@ -95,11 +96,8 @@ export class AdcAccessButton {
 
 	private hoverTimeout?: ReturnType<typeof setTimeout>;
 
-	/** Canal para sincronizar login/logout entre pestañas */
-	private logoutChannel?: BroadcastChannel;
-
-	/** Listener de fallback vía localStorage (para navegadores sin BroadcastChannel) */
-	private storageListener?: (ev: StorageEvent) => void;
+	/** Limpieza de sincronización login/logout entre pestañas */
+	private teardownAuthSync?: () => void;
 
 	@Listen("mouseenter")
 	@Listen("focusin")
@@ -136,58 +134,15 @@ export class AdcAccessButton {
 
 	componentWillLoad() {
 		this.checkSession();
-		this.setupAuthSync();
+		this.teardownAuthSync = setupAuthSync(() => {
+			globalThis.location?.reload();
+		});
 	}
 
 	disconnectedCallback() {
 		if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
-		this.logoutChannel?.close();
-		this.logoutChannel = undefined;
-		if (this.storageListener) {
-			globalThis.removeEventListener?.("storage", this.storageListener);
-			this.storageListener = undefined;
-		}
-	}
-
-	/**
-	 * Suscribe a eventos de logout/login emitidos por otras pestañas.
-	 * Al recibir uno, recarga la pestaña para sincronizar el estado de sesión.
-	 */
-	private setupAuthSync() {
-		const onRemoteAuthChange = () => {
-			globalThis.location?.reload();
-		};
-
-		if (typeof BroadcastChannel !== "undefined") {
-			try {
-				this.logoutChannel = new BroadcastChannel("adc-auth");
-				this.logoutChannel.onmessage = (ev) => {
-					if (ev.data === "logout" || ev.data === "login") onRemoteAuthChange();
-				};
-			} catch {
-				/* ignore */
-			}
-		}
-
-		// Fallback: algunos navegadores privados o contextos restringen BroadcastChannel
-		this.storageListener = (ev: StorageEvent) => {
-			if (ev.key === "adc-auth-event" && ev.newValue) onRemoteAuthChange();
-		};
-		globalThis.addEventListener?.("storage", this.storageListener);
-	}
-
-	/** Notifica a otras pestañas un cambio de sesión. */
-	private broadcastAuthChange(type: "logout" | "login") {
-		try {
-			this.logoutChannel?.postMessage(type);
-		} catch {
-			/* ignore */
-		}
-		try {
-			globalThis.localStorage?.setItem("adc-auth-event", `${type}:${Date.now()}`);
-		} catch {
-			/* ignore */
-		}
+		this.teardownAuthSync?.();
+		this.teardownAuthSync = undefined;
 	}
 
 	/** Construye URL completa para la API */
@@ -236,28 +191,15 @@ export class AdcAccessButton {
 	 * evitando spam de mensajes y recargas cruzadas por cada re-render.
 	 */
 	private syncLoginState(currentUserId: string | null) {
-		let previousUserId: string | null = null;
-		try {
-			previousUserId = globalThis.localStorage?.getItem("adc-auth-user") ?? null;
-		} catch {
-			/* storage no disponible */
-		}
+		const previousUserId = getStoredAuthUser();
 		if (currentUserId === previousUserId) return;
 
-		try {
-			if (currentUserId) {
-				globalThis.localStorage?.setItem("adc-auth-user", currentUserId);
-			} else {
-				globalThis.localStorage?.removeItem("adc-auth-user");
-			}
-		} catch {
-			/* ignore */
-		}
+		setStoredAuthUser(currentUserId);
 
 		// Sólo notificamos cuando efectivamente hay un login nuevo aquí.
 		// (El logout ya emite su propio broadcast en handleLogout).
 		if (currentUserId && previousUserId !== currentUserId) {
-			this.broadcastAuthChange("login");
+			broadcastAuthChange("login");
 		}
 	}
 
@@ -270,22 +212,11 @@ export class AdcAccessButton {
 	};
 
 	private handleLogout = async () => {
-		try {
-			await fetch(this.getApiUrl(this.logoutApiUrl), {
-				method: "POST",
-				credentials: "include",
-			});
-		} catch {
-			// Continuar con logout local aunque falle la API
-		}
-
 		this.isAuthenticated = false;
 		this.user = null;
 		this.dropdownOpen = false;
 		this.adcLogout.emit();
-		this.broadcastAuthChange("logout");
-		// Refrescar la pestaña actual para limpiar datos sensibles y re-evaluar rutas protegidas
-		globalThis.location?.reload();
+		await forceLogoutAndRefresh(this.getApiUrl(this.logoutApiUrl));
 	};
 
 	private handleOpenOrgSwitcher = async () => {

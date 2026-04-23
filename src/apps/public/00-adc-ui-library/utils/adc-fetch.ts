@@ -9,6 +9,7 @@
  */
 
 import { showError } from "./error-handler.js";
+import { forceLogoutAndRefresh } from "./auth-sync.js";
 import ADCCustomError, { HttpError } from "@common/types/ADCCustomError.js";
 import { IS_DEV, getDevUrl } from "@common/utils/url-utils.js";
 
@@ -38,6 +39,11 @@ export interface AdcApiConfig {
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 const MUTATIVE_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const CIRCUIT_BREAKER_THRESHOLD = 5;
+
+let failingBurstSecond = -1;
+let failingBurstCount = 0;
+let circuitBreakerTriggeredSecond = -1;
 
 /**
  * Deterministic hash for idempotency keys.
@@ -48,6 +54,30 @@ function hashIdempotency(data: unknown): string {
 	let h = 5381;
 	for (const ch of str) h = ((h << 5) + h + ch.codePointAt(0)!) >>> 0;
 	return h.toString(36);
+}
+
+function isCircuitBreakerStatus(status?: number): status is number {
+	return typeof status === "number" && status >= 400 && status < 600;
+}
+
+async function registerCircuitBreakerFailure(status?: number): Promise<boolean> {
+	if (!isCircuitBreakerStatus(status)) return false;
+
+	const currentSecond = Math.floor(Date.now() / 1000);
+	if (failingBurstSecond !== currentSecond) {
+		failingBurstSecond = currentSecond;
+		failingBurstCount = 0;
+	}
+
+	failingBurstCount += 1;
+	if (failingBurstCount < CIRCUIT_BREAKER_THRESHOLD || circuitBreakerTriggeredSecond === currentSecond) {
+		return false;
+	}
+
+	circuitBreakerTriggeredSecond = currentSecond;
+	failingBurstCount = 0;
+	await forceLogoutAndRefresh();
+	return true;
 }
 
 export interface RequestOptions<TData = Record<string, unknown>> {
@@ -175,12 +205,17 @@ export function createAdcApi(config: AdcApiConfig) {
 
 			const errorKey = isNetworkError ? "CONNECTION_REFUSED" : (err as ADCCustomError).errorKey || "UNKNOWN_ERROR";
 			const httpStatus = isNetworkError ? 503 : (err as ADCCustomError).status;
+			const breakerTriggered = await registerCircuitBreakerFailure(httpStatus);
 
 			// Extract error data and generate translation params
 			let translationParams: Record<string, string> | undefined;
 			if (err instanceof ADCCustomError && translateParams) {
 				const errorData = (err.data || {}) as TData;
 				translationParams = translateParams(errorData);
+			}
+
+			if (breakerTriggered) {
+				return { success: false, errorKey };
 			}
 
 			// Dispatch error to adc-custom-error components
