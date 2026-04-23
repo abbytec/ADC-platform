@@ -9,7 +9,7 @@ import { ProjectManagerError } from "@common/types/custom-errors/ProjectManagerE
 import { formatIssueKey, deriveProjectKey } from "@common/utils/project-manager/keygen.ts";
 import { buildDiffEntries } from "@common/utils/project-manager/diff.ts";
 import { sortIssuesByPriority, normalizeUrgency, normalizeDifficulty } from "@common/utils/project-manager/priority.ts";
-import { isProjectMember } from "../utils/project-access.ts";
+import { isProjectAccessibleInOrgContext, isProjectMember } from "../utils/project-access.ts";
 import type { ProjectInternals, CallerMembership } from "./projects.ts";
 import type { Project } from "@common/types/project-manager/Project.ts";
 import { getPMTierLimits } from "@common/types/project-manager/tier-limits.ts";
@@ -48,14 +48,11 @@ export class IssueManager {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "IssueManager", PM_RESOURCE_NAME);
 	}
 
-	async create(project: Project, input: Partial<Issue> & Pick<Issue, "title">, token?: string, _caller?: CallerMembership): Promise<Issue> {
+	async create(project: Project, input: Partial<Issue> & Pick<Issue, "title">, token?: string, caller?: CallerMembership): Promise<Issue> {
 		const reporterId = await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, PMScopes.ISSUES, {
 			ownerId: project.ownerId,
-			allowIf: projectOwnerAllowIf(project),
+			allowIf: projectOwnerAllowIf(project, caller),
 		});
-		if (!reporterId) {
-			throw new ProjectManagerError(401, "NO_TOKEN", "Token de autenticación requerido para crear issues");
-		}
 
 		const { maxIssuesPerProject } = getPMTierLimits();
 		const count = await this.issueModel.countDocuments({ projectId: project.id });
@@ -112,9 +109,13 @@ export class IssueManager {
 		const issue = await findByIdAsPlain<Issue>(this.issueModel, issueId);
 		const project = issue ? await this.projectInternals.fetchProject(issue.projectId) : null;
 		const groupIds = caller?.groupIds ?? [];
+		const tokenOrgId = caller?.tokenOrgId ?? null;
+		// Aislamiento por contexto: si el proyecto es org-scoped y el token no está en esa org,
+		// ni membresía ni assignment conceden acceso (hay que switchear primero).
+		const inOrgCtx = isProjectAccessibleInOrgContext(project, tokenOrgId);
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.ISSUES, {
 			ownerId: issue?.reporterId ?? project?.ownerId,
-			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds }) || isAssignee(issue, uid, groupIds),
+			allowIf: (uid) => inOrgCtx && (isProjectMember(project, { id: uid, groupIds }, tokenOrgId) || isAssignee(issue, uid, groupIds)),
 		});
 		return issue;
 	}
@@ -122,7 +123,7 @@ export class IssueManager {
 	async list(project: Project, filters: IssueListFilters = {}, token?: string, caller?: CallerMembership): Promise<Issue[]> {
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.ISSUES, {
 			ownerId: project.ownerId,
-			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds: caller?.groupIds ?? [] }),
+			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds: caller?.groupIds ?? [] }, caller?.tokenOrgId ?? null),
 		});
 
 		const query: Record<string, unknown> = { projectId: project.id };
@@ -153,10 +154,12 @@ export class IssueManager {
 		const project = await this.projectInternals.fetchProject(current.projectId);
 
 		const groupIds = caller?.groupIds ?? [];
+		const tokenOrgId = caller?.tokenOrgId ?? null;
+		const inOrgCtx = isProjectAccessibleInOrgContext(project, tokenOrgId);
 		// Update: reporter (owner del issue), assignees directos/por grupo, u owner del proyecto.
 		const actorId = await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.ISSUES, {
 			ownerId: current.reporterId ?? project?.ownerId,
-			allowIf: (uid) => current.reporterId === uid || isAssignee(current, uid, groupIds) || project?.ownerId === uid,
+			allowIf: (uid) => inOrgCtx && (current.reporterId === uid || isAssignee(current, uid, groupIds) || project?.ownerId === uid),
 		});
 
 		if (updates.priority) {
@@ -180,14 +183,16 @@ export class IssueManager {
 		return docToPlain<Issue>(updated)!;
 	}
 
-	async delete(issueId: string, token?: string, _caller?: CallerMembership): Promise<void> {
+	async delete(issueId: string, token?: string, caller?: CallerMembership): Promise<void> {
 		const issue = await findByIdAsPlain<Issue>(this.issueModel, issueId);
 		const project = issue ? await this.projectInternals.fetchProject(issue.projectId) : null;
+		const tokenOrgId = caller?.tokenOrgId ?? null;
+		const inOrgCtx = isProjectAccessibleInOrgContext(project, tokenOrgId);
 
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, PMScopes.ISSUES, {
 			ownerId: issue?.reporterId ?? project?.ownerId,
 			// Delete es restrictivo: owner del proyecto o reporter del issue.
-			allowIf: (uid) => (!!project && project.ownerId === uid) || (!!issue && issue.reporterId === uid),
+			allowIf: (uid) => inOrgCtx && ((!!project && project.ownerId === uid) || (!!issue && issue.reporterId === uid)),
 		});
 		if (!issue) throw new ProjectManagerError(404, "ISSUE_NOT_FOUND", `Issue ${issueId} no encontrado`);
 		const result = await this.issueModel.deleteOne({ id: issueId });
@@ -201,10 +206,12 @@ export class IssueManager {
 		if (!project) throw new ProjectManagerError(404, "PROJECT_NOT_FOUND", `Proyecto ${current.projectId} no encontrado`);
 
 		const groupIds = caller?.groupIds ?? [];
+		const tokenOrgId = caller?.tokenOrgId ?? null;
+		const inOrgCtx = isProjectAccessibleInOrgContext(project, tokenOrgId);
 		// Move: reporter, assignees u owner del proyecto.
 		const actorId = await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.ISSUES, {
 			ownerId: current.reporterId ?? project.ownerId,
-			allowIf: (uid) => current.reporterId === uid || isAssignee(current, uid, groupIds) || project.ownerId === uid,
+			allowIf: (uid) => inOrgCtx && (current.reporterId === uid || isAssignee(current, uid, groupIds) || project.ownerId === uid),
 		});
 
 		const column = project.kanbanColumns.find((c) => c.key === targetColumnKey);

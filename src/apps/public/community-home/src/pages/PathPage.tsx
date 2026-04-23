@@ -50,7 +50,7 @@ export function PathPage({ slug }: { readonly slug: string }) {
 	}, [slug]);
 
 	useEffect(() => {
-		getSession().then((s) => setCanEdit(s.authenticated && canEditContent(s.user?.permissions || [])));
+		getSession().then((s) => setCanEdit(canEditContent(s.user?.perms)));
 	}, []);
 
 	async function loadPath() {

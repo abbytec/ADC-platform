@@ -1,5 +1,5 @@
 import { createAdcApi } from "@ui-library/utils/adc-fetch";
-import type { Permission, ClientUser, ClientGroup } from "@common/types/identity/index";
+import type { ClientUser, ClientGroup } from "@common/types/identity/index";
 import type { Organization } from "@common/types/identity/Organization.ts";
 
 /**
@@ -15,20 +15,6 @@ const identityApi = createAdcApi({
 export type UserPreferences = Record<string, unknown>;
 
 export const identityPmApi = {
-	/**
-	 * Permisos del usuario actual sobre `project-manager`.
-	 * También incluye `userId` y `groupIds` para resolver membership sin un request extra a `/users/me`.
-	 */
-	getMyPermissions: () =>
-		identityApi.get<{
-			perms: Permission[];
-			orgId?: string;
-			isAdmin?: boolean;
-			isOrgAdmin?: boolean;
-			userId?: string | null;
-			groupIds?: string[];
-		}>("/my-permissions"),
-
 	/** Resuelve `orgId → { orgId, slug }` para construir URLs del PM. */
 	getOrganization: (orgId: string) => identityApi.get<{ orgId: string; slug: string }>(`/organizations/${orgId}`),
 

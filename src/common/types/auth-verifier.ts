@@ -23,7 +23,7 @@ export class PermissionChecker {
 	constructor(
 		private readonly getAuthVerifier: AuthVerifierGetter,
 		private readonly managerName: string,
-		private readonly resource?: string
+		private readonly resource: string
 	) {}
 
 	async requirePermission(token: string | undefined, action: number, scope: number, opts?: RequirePermissionOpts | string): Promise<string> {
@@ -54,7 +54,7 @@ export class PermissionChecker {
 		});
 		if (!hasPermission) {
 			throw new AuthorizationError(
-				`Usuario ${result.userId} no tiene permisos (action=${action}, scope=${scope})`,
+				`Usuario ${result.userId} no tiene permisos (resource=${this.resource}, action=${action}, scope=${scope})`,
 				"INSUFFICIENT_PERMISSIONS"
 			);
 		}

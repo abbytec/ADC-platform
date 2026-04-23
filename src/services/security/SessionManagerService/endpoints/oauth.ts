@@ -423,7 +423,6 @@ export class OAuthEndpoints {
 					username: user.username,
 					email: user.email,
 					avatar: user.avatar,
-					permissions: user.permissions,
 				},
 			},
 			{ cookies: tokenCookies, clearCookies: clearLinkCookies }

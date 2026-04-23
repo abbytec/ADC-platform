@@ -1,4 +1,5 @@
 import type { LinkedAccount } from "./User.js";
+import type { Permission } from "./Permission.js";
 
 /**
  * Representación del usuario autenticado en sesiones frontend.
@@ -9,10 +10,13 @@ export interface SessionUser {
 	username: string;
 	email?: string;
 	avatar?: string;
-	permissions?: string[];
+	perms?: Permission[];
 	orgId?: string;
 	orgSlug?: string;
 	linkedAccounts?: LinkedAccount[];
+	isAdmin?: boolean;
+	isOrgAdmin?: boolean;
+	groupIds?: string[];
 }
 
 /**

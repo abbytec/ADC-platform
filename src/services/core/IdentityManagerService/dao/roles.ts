@@ -1,7 +1,7 @@
 import type { Model } from "mongoose";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "@common/utils/crypto.ts";
-import { IdentityScopes } from "@common/types/identity/permissions.ts";
+import { IdentityScopes, RESOURCE_NAME } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "@common/types/auth-verifier.ts";
 import type { Permission, Role } from "@common/types/identity/index.ts";
@@ -23,7 +23,7 @@ export class RoleManager {
 		operations: OperationsService,
 		getAuthVerifier: AuthVerifierGetter = () => null
 	) {
-		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "RoleManager");
+		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "RoleManager", RESOURCE_NAME);
 		this.#operations = operations;
 	}
 

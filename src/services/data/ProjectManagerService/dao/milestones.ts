@@ -49,12 +49,12 @@ export class MilestoneManager {
 		projectId: string,
 		input: Partial<Milestone> & Pick<Milestone, "name">,
 		token?: string,
-		_caller?: CallerMembership
+		caller?: CallerMembership
 	): Promise<Milestone> {
 		const project = await this.#requireProject(projectId);
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, PMScopes.MILESTONES, {
 			ownerId: project.ownerId,
-			allowIf: projectOwnerAllowIf(project),
+			allowIf: projectOwnerAllowIf(project, caller),
 		});
 
 		const { maxMilestonesPerProject } = getPMTierLimits();
@@ -97,13 +97,13 @@ export class MilestoneManager {
 		return milestone;
 	}
 
-	async update(milestoneId: string, updates: Partial<Milestone>, token?: string, _caller?: CallerMembership): Promise<Milestone> {
+	async update(milestoneId: string, updates: Partial<Milestone>, token?: string, caller?: CallerMembership): Promise<Milestone> {
 		const { milestone, project } = await this.#fetchMilestoneAndProject(milestoneId);
 		if (!milestone) throw new ProjectManagerError(404, "MILESTONE_NOT_FOUND", `Milestone ${milestoneId} no encontrado`);
 		// Update sobre milestones: rol PM / permiso formal, o owner del proyecto.
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.MILESTONES, {
 			ownerId: project?.ownerId,
-			allowIf: projectOwnerAllowIf(project),
+			allowIf: projectOwnerAllowIf(project, caller),
 		});
 		const safe = stripImmutableFields(updates, MILESTONE_IMMUTABLE_FIELDS);
 		const updated = await this.milestoneModel.findOneAndUpdate({ id: milestoneId }, safe, { new: true });
@@ -111,13 +111,13 @@ export class MilestoneManager {
 		return docToPlain<Milestone>(updated)!;
 	}
 
-	async delete(milestoneId: string, token?: string, _caller?: CallerMembership): Promise<void> {
+	async delete(milestoneId: string, token?: string, caller?: CallerMembership): Promise<void> {
 		const { milestone, project } = await this.#fetchMilestoneAndProject(milestoneId);
 		// Auth-first: no revelamos existencia ante usuarios no autorizados.
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, PMScopes.MILESTONES, {
 			ownerId: project?.ownerId,
 			// Delete es más restrictivo: sólo owner del proyecto (o permiso global).
-			allowIf: projectOwnerAllowIf(project),
+			allowIf: projectOwnerAllowIf(project, caller),
 		});
 		if (!milestone) throw new ProjectManagerError(404, "MILESTONE_NOT_FOUND", `Milestone ${milestoneId} no encontrado`);
 		const result = await this.milestoneModel.deleteOne({ id: milestoneId });

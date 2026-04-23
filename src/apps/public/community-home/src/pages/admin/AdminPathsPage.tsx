@@ -49,7 +49,7 @@ function PathsAdminBody() {
 
 	useEffect(() => {
 		refresh();
-		getSession().then((s) => setCanPub(s.authenticated && canPublish(s.user?.permissions || [])));
+		getSession().then((s) => setCanPub(canPublish(s.user?.perms)));
 		// Auto-abrir edición si viene ?slug=... en la URL (e.g. desde el botón editar en PathPage)
 		const initialSlug = new URLSearchParams(globalThis.location?.search ?? "").get("slug");
 		if (initialSlug) startEdit(initialSlug);

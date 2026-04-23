@@ -3,7 +3,7 @@ import type { Group, User } from "@common/types/identity/index.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId } from "@common/utils/crypto.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "@common/types/auth-verifier.ts";
-import { IdentityScopes } from "@common/types/identity/permissions.ts";
+import { IdentityScopes, RESOURCE_NAME } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.js";
 import type { UserManager } from "./users.js";
 
@@ -16,7 +16,7 @@ export class GroupManager {
 		private readonly logger: ILogger,
 		getAuthVerifier: AuthVerifierGetter = () => null
 	) {
-		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "GroupManager");
+		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "GroupManager", RESOURCE_NAME);
 	}
 
 	/**

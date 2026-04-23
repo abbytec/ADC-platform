@@ -19,9 +19,6 @@ const api = createAdcApi({
 // ── API methods ──────────────────────────────────────────────────────────────
 
 export const identityApi = {
-	// My Permissions
-	getMyPermissions: () => api.get<{ perms: Permission[]; orgId?: string; isAdmin?: boolean; isOrgAdmin?: boolean }>("/my-permissions"),
-
 	// Users
 	listUsers: (orgId?: string) => api.get<{ users: ClientUser[]; roles: Role[] }>("/users", orgId ? { params: { orgId } } : undefined),
 	searchUsers: (q: string, orgId?: string) => api.get<ClientUser[]>("/users/search", { params: { q, orgId } }),

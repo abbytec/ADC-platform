@@ -16,10 +16,10 @@ export function AdminGate({ children, requirePublish = false }: Props) {
 	useEffect(() => {
 		getSession().then((s) => {
 			setSession(s);
-			const perms = s.user?.permissions || [];
+			const perms = s.user?.perms;
 			const isReviewer = canPublish(perms);
 			setReviewer(isReviewer);
-			const ok = s.authenticated && (requirePublish ? isReviewer : canEditContent(perms) || isReviewer);
+			const ok = requirePublish ? isReviewer : canEditContent(perms) || isReviewer;
 			setAllowed(ok);
 		});
 	}, [requirePublish]);

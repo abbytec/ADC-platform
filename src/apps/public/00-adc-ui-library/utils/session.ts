@@ -7,7 +7,7 @@
  */
 
 import { createAdcApi } from "./adc-fetch.js";
-import { hasPermission } from "@common/types/Permissions.js";
+import { hasBitfieldPermission } from "@common/utils/perms.js";
 import type { SessionUser, SessionResponse } from "@common/types/identity/Session.js";
 
 /** @deprecated Usa SessionResponse directamente. */
@@ -51,5 +51,5 @@ export function clearSessionCache(): void {
 /** Verifica si la sesión actual tiene un permiso (e.g. P.COMMUNITY.SOCIAL.WRITE). */
 export async function sessionHasPermission(required: string): Promise<boolean> {
 	const session = await getSession();
-	return hasPermission(session.user?.permissions || [], required);
+	return hasBitfieldPermission(session.user?.perms ?? [], required);
 }

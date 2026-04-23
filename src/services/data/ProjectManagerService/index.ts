@@ -31,6 +31,7 @@ export default class ProjectManagerService extends BaseService {
 
 	#authVerifier: IAuthVerifier | null = null;
 	#identity: IdentityManagerService | null = null;
+	#internalRoles: ReturnType<IdentityManagerService["_internal"]>["roles"] | null = null;
 
 	private mongoProvider!: IMongoProvider;
 	readonly #kernelRef: Kernel;
@@ -52,6 +53,7 @@ export default class ProjectManagerService extends BaseService {
 		await this.waitForMongo();
 
 		this.#identity = this.#kernelRef.registry.getService<IdentityManagerService>("IdentityManagerService");
+		this.#internalRoles = this.#identity?._internal(kernelKey).roles ?? null;
 
 		const ProjectModel = this.mongoProvider.createModel<Project>("projects", projectSchema);
 		const SprintModel = this.mongoProvider.createModel<Sprint>("sprints", sprintSchema);
@@ -86,6 +88,7 @@ export default class ProjectManagerService extends BaseService {
 		if (cached) return cached;
 
 		const userId = ctx.user?.id ?? "";
+		const tokenOrgId = ctx.user?.orgId ?? null;
 		let groupIds: string[] = [];
 		if (userId) {
 			try {
@@ -95,7 +98,7 @@ export default class ProjectManagerService extends BaseService {
 				groupIds = [];
 			}
 		}
-		const caller: CallerMembership = { userId, groupIds };
+		const caller: CallerMembership = { userId, groupIds, tokenOrgId };
 		Object.defineProperty(ctx, cacheKey, { value: caller, enumerable: false });
 		return caller;
 	}
@@ -121,10 +124,11 @@ export default class ProjectManagerService extends BaseService {
 
 		const caller = await this.resolveCaller(_kernelKey, ctx);
 		const identity = this.#identity!;
+		const internalRoles = this.#internalRoles!;
 		const tokenOrgId = ctx.user?.orgId ?? null;
 		const user = caller.userId ? await identity.users.getUser(caller.userId, ctx.token ?? undefined) : null;
 		const [globalAdminRole, hasGlobalPMRead, hasGlobalPMWrite] = await Promise.all([
-			hasGlobalAdminRole(identity, user, ctx.token ?? undefined),
+			hasGlobalAdminRole(internalRoles, user),
 			identity.permissions.hasPermission(caller.userId, CRUDXAction.READ, PMScopes.PROJECTS),
 			identity.permissions.hasPermission(caller.userId, CRUDXAction.WRITE, PMScopes.PROJECTS),
 		]);
@@ -143,7 +147,7 @@ export default class ProjectManagerService extends BaseService {
 			isOrgAdminOrPM: (orgId: string) => {
 				let p = orgRoleCache.get(orgId);
 				if (!p) {
-					p = isOrgAdminOrPM(identity, user, orgId, ctx.token ?? undefined);
+					p = isOrgAdminOrPM(internalRoles, user, orgId);
 					orgRoleCache.set(orgId, p);
 				}
 				return p;

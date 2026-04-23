@@ -13,9 +13,9 @@ export default function HeaderNav() {
 
 	useEffect(() => {
 		getSession().then((s) => {
-			const perms = s.user?.permissions || [];
-			setShowAdmin(s.authenticated && canEditContent(perms));
-			setShowPublish(s.authenticated && canPublish(perms));
+			const perms = s.user?.perms;
+			setShowAdmin(canEditContent(perms));
+			setShowPublish(canPublish(perms));
 		});
 	}, []);
 
