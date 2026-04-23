@@ -6,9 +6,9 @@ import { IdentityScopes, RESOURCE_NAME } from "@common/types/identity/permission
 import { CRUDXAction } from "@common/types/Actions.ts";
 
 export class RegionManager {
-	#regionsCache: Map<string, RegionInfo> = new Map();
+	readonly #regionsCache: Map<string, RegionInfo> = new Map();
 	#globalRegion: RegionInfo | null = null;
-	#permissionChecker: PermissionChecker;
+	readonly #permissionChecker: PermissionChecker;
 
 	constructor(
 		private readonly regionModel: Model<any>,

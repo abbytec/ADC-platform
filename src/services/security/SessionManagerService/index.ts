@@ -67,8 +67,8 @@ export default class SessionManagerService extends BaseService {
 	#oauthRegistry: OAuthProviderRegistry | null = null;
 
 	// Configuración
-	#defaultRedirectUrl = IS_DEV ? "http://localhost:3000" : "https://adigitalcafe.com";
-	#cookieDomain = IS_DEV ? "localhost" : ".adigitalcafe.com";
+	readonly #defaultRedirectUrl = IS_DEV ? "http://localhost:3000" : "https://adigitalcafe.com";
+	readonly #cookieDomain = IS_DEV ? "localhost" : ".adigitalcafe.com";
 
 	#kernelKey?: symbol;
 
@@ -86,24 +86,22 @@ export default class SessionManagerService extends BaseService {
 	})
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
-		this.#kernelKey = kernelKey;
+		this.#kernelKey ??= kernelKey;
 
-		this.#jwtProvider = this.getMyProvider<IJWTProviderMultiKey>("security/jwt");
-		this.#identityService = this.getMyService<IdentityManagerService>("IdentityManagerService");
+		this.#jwtProvider ??= this.getMyProvider<IJWTProviderMultiKey>("security/jwt");
+		this.#identityService ??= this.getMyService<IdentityManagerService>("IdentityManagerService");
 		if (this.#identityService) {
-			this.#internalIdentity = this.#identityService._internal(kernelKey);
+			this.#internalIdentity ??= this.#identityService._internal(kernelKey);
 		}
 
 		// Redis es opcional - funciona con fallback en memoria
 		try {
-			this.#redis = this.getMyProvider<RedisProvider>("queue/redis");
+			this.#redis ??= this.getMyProvider<RedisProvider>("queue/redis");
 		} catch {
 			this.logger.logWarn("Redis no disponible, usando almacenamiento en memoria");
 		}
 
-		if (!this.#jwtProvider) {
-			throw new Error("SessionManagerService requiere jwt provider");
-		}
+		if (!this.#jwtProvider) throw new Error("SessionManagerService requiere jwt provider");
 
 		// Inicializar componentes de dominio con Redis si está disponible
 		await this.#initDomainComponents();

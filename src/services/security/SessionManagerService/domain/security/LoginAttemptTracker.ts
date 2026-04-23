@@ -38,15 +38,15 @@ const NOT_BLOCKED: UserBlockStatus = { blocked: false, blockedUntil: null, perma
  * Sin Redis, funciona con almacenamiento en memoria.
  */
 export class LoginAttemptTracker {
-	#redis: RedisProvider | null = null;
+	readonly #redis: RedisProvider | null = null;
 	#updateBlockStatus: UpdateBlockStatusCallback | null = null;
 	#sendAlertEmail: SendAlertEmailCallback | null = null;
 
 	// Fallback en memoria
-	#loginAttempts = new Map<string, number>();
-	#refreshAttempts = new Map<string, number>();
-	#blockStatus = new Map<string, UserBlockStatus>();
-	#temporarilyBlocked = new Set<string>();
+	readonly #loginAttempts = new Map<string, number>();
+	readonly #refreshAttempts = new Map<string, number>();
+	readonly #blockStatus = new Map<string, UserBlockStatus>();
+	readonly #temporarilyBlocked = new Set<string>();
 	#cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 	constructor(redis?: RedisProvider) {

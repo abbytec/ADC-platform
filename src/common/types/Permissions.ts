@@ -63,7 +63,7 @@ function buildAllPermissions() {
 	const result: Record<string, ReturnType<typeof buildResourcePermissions>> = {};
 	for (const resource of RESOURCES) {
 		// `project-manager` → `PROJECT_MANAGER` (JS-identifier-friendly property access)
-		const key = resource.id.replace(/-/g, "_").toUpperCase();
+		const key = resource.id.replaceAll("-", "_").toUpperCase();
 		result[key] = buildResourcePermissions(resource);
 	}
 	return result;

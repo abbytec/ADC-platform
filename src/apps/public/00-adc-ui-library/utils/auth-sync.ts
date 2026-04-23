@@ -78,7 +78,7 @@ function getDefaultLogoutUrl(): string {
 }
 
 export async function forceLogoutAndRefresh(logoutUrl = getDefaultLogoutUrl()): Promise<void> {
-	if (logoutInFlight) {
+	if (logoutInFlight !== null) {
 		await logoutInFlight;
 		return;
 	}

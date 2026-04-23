@@ -1,6 +1,6 @@
 export default class LRUCache<K, V> {
-	#cache = new Map<K, V>();
-	#maxSize: number;
+	readonly #cache = new Map<K, V>();
+	readonly #maxSize: number;
 
 	constructor(maxSize: number) {
 		this.#maxSize = maxSize;

@@ -8,7 +8,7 @@ import type { IOAuthProvider, OAuthProviderConfig, TokenExchangeResult } from ".
 export class PlatformAuthProvider implements IOAuthProvider {
 	readonly name = "platform";
 
-	#validateCredentials: (username: string, password: string) => Promise<UserAuthenticationResult | null>;
+	readonly #validateCredentials: (username: string, password: string) => Promise<UserAuthenticationResult | null>;
 
 	constructor(validateFn: (username: string, password: string) => Promise<UserAuthenticationResult | null>) {
 		this.#validateCredentials = validateFn;

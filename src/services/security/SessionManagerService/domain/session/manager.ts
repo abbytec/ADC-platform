@@ -32,12 +32,12 @@ interface StoredState {
  * - Verificación de tokens existentes
  */
 export class SessionManager {
-	#jwtProvider: IJWTProvider;
-	#cookieConfig: SessionCookieConfig;
-	#stateExpiration: number;
+	readonly #jwtProvider: IJWTProvider;
+	readonly #cookieConfig: SessionCookieConfig;
+	readonly #stateExpiration: number;
 
 	// Cache de states pendientes (en producción usar Redis)
-	#pendingStates = new Map<string, StoredState>();
+	readonly #pendingStates = new Map<string, StoredState>();
 
 	constructor(config: SessionManagerConfig) {
 		this.#jwtProvider = config.jwtProvider;

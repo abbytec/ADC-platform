@@ -5,7 +5,7 @@
 export function deriveProjectKey(name: string): string {
 	const cleaned = name
 		.toUpperCase()
-		.replace(/[^A-Z0-9\s]/g, "")
+		.replaceAll(/[^A-Z0-9\s]/g, "")
 		.trim();
 
 	const words = cleaned.split(/\s+/).filter(Boolean);

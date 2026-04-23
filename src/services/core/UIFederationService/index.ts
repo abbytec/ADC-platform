@@ -24,9 +24,9 @@ export default class UIFederationService extends BaseService {
 
 	// Módulos organizados por namespace: Map<namespace, Map<moduleName, module>>
 	private readonly registeredModules = new Map<string, Map<string, RegisteredUIModule>>();
-	private watchBuilds = new Map<string, any>();
+	private readonly watchBuilds = new Map<string, any>();
 	// Import maps por namespace
-	private importMaps = new Map<string, ImportMap>();
+	private readonly importMaps = new Map<string, ImportMap>();
 	private langManager: ILangManagerService | null = null;
 	private readonly uiOutputBaseDir: string;
 	private port: number = 3000;

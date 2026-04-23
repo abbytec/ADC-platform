@@ -37,7 +37,7 @@ function isAssignee(issue: Issue | null | undefined, userId: string, groupIds: s
 }
 
 export class IssueManager {
-	#permissionChecker: PermissionChecker;
+	readonly #permissionChecker: PermissionChecker;
 
 	constructor(
 		private readonly issueModel: Model<Issue>,

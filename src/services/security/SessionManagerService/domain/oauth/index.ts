@@ -8,7 +8,7 @@ import { GoogleOAuthProvider } from "./google.js";
  * Registry de proveedores OAuth disponibles
  */
 export class OAuthProviderRegistry {
-	#providers = new Map<string, IOAuthProvider>();
+	readonly #providers = new Map<string, IOAuthProvider>();
 
 	constructor() {
 		// Registrar providers por defecto

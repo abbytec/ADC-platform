@@ -40,7 +40,7 @@ No debería resolver:
 
 ```ts
 export class ResourceManager {
-	#permissionChecker: PermissionChecker;
+	readonly #permissionChecker: PermissionChecker;
 
 	constructor(
 		private readonly model: Model<Resource>,

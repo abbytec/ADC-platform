@@ -41,7 +41,7 @@ export default class ProjectManagerService extends BaseService {
 		this.#kernelRef = kernel;
 	}
 
-	#getAuthVerifier: AuthVerifierGetter = () => this.#authVerifier;
+	readonly #getAuthVerifier: AuthVerifierGetter = () => this.#authVerifier;
 
 	@EnableEndpoints({
 		managers: () => [ProjectEndpoints, SprintEndpoints, MilestoneEndpoints, IssueEndpoints],

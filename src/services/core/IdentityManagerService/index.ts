@@ -73,7 +73,7 @@ export default class IdentityManagerService extends BaseService {
 	readonly #operationsService: OperationsService;
 
 	// Cache de conexiones por organización
-	#orgConnectionCache: Map<string, { connection: Connection; managers: OrgScopedManagers }> = new Map();
+	readonly #orgConnectionCache: Map<string, { connection: Connection; managers: OrgScopedManagers }> = new Map();
 
 	constructor(kernel: Kernel, options?: any) {
 		super(kernel, options);
@@ -84,7 +84,7 @@ export default class IdentityManagerService extends BaseService {
 	/**
 	 * Getter para el AuthVerifier (usado por los managers)
 	 */
-	#getAuthVerifier: AuthVerifierGetter = () => this.#authVerifier;
+	readonly #getAuthVerifier: AuthVerifierGetter = () => this.#authVerifier;
 
 	@EnableEndpoints({
 		managers: () => [UserEndpoints, RoleEndpoints, GroupEndpoints, OrgEndpoints, RegionEndpoints, StatsEndpoints],

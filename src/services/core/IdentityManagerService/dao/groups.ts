@@ -8,7 +8,7 @@ import { CRUDXAction } from "@common/types/Actions.js";
 import type { UserManager } from "./users.js";
 
 export class GroupManager {
-	#permissionChecker: PermissionChecker;
+	readonly #permissionChecker: PermissionChecker;
 
 	constructor(
 		private readonly groupModel: Model<any>,

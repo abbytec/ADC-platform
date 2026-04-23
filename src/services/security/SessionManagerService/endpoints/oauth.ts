@@ -79,7 +79,7 @@ export class OAuthEndpoints {
 	private static deps: OAuthEndpointsDeps;
 
 	/** Fallback en memoria si Redis no está disponible */
-	private static pendingLinks = new Map<string, PendingLinkEntry>();
+	private static readonly pendingLinks = new Map<string, PendingLinkEntry>();
 
 	/** Intervalo de limpieza (solo sin Redis — Redis usa TTL nativo) */
 	private static cleanupInterval: ReturnType<typeof setInterval> | null = null;

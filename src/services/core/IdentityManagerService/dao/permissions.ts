@@ -37,8 +37,8 @@ interface LevelPermission {
  * necesita leer datos internamente sin token para resolver permisos)
  */
 export class PermissionManager {
-	#cache: LRUCache<string, PermissionCacheEntry>;
-	#cacheTTL: number;
+	readonly #cache: LRUCache<string, PermissionCacheEntry>;
+	readonly #cacheTTL: number;
 
 	constructor(
 		private readonly userModel: Model<User>,

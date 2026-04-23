@@ -53,11 +53,11 @@ export class KeyStore {
 	#currentKeyBytes: Uint8Array;
 	#previousKeyBytes: Uint8Array | null = null;
 	#rotatedAt: number;
-	#rotationInterval: number;
-	#keyLength: number;
+	readonly #rotationInterval: number;
+	readonly #keyLength: number;
 	#rotationTimer: ReturnType<typeof setInterval> | null = null;
-	#rotationCallbacks: KeyRotationCallback[] = [];
-	#redis: RedisProvider | null = null;
+	readonly #rotationCallbacks: KeyRotationCallback[] = [];
+	readonly #redis: RedisProvider | null = null;
 
 	constructor(config: KeyStoreConfig) {
 		this.#rotationInterval = config.rotationInterval;

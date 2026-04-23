@@ -7,7 +7,6 @@ import { type AuthVerifierGetter, PermissionChecker } from "@common/types/auth-v
 import { PMScopes, PM_RESOURCE_NAME } from "@common/types/project-manager/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
 import { ProjectManagerError } from "@common/types/custom-errors/ProjectManagerError.ts";
-import { OnlyKernel } from "../../../../utils/decorators/OnlyKernel.ts";
 import { filterVisibleProjects, isProjectMember } from "../utils/project-access.ts";
 import { getPMTierLimits } from "@common/types/project-manager/tier-limits.ts";
 import { docToPlain, stripImmutableFields } from "./shared.ts";
@@ -68,9 +67,8 @@ export interface ProjectInternals {
 }
 
 export class ProjectManager {
-	#permissionChecker: PermissionChecker;
-	/** Usado por `@OnlyKernel()` para verificar el caller. */
-	protected readonly kernelKey: symbol;
+	readonly #permissionChecker: PermissionChecker;
+	readonly #kernelKey: symbol;
 
 	constructor(
 		private readonly projectModel: Model<Project>,
@@ -78,7 +76,7 @@ export class ProjectManager {
 		private readonly logger: ILogger,
 		getAuthVerifier: AuthVerifierGetter = () => null
 	) {
-		this.kernelKey = kernelKey;
+		this.#kernelKey = kernelKey;
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "ProjectManager", PM_RESOURCE_NAME);
 	}
 
@@ -284,8 +282,9 @@ export class ProjectManager {
 	 * mismo service. Protegido por `kernelKey`: sólo el service que creó este
 	 * manager puede obtenerlos.
 	 */
-	@OnlyKernel()
 	getInternals(_kernelKey: symbol): ProjectInternals {
+		if (_kernelKey !== this.#kernelKey) throw new Error("Acceso denegado: kernel key inválida");
+
 		return {
 			fetchProject: (id) => this.#fetchProject(id),
 			incrementIssueCounter: (id) => this.#incrementIssueCounter(id),

@@ -47,6 +47,7 @@ export class AdcCombobox {
 	}
 
 	@State() searchQuery: string = "";
+	@State() inputValue: string = "";
 	@State() isOpen: boolean = false;
 
 	@Event() adcChange!: EventEmitter<string>;
@@ -54,6 +55,7 @@ export class AdcCombobox {
 	@Watch("value")
 	onValueChange() {
 		this.searchQuery = "";
+		this.inputValue = "";
 		this.isOpen = false;
 	}
 
@@ -71,12 +73,23 @@ export class AdcCombobox {
 	private readonly handleFocus = () => {
 		this.isOpen = true;
 		this.searchQuery = "";
+		this.inputValue = "";
 	};
 
 	private readonly handleInput = (event: InputEvent) => {
 		const target = event.target as HTMLInputElement;
-		this.searchQuery = target.value;
+		this.inputValue = target.value;
 		this.isOpen = true;
+
+		if (this.debounceTimer) clearTimeout(this.debounceTimer);
+
+		if (this.debounce > 0) {
+			this.debounceTimer = setTimeout(() => {
+				this.searchQuery = this.inputValue;
+			}, this.debounce);
+		} else {
+			this.searchQuery = this.inputValue;
+		}
 	};
 
 	private readonly handleBlur = () => {
@@ -84,6 +97,7 @@ export class AdcCombobox {
 		setTimeout(() => {
 			this.isOpen = false;
 			this.searchQuery = "";
+			this.inputValue = "";
 		}, 150);
 	};
 
@@ -91,17 +105,19 @@ export class AdcCombobox {
 		this.adcChange.emit(option.value);
 		this.isOpen = false;
 		this.searchQuery = "";
+		this.inputValue = "";
 	};
 
 	private readonly handleClear = (event: MouseEvent) => {
 		event.stopPropagation();
 		this.adcChange.emit("");
 		this.searchQuery = "";
+		this.inputValue = "";
 		this.isOpen = false;
 	};
 
 	render() {
-		const displayValue = this.isOpen ? this.searchQuery : this.selectedLabel;
+		const displayValue = this.isOpen ? this.inputValue : this.selectedLabel;
 		const options = this.filteredOptions;
 
 		return (

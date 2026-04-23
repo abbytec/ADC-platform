@@ -28,7 +28,7 @@ let inflight: Promise<SessionResponse> | null = null;
 export async function getSession(force = false): Promise<SessionResponse> {
 	const now = Date.now();
 	if (!force && cache && now - cache.ts < CACHE_TTL_MS) return cache.data;
-	if (inflight) return inflight;
+	if (inflight !== null) return inflight;
 
 	inflight = (async () => {
 		const result = await api.get<SessionResponse>("/session");

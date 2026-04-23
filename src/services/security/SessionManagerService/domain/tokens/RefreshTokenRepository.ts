@@ -42,13 +42,13 @@ interface CreateRefreshTokenOptions {
  * Sin Redis, funciona con almacenamiento en memoria.
  */
 export class RefreshTokenRepository {
-	#redis: RedisProvider | null = null;
-	#defaultTtl: number;
+	readonly #redis: RedisProvider | null = null;
+	readonly #defaultTtl: number;
 
 	// Fallback en memoria
-	#tokens = new Map<string, StoredRefreshToken>();
-	#userTokens = new Map<string, Set<string>>();
-	#deviceTokens = new Map<string, string>();
+	readonly #tokens = new Map<string, StoredRefreshToken>();
+	readonly #userTokens = new Map<string, Set<string>>();
+	readonly #deviceTokens = new Map<string, string>();
 	#cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 	constructor(defaultTtlSeconds: number = 30 * 24 * 60 * 60, redis?: RedisProvider) {

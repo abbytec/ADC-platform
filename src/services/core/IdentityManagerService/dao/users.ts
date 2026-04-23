@@ -9,7 +9,7 @@ import { CRUDXAction } from "@common/types/Actions.ts";
 export type UserAuthenticationResult = Partial<User> | { id: string; isActive: boolean } | { id: string; wrongPassword: boolean } | null;
 
 export class UserManager {
-	#permissionChecker: PermissionChecker;
+	readonly #permissionChecker: PermissionChecker;
 
 	constructor(
 		private readonly userModel: Model<any>,

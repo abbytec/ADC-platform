@@ -21,7 +21,7 @@ import {
 const SPRINT_IMMUTABLE_FIELDS = ["id", "projectId", "createdAt"] as const;
 
 export class SprintManager {
-	#permissionChecker: PermissionChecker;
+	readonly #permissionChecker: PermissionChecker;
 
 	constructor(
 		private readonly sprintModel: Model<Sprint>,

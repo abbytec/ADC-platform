@@ -21,7 +21,7 @@ import {
 const MILESTONE_IMMUTABLE_FIELDS = ["id", "projectId", "createdAt"] as const;
 
 export class MilestoneManager {
-	#permissionChecker: PermissionChecker;
+	readonly #permissionChecker: PermissionChecker;
 
 	constructor(
 		private readonly milestoneModel: Model<Milestone>,

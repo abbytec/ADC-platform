@@ -61,10 +61,10 @@ interface TokenServiceConfig {
  * - Refrescar tokens
  */
 export class TokenService {
-	#keyStore: KeyStore;
-	#jwtProvider: IJWTProviderMultiKey;
-	#refreshTokenRepo: RefreshTokenRepository;
-	#config: TokenServiceConfig;
+	readonly #keyStore: KeyStore;
+	readonly #jwtProvider: IJWTProviderMultiKey;
+	readonly #refreshTokenRepo: RefreshTokenRepository;
+	readonly #config: TokenServiceConfig;
 
 	constructor(keyStore: KeyStore, jwtProvider: IJWTProviderMultiKey, refreshTokenRepo: RefreshTokenRepository, config: TokenServiceConfig) {
 		this.#keyStore = keyStore;

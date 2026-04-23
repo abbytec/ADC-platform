@@ -22,7 +22,7 @@ function extractToken(req: FastifyRequest<any>, getSessionManager: () => Session
 
 	// 2. Intentar desde header Authorization
 	const authHeader = req.headers?.authorization;
-	if (authHeader && authHeader.startsWith("Bearer ")) {
+	if (authHeader?.startsWith("Bearer ")) {
 		return authHeader.substring(7);
 	}
 

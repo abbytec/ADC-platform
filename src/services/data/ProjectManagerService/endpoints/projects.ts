@@ -206,7 +206,7 @@ export class ProjectEndpoints {
 	})
 	static async updatePriorityStrategy(ctx: EndpointCtx<{ id: string }, { priorityStrategy: PriorityStrategy }>) {
 		const strategy = ctx.data?.priorityStrategy;
-		if (!strategy || !strategy.id) throw new ProjectManagerError(400, "INVALID_FIELD", "`priorityStrategy.id` es requerido");
+		if (!strategy?.id) throw new ProjectManagerError(400, "INVALID_FIELD", "`priorityStrategy.id` es requerido");
 		const service = ProjectEndpoints.#service;
 		const caller = await service.resolveCaller(ProjectEndpoints.#kernelKey, ctx);
 		return service.projects.updateProject(ctx.params.id, { priorityStrategy: strategy }, ctx.token ?? undefined, caller);

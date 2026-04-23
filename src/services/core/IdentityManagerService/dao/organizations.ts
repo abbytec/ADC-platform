@@ -14,7 +14,7 @@ import type { Step } from "../../../core/OperationsService/types.ts";
 import { AuthorizationError } from "@common/types/custom-errors/AuthorizationError.ts";
 
 export class OrgManager {
-	#permissionChecker: PermissionChecker;
+	readonly #permissionChecker: PermissionChecker;
 	readonly #operations: OperationsService;
 	readonly #getAuthVerifier: AuthVerifierGetter;
 

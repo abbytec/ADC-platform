@@ -40,9 +40,9 @@ interface IPCServerConfig {
 class IPCManager {
 	private static readonly PIPE_BASE_PATH = os.platform() === "win32" ? "\\\\.\\pipe\\" : path.join(os.tmpdir(), "adc-platform");
 
-	private servers = new Map<string, net.Server>();
-	private clients = new Map<string, net.Socket>();
-	private pendingRequests = new Map<string, { resolve: (value: any) => void; reject: (error: any) => void }>();
+	private readonly servers = new Map<string, net.Server>();
+	private readonly clients = new Map<string, net.Socket>();
+	private readonly pendingRequests = new Map<string, { resolve: (value: any) => void; reject: (error: any) => void }>();
 
 	/**
 	 * Genera la ruta del named pipe para un módulo específico
