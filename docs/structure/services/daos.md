@@ -83,7 +83,46 @@ Reglas recomendadas:
 
 - Si la operación depende sólo del permiso formal, no usar `allowIf`.
 - Si existe acceso alternativo por owner, miembro o estado del recurso, expresarlo en `allowIf`.
-- No hacer chequeos manuales de token antes de `requirePermission`.
+- No hacer chequeos manuales de token antes de `requirePermission`, **salvo** en el patrón de manager dual descrito abajo.
+
+## Managers internos (dual-mode)
+
+Cuando un manager necesita ser usado tanto desde endpoints HTTP (con auth verifier) como desde servicios de infraestructura en contexto pre-autenticado (p.ej. `SessionManagerService` durante el login), se instancia con dos configuraciones:
+
+- **Manager normal**: construido con el `getAuthVerifier` real → verifica tokens.
+- **Manager interno**: construido con `() => null` → `PermissionChecker.requirePermission` hace short-circuit sin chequear nada.
+
+El servicio dueño expone el interno vía un método anotado con `@OnlyKernel()`:
+
+```ts
+_internal(kernelKey: symbol): { myManager: MyManager } {
+    if (kernelKey !== this.#kernelKey) throw new Error("Acceso denegado");
+    return { myManager: this.#internalMyManager! };
+}
+```
+
+Cuando un método del manager debe tocar la DB antes de poder autorizar (p.ej. necesita el ID del recurso para el `allowIf`), protegerlo de llamadas externas anónimas usando `getAuthVerifier` como discriminador:
+
+```ts
+constructor(..., getAuthVerifier: AuthVerifierGetter = () => null) {
+    this.#permissionChecker = new PermissionChecker(getAuthVerifier, "MyManager", RESOURCE_NAME);
+    this.#getAuthVerifier = getAuthVerifier;  // guardar para el guard manual
+}
+
+async getResource(id: string, token?: string): Promise<Resource | null> {
+    if (this.#getAuthVerifier() !== null && !token) {
+        throw new AuthorizationError("Token requerido", "NO_TOKEN");
+    }
+    const doc = await this.model.findOne({ id });
+    await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, Scopes.RESOURCE, {
+        allowIf: (_uid, { orgId }) => orgId === doc?.orgId,
+    });
+    return doc ? toPlain(doc) : null;
+}
+```
+
+- El manager interno (`getAuthVerifier = () => null`) ignora el guard y `requirePermission` hace short-circuit.
+- El manager normal con verifier activo exige token antes de llegar a la DB.
 
 ## Política de `delete`
 
