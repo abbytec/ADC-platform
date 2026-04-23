@@ -10,11 +10,12 @@ import { useBacklogData } from "../hooks/useBacklogData.ts";
 import { IssueDialog } from "../components/IssueDialog.tsx";
 import { BoardColumn } from "../components/board/BoardColumn.tsx";
 import { BoardFilters, type BoardFilterState } from "../components/board/BoardFilters.tsx";
-import { canWrite, canUpdate, Scope } from "../utils/permissions.ts";
+import { canWriteProjectResource, canUpdateProjectResource, Scope, type CallerCtx } from "../utils/permissions.ts";
 
 interface Props {
 	project: Project;
 	perms: Permission[];
+	caller?: CallerCtx;
 }
 
 function applyFilters(issues: Issue[], f: BoardFilterState, q: string): Issue[] {
@@ -30,7 +31,7 @@ function applyFilters(issues: Issue[], f: BoardFilterState, q: string): Issue[] 
 	});
 }
 
-export function BoardView({ project, perms }: Props) {
+export function BoardView({ project, perms, caller }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [q, setQ] = useState("");
 	const [filters, setFilters] = useState<BoardFilterState>({});
@@ -70,14 +71,14 @@ export function BoardView({ project, perms }: Props) {
 		[issues, setIssues, reload]
 	);
 
-	const isDragEnabled = canUpdate(perms, Scope.ISSUES);
+	const isDragEnabled = canUpdateProjectResource(perms, Scope.ISSUES, project, caller);
 	const showDialog = editingIssue || creating;
 
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between gap-3">
 				<h3 className="font-heading text-lg font-semibold text-text">{t("board.title")}</h3>
-				{canWrite(perms, Scope.ISSUES) && (
+				{canWriteProjectResource(perms, Scope.ISSUES, project, caller) && (
 					<adc-button variant="primary" onClick={() => setCreating(true)}>
 						{t("issues.newIssue")}
 					</adc-button>
@@ -126,6 +127,7 @@ export function BoardView({ project, perms }: Props) {
 					project={project}
 					issue={editingIssue}
 					perms={perms}
+					caller={caller}
 					sprints={sprints}
 					milestones={milestones}
 					onClose={() => {

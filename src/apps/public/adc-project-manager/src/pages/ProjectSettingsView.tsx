@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import type { Permission } from "@common/types/identity/Permission.ts";
 import type { Project } from "@common/types/project-manager/Project.ts";
-import { canUpdate, Scope } from "../utils/permissions.ts";
+import { canUpdateProjectResource, Scope, type CallerCtx } from "../utils/permissions.ts";
 import { GeneralSection } from "../components/settings/GeneralSection.tsx";
 import { MembersSection } from "../components/settings/MembersSection.tsx";
 import { ColumnsSection } from "../components/settings/ColumnsSection.tsx";
@@ -14,18 +14,19 @@ import { WipLimitsSection } from "../components/settings/WipLimitsSection.tsx";
 interface Props {
 	project: Project;
 	perms: Permission[];
+	caller?: CallerCtx;
 	onChanged: () => void | Promise<void>;
 }
 
 type SettingsTab = "general" | "members" | "columns" | "customFields" | "linkTypes" | "priority" | "wip";
 
-export function ProjectSettingsView({ project, perms, onChanged }: Props) {
+export function ProjectSettingsView({ project, perms, caller, onChanged }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [tab, setTab] = useState<SettingsTab>("general");
 
-	const canEditProject = canUpdate(perms, Scope.PROJECTS);
-	const canEditSettings = canUpdate(perms, Scope.SETTINGS);
-	const canEditCustomFields = canUpdate(perms, Scope.CUSTOM_FIELDS);
+	const canEditProject = canUpdateProjectResource(perms, Scope.PROJECTS, project, caller);
+	const canEditSettings = canUpdateProjectResource(perms, Scope.SETTINGS, project, caller);
+	const canEditCustomFields = canUpdateProjectResource(perms, Scope.CUSTOM_FIELDS, project, caller);
 
 	const tabs: Array<{ id: SettingsTab; label: string; enabled: boolean }> = [
 		{ id: "general", label: t("settings.generalTab"), enabled: true },

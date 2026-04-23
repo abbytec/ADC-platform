@@ -5,16 +5,17 @@ import type { Project } from "@common/types/project-manager/Project.ts";
 import type { Milestone } from "@common/types/project-manager/Milestone.ts";
 import type { Issue } from "@common/types/project-manager/Issue.ts";
 import { pmApi } from "../utils/pm-api.ts";
-import { canWrite, Scope } from "../utils/permissions.ts";
+import { canWriteProjectResource, Scope, type CallerCtx } from "../utils/permissions.ts";
 import { MilestoneCard } from "../components/milestones/MilestoneCard.tsx";
 import { SimpleCreateModal } from "../components/SimpleCreateModal.tsx";
 
 interface Props {
 	project: Project;
 	perms: Permission[];
+	caller?: CallerCtx;
 }
 
-export function MilestonesView({ project, perms }: Props) {
+export function MilestonesView({ project, perms, caller }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [milestones, setMilestones] = useState<Milestone[]>([]);
 	const [issues, setIssues] = useState<Issue[]>([]);
@@ -67,7 +68,7 @@ export function MilestonesView({ project, perms }: Props) {
 		<div className="space-y-4">
 			<div className="flex justify-between items-center">
 				<h3 className="font-heading text-lg font-semibold text-text">{t("milestones.title")}</h3>
-				{canWrite(perms, Scope.MILESTONES) && (
+				{canWriteProjectResource(perms, Scope.MILESTONES, project, caller) && (
 					<adc-button variant="primary" onClick={() => setShowCreate(true)}>
 						{t("common.add")}
 					</adc-button>
@@ -87,6 +88,8 @@ export function MilestonesView({ project, perms }: Props) {
 								doneCount={c.done}
 								totalCount={c.total}
 								perms={perms}
+								project={project}
+								caller={caller}
 								onDelete={handleDelete}
 								onUpdated={load}
 							/>

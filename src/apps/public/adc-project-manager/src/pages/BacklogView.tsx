@@ -12,16 +12,17 @@ import { CompletedGroupUmbrella } from "../components/backlog/CompletedGroupUmbr
 import { useBacklogSections } from "../hooks/useBacklogSections.ts";
 import { useBacklogData } from "../hooks/useBacklogData.ts";
 import { useBacklogGroupByPref } from "../hooks/useBacklogGroupByPref.ts";
-import { canWrite, canUpdate, Scope } from "../utils/permissions.ts";
+import { canWriteProjectResource, canUpdateProjectResource, Scope, type CallerCtx } from "../utils/permissions.ts";
 
 interface Props {
 	project: Project;
 	perms: Permission[];
+	caller?: CallerCtx;
 }
 
 const COMPLETED_UMBRELLA_KEY = "__completed__";
 
-export function BacklogView({ project, perms }: Props) {
+export function BacklogView({ project, perms, caller }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [q, setQ] = useState("");
 	const [orderBy, setOrderBy] = useState<IssueListParams["orderBy"]>("priority");
@@ -63,7 +64,7 @@ export function BacklogView({ project, perms }: Props) {
 	};
 
 	const showDialog = editingIssue || creating;
-	const isDragEnabled = groupBy === "sprint" && canUpdate(perms, Scope.ISSUES);
+	const isDragEnabled = groupBy === "sprint" && canUpdateProjectResource(perms, Scope.ISSUES, project, caller);
 
 	const renderSection = (section: GroupSection, defaultCollapsed: boolean) => {
 		const collapseKey = `${groupBy}:${section.id}`;
@@ -73,6 +74,7 @@ export function BacklogView({ project, perms }: Props) {
 				section={section}
 				project={project}
 				perms={perms}
+				caller={caller}
 				isCollapsed={collapsed[collapseKey] ?? defaultCollapsed}
 				isDragEnabled={isDragEnabled}
 				isDropActive={dragTargetId === section.id && isDragEnabled}
@@ -98,7 +100,7 @@ export function BacklogView({ project, perms }: Props) {
 		<div className="space-y-4">
 			<div className="flex items-center justify-between gap-3">
 				<h3 className="font-heading text-lg font-semibold text-text">{t("issues.backlog")}</h3>
-				{canWrite(perms, Scope.ISSUES) && (
+				{canWriteProjectResource(perms, Scope.ISSUES, project, caller) && (
 					<adc-button variant="primary" onClick={() => setCreating(true)}>
 						{t("issues.newIssue")}
 					</adc-button>
@@ -124,6 +126,7 @@ export function BacklogView({ project, perms }: Props) {
 						issues={issues}
 						project={project}
 						perms={perms}
+						caller={caller}
 						isDragEnabled={false}
 						onOpen={setEditingIssue}
 						onMove={handleMove}
@@ -146,6 +149,7 @@ export function BacklogView({ project, perms }: Props) {
 					project={project}
 					issue={editingIssue}
 					perms={perms}
+					caller={caller}
 					sprints={sprints}
 					milestones={milestones}
 					onClose={() => {

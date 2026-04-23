@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import type { Permission } from "@common/types/identity/Permission.ts";
+import type { Project } from "@common/types/project-manager/Project.ts";
 import type { Milestone, MilestoneStatus } from "@common/types/project-manager/Milestone.ts";
-import { canDelete, canUpdate, Scope } from "../../utils/permissions.ts";
+import { canDeleteProjectResource, canUpdateProjectResource, Scope, type CallerCtx } from "../../utils/permissions.ts";
 import { pmApi } from "../../utils/pm-api.ts";
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
 	doneCount: number;
 	totalCount: number;
 	perms: Permission[];
+	project: Project;
+	caller?: CallerCtx;
 	onDelete: (id: string) => void;
 	onUpdated: () => void | Promise<void>;
 }
@@ -29,9 +32,9 @@ function toDateInput(v?: Date | string): string {
 	return d.toISOString().slice(0, 10);
 }
 
-export function MilestoneCard({ milestone, doneCount, totalCount, perms, onDelete, onUpdated }: Props) {
+export function MilestoneCard({ milestone, doneCount, totalCount, perms, project, caller, onDelete, onUpdated }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
-	const canEdit = canUpdate(perms, Scope.MILESTONES);
+	const canEdit = canUpdateProjectResource(perms, Scope.MILESTONES, project, caller);
 	const [editing, setEditing] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [form, setForm] = useState({
@@ -133,7 +136,7 @@ export function MilestoneCard({ milestone, doneCount, totalCount, perms, onDelet
 						{t("common.edit")}
 					</adc-button>
 				)}
-				{canDelete(perms, Scope.MILESTONES) && (
+				{canDeleteProjectResource(perms, Scope.MILESTONES, project, caller) && (
 					<adc-button variant="accent" onClick={() => onDelete(milestone.id)}>
 						{t("common.delete")}
 					</adc-button>

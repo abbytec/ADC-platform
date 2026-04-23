@@ -11,6 +11,7 @@ import type { UserManager } from "./users.js";
 import type { Organization } from "@common/types/identity/Organization.ts";
 import type OperationsService from "../../../core/OperationsService/index.ts";
 import type { Step } from "../../../core/OperationsService/types.ts";
+import { AuthorizationError } from "@common/types/custom-errors/AuthorizationError.ts";
 
 export class OrgManager {
 	#permissionChecker: PermissionChecker;
@@ -72,13 +73,23 @@ export class OrgManager {
 	}
 
 	/**
-	 * Obtiene una organización por ID o slug
+	 * Obtiene una organización por ID o slug.
+	 *
+	 * Reglas de acceso:
+	 *  - Usuarios con permiso formal `ORGANIZATIONS.READ` (admins globales, etc.).
+	 *  - O cualquier usuario cuyo token pertenezca a esta misma organización
+	 *    (necesario para que la app pueda resolver su propio contexto de org).
 	 */
 	async getOrganization(orgIdOrSlug: string, token?: string): Promise<Organization | null> {
-		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ORGANIZATIONS);
-
+		if (!token) {
+			throw new AuthorizationError("Token de autenticación requerido", "NO_TOKEN");
+		}
 		const org = await this.orgModel.findOne({
 			$or: [{ orgId: orgIdOrSlug }, { slug: orgIdOrSlug.toLowerCase() }],
+		});
+		const resolvedOrgId = org?.orgId as string | undefined;
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.ORGANIZATIONS, {
+			allowIf: (_uid, { orgId: tokenOrgId }) => !!resolvedOrgId && !!tokenOrgId && tokenOrgId === resolvedOrgId,
 		});
 
 		return org ? this.#toOrganization(org) : null;
