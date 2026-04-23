@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { router } from "@common/utils/router.js";
 import { getSession, type SessionData } from "@ui-library/utils/session";
-import { canEditContent, canPublish } from "@ui-library/utils/permissions";
+import { canEditContent, canPublish } from "../../utils/permissions";
 
 interface Props {
 	readonly children: (session: SessionData, isReviewer: boolean) => React.ReactNode;

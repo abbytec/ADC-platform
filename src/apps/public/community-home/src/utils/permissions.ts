@@ -1,5 +1,5 @@
 /**
- * Helper de permisos para frontends.
+ * Helper de permisos para community-home.
  * Usa la utilidad compartida hasPermission de @common/types/Permissions.
  */
 

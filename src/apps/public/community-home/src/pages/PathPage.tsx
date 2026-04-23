@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { router } from "@common/utils/router.js";
 import { getSession } from "@ui-library/utils/session";
-import { canEditContent } from "@ui-library/utils/permissions";
+import { canEditContent } from "../utils/permissions";
 import { contentAPI, type LearningPath, type Article, type PathItemLevel } from "../utils/content-api";
 
 type Level = PathItemLevel;
