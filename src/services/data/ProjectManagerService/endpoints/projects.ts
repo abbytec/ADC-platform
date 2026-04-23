@@ -6,6 +6,10 @@ import type { CustomFieldDef } from "@common/types/project-manager/CustomField.t
 import type { IssueLinkType } from "@common/types/project-manager/IssueLink.ts";
 import { normalizeSlug } from "@common/utils/project-manager/slug.ts";
 
+const PROJECT_CREATE_RATE_LIMIT = { max: 10, timeWindow: 60_000 };
+const PROJECT_WRITE_RATE_LIMIT = { max: 10, timeWindow: 60_000 };
+const PROJECT_DELETE_RATE_LIMIT = { max: 2, timeWindow: 3_600_000 };
+
 /** Resuelve un orgSlug a un orgId (null si es "default" = contexto global). */
 async function resolveOrgSlug(service: ProjectManagerService, orgSlug: string, token?: string): Promise<string | null> {
 	const slug = normalizeSlug(orgSlug);
@@ -72,6 +76,7 @@ export class ProjectEndpoints {
 		// La autorización depende de `visibility`: público requiere admin global,
 		// org requiere admin/PM de la org, privado cualquier usuario autenticado.
 		deferAuth: true,
+		options: { rateLimit: PROJECT_CREATE_RATE_LIMIT },
 	})
 	static async create(ctx: EndpointCtx<Record<string, string>, Partial<Project> & { name: string; slug: string }>) {
 		if (!ctx.data?.name || !ctx.data?.slug) {
@@ -104,6 +109,7 @@ export class ProjectEndpoints {
 		method: "PUT",
 		url: "/api/pm/projects/:id",
 		deferAuth: true,
+		options: { rateLimit: PROJECT_WRITE_RATE_LIMIT },
 	})
 	static async update(ctx: EndpointCtx<{ id: string }, Partial<Project>>) {
 		const service = ProjectEndpoints.#service;
@@ -115,6 +121,7 @@ export class ProjectEndpoints {
 		method: "DELETE",
 		url: "/api/pm/projects/:id",
 		deferAuth: true,
+		options: { rateLimit: PROJECT_DELETE_RATE_LIMIT },
 	})
 	static async delete(ctx: EndpointCtx<{ id: string }>) {
 		const service = ProjectEndpoints.#service;
@@ -127,6 +134,7 @@ export class ProjectEndpoints {
 		method: "PUT",
 		url: "/api/pm/projects/:id/members",
 		deferAuth: true,
+		options: { rateLimit: PROJECT_WRITE_RATE_LIMIT },
 	})
 	static async updateMembers(ctx: EndpointCtx<{ id: string }, { memberUserIds: string[]; memberGroupIds: string[] }>) {
 		const data = ctx.data ?? { memberUserIds: [], memberGroupIds: [] };
@@ -147,6 +155,7 @@ export class ProjectEndpoints {
 		method: "PUT",
 		url: "/api/pm/projects/:id/columns",
 		deferAuth: true,
+		options: { rateLimit: PROJECT_WRITE_RATE_LIMIT },
 	})
 	static async updateColumns(ctx: EndpointCtx<{ id: string }, { kanbanColumns: KanbanColumn[] }>) {
 		const columns = ctx.data?.kanbanColumns;
@@ -160,6 +169,7 @@ export class ProjectEndpoints {
 		method: "PUT",
 		url: "/api/pm/projects/:id/custom-fields",
 		deferAuth: true,
+		options: { rateLimit: PROJECT_WRITE_RATE_LIMIT },
 	})
 	static async updateCustomFields(ctx: EndpointCtx<{ id: string }, { customFieldDefs: CustomFieldDef[] }>) {
 		const defs = ctx.data?.customFieldDefs;
@@ -178,6 +188,7 @@ export class ProjectEndpoints {
 		method: "PUT",
 		url: "/api/pm/projects/:id/link-types",
 		deferAuth: true,
+		options: { rateLimit: PROJECT_WRITE_RATE_LIMIT },
 	})
 	static async updateLinkTypes(ctx: EndpointCtx<{ id: string }, { issueLinkTypes: IssueLinkType[] }>) {
 		const types = ctx.data?.issueLinkTypes;
@@ -191,6 +202,7 @@ export class ProjectEndpoints {
 		method: "PUT",
 		url: "/api/pm/projects/:id/priority-strategy",
 		deferAuth: true,
+		options: { rateLimit: PROJECT_WRITE_RATE_LIMIT },
 	})
 	static async updatePriorityStrategy(ctx: EndpointCtx<{ id: string }, { priorityStrategy: PriorityStrategy }>) {
 		const strategy = ctx.data?.priorityStrategy;
@@ -204,6 +216,7 @@ export class ProjectEndpoints {
 		method: "PUT",
 		url: "/api/pm/projects/:id/settings",
 		deferAuth: true,
+		options: { rateLimit: PROJECT_WRITE_RATE_LIMIT },
 	})
 	static async updateSettings(ctx: EndpointCtx<{ id: string }, { settings: ProjectSettings }>) {
 		const settings = ctx.data?.settings;

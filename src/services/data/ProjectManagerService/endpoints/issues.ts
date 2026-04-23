@@ -5,6 +5,12 @@ import type ProjectManagerService from "../index.js";
 import type { Issue } from "@common/types/project-manager/Issue.ts";
 import type { IssueListFilters } from "../dao/issues.ts";
 
+const ISSUE_CREATE_RATE_LIMIT = { max: 20, timeWindow: 60_000 };
+const ISSUE_UPDATE_RATE_LIMIT = { max: 20, timeWindow: 60_000 };
+const ISSUE_DELETE_RATE_LIMIT = { max: 5, timeWindow: 60_000 };
+const ISSUE_MOVE_RATE_LIMIT = { max: 20, timeWindow: 60_000 };
+const ISSUE_ATTACHMENT_RATE_LIMIT = { max: 20, timeWindow: 60_000 };
+
 export class IssueEndpoints {
 	static #service: ProjectManagerService;
 	static #kernelKey: symbol;
@@ -41,6 +47,7 @@ export class IssueEndpoints {
 		method: "POST",
 		url: "/api/pm/projects/:projectId/issues",
 		deferAuth: true,
+		options: { rateLimit: ISSUE_CREATE_RATE_LIMIT },
 	})
 	static async create(ctx: EndpointCtx<{ projectId: string }, Partial<Issue> & { title: string }>) {
 		if (!ctx.data?.title) throw new ProjectManagerError(400, "MISSING_FIELDS", "`title` es requerido");
@@ -68,6 +75,7 @@ export class IssueEndpoints {
 		method: "PUT",
 		url: "/api/pm/issues/:id",
 		deferAuth: true,
+		options: { rateLimit: ISSUE_UPDATE_RATE_LIMIT },
 	})
 	static async update(ctx: EndpointCtx<{ id: string }, Partial<Issue> & { reason?: string }>) {
 		const service = IssueEndpoints.#service;
@@ -80,6 +88,7 @@ export class IssueEndpoints {
 		method: "DELETE",
 		url: "/api/pm/issues/:id",
 		deferAuth: true,
+		options: { rateLimit: ISSUE_DELETE_RATE_LIMIT },
 	})
 	static async delete(ctx: EndpointCtx<{ id: string }>) {
 		const service = IssueEndpoints.#service;
@@ -92,6 +101,7 @@ export class IssueEndpoints {
 		method: "POST",
 		url: "/api/pm/issues/:id/move",
 		deferAuth: true,
+		options: { rateLimit: ISSUE_MOVE_RATE_LIMIT },
 	})
 	static async move(ctx: EndpointCtx<{ id: string }, { columnKey: string; reason?: string }>) {
 		if (!ctx.data?.columnKey) throw new ProjectManagerError(400, "MISSING_FIELDS", "`columnKey` es requerido");
@@ -118,6 +128,7 @@ export class IssueEndpoints {
 		method: "POST",
 		url: "/api/pm/issues/:id/attachments",
 		permissions: [P.PROJECT_MANAGER.ATTACHMENTS.WRITE],
+		options: { rateLimit: ISSUE_ATTACHMENT_RATE_LIMIT },
 	})
 	static async upload() {
 		throw new ProjectManagerError(501, "ATTACHMENTS_NOT_IMPLEMENTED", "Uploads no disponibles hasta que exista `internal-s3-provider`");
