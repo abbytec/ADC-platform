@@ -15,6 +15,8 @@ import { AuthError } from "@common/types/custom-errors/AuthError.ts";
 import type { AuthenticatedUser } from "../types.js";
 import { UserAuthenticationResult } from "../../../core/IdentityManagerService/dao/users.ts";
 import { User } from "@common/types/identity/User.js";
+import type { Permission } from "@common/types/identity/Permission.js";
+import { SystemRole } from "../../../core/IdentityManagerService/defaults/systemRoles.js";
 
 /** Nombre de las cookies */
 const ACCESS_COOKIE_NAME = "access_token";
@@ -124,7 +126,6 @@ export class AuthEndpoints {
 						username: user.username,
 						avatar: user.avatar,
 						email: user.email,
-						permissions: user.permissions,
 						orgId: user.orgId,
 						orgSlug: user.orgId ? await AuthEndpoints.resolveOrgSlug(user.orgId) : undefined,
 					},
@@ -212,7 +213,6 @@ export class AuthEndpoints {
 						id: user.id,
 						username: user.username,
 						email: user.email,
-						permissions: user.permissions,
 					},
 				},
 				{ cookies }
@@ -251,15 +251,24 @@ export class AuthEndpoints {
 		}
 
 		const orgSlug = result.session.user.orgId ? await AuthEndpoints.resolveOrgSlug(result.session.user.orgId) : undefined;
+
+		// Enriquecer sesión con datos de identity (perms bitfield, flags admin, groupIds).
+		// Se hace best-effort: si IdentityManagerService no está disponible, se devuelven defaults vacíos
+		// y la sesión sigue siendo válida (no se rompe la autenticación).
+		const sessionExtras = await AuthEndpoints.buildSessionExtras(result.session.user.id, result.session.user.orgId);
+
 		const userPayload = {
 			id: result.session.user.id,
 			username: result.session.user.username,
 			email: result.session.user.email,
 			avatar: result.session.user.avatar,
 			provider: result.session.user.provider,
-			permissions: result.session.user.permissions ?? [],
 			orgId: result.session.user.orgId,
 			orgSlug,
+			perms: sessionExtras.perms,
+			isAdmin: sessionExtras.isAdmin,
+			isOrgAdmin: sessionExtras.isOrgAdmin,
+			groupIds: sessionExtras.groupIds,
 		};
 
 		// Si hay headers especiales, usar UncommonResponse
@@ -404,7 +413,6 @@ export class AuthEndpoints {
 					id: updatedUser.id,
 					username: updatedUser.username,
 					email: updatedUser.email,
-					permissions: updatedUser.permissions,
 					orgId: updatedUser.orgId,
 					orgSlug,
 				},
@@ -637,5 +645,67 @@ export class AuthEndpoints {
 			}
 		}
 		return orgOptions;
+	}
+
+	/**
+	 * Construye los campos extra del payload de sesión (`perms`, `isAdmin`, `isOrgAdmin`, `groupIds`)
+	 * consultando IdentityManagerService. Si no está disponible o falla la lectura, devuelve defaults
+	 * vacíos para no romper la respuesta de /session.
+	 */
+	private static async buildSessionExtras(
+		userId: string,
+		orgId?: string
+	): Promise<{ perms: Permission[]; isAdmin: boolean; isOrgAdmin: boolean; groupIds: string[] }> {
+		const empty = { perms: [] as Permission[], isAdmin: false, isOrgAdmin: false, groupIds: [] as string[] };
+		const identity = AuthEndpoints.deps.identityService;
+		const internal = AuthEndpoints.deps.internalIdentity;
+		if (!identity || !internal) return empty;
+
+		try {
+			const [resolved, user] = await Promise.all([identity.permissions.resolvePermissions(userId, orgId), internal.users.getUser(userId)]);
+
+			const perms: Permission[] = resolved.map((p) => ({ resource: p.resource, action: p.action, scope: p.scope }));
+
+			const [hasGlobalAdminRole, isOrgAdmin] = await Promise.all([
+				AuthEndpoints.hasGlobalAdminRole(user),
+				AuthEndpoints.isOrgAdmin(user, orgId),
+			]);
+
+			return {
+				perms,
+				isAdmin: !orgId && hasGlobalAdminRole,
+				isOrgAdmin,
+				groupIds: user?.groupIds ?? [],
+			};
+		} catch {
+			return empty;
+		}
+	}
+
+	/** True si el usuario tiene un rol global con name=SystemRole.ADMIN (sin orgId). */
+	private static async hasGlobalAdminRole(user: User | null): Promise<boolean> {
+		const internal = AuthEndpoints.deps.internalIdentity;
+		if (!internal || !user?.roleIds?.length) return false;
+
+		for (const roleId of user.roleIds) {
+			const role = await internal.roles.getRole(roleId);
+			if (role?.name === SystemRole.ADMIN && !role.orgId) return true;
+		}
+		return false;
+	}
+
+	/** True si el usuario es Admin dentro de la org activa (vía orgMembership). */
+	private static async isOrgAdmin(user: User | null, orgId: string | undefined): Promise<boolean> {
+		const internal = AuthEndpoints.deps.internalIdentity;
+		if (!internal || !orgId || !user?.orgMemberships?.length) return false;
+
+		const membership = user.orgMemberships.find((m) => m.orgId === orgId);
+		if (!membership?.roleIds?.length) return false;
+
+		for (const roleId of membership.roleIds) {
+			const role = await internal.roles.getRole(roleId);
+			if (role?.name === SystemRole.ADMIN) return true;
+		}
+		return false;
 	}
 }

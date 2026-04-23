@@ -36,6 +36,7 @@ interface ListProjectsContext {
 export interface CallerMembership {
 	userId: string;
 	groupIds: string[];
+	tokenOrgId: string | null;
 }
 
 /**
@@ -185,7 +186,7 @@ export class ProjectManager {
 		const project = await this.#fetchProject(projectId);
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.PROJECTS, {
 			ownerId: project?.ownerId,
-			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds: caller?.groupIds ?? [] }),
+			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds: caller?.groupIds ?? [] }, caller?.tokenOrgId ?? null),
 		});
 		return project;
 	}
@@ -194,7 +195,7 @@ export class ProjectManager {
 		const project = await this.#fetchProjectBySlug(slug, orgId);
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, PMScopes.PROJECTS, {
 			ownerId: project?.ownerId,
-			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds: caller?.groupIds ?? [] }),
+			allowIf: (uid) => isProjectMember(project, { id: uid, groupIds: caller?.groupIds ?? [] }, caller?.tokenOrgId ?? null),
 		});
 		return project;
 	}
@@ -218,9 +219,13 @@ export class ProjectManager {
 		// Lectura global: sólo proyectos públicos (no privados) de contexto global.
 		if (ctx.hasGlobalPMRead) orConditions.push({ orgId: null, visibility: { $ne: "private" } });
 		if (ctx.tokenOrgId) orConditions.push({ orgId: ctx.tokenOrgId });
-		orConditions.push({ memberUserIds: ctx.userId });
-		orConditions.push({ ownerId: ctx.userId });
-		if (ctx.groupIds.length) orConditions.push({ memberGroupIds: { $in: ctx.groupIds } });
+		// Membresía: el token debe estar en el mismo contexto org que el proyecto.
+		// Con token personal (tokenOrgId=null) sólo aplica a proyectos globales (orgId=null);
+		// con token de org aplica a proyectos globales o de esa org.
+		const membershipOrgFilter = ctx.tokenOrgId ? { orgId: { $in: [null, ctx.tokenOrgId] } } : { orgId: null };
+		orConditions.push({ ...membershipOrgFilter, memberUserIds: ctx.userId });
+		orConditions.push({ ...membershipOrgFilter, ownerId: ctx.userId });
+		if (ctx.groupIds.length) orConditions.push({ ...membershipOrgFilter, memberGroupIds: { $in: ctx.groupIds } });
 
 		const docs = orConditions.length ? await this.projectModel.find({ $or: orConditions }) : [];
 		const projects = docs.map((d) => docToPlain<Project>(d)!);

@@ -3,7 +3,7 @@ import type { User, LinkedAccount } from "@common/types/identity/User.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import { generateId, hashPassword, verifyPassword } from "@common/utils/crypto.ts";
 import { type AuthVerifierGetter, PermissionChecker } from "@common/types/auth-verifier.ts";
-import { IdentityScopes } from "@common/types/identity/permissions.ts";
+import { IdentityScopes, RESOURCE_NAME } from "@common/types/identity/permissions.ts";
 import { CRUDXAction } from "@common/types/Actions.ts";
 
 export type UserAuthenticationResult = Partial<User> | { id: string; isActive: boolean } | { id: string; wrongPassword: boolean } | null;
@@ -16,7 +16,7 @@ export class UserManager {
 		private readonly logger: ILogger,
 		getAuthVerifier: AuthVerifierGetter = () => null
 	) {
-		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "UserManager");
+		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "UserManager", RESOURCE_NAME);
 	}
 
 	/**
@@ -81,7 +81,9 @@ export class UserManager {
 	 * @param token Token de autenticación (requerido para verificar permisos)
 	 */
 	async getUser(userId: string, token?: string): Promise<User | null> {
-		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS);
+		await this.#permissionChecker.requirePermission(token, CRUDXAction.READ, IdentityScopes.USERS, {
+			allowIf: async (callerId) => callerId === userId,
+		});
 
 		try {
 			const doc = await this.userModel.findOne({ id: userId });

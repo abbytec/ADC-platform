@@ -41,11 +41,11 @@ export class SprintManager {
 		return requireProject(this.projectInternals, projectId);
 	}
 
-	async create(projectId: string, input: Partial<Sprint> & Pick<Sprint, "name">, token?: string, _caller?: CallerMembership): Promise<Sprint> {
+	async create(projectId: string, input: Partial<Sprint> & Pick<Sprint, "name">, token?: string, caller?: CallerMembership): Promise<Sprint> {
 		const project = await this.#requireProject(projectId);
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.WRITE, PMScopes.SPRINTS, {
 			ownerId: project.ownerId,
-			allowIf: projectOwnerAllowIf(project),
+			allowIf: projectOwnerAllowIf(project, caller),
 		});
 
 		const { maxSprintsPerProject } = getPMTierLimits();
@@ -93,13 +93,13 @@ export class SprintManager {
 		return sprint;
 	}
 
-	async update(sprintId: string, updates: Partial<Sprint>, token?: string, _caller?: CallerMembership): Promise<Sprint> {
+	async update(sprintId: string, updates: Partial<Sprint>, token?: string, caller?: CallerMembership): Promise<Sprint> {
 		const { sprint, project } = await this.#fetchSprintAndProject(sprintId);
 		if (!sprint) throw new ProjectManagerError(404, "SPRINT_NOT_FOUND", `Sprint ${sprintId} no encontrado`);
 		// Update sobre sprints: rol PM / permiso formal, o owner del proyecto.
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.SPRINTS, {
 			ownerId: project?.ownerId,
-			allowIf: projectOwnerAllowIf(project),
+			allowIf: projectOwnerAllowIf(project, caller),
 		});
 		const safe = stripImmutableFields(updates, SPRINT_IMMUTABLE_FIELDS);
 		const updated = await this.sprintModel.findOneAndUpdate({ id: sprintId }, safe, { new: true });
@@ -107,11 +107,11 @@ export class SprintManager {
 		return docToPlain<Sprint>(updated)!;
 	}
 
-	async delete(sprintId: string, token?: string, _caller?: CallerMembership): Promise<void> {
+	async delete(sprintId: string, token?: string, caller?: CallerMembership): Promise<void> {
 		const { sprint, project } = await this.#fetchSprintAndProject(sprintId);
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.DELETE, PMScopes.SPRINTS, {
 			ownerId: project?.ownerId,
-			allowIf: projectOwnerAllowIf(project),
+			allowIf: projectOwnerAllowIf(project, caller),
 		});
 		if (!sprint) throw new ProjectManagerError(404, "SPRINT_NOT_FOUND", `Sprint ${sprintId} no encontrado`);
 		const result = await this.sprintModel.deleteOne({ id: sprintId });
@@ -119,12 +119,12 @@ export class SprintManager {
 		this.logger.logDebug(`Sprint ${sprintId} eliminado`);
 	}
 
-	async setStatus(sprintId: string, status: Sprint["status"], token?: string, _caller?: CallerMembership): Promise<Sprint> {
+	async setStatus(sprintId: string, status: Sprint["status"], token?: string, caller?: CallerMembership): Promise<Sprint> {
 		const { sprint, project } = await this.#fetchSprintAndProject(sprintId);
 		if (!sprint) throw new ProjectManagerError(404, "SPRINT_NOT_FOUND", `Sprint ${sprintId} no encontrado`);
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, PMScopes.SPRINTS, {
 			ownerId: project?.ownerId,
-			allowIf: projectOwnerAllowIf(project),
+			allowIf: projectOwnerAllowIf(project, caller),
 		});
 		const updates: Partial<Sprint> = { status };
 		if (status === "completed") updates.completedAt = new Date();

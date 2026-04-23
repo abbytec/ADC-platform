@@ -1,7 +1,7 @@
 import type { Model } from "mongoose";
 import type { Project } from "@common/types/project-manager/Project.ts";
 import { ProjectManagerError } from "@common/types/custom-errors/ProjectManagerError.ts";
-import { isProjectMember } from "../utils/project-access.ts";
+import { isProjectAccessibleInOrgContext, isProjectMember } from "../utils/project-access.ts";
 import type { CallerMembership, ProjectInternals } from "./projects.ts";
 
 /**
@@ -30,19 +30,28 @@ export async function findByIdAsPlain<T>(model: Model<T>, id: string): Promise<T
 /**
  * `allowIf` reutilizable **para operaciones de lectura**: concede acceso al
  * owner del proyecto o a cualquier miembro explícito (directo o por grupo).
+ *
+ * Requiere que el token del caller esté en el mismo contexto de org que el
+ * proyecto (ver `isProjectMember`): un token personal no concede acceso a
+ * proyectos org-scoped aunque el usuario sea miembro.
  */
 export function projectMemberAllowIf(project: Project | null, caller?: CallerMembership): (uid: string) => boolean {
 	const groupIds = caller?.groupIds ?? [];
-	return (uid) => !!project && (project.ownerId === uid || isProjectMember(project, { id: uid, groupIds }));
+	const tokenOrgId = caller?.tokenOrgId ?? null;
+	return (uid) => isProjectMember(project, { id: uid, groupIds }, tokenOrgId);
 }
 
 /**
  * `allowIf` reutilizable **para operaciones de escritura** sobre recursos del
  * proyecto (sprints, milestones, issues): sólo el owner del proyecto pasa por
  * esta vía. El resto necesita permiso formal de su scope (rol PM o equivalente).
+ *
+ * El owner de un proyecto org-scoped debe además tener el token en esa org;
+ * con token personal no puede modificar recursos de su propio proyecto de org.
  */
-export function projectOwnerAllowIf(project: Project | null): (uid: string) => boolean {
-	return (uid) => !!project && project.ownerId === uid;
+export function projectOwnerAllowIf(project: Project | null, caller?: CallerMembership): (uid: string) => boolean {
+	const tokenOrgId = caller?.tokenOrgId ?? null;
+	return (uid) => !!project && project.ownerId === uid && isProjectAccessibleInOrgContext(project, tokenOrgId);
 }
 
 /** Carga el proyecto o lanza 404 `PROJECT_NOT_FOUND`. */

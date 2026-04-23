@@ -10,6 +10,7 @@ import { canAccessProjects } from "./utils/permissions.ts";
 import { ProjectListView } from "./pages/ProjectListView.tsx";
 import { ProjectDetailView } from "./pages/ProjectDetailView.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
+import { getSession } from "@ui-library/utils/session";
 
 /**
  * Routing:
@@ -59,27 +60,28 @@ export default function App() {
 	const loadPermissions = useCallback(async () => {
 		setLoading(true);
 		clearErrors();
-		const result = await identityPmApi.getMyPermissions();
-		if (result.success && result.data) {
-			setPerms(result.data.perms);
-			setOrgId(result.data.orgId || undefined);
-			setIsAdmin(!!result.data.isAdmin);
-			setIsOrgAdmin(!!result.data.isOrgAdmin);
-			if (result.data.userId) {
-				setCaller({ userId: result.data.userId, groupIds: result.data.groupIds ?? [] });
-			}
+		const session = await getSession(true);
+		if (session.authenticated && session.user) {
+			const userPerms = session.user.perms ?? [];
+			const userId = session.user.id;
+			const groupIds = session.user.groupIds ?? [];
+			setPerms(userPerms);
+			setOrgId(session.user.orgId || undefined);
+			setIsAdmin(!!session.user.isAdmin);
+			setIsOrgAdmin(!!session.user.isOrgAdmin);
+			setCaller({ userId, groupIds });
 
 			// El acceso al app no requiere permiso formal PM.READ: un usuario que
 			// sea miembro de al menos un proyecto también debe poder entrar.
 			// Si no tiene permiso formal, consultamos la lista de proyectos visibles.
-			let allowed = canAccessProjects(result.data.perms);
+			let allowed = canAccessProjects(userPerms);
 			if (!allowed) {
 				const listRes = await pmApi.listProjects();
 				allowed = !!(listRes.success && listRes.data?.projects?.length);
 			}
 			// Cualquier usuario autenticado puede crear un proyecto privado, así
 			// que admitimos el acceso aunque todavía no tenga proyectos.
-			if (!allowed && result.data.userId) allowed = true;
+			if (!allowed && userId) allowed = true;
 			if (!allowed) {
 				setUnauthorized(true);
 				setLoading(false);
@@ -87,7 +89,7 @@ export default function App() {
 			}
 
 			// Resolver slug de la org propia (o "default" para contexto global)
-			const ownSlug = await resolveOrgSlug(result.data.orgId);
+			const ownSlug = await resolveOrgSlug(session.user.orgId);
 			setOwnOrgSlug(ownSlug);
 			// Restore from URL
 			const route = parseRoute(router.getCurrentPath());

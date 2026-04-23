@@ -45,7 +45,7 @@ export function ArticleForm({ article }: Props) {
 
 	useEffect(() => {
 		contentAPI.listPaths({ listed: undefined }).then(setPaths);
-		getSession().then((s) => setCanPub(s.authenticated && canPublish(s.user?.permissions || [])));
+		getSession().then((s) => setCanPub(canPublish(s.user?.perms)));
 	}, []);
 
 	function update<K extends keyof FormState>(key: K, v: FormState[K]) {

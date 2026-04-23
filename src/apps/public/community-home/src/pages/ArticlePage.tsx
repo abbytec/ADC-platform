@@ -206,7 +206,7 @@ export function ArticlePage({ slug }: { readonly slug: string }) {
 				{author && <p style={{ color: "#666666" }}>por {author.name}</p>}
 				<div className="flex items-center gap-2">
 					<adc-share-buttons title={article.title} description={article.description || ""} url={shareUrl} />
-					{session.authenticated && canEditContent(session.user?.permissions || []) && (
+					{canEditContent(session.user?.perms) && (
 						<button
 							type="button"
 							title="Editar artículo"
@@ -238,7 +238,7 @@ export function ArticlePage({ slug }: { readonly slug: string }) {
 					average={rating.average || null}
 					count={rating.count || null}
 					myRating={rating.myRating}
-					canRate={session.authenticated && canRate(session.user?.permissions || [])}
+					canRate={session.authenticated && canRate(session.user?.perms ?? [])}
 					pending={ratingPending}
 					onadcRate={(ev: CustomEvent<number>) => handleRate(ev.detail)}
 				/>
@@ -262,7 +262,7 @@ export function ArticlePage({ slug }: { readonly slug: string }) {
 						<p className="text-sm">Inicia sesión para comentar.</p>
 					</div>
 				)}
-				{session.authenticated && !canComment(session.user?.permissions || []) && (
+				{session.authenticated && !canComment(session.user?.perms ?? []) && (
 					<div className="bg-twarn rounded-xxl p-6 text-warn">
 						<p className="text-sm">
 							Solo los usuarios con rol VIP o Server Booster pueden comentar. Obtén estos roles en nuestro servidor de Discord para
@@ -283,8 +283,8 @@ export function ArticlePage({ slug }: { readonly slug: string }) {
 					session={{
 						authenticated: session.authenticated,
 						userId: session.user?.id,
-						canComment: session.authenticated && canComment(session.user?.permissions || []),
-						canModerate: session.authenticated && canDeleteSocial(session.user?.permissions || []),
+						canComment: session.authenticated && canComment(session.user?.perms ?? []),
+						canModerate: session.authenticated && canDeleteSocial(session.user?.perms ?? []),
 					}}
 					submitting={postingComment}
 					loading={socialLoading}

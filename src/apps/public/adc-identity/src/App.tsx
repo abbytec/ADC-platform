@@ -12,6 +12,7 @@ import { GroupsView } from "./pages/GroupsView.tsx";
 import { OrganizationsView } from "./pages/OrganizationsView.tsx";
 import { RegionsView } from "./pages/RegionsView.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
+import { getSession } from "@ui-library/utils/session";
 
 /** Extracts tab id from a URL path like "/roles" → "roles", "/" → "" */
 function getTabFromPath(path: string): string {
@@ -42,14 +43,14 @@ export default function App() {
 		setLoading(true);
 		clearErrors();
 
-		const result = await identityApi.getMyPermissions();
+		const session = await getSession(true);
 
-		if (result.success && result.data) {
-			const userPerms = result.data.perms;
+		if (session.authenticated && session.user) {
+			const userPerms = session.user.perms ?? [];
 			setPerms(userPerms);
-			const currentOrgId = result.data.orgId || undefined;
+			const currentOrgId = session.user.orgId || undefined;
 			setTokenOrgId(currentOrgId);
-			setIsAdmin(result.data.isAdmin ?? false);
+			setIsAdmin(session.user.isAdmin ?? false);
 
 			const tabs = getVisibleTabs(userPerms, currentOrgId);
 			setVisibleTabs(tabs);
