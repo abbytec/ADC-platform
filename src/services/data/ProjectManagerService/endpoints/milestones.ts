@@ -3,6 +3,10 @@ import { ProjectManagerError } from "@common/types/custom-errors/ProjectManagerE
 import type ProjectManagerService from "../index.js";
 import type { Milestone } from "@common/types/project-manager/Milestone.ts";
 
+const MILESTONE_CREATE_RATE_LIMIT = { max: 20, timeWindow: 60_000 };
+const MILESTONE_UPDATE_RATE_LIMIT = { max: 30, timeWindow: 60_000 };
+const MILESTONE_DELETE_RATE_LIMIT = { max: 10, timeWindow: 60_000 };
+
 export class MilestoneEndpoints {
 	static #service: ProjectManagerService;
 	static #kernelKey: symbol;
@@ -26,6 +30,7 @@ export class MilestoneEndpoints {
 		method: "POST",
 		url: "/api/pm/projects/:projectId/milestones",
 		deferAuth: true,
+		options: { rateLimit: MILESTONE_CREATE_RATE_LIMIT },
 	})
 	static async create(ctx: EndpointCtx<{ projectId: string }, Partial<Milestone> & { name: string }>) {
 		if (!ctx.data?.name) throw new ProjectManagerError(400, "MISSING_FIELDS", "`name` es requerido");
@@ -38,6 +43,7 @@ export class MilestoneEndpoints {
 		method: "PUT",
 		url: "/api/pm/milestones/:id",
 		deferAuth: true,
+		options: { rateLimit: MILESTONE_UPDATE_RATE_LIMIT },
 	})
 	static async update(ctx: EndpointCtx<{ id: string }, Partial<Milestone>>) {
 		const service = MilestoneEndpoints.#service;
@@ -49,6 +55,7 @@ export class MilestoneEndpoints {
 		method: "DELETE",
 		url: "/api/pm/milestones/:id",
 		deferAuth: true,
+		options: { rateLimit: MILESTONE_DELETE_RATE_LIMIT },
 	})
 	static async delete(ctx: EndpointCtx<{ id: string }>) {
 		const service = MilestoneEndpoints.#service;
