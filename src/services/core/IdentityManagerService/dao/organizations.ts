@@ -16,6 +16,7 @@ import { AuthorizationError } from "@common/types/custom-errors/AuthorizationErr
 export class OrgManager {
 	#permissionChecker: PermissionChecker;
 	readonly #operations: OperationsService;
+	readonly #getAuthVerifier: AuthVerifierGetter;
 
 	constructor(
 		private readonly orgModel: Model<any>,
@@ -29,6 +30,7 @@ export class OrgManager {
 	) {
 		this.#permissionChecker = new PermissionChecker(getAuthVerifier, "OrgManager", RESOURCE_NAME);
 		this.#operations = operations;
+		this.#getAuthVerifier = getAuthVerifier;
 	}
 
 	/** Crea una nueva organización */
@@ -79,9 +81,16 @@ export class OrgManager {
 	 *  - Usuarios con permiso formal `ORGANIZATIONS.READ` (admins globales, etc.).
 	 *  - O cualquier usuario cuyo token pertenezca a esta misma organización
 	 *    (necesario para que la app pueda resolver su propio contexto de org).
+	 *  - Invocadores internos (manager sin auth verifier, p.ej. SessionManagerService
+	 *    durante login/registro) pueden llamar sin token: el `PermissionChecker`
+	 *    hace short-circuit al no haber verifier.
+	 *
+	 * Para llamadas externas (con auth verifier activo) exigimos token ANTES de
+	 * tocar la DB, para no exponer la colección a lecturas anónimas desde endpoints.
 	 */
 	async getOrganization(orgIdOrSlug: string, token?: string): Promise<Organization | null> {
-		if (!token) {
+		const isExternalCall = this.#getAuthVerifier() !== null;
+		if (isExternalCall && !token) {
 			throw new AuthorizationError("Token de autenticación requerido", "NO_TOKEN");
 		}
 		const org = await this.orgModel.findOne({

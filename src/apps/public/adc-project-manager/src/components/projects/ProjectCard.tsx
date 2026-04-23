@@ -1,5 +1,11 @@
 import { useTranslation } from "@ui-library/utils/i18n-react";
-import type { Project } from "@common/types/project-manager/Project.ts";
+import type { Project, ProjectVisibility } from "@common/types/project-manager/Project.ts";
+
+const visibilityColor: Record<ProjectVisibility, "green" | "indigo" | "gray"> = {
+	public: "green",
+	org: "indigo",
+	private: "gray",
+};
 
 interface Props {
 	project: Project;
@@ -17,17 +23,12 @@ export function ProjectCard({ project, canDelete, onOpen, onDelete }: Props) {
 					<h3 className="font-heading text-lg font-semibold text-text">{project.name}</h3>
 					<p className="text-xs text-muted font-mono">{project.slug}</p>
 				</div>
-				{project.orgId == null && (
-					<adc-badge color="indigo" size="sm">
-						{t("projects.globalProject")}
-					</adc-badge>
-				)}
+				<adc-badge color={visibilityColor[project.visibility]} size="sm">
+					{t(`projects.${project.visibility}`)}
+				</adc-badge>
 			</div>
 			{project.description && <p className="text-sm text-muted line-clamp-2">{project.description}</p>}
 			<div className="flex flex-wrap gap-2 text-xs">
-				<adc-badge color="gray" size="sm">
-					{t("projects.visibility")}: {project.visibility}
-				</adc-badge>
 				<adc-badge color="gray" size="sm">
 					{t("projects.issueCounter")}: {project.issueCounter}
 				</adc-badge>
