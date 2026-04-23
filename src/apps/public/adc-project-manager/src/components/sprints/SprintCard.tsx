@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import type { Permission } from "@common/types/identity/Permission.ts";
+import type { Project } from "@common/types/project-manager/Project.ts";
 import type { Sprint, SprintStatus } from "@common/types/project-manager/Sprint.ts";
-import { canUpdate, canDelete, Scope } from "../../utils/permissions.ts";
+import { canUpdateProjectResource, canDeleteProjectResource, Scope, type CallerCtx } from "../../utils/permissions.ts";
 import { pmApi } from "../../utils/pm-api.ts";
 
 const STATUS_COLORS = { planned: "gray", active: "green", completed: "blue" } as const;
@@ -20,15 +21,17 @@ interface Props {
 	doneCount: number;
 	totalCount: number;
 	perms: Permission[];
+	project: Project;
+	caller?: CallerCtx;
 	onStart: (id: string) => void;
 	onComplete: (id: string) => void;
 	onDelete: (id: string) => void;
 	onUpdated: () => void | Promise<void>;
 }
 
-export function SprintCard({ sprint, doneCount, totalCount, perms, onStart, onComplete, onDelete, onUpdated }: Props) {
+export function SprintCard({ sprint, doneCount, totalCount, perms, project, caller, onStart, onComplete, onDelete, onUpdated }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
-	const canEdit = canUpdate(perms, Scope.SPRINTS);
+	const canEdit = canUpdateProjectResource(perms, Scope.SPRINTS, project, caller);
 	const [editing, setEditing] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [form, setForm] = useState({
@@ -138,7 +141,7 @@ export function SprintCard({ sprint, doneCount, totalCount, perms, onStart, onCo
 						{t("common.edit")}
 					</adc-button>
 				)}
-				{canDelete(perms, Scope.SPRINTS) && (
+				{canDeleteProjectResource(perms, Scope.SPRINTS, project, caller) && (
 					<adc-button variant="accent" onClick={() => onDelete(sprint.id)}>
 						{t("common.delete")}
 					</adc-button>

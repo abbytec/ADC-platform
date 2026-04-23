@@ -5,16 +5,17 @@ import type { Project } from "@common/types/project-manager/Project.ts";
 import type { Sprint } from "@common/types/project-manager/Sprint.ts";
 import type { Issue } from "@common/types/project-manager/Issue.ts";
 import { pmApi } from "../utils/pm-api.ts";
-import { canWrite, Scope } from "../utils/permissions.ts";
+import { canWriteProjectResource, Scope, type CallerCtx } from "../utils/permissions.ts";
 import { SprintCard } from "../components/sprints/SprintCard.tsx";
 import { SimpleCreateModal } from "../components/SimpleCreateModal.tsx";
 
 interface Props {
 	project: Project;
 	perms: Permission[];
+	caller?: CallerCtx;
 }
 
-export function SprintsView({ project, perms }: Props) {
+export function SprintsView({ project, perms, caller }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const [sprints, setSprints] = useState<Sprint[]>([]);
 	const [issues, setIssues] = useState<Issue[]>([]);
@@ -77,7 +78,7 @@ export function SprintsView({ project, perms }: Props) {
 		<div className="space-y-4">
 			<div className="flex justify-between items-center">
 				<h3 className="font-heading text-lg font-semibold text-text">{t("sprints.title")}</h3>
-				{canWrite(perms, Scope.SPRINTS) && (
+				{canWriteProjectResource(perms, Scope.SPRINTS, project, caller) && (
 					<adc-button variant="primary" onClick={() => setShowCreate(true)}>
 						{t("common.add")}
 					</adc-button>
@@ -97,6 +98,8 @@ export function SprintsView({ project, perms }: Props) {
 								doneCount={c.done}
 								totalCount={c.total}
 								perms={perms}
+								project={project}
+								caller={caller}
 								onStart={handleStart}
 								onComplete={handleComplete}
 								onDelete={handleDelete}

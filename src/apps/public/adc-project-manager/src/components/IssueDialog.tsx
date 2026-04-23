@@ -9,7 +9,7 @@ import type { UpdateLogEntry } from "@common/types/project-manager/UpdateLogEntr
 import type { CustomFieldValue } from "@common/types/project-manager/CustomField.ts";
 import type { IssueLink } from "@common/types/project-manager/IssueLink.ts";
 import { pmApi } from "../utils/pm-api.ts";
-import { canUpdate, canWrite, Scope } from "../utils/permissions.ts";
+import { canUpdateIssue, canWriteProjectResource, Scope, type CallerCtx } from "../utils/permissions.ts";
 import { UserPicker } from "./pickers/UserPicker.tsx";
 import { GroupPicker } from "./pickers/GroupPicker.tsx";
 import { CustomFieldsEditor } from "./pickers/CustomFieldsEditor.tsx";
@@ -19,6 +19,7 @@ interface Props {
 	project: Project;
 	issue: Issue | null;
 	perms: Permission[];
+	caller?: CallerCtx;
 	sprints?: Sprint[];
 	milestones?: Milestone[];
 	onClose: () => void;
@@ -35,7 +36,7 @@ function toD(n: number): Difficulty {
 	return v as Difficulty;
 }
 
-export function IssueDialog({ project, issue, perms, sprints = [], milestones = [], onClose, onSaved }: Props) {
+export function IssueDialog({ project, issue, perms, caller, sprints = [], milestones = [], onClose, onSaved }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	const isNew = !issue;
 	const [form, setForm] = useState<{
@@ -93,7 +94,7 @@ export function IssueDialog({ project, issue, perms, sprints = [], milestones = 
 		});
 	}, [project.id, project.issueLinkTypes.length]);
 
-	const canEdit = isNew ? canWrite(perms, Scope.ISSUES) : canUpdate(perms, Scope.ISSUES);
+	const canEdit = isNew ? canWriteProjectResource(perms, Scope.ISSUES, project, caller) : canUpdateIssue(perms, project, issue, caller);
 
 	const save = async () => {
 		setSaving(true);

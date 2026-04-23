@@ -62,7 +62,10 @@ export function canViewProject(perms: Permission[], project: Project | null, cal
 
 export function getVisibleProjectTabs(perms: Permission[], project?: Project | null, caller?: CallerCtx): PMTab[] {
 	const isMember = isProjectMember(project, caller);
+	const isOwner = !!project && !!caller?.userId && project.ownerId === caller.userId;
 	return PROJECT_TABS.filter((tab) => {
+		// El owner siempre ve todos los tabs (incluye settings); refleja `projectOwnerAllowIf` del backend.
+		if (isOwner) return true;
 		// Miembros ven todos los tabs de contenido (board/issues/calendar/sprints/milestones).
 		// `settings` se mantiene gated por permiso formal para evitar que cualquier miembro edite.
 		if (isMember && tab.id !== "settings") return true;
@@ -124,4 +127,29 @@ export function canDeleteProject(perms: Permission[], project: Project | null | 
 export function canUpdateIssue(perms: Permission[], project: Project | null, issue: Issue | null, caller?: CallerCtx): boolean {
 	if (isIssueAssignee(issue, caller)) return true;
 	return canUpdate(perms, PMScopes.ISSUES, { selfId: caller?.userId, ownerId: issue?.reporterId ?? project?.ownerId });
+}
+
+/** `true` si el caller es el owner del proyecto. */
+function isProjectOwner(project: Project | null | undefined, caller?: CallerCtx): boolean {
+	return !!project && !!caller?.userId && project.ownerId === caller.userId;
+}
+
+/**
+ * Espejo del `projectOwnerAllowIf` del backend: el owner del proyecto puede
+ * escribir/actualizar/eliminar recursos del mismo (sprints, milestones, issues
+ * y settings del proyecto) sin necesidad de permiso formal.
+ */
+export function canWriteProjectResource(perms: Permission[], scope: number, project: Project | null | undefined, caller?: CallerCtx): boolean {
+	if (isProjectOwner(project, caller)) return true;
+	return canWrite(perms, scope, { selfId: caller?.userId, ownerId: project?.ownerId });
+}
+
+export function canUpdateProjectResource(perms: Permission[], scope: number, project: Project | null | undefined, caller?: CallerCtx): boolean {
+	if (isProjectOwner(project, caller)) return true;
+	return canUpdate(perms, scope, { selfId: caller?.userId, ownerId: project?.ownerId });
+}
+
+export function canDeleteProjectResource(perms: Permission[], scope: number, project: Project | null | undefined, caller?: CallerCtx): boolean {
+	if (isProjectOwner(project, caller)) return true;
+	return canDelete(perms, scope, { selfId: caller?.userId, ownerId: project?.ownerId });
 }

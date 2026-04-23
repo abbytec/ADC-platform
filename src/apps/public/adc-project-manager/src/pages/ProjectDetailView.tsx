@@ -63,19 +63,19 @@ export function ProjectDetailView({ project, orgSlug, perms, caller, activeTab, 
 	const renderTab = () => {
 		switch (activeTab) {
 			case "board":
-				return <BoardView project={currentProject} perms={perms} />;
+				return <BoardView project={currentProject} perms={perms} caller={caller} />;
 			case "issues":
-				return <BacklogView project={currentProject} perms={perms} />;
+				return <BacklogView project={currentProject} perms={perms} caller={caller} />;
 			case "calendar":
 				return <CalendarView project={currentProject} perms={perms} />;
 			case "sprints":
-				return <SprintsView project={currentProject} perms={perms} />;
+				return <SprintsView project={currentProject} perms={perms} caller={caller} />;
 			case "milestones":
-				return <MilestonesView project={currentProject} perms={perms} />;
+				return <MilestonesView project={currentProject} perms={perms} caller={caller} />;
 			case "settings":
-				return <ProjectSettingsView project={currentProject} perms={perms} onChanged={reloadProject} />;
+				return <ProjectSettingsView project={currentProject} perms={perms} caller={caller} onChanged={reloadProject} />;
 			default:
-				return <BoardView project={currentProject} perms={perms} />;
+				return <BoardView project={currentProject} perms={perms} caller={caller} />;
 		}
 	};
 

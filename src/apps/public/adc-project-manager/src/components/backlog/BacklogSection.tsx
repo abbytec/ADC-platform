@@ -3,6 +3,7 @@ import type { Permission } from "@common/types/identity/Permission.ts";
 import type { Project } from "@common/types/project-manager/Project.ts";
 import type { Issue } from "@common/types/project-manager/Issue.ts";
 import { BacklogTable } from "./BacklogTable.tsx";
+import type { CallerCtx } from "../../utils/permissions.ts";
 
 export interface GroupSection {
 	id: string;
@@ -17,6 +18,7 @@ interface Props {
 	section: GroupSection;
 	project: Project;
 	perms: Permission[];
+	caller?: CallerCtx;
 	isCollapsed: boolean;
 	isDragEnabled: boolean;
 	isDropActive: boolean;
@@ -33,6 +35,7 @@ export function BacklogSection({
 	section,
 	project,
 	perms,
+	caller,
 	isCollapsed,
 	isDragEnabled,
 	isDropActive,
@@ -95,6 +98,7 @@ export function BacklogSection({
 								issues={section.issues}
 								project={project}
 								perms={perms}
+								caller={caller}
 								isDragEnabled={isDragEnabled}
 								onOpen={onOpenIssue}
 								onMove={onMoveIssue}

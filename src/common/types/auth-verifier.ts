@@ -15,8 +15,12 @@ export type AuthVerifierGetter = () => IAuthVerifier | null;
 interface RequirePermissionOpts {
 	orgId?: string;
 	ownerId?: string;
-	/** Vía alternativa: si retorna `true`, concede acceso sin chequear el permiso formal. */
-	allowIf?: (userId: string) => boolean | Promise<boolean>;
+	/**
+	 * Vía alternativa: si retorna `true`, concede acceso sin chequear el permiso formal.
+	 * Recibe el `userId` verificado y el contexto de autenticación resuelto del token
+	 * (ej. `orgId` cuando el token pertenece a una organización).
+	 */
+	allowIf?: (userId: string, authCtx: { orgId?: string }) => boolean | Promise<boolean>;
 }
 
 export class PermissionChecker {
@@ -42,7 +46,7 @@ export class PermissionChecker {
 
 		if (options.allowIf) {
 			try {
-				if (await options.allowIf(result.userId)) return result.userId;
+				if (await options.allowIf(result.userId, { orgId: result.orgId })) return result.userId;
 			} catch {
 				// Si allowIf falla, continuamos al chequeo de permiso formal.
 			}
