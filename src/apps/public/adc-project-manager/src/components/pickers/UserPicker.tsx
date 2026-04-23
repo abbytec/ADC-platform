@@ -72,9 +72,11 @@ export function UserPicker({ selectedIds, onChange, disabled, label }: Props) {
 				<div className="relative">
 					<adc-search-input ref={attachRef} placeholder={t("settings.searchUsers")} debounce={350} />
 					{(results.length > 0 || searching) && (
-						<div className="absolute z-20 left-0 right-0 mt-1 bg-background border border-border rounded-md shadow max-h-48 overflow-y-auto">
+						<div className="absolute z-20 left-0 right-0 mt-1 bg-background border border-surface rounded-xl shadow-lg max-h-48 overflow-y-auto">
 							{searching ? (
-								<div className="text-center py-2 text-xs text-muted">{t("common.loading")}</div>
+								<div className="flex justify-center py-3">
+									<adc-spinner />
+								</div>
 							) : (
 								results
 									.filter((u) => !selectedIds.includes(u.id))
@@ -82,11 +84,11 @@ export function UserPicker({ selectedIds, onChange, disabled, label }: Props) {
 										<button
 											key={u.id}
 											type="button"
-											className="w-full text-left px-3 py-2 hover:bg-surface text-sm"
+											className="w-full text-left px-3 py-2 hover:bg-surface/50 transition-colors cursor-pointer flex items-center justify-between"
 											onClick={() => add(u)}
 										>
-											<span className="font-medium">{u.username}</span>
-											{u.email && <span className="text-xs text-muted ml-2">{u.email}</span>}
+											<adc-user-summary username={u.username} email={u.email} />
+											<adc-icon-plus size="1rem" />
 										</button>
 									))
 							)}
@@ -94,29 +96,30 @@ export function UserPicker({ selectedIds, onChange, disabled, label }: Props) {
 					)}
 				</div>
 			)}
-			<div className="flex flex-wrap gap-1">
+			<div>
 				{selectedIds.length === 0 && <span className="text-xs text-muted">{t("settings.noMembers")}</span>}
-				{selectedIds.map((id) => {
-					const u = cache[id];
-					return (
-						<span
-							key={id}
-							className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-border text-xs"
-						>
-							{u?.username || id}
-							{!disabled && (
-								<button
-									type="button"
-									onClick={() => remove(id)}
-									className="text-muted font-bold hover:text-tdanger"
-									aria-label={t("common.delete")}
-								>
-									×
-								</button>
-							)}
-						</span>
-					);
-				})}
+				{selectedIds.length > 0 && (
+					<ul className="divide-y divide-surface">
+						{selectedIds.map((id) => {
+							const u = cache[id];
+							return (
+								<li key={id} className="flex items-center justify-between py-2">
+									<adc-user-summary username={u?.username || id} email={u?.email} />
+									{!disabled && (
+										<adc-button-rounded
+											variant="danger"
+											aria-label={t("common.delete")}
+											onClick={() => remove(id)}
+											size="md"
+										>
+											<adc-icon-close size="0.875rem" />
+										</adc-button-rounded>
+									)}
+								</li>
+							);
+						})}
+					</ul>
+				)}
 			</div>
 		</div>
 	);

@@ -352,7 +352,7 @@ export class AdcAccessButton {
 		void h;
 		if (this.loading) {
 			return (
-				<div class="w-10 h-10 rounded-full bg-muted animate-pulse" aria-live="polite" role="status">
+				<div class="w-12 h-12 rounded-full bg-muted animate-pulse" aria-live="polite" role="status">
 					<span class="sr-only">Cargando sesión</span>
 				</div>
 			);
@@ -397,7 +397,7 @@ export class AdcAccessButton {
 					<img
 						src={this.getAvatarUrl()}
 						alt={`Avatar de ${this.user?.username || "usuario"}`}
-						class="w-10 h-10 rounded-full border-2 border-accent object-cover"
+						class="w-12 h-12 rounded-full border-2 border-accent object-cover"
 						width="40"
 						height="40"
 					/>

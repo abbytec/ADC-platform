@@ -10,6 +10,7 @@ export class AdcButtonRounded {
 	@Prop() ariaLabel?: string;
 	/** Visual variant */
 	@Prop() variant: "default" | "danger" = "default";
+	@Prop() size: "lg" | "md" = "lg";
 
 	@Event() adcClick!: EventEmitter<MouseEvent>;
 
@@ -19,9 +20,10 @@ export class AdcButtonRounded {
 
 	private getClass(): string {
 		const base =
-			"rounded-full p-2.5 shadow-cozy font-heading cursor-pointer hover:brightness-105 inline-flex items-center justify-center min-h-[44px] min-w-[44px] touch-manipulation";
-		if (this.variant === "danger") return `${base} bg-tdanger text-danger`;
-		return `${base} bg-primary text-tprimary`;
+			"rounded-full p-2.5 shadow-cozy font-heading cursor-pointer hover:brightness-105 inline-flex items-center justify-center touch-manipulation";
+		const sizeClass = this.size === "md" ? "min-h-[36px] min-w-[36px]" : "min-h-[44px] min-w-[44px]";
+		if (this.variant === "danger") return `${base} ${sizeClass} bg-tdanger text-danger`;
+		return `${base} ${sizeClass} bg-primary text-tprimary`;
 	}
 
 	render() {

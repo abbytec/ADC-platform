@@ -109,10 +109,7 @@ export function MembersModal({
 											onClick={() => handleAddMember(user.id)}
 											disabled={addingMember}
 										>
-											<div>
-												<span className="text-sm font-medium text-text">{user.username}</span>
-												{user.email && <span className="text-xs text-muted ml-2">{user.email}</span>}
-											</div>
+											<adc-user-summary username={user.username} email={user.email} />
 											<adc-icon-plus size="1rem" />
 										</button>
 									))
@@ -131,14 +128,12 @@ export function MembersModal({
 					<ul className="divide-y divide-surface">
 						{members.map((member) => (
 							<li key={member.id} className="flex items-center justify-between py-2">
-								<div>
-									<span className="text-sm font-medium text-text">{member.username}</span>
-									{member.email && <span className="text-xs text-muted ml-2">{member.email}</span>}
-								</div>
+								<adc-user-summary username={member.username} email={member.email} />
 								<adc-button-rounded
 									variant="danger"
 									aria-label={t("common.delete")}
 									onClick={() => handleRemoveMember(member.id)}
+									size="md"
 								>
 									<adc-icon-close size="0.875rem" />
 								</adc-button-rounded>
