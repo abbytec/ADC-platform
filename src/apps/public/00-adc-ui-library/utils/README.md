@@ -1,5 +1,9 @@
 # UI Library Utils
 
+## auth-sync.ts
+
+Sincroniza login/logout entre pestañas y expone un logout forzado con recarga para errores globales de sesión.
+
 ## connect-rpc.ts
 
 Cliente Connect RPC tipado usando Protocol Buffers.
