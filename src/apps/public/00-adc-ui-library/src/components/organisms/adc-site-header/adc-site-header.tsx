@@ -49,7 +49,7 @@ export class AdcSiteHeader {
 			<header class="flex items-center justify-between gap-6 px-8 py-6 shadow-cozy bg-header text-theader font-bold rounded-b-xxl z-50">
 				<a href={this.homeHref} aria-label="Inicio" class="ml-2">
 					{this.logoSrc && (
-						<img src={this.logoSrc} alt={this.logoAlt} height="36" width="36" style={{ minWidth: "36px" }} class="rounded-full" />
+						<img src={this.logoSrc} alt={this.logoAlt} height="39" width="39" style={{ minWidth: "39px" }} class="rounded-full" />
 					)}
 				</a>
 

@@ -45,6 +45,7 @@ export function GeneralSection({ project, canEdit, onSaved }: Props) {
 				<label className="block text-sm font-medium text-text mb-1">{t("settings.visibility")}</label>
 				<adc-combobox
 					value={visibility}
+					clearable={false}
 					options={JSON.stringify(VISIBILITIES.map((v) => ({ label: t(`settings.visibility_${v}`), value: v })))}
 					onadcChange={(e: any) => setVisibility(e.detail as ProjectVisibility)}
 					disabled={!canEdit}
