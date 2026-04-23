@@ -47,13 +47,13 @@ export class AdcTabs {
 		this.internalActive = this.activeTab || this.parsedTabs[0]?.id || "";
 	}
 
-	private handleTabClick = (tab: TabItem) => {
+	private readonly handleTabClick = (tab: TabItem) => {
 		if (tab.disabled) return;
 		this.internalActive = tab.id;
 		this.adcTabChange.emit(tab.id);
 	};
 
-	private handleKeyDown = (event: KeyboardEvent, tab: TabItem) => {
+	private readonly handleKeyDown = (event: KeyboardEvent, tab: TabItem) => {
 		if (event.key === "Enter" || event.key === " ") {
 			event.preventDefault();
 			this.handleTabClick(tab);

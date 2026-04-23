@@ -26,7 +26,7 @@ export class AdcSidebar {
 
 	@Event() adcSidebarItemClick!: EventEmitter<SidebarItem>;
 
-	private handleItemClick = (item: SidebarItem) => {
+	private readonly handleItemClick = (item: SidebarItem) => {
 		this.adcSidebarItemClick.emit(item);
 	};
 
@@ -68,15 +68,15 @@ export class AdcSidebar {
 								>
 									{item.iconSvg && (
 										<span
-											class="flex items-center justify-center flex-shrink-0 w-adc-xl h-adc-xl"
+											class="flex items-center justify-center shrink-0 w-adc-xl h-adc-xl"
 											innerHTML={item.iconSvg}
 										></span>
 									)}
 
 									<span
 										class={`flex-1 overflow-hidden transition-all duration-300 ${
-											this.collapsed ? "max-w-0 opacity-0" : "max-w-[160px] opacity-100"
-										} lg:max-w-[160px] lg:opacity-100`}
+											this.collapsed ? "max-w-0 opacity-0" : "max-w-40 opacity-100"
+										} lg:max-w-40 lg:opacity-100`}
 									>
 										<span class="text-left whitespace-nowrap text-lg font-semibold ">{item.label}</span>
 

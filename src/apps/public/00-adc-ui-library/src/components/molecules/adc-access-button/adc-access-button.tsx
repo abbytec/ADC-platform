@@ -203,7 +203,7 @@ export class AdcAccessButton {
 		}
 	}
 
-	private handleLoginClick = () => {
+	private readonly handleLoginClick = () => {
 		this.adcLoginClick.emit();
 		if (!globalThis.location) return;
 		const params = new URLSearchParams();
@@ -211,7 +211,7 @@ export class AdcAccessButton {
 		globalThis.location.href = `${this.authUrl}/login?${params.toString()}`;
 	};
 
-	private handleLogout = async () => {
+	private readonly handleLogout = async () => {
 		this.isAuthenticated = false;
 		this.user = null;
 		this.dropdownOpen = false;
@@ -219,7 +219,7 @@ export class AdcAccessButton {
 		await forceLogoutAndRefresh(this.getApiUrl(this.logoutApiUrl));
 	};
 
-	private handleOpenOrgSwitcher = async () => {
+	private readonly handleOpenOrgSwitcher = async () => {
 		this.orgSwitcherOpen = true;
 		this.loadingOrgs = true;
 
@@ -261,7 +261,7 @@ export class AdcAccessButton {
 		}
 	};
 
-	private handleToggle = () => {
+	private readonly handleToggle = () => {
 		this.dropdownOpen = !this.dropdownOpen;
 	};
 
@@ -295,7 +295,7 @@ export class AdcAccessButton {
 				<button
 					type="button"
 					onClick={this.handleLoginClick}
-					class="flex items-center gap-2 px-3 py-2 hover:underline transition-colors cursor-pointer min-h-[44px] touch-manipulation"
+					class="flex items-center gap-2 px-3 py-2 hover:underline transition-colors cursor-pointer min-h-11 touch-manipulation"
 				>
 					{/* User icon */}
 					<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">

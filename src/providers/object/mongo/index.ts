@@ -2,10 +2,7 @@ import mongoose, { Connection, Model, Schema } from "mongoose";
 import { BaseProvider, ProviderType } from "../../BaseProvider.js";
 import { Logger } from "../../../utils/logger/Logger.js";
 
-/**
- * Configuración del proveedor de MongoDB
- */
-export interface IMongoConfig {
+interface IMongoConfig {
 	uri: string;
 	maxRetries?: number;
 	retryDelay?: number;
@@ -16,10 +13,7 @@ export interface IMongoConfig {
 	reconnectInterval?: number;
 }
 
-/**
- * Estadísticas de múltiples conexiones
- */
-export interface MultiDbStats {
+interface MultiDbStats {
 	connections: Array<{
 		uri: string;
 		databases: string[];
@@ -28,98 +22,47 @@ export interface MultiDbStats {
 	}>;
 }
 
-/**
- * Interfaz del servicio de MongoDB
- */
-export interface IMongoProvider {
-	/**
-	 * Obtiene la conexión actual de Mongoose
-	 */
-	getConnection(): Connection;
+interface SharedPoolEntry {
+	physical: Connection;
+	refCount: number;
+	listenersAttached: boolean;
+	dbViews: Map<string, Connection>;
+}
 
-	/**
-	 * Conecta a MongoDB
-	 */
-	connect(): Promise<void>;
+// El kernel recarga el módulo con cache-busting (?v=timestamp) en cada loadProvider,
+// así que cada instancia evalúa este archivo de nuevo. Anclamos el pool físico a
+// globalThis para que todas las instancias (incluso tras hot-reload) compartan el
+// mismo Map y se respete el refcount.
+const GLOBAL_KEY = Symbol.for("adc.mongo.sharedPools");
+const SHARED_POOLS: Map<string, SharedPoolEntry> = ((globalThis as any)[GLOBAL_KEY] ??= new Map<string, SharedPoolEntry>());
 
-	/**
-	 * Desconecta de MongoDB
-	 */
-	disconnect(): Promise<void>;
-
-	/**
-	 * Verifica si está conectado
-	 */
-	isConnected(): boolean;
-
-	/**
-	 * Obtiene un modelo de Mongoose
-	 */
-	getModel<T>(name: string): Model<T>;
-
-	/**
-	 * Registra un esquema y retorna el modelo
-	 */
-	createModel<T>(name: string, schema: Schema): Model<T>;
-
-	/**
-	 * Obtiene estadísticas de la conexión
-	 */
-	getStats(): {
-		connected: boolean;
-		connectionString: string;
-		retries: number;
-		lastError?: string;
-	};
-
-	// ─────────────────────────────────────────────────────────────────────────────
-	// Multi-DB Support
-	// ─────────────────────────────────────────────────────────────────────────────
-
-	/**
-	 * Obtiene o crea una conexión a una URI específica
-	 * Reutiliza conexiones existentes a la misma URI
-	 */
-	getOrCreateConnection(uri: string): Promise<Connection>;
-
-	/**
-	 * Cambia a una base de datos diferente en una conexión existente
-	 * Usa mongoose useDb() para conexiones virtuales
-	 */
-	useDb(connection: Connection, dbName: string): Connection;
-
-	/**
-	 * Crea un modelo para una conexión de base de datos específica
-	 */
-	createModelForDb<T>(dbConnection: Connection, name: string, schema: Schema): Model<T>;
-
-	/**
-	 * Cierra una conexión específica
-	 */
-	closeConnection(uri: string): Promise<void>;
-
-	/**
-	 * Obtiene estadísticas de múltiples conexiones
-	 */
-	getMultiDbStats(): MultiDbStats;
+function computePhysicalKey(uri: string): { physicalKey: string; dbName: string } {
+	try {
+		const u = new URL(uri);
+		const dbName = decodeURIComponent(u.pathname.replace(/^\//, "")) || "test";
+		u.pathname = "/";
+		const sorted = [...u.searchParams.entries()].sort(([a], [b]) => a.localeCompare(b));
+		u.search = new URLSearchParams(sorted).toString();
+		return { physicalKey: u.toString(), dbName };
+	} catch {
+		return { physicalKey: uri, dbName: "test" };
+	}
 }
 
 /**
- * MongoProvider - Proveedor de conexión a MongoDB con tolerancia a fallos
- *
- * Características:
- * - Conexión automática con reintentos configurables
- * - Reconexión automática en caso de desconexión
- * - Manejo de errores y timeout
- * - Pool de conexiones
- * - Soporte multi-database con connection.useDb()
- * - Reutilización de instancias por connectionUri
+ * MongoProvider - Pool físico compartido entre instancias.
+ * Dos providers con el mismo host+credenciales+opts reutilizan la misma conexión TCP,
+ * aunque el nombre de la DB en el pathname sea distinto (cada instancia trabaja
+ * contra una vista lógica useDb()). Refcount por pool; se cierra solo cuando la
+ * última instancia la libera.
  */
-export default class MongoProvider extends BaseProvider implements IMongoProvider {
+export default class MongoProvider extends BaseProvider {
 	public readonly name = "mongo-provider";
 	public readonly type = ProviderType.OBJECT_PROVIDER;
 
 	private connection: Connection | null = null;
+	private physicalKey: string | null = null;
+	private dbName: string = "";
 	private readonly config: IMongoConfig;
 	private retryCount = 0;
 	private lastError: string | undefined;
@@ -127,14 +70,11 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 	private initialized = false;
 	private isDisconnecting = false;
 
-	// Multi-DB support
-	#connections: Map<string, Connection> = new Map();
-	#dbConnections: Map<string, Connection> = new Map();
+	readonly #extraPhysicalKeys: Set<string> = new Set();
+	readonly #dbViewsCache: Map<string, Connection> = new Map();
 
 	constructor(options?: any) {
 		super();
-
-		// Configuración con valores por defecto
 		this.config = {
 			uri: options?.uri || process.env.MONGODB_URI || "mongodb://localhost:27017/adc-platform",
 			maxRetries: options?.maxRetries ?? 5,
@@ -145,32 +85,16 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 			autoReconnect: options?.autoReconnect ?? true,
 			reconnectInterval: options?.reconnectInterval ?? 10000,
 		};
-
-		// Configurar Mongoose
-		this.#configureMongoose();
-	}
-
-	/**
-	 * Configura opciones globales de Mongoose
-	 */
-	#configureMongoose(): void {
 		mongoose.set("strict", true);
 		mongoose.set("strictQuery", false);
 	}
 
-	/**
-	 * Conecta a MongoDB con reintentos automáticos
-	 */
-	async connect(): Promise<void> {
-		if (this.connection?.readyState === 1) {
-			Logger.info(`[MongoProvider] Ya conectado a ${this.connection.db.databaseName}`);
-			return;
-		}
+	async #acquirePhysical(physicalKey: string): Promise<SharedPoolEntry> {
+		let entry = SHARED_POOLS.get(physicalKey);
 
-		try {
-			// Usar createConnection en lugar de connect para permitir múltiples conexiones
-			this.connection = await mongoose
-				.createConnection(this.config.uri, {
+		if (!entry || entry.physical.readyState === 0) {
+			const physical = await mongoose
+				.createConnection(physicalKey, {
 					connectTimeoutMS: this.config.connectionTimeout,
 					serverSelectionTimeoutMS: this.config.serverSelectionTimeout,
 					socketTimeoutMS: this.config.socketTimeout,
@@ -181,18 +105,62 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 				})
 				.asPromise();
 
-			Logger.info(`[MongoProvider] Conectado a ${this.connection.name}...`);
+			entry = { physical, refCount: 0, listenersAttached: false, dbViews: new Map() };
+			SHARED_POOLS.set(physicalKey, entry);
+			Logger.ok(`[MongoProvider] Pool físico abierto: ${physical.host}:${physical.port}`);
+		}
 
-			// Registrar en el mapa de conexiones
-			this.#connections.set(this.config.uri, this.connection);
+		entry.refCount++;
+		if (!entry.listenersAttached) {
+			this.#setupConnectionListeners(entry.physical, physicalKey);
+			entry.listenersAttached = true;
+		}
+		return entry;
+	}
+
+	async #releasePhysical(physicalKey: string): Promise<void> {
+		const entry = SHARED_POOLS.get(physicalKey);
+		if (!entry) return;
+
+		entry.refCount--;
+		if (entry.refCount > 0) return;
+
+		try {
+			await entry.physical.close();
+			Logger.ok(`[MongoProvider] Pool físico cerrado: ${physicalKey}`);
+		} catch (error: any) {
+			Logger.error(`[MongoProvider] Error cerrando pool físico: ${error.message}`);
+		} finally {
+			SHARED_POOLS.delete(physicalKey);
+		}
+	}
+
+	#getDbView(entry: SharedPoolEntry, dbName: string): Connection {
+		const cached = entry.dbViews.get(dbName);
+		if (cached) return cached;
+		const view = entry.physical.useDb(dbName, { useCache: true });
+		entry.dbViews.set(dbName, view);
+		return view;
+	}
+
+	async connect(): Promise<void> {
+		if (this.connection?.readyState === 1) {
+			Logger.info(`[MongoProvider] Ya conectado a ${this.dbName}`);
+			return;
+		}
+
+		try {
+			const { physicalKey, dbName } = computePhysicalKey(this.config.uri);
+			const entry = await this.#acquirePhysical(physicalKey);
+
+			this.physicalKey = physicalKey;
+			this.dbName = dbName;
+			this.connection = this.#getDbView(entry, dbName);
 
 			this.retryCount = 0;
 			this.lastError = undefined;
 
-			// Configurar listeners para la reconexión automática
-			this.#setupConnectionListeners();
-
-			Logger.ok(`[MongoProvider] Conectado exitosamente a MongoDB`);
+			Logger.ok(`[MongoProvider] Conectado a db '${dbName}' (pool compartido: refCount=${entry.refCount})`);
 		} catch (error: any) {
 			this.lastError = error.message;
 			Logger.error(`[MongoProvider] Error conectando: ${error.message}`);
@@ -200,15 +168,11 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		}
 	}
 
-	/**
-	 * Maneja errores de conexión con reintentos
-	 */
 	async #handleConnectionError(): Promise<void> {
 		if (this.retryCount < this.config.maxRetries!) {
 			this.retryCount++;
-			const delay = this.config.retryDelay! * Math.pow(2, this.retryCount - 1); // Backoff exponencial
+			const delay = this.config.retryDelay! * Math.pow(2, this.retryCount - 1);
 			Logger.warn(`[MongoProvider] Reintentando conexión (${this.retryCount}/${this.config.maxRetries}) en ${delay}ms...`);
-
 			await new Promise((resolve) => setTimeout(resolve, delay));
 			await this.connect();
 		} else {
@@ -217,39 +181,29 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		}
 	}
 
-	/**
-	 * Configura listeners para eventos de conexión
-	 */
-	#setupConnectionListeners(): void {
-		if (!this.connection) return;
-
-		this.connection.on("connected", () => {
-			Logger.ok(`[MongoProvider] Conexión establecida`);
-			this.retryCount = 0;
+	#setupConnectionListeners(physical: Connection, physicalKey: string): void {
+		physical.on("connected", () => {
+			Logger.ok(`[MongoProvider] Pool conectado: ${physical.host}:${physical.port}`);
 		});
 
-		this.connection.on("disconnected", () => {
-			if (!this.isDisconnecting) Logger.warn(`[MongoProvider] Desconectado de ${this.connection?.name ?? "MongoDB"}`);
-
-			if (this.config.autoReconnect && !this.isDisconnecting) {
+		physical.on("disconnected", () => {
+			const entry = SHARED_POOLS.get(physicalKey);
+			if (!this.isDisconnecting) Logger.warn(`[MongoProvider] Pool desconectado: ${physical.host}:${physical.port}`);
+			if (this.config.autoReconnect && !this.isDisconnecting && entry && entry.refCount > 0) {
 				this.#scheduleReconnect();
 			}
 		});
 
-		this.connection.on("error", (error: any) => {
+		physical.on("error", (error: any) => {
 			this.lastError = error.message;
 			Logger.error(`[MongoProvider] Error de conexión: ${error.message}`);
 		});
 
-		this.connection.on("reconnected", () => {
-			Logger.ok(`[MongoProvider] Reconectado a ${this.connection?.name ?? "MongoDB"}`);
-			this.retryCount = 0;
+		physical.on("reconnected", () => {
+			Logger.ok(`[MongoProvider] Pool reconectado: ${physical.host}:${physical.port}`);
 		});
 	}
 
-	/**
-	 * Programa una reconexión automática
-	 */
 	#scheduleReconnect(): void {
 		if (this.reconnectTimer) return;
 
@@ -264,7 +218,6 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 	}
 
 	async start(kernelKey: symbol): Promise<void> {
-		// Inicializar conexión al arrancar
 		super.start(kernelKey);
 		if (!this.initialized) {
 			this.initialized = true;
@@ -306,64 +259,28 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		};
 	}
 
-	// ─────────────────────────────────────────────────────────────────────────────
-	// Multi-DB Support
-	// ─────────────────────────────────────────────────────────────────────────────
-
-	/**
-	 * Obtiene o crea una conexión a una URI específica
-	 * Reutiliza conexiones existentes a la misma URI
-	 */
 	async getOrCreateConnection(uri: string): Promise<Connection> {
-		// Verificar si ya tenemos esta conexión
-		const existing = this.#connections.get(uri);
-		if (existing?.readyState === 1) {
-			return existing;
-		}
+		const { physicalKey, dbName } = computePhysicalKey(uri);
+		const entry = await this.#acquirePhysical(physicalKey);
+		this.#extraPhysicalKeys.add(physicalKey);
 
-		// Crear nueva conexión
-		const connection = await mongoose
-			.createConnection(uri, {
-				connectTimeoutMS: this.config.connectionTimeout,
-				serverSelectionTimeoutMS: this.config.serverSelectionTimeout,
-				socketTimeoutMS: this.config.socketTimeout,
-				retryWrites: true,
-				retryReads: true,
-				maxPoolSize: 10,
-				minPoolSize: 2,
-			})
-			.asPromise();
-
-		this.#connections.set(uri, connection);
-		Logger.ok(`[MongoProvider] Nueva conexión establecida: ${connection.name ?? "MongoDB"}`);
-
-		return connection;
+		const view = this.#getDbView(entry, dbName);
+		const cacheKey = `${entry.physical.host}:${entry.physical.port}/${dbName}`;
+		this.#dbViewsCache.set(cacheKey, view);
+		return view;
 	}
 
-	/**
-	 * Cambia a una base de datos diferente en una conexión existente
-	 * Retorna una conexión virtual a la base de datos especificada
-	 */
 	useDb(connection: Connection, dbName: string): Connection {
 		const key = `${connection.host}:${connection.port}/${dbName}`;
+		const cached = this.#dbViewsCache.get(key);
+		if (cached) return cached;
 
-		// Verificar cache
-		const cached = this.#dbConnections.get(key);
-		if (cached) {
-			return cached;
-		}
-
-		// Crear conexión virtual usando useDb
 		const dbConnection = connection.useDb(dbName, { useCache: true });
-		this.#dbConnections.set(key, dbConnection);
-
-		Logger.debug(`[MongoProvider] Conexión virtual a DB: ${dbName}`);
+		this.#dbViewsCache.set(key, dbConnection);
+		Logger.debug(`[MongoProvider] Vista lógica creada: ${dbName}`);
 		return dbConnection;
 	}
 
-	/**
-	 * Crea un modelo para una conexión de base de datos específica
-	 */
 	createModelForDb<T>(dbConnection: Connection, name: string, schema: Schema): Model<T> {
 		try {
 			return dbConnection.model<T>(name);
@@ -372,71 +289,47 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		}
 	}
 
-	/**
-	 * Cierra una conexión específica
-	 */
 	async closeConnection(uri: string): Promise<void> {
-		const connection = this.#connections.get(uri);
-		if (connection) {
-			// Limpiar conexiones virtuales asociadas
-			const hostPort = `${connection.host}:${connection.port}`;
-			for (const [key] of this.#dbConnections) {
-				if (key.startsWith(hostPort)) {
-					this.#dbConnections.delete(key);
-				}
-			}
+		const { physicalKey } = computePhysicalKey(uri);
+		if (!this.#extraPhysicalKeys.has(physicalKey)) return;
 
-			await connection.close();
-			this.#connections.delete(uri);
-			Logger.ok(`[MongoProvider] Conexión cerrada: ${connection.name ?? "MongoDB"}`);
+		const entry = SHARED_POOLS.get(physicalKey);
+		if (entry) {
+			const hostPort = `${entry.physical.host}:${entry.physical.port}`;
+			for (const key of [...this.#dbViewsCache.keys()]) {
+				if (key.startsWith(hostPort)) this.#dbViewsCache.delete(key);
+			}
 		}
+
+		this.#extraPhysicalKeys.delete(physicalKey);
+		await this.#releasePhysical(physicalKey);
 	}
 
-	/**
-	 * Obtiene estadísticas de múltiples conexiones
-	 */
 	getMultiDbStats(): MultiDbStats {
 		const connections: MultiDbStats["connections"] = [];
-
-		for (const [uri, conn] of this.#connections) {
-			const databases: string[] = [];
-			const hostPort = `${conn.host}:${conn.port}`;
-
-			for (const [key] of this.#dbConnections) {
-				if (key.startsWith(hostPort)) {
-					const dbName = key.split("/").pop();
-					if (dbName) databases.push(dbName);
-				}
-			}
-
+		for (const [physicalKey, entry] of SHARED_POOLS) {
 			connections.push({
-				uri,
-				databases,
-				connected: conn.readyState === 1,
-				poolSize: 10, // from config
+				uri: physicalKey,
+				databases: [...entry.dbViews.keys()],
+				connected: entry.physical.readyState === 1,
+				poolSize: 10,
 			});
 		}
-
 		return { connections };
 	}
 
-	/**
-	 * Desconecta de MongoDB
-	 */
 	async disconnect(): Promise<void> {
 		if (this.reconnectTimer) {
 			clearTimeout(this.reconnectTimer);
 			this.reconnectTimer = null;
 		}
 
-		if (this.connection) {
-			try {
-				await this.connection.close();
-				this.connection = null;
-				Logger.ok(`[MongoProvider] Desconectado de MongoDB`);
-			} catch (error: any) {
-				Logger.error(`[MongoProvider] Error desconectando: ${error.message}`);
-			}
+		if (this.physicalKey) {
+			const key = this.physicalKey;
+			this.physicalKey = null;
+			this.connection = null;
+			await this.#releasePhysical(key);
+			Logger.ok(`[MongoProvider] Instancia desconectada de '${this.dbName}'`);
 		}
 	}
 
@@ -444,16 +337,11 @@ export default class MongoProvider extends BaseProvider implements IMongoProvide
 		await super.stop(kernelKey);
 		this.isDisconnecting = true;
 
-		// Cerrar todas las conexiones adicionales
-		for (const [uri] of this.#connections) {
-			if (uri !== this.config.uri) {
-				await this.closeConnection(uri);
-			}
+		for (const physicalKey of [...this.#extraPhysicalKeys]) {
+			this.#extraPhysicalKeys.delete(physicalKey);
+			await this.#releasePhysical(physicalKey);
 		}
-
-		// Limpiar caches
-		this.#connections.clear();
-		this.#dbConnections.clear();
+		this.#dbViewsCache.clear();
 
 		await this.disconnect();
 	}

@@ -1,7 +1,7 @@
 import type { Connection } from "mongoose";
 import { BaseService } from "../../BaseService.js";
 import type { IdentityStats, OrgScopedManagers } from "./types.js";
-import type { IMongoProvider } from "../../../providers/object/mongo/index.js";
+import type MongoProvider from "../../../providers/object/mongo/index.js";
 import { userSchema, groupSchema, roleSchema, organizationSchema, regionSchema, discordGuildConfigSchema } from "./domain/index.js";
 import type { DiscordGuildConfig } from "./domain/index.js";
 import type { User, Role, Group, Organization, RegionInfo } from "@common/types/identity/index.d.ts";
@@ -67,7 +67,7 @@ export default class IdentityManagerService extends BaseService {
 	#sessionManager: SessionManagerService | null = null;
 
 	// MongoDB provider
-	readonly #mongoProvider: IMongoProvider;
+	readonly #mongoProvider: MongoProvider;
 
 	// OperationsService for stepper support in cascade DAOs
 	readonly #operationsService: OperationsService;
@@ -77,7 +77,7 @@ export default class IdentityManagerService extends BaseService {
 
 	constructor(kernel: Kernel, options?: any) {
 		super(kernel, options);
-		this.#mongoProvider = this.getMyProvider<IMongoProvider>("object/mongo");
+		this.#mongoProvider = this.getMyProvider<MongoProvider>("object/mongo");
 		this.#operationsService = kernel.registry.getService<OperationsService>("OperationsService");
 	}
 

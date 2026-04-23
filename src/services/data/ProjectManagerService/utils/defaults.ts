@@ -20,14 +20,16 @@ function defaultPriorityStrategy(): Project["priorityStrategy"] {
 /** Crea un proyecto con defaults en los campos opcionales estructurales. */
 export function applyProjectDefaults(partial: Partial<Project> & Pick<Project, "name" | "slug" | "ownerId">): Project {
 	const now = new Date();
+	const visibility = partial.visibility ?? "org";
+	const orgId = visibility === "org" ? (partial.orgId ?? null) : null;
 	return {
 		id: partial.id ?? "",
-		orgId: partial.orgId ?? null,
+		orgId,
 		slug: partial.slug,
 		name: partial.name,
 		description: partial.description,
 		ownerId: partial.ownerId,
-		visibility: partial.visibility ?? "org",
+		visibility,
 
 		memberUserIds: partial.memberUserIds ?? [],
 		memberGroupIds: partial.memberGroupIds ?? [],

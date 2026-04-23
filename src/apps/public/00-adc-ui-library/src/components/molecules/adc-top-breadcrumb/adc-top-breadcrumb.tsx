@@ -43,12 +43,12 @@ export class AdcTopBreadcrumb {
 		return this.items || [];
 	}
 
-	private handleBack = (e: MouseEvent) => {
+	private readonly handleBack = (e: MouseEvent) => {
 		if (!this.backHref) e.preventDefault();
 		this.adcBack.emit();
 	};
 
-	private handleItemClick = (e: MouseEvent, href?: string) => {
+	private readonly handleItemClick = (e: MouseEvent, href?: string) => {
 		if (!href) return;
 		// Deja que los consumidores intercepten con su router si quieren.
 		// Si no hay handler, navegación nativa del <a> funciona igual.

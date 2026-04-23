@@ -11,7 +11,7 @@ import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
 export default class ExpressServerProvider extends BaseProvider implements IHttpServerProvider {
 	public readonly name = "express-server";
 	public readonly type = ProviderType.HTTP_SERVER_PROVIDER;
-	private app: Application;
+	private readonly app: Application;
 	private server: Server | null = null;
 	private isListening = false;
 

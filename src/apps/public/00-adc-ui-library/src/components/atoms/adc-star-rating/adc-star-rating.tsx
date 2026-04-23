@@ -19,15 +19,15 @@ export class AdcStarRating {
 		this.mounted = true;
 	}
 
-	private handleClick = (rating: number) => {
+	private readonly handleClick = (rating: number) => {
 		if (!this.canRate || this.pending || !this.mounted) return;
 		// Clicking the already-selected star toggles it off (unrate → emit 0)
 		this.adcRate.emit(this.myRating === rating ? 0 : rating);
 	};
 
-	private isDisabled(): boolean {
+	private readonly isDisabled = (): boolean => {
 		return !this.canRate || this.pending || !this.mounted;
-	}
+	};
 
 	private getDisplayRating(): number {
 		return this.myRating ?? this.average ?? 0;

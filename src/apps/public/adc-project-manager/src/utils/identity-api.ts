@@ -15,8 +15,8 @@ const identityApi = createAdcApi({
 export type UserPreferences = Record<string, unknown>;
 
 export const identityPmApi = {
-	/** Resuelve `orgId → { orgId, slug }` para construir URLs del PM. */
-	getOrganization: (orgId: string) => identityApi.get<{ orgId: string; slug: string }>(`/organizations/${orgId}`),
+	/** Resuelve `orgId → { orgId, slug }` para construir URLs del PM. Endpoint liviano sin `ORGANIZATIONS.READ`. */
+	getOrganizationSlug: (orgId: string) => identityApi.get<{ orgId: string; slug: string }>(`/organizations/${orgId}/slug`),
 
 	/** Lista todas las organizaciones. Solo accesible en modo global (admin). */
 	listOrganizations: () => identityApi.get<Organization[]>("/organizations"),

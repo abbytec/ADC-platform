@@ -2,7 +2,7 @@ import { Component, Prop, h, Event, EventEmitter, Host } from "@stencil/core";
 
 /**
  * ADC Button - Componente de botón con Tailwind CSS
- * 
+ *
  * Usa clases de Tailwind via CSS personalizado con @apply
  * para mantener el encapsulamiento del Shadow DOM
  */
@@ -19,10 +19,8 @@ export class AdcButton {
 
 	@Event() adcClick: EventEmitter<MouseEvent> | undefined;
 
-	private handleClick = (event: MouseEvent) => {
-		if (!this.disabled) {
-			this.adcClick?.emit(event);
-		}
+	private readonly handleClick = (event: MouseEvent) => {
+		if (!this.disabled) this.adcClick?.emit(event);
 	};
 
 	render() {
@@ -35,12 +33,7 @@ export class AdcButton {
 
 		return (
 			<Host>
-				<button
-					type={this.buttonType}
-					onClick={this.handleClick}
-					disabled={this.disabled}
-					class={classes}
-				>
+				<button type={this.buttonType} onClick={this.handleClick} disabled={this.disabled} class={classes}>
 					<slot></slot>
 				</button>
 			</Host>

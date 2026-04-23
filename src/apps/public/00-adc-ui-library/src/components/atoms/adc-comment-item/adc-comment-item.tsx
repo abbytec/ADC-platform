@@ -21,16 +21,16 @@ export class AdcCommentItem {
 
 	@State() confirming: boolean = false;
 
-	private requestDelete = () => {
+	private readonly requestDelete = () => {
 		this.confirming = true;
 	};
 
-	private confirmDelete = () => {
+	private readonly confirmDelete = () => {
 		if (this.comment._id) this.adcDelete.emit(this.comment._id);
 		this.confirming = false;
 	};
 
-	private cancelDelete = () => {
+	private readonly cancelDelete = () => {
 		this.confirming = false;
 	};
 
@@ -55,7 +55,12 @@ export class AdcCommentItem {
 					<div class="flex items-center gap-1">
 						{this.confirming ? (
 							<>
-								<button type="button" class="text-tdanger text-sm px-2" onClick={this.confirmDelete} aria-label="Confirmar borrado">
+								<button
+									type="button"
+									class="text-tdanger text-sm px-2"
+									onClick={this.confirmDelete}
+									aria-label="Confirmar borrado"
+								>
 									Eliminar
 								</button>
 								<button type="button" class="text-muted text-sm px-2" onClick={this.cancelDelete} aria-label="Cancelar">

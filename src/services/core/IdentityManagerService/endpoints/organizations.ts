@@ -69,6 +69,15 @@ export class OrgEndpoints {
 		assertReadableOrganizationAccess(ctx, org.orgId);
 		return org;
 	}
+	@RegisterEndpoint({
+		method: "GET",
+		url: "/api/identity/organizations/:orgId/slug",
+	})
+	static async getOrganizationSlug(ctx: EndpointCtx<{ orgId: string }>) {
+		const result = await OrgEndpoints.#identity.organizations.resolveOrganizationSlug(ctx.params.orgId, ctx.token!);
+		if (!result) throw new IdentityError(404, "ORG_NOT_FOUND", "Organización no encontrada");
+		return result;
+	}
 
 	@RegisterEndpoint({
 		method: "POST",

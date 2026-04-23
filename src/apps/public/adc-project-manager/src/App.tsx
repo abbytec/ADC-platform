@@ -51,7 +51,7 @@ export default function App() {
 		if (!projectOrgId) return "default";
 		const cached = orgSlugCache.current.get(projectOrgId);
 		if (cached) return cached;
-		const res = await identityPmApi.getOrganization(projectOrgId);
+		const res = await identityPmApi.getOrganizationSlug(projectOrgId);
 		const slug = res.success && res.data?.slug ? res.data.slug : projectOrgId;
 		orgSlugCache.current.set(projectOrgId, slug);
 		return slug;
@@ -99,6 +99,9 @@ export default function App() {
 					setSelectedProject(res.data);
 					setSelectedOrgSlug(route.orgSlug);
 					setActiveTab(route.tab || "board");
+				} else {
+					setSelectedProject(null);
+					router.navigate("/");
 				}
 			}
 		} else {
@@ -112,14 +115,9 @@ export default function App() {
 	}, [loadPermissions]);
 
 	useEffect(() => {
-		return router.setOnRouteChange((path) => {
+		return router.setOnRouteChange(() => {
 			clearErrors();
-			const route = parseRoute(path);
-			if (!route.projectSlug) {
-				setSelectedProject(null);
-			} else if (route.tab) {
-				setActiveTab(route.tab);
-			}
+			loadPermissions();
 		});
 	}, []);
 

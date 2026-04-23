@@ -115,11 +115,11 @@ function normalizeHandler(handler: HttpHandler): FastifyHandler {
 export default class FastifyServerProvider extends BaseProvider implements IHostBasedHttpProvider {
 	public readonly name = "fastify-server";
 	public readonly type = ProviderType.HTTP_SERVER_PROVIDER;
-	private app: FastifyInstance<any>;
+	private readonly app: FastifyInstance<any>;
 	private isListening = false;
-	private registeredHosts = new Map<string, RegisteredHost>();
-	private globalRoutes: GlobalRoute[] = [];
-	private globalStaticPaths = new Map<string, string>();
+	private readonly registeredHosts = new Map<string, RegisteredHost>();
+	private readonly globalRoutes: GlobalRoute[] = [];
+	private readonly globalStaticPaths = new Map<string, string>();
 	private defaultHost: RegisteredHost | null = null;
 
 	constructor() {

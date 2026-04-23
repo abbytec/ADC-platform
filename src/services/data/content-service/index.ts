@@ -1,5 +1,5 @@
 import { BaseService } from "../../BaseService.js";
-import type { IMongoProvider } from "../../../providers/object/mongo/index.js";
+import type MongoProvider from "../../../providers/object/mongo/index.js";
 import { LearningPathSchema } from "./models/path.model.js";
 import { ArticleSchema } from "./models/article.model.js";
 import { CommentSchema } from "./models/comment.model.js";
@@ -14,14 +14,14 @@ import type { Comment, Rating } from "../../../common/ADC/types/community.js";
 
 export default class ContentService extends BaseService {
 	public readonly name = "content-service";
-	private mongoProvider!: IMongoProvider;
+	private mongoProvider!: MongoProvider;
 
 	@EnableEndpoints({ managers: () => [PathEndpoints, ArticleEndpoints, CommentEndpoints, RatingEndpoints] })
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
 		this.logger.logInfo("Iniciando servicio de contenido...");
 
-		this.mongoProvider = this.getMyProvider<IMongoProvider>("object/mongo");
+		this.mongoProvider = this.getMyProvider<MongoProvider>("object/mongo");
 
 		await this.waitForMongo();
 

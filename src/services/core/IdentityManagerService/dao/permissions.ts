@@ -215,9 +215,10 @@ export class PermissionManager {
 		if (orgId && orgMembership) {
 			for (const roleId of orgMembership.roleIds || []) {
 				const role = userRolesMap.get(roleId);
-				if (role && isMembershipRoleInContext(role)) {
+				if (!role) continue;
+				if (isMembershipRoleInContext(role)) userRolePerms.push(...role.permissions);
+				else if (!role.orgId && (role.name === SystemRole.SYSTEM || role.name === SystemRole.ADMIN))
 					userRolePerms.push(...role.permissions);
-				}
 			}
 		}
 

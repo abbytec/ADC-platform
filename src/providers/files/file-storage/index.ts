@@ -9,15 +9,13 @@ export default class FileStorageProvider extends BaseProvider implements IStorag
 	public readonly name = "file-storage-provider";
 	public readonly type = ProviderType.STORAGE_PROVIDER;
 
-	#basePath: string = "./temp/file-storage"; // Valor por defecto
+	readonly #basePath: string = "./temp/file-storage"; // Valor por defecto
 	#initialized: boolean = false;
 
 	constructor(config?: Record<string, any>) {
 		super();
 
-		if (config?.basePath) {
-			this.#basePath = config.basePath;
-		}
+		if (config?.basePath) this.#basePath = config.basePath;
 	}
 
 	#getKeyPath(key: string): string {
@@ -91,9 +89,8 @@ export default class FileStorageProvider extends BaseProvider implements IStorag
 			// Devolver solo los nombres de archivo sin la extensión .bin
 			return files.map((file) => path.basename(file, ".bin"));
 		} catch (err: any) {
-			if (err.code === "ENOENT") {
-				return []; // Si el directorio no existe, no hay archivos
-			}
+			if (err.code === "ENOENT") return []; // Si el directorio no existe, no hay archivos
+
 			this.logger.logError(`Error listing files in ${dirPath}: ${err}`);
 			throw err;
 		}

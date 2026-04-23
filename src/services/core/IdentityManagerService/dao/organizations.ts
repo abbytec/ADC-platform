@@ -104,6 +104,13 @@ export class OrgManager {
 		return org ? this.#toOrganization(org) : null;
 	}
 
+	// Resolución ligera `orgId|slug → { orgId, slug }` para construir URLs públicas.
+	async resolveOrganizationSlug(orgIdOrSlug: string, token?: string): Promise<{ orgId: string; slug: string } | null> {
+		if (this.#getAuthVerifier() !== null) await this.#permissionChecker.resolveUserId(token);
+		const org = await this.orgModel.findOne({ $or: [{ orgId: orgIdOrSlug }, { slug: orgIdOrSlug.toLowerCase() }] }, { orgId: 1, slug: 1 });
+		return org ? { orgId: org.orgId, slug: org.slug } : null;
+	}
+
 	/** Actualiza una organización */
 	async updateOrganization(orgId: string, updates: Partial<Organization>, token?: string): Promise<Organization> {
 		await this.#permissionChecker.requirePermission(token, CRUDXAction.UPDATE, IdentityScopes.ORGANIZATIONS);

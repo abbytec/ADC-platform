@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { BaseService } from "../../BaseService.js";
 import type IdentityManagerService from "../../core/IdentityManagerService/index.js";
 import type { IJWTProviderMultiKey } from "../../../providers/security/jwt/types.d.ts";
-import type { IRedisProvider } from "../../../providers/queue/redis/index.js";
+import type RedisProvider from "../../../providers/queue/redis/index.js";
 import type { AuthenticatedUser, OAuthProviderConfig, TokenVerificationResult } from "./types.js";
 export type { AuthenticatedUser, TokenVerificationResult } from "./types.js";
 
@@ -55,7 +55,7 @@ export default class SessionManagerService extends BaseService {
 	#identityService: IdentityManagerService | null = null;
 	#internalIdentity: ReturnType<IdentityManagerService["_internal"]> | null = null;
 	#jwtProvider: IJWTProviderMultiKey | null = null;
-	#redis: IRedisProvider | null = null;
+	#redis: RedisProvider | null = null;
 
 	// Componentes de dominio
 	#keyStore: KeyStore | null = null;
@@ -96,7 +96,7 @@ export default class SessionManagerService extends BaseService {
 
 		// Redis es opcional - funciona con fallback en memoria
 		try {
-			this.#redis = this.getMyProvider<IRedisProvider>("queue/redis");
+			this.#redis = this.getMyProvider<RedisProvider>("queue/redis");
 		} catch {
 			this.logger.logWarn("Redis no disponible, usando almacenamiento en memoria");
 		}

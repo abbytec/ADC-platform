@@ -126,6 +126,10 @@ export class ProjectManager {
 				break;
 			}
 			case "private": {
+				// Un proyecto privado nunca puede estar asociado a una organización.
+				if (requestedOrgId)
+					throw new ProjectManagerError(400, "INVALID_VISIBILITY", "Un proyecto privado no puede estar asociado a una organización");
+
 				await this.#enforcePrivateProjectLimit(callerId);
 				orgId = null;
 				break;
@@ -218,7 +222,9 @@ export class ProjectManager {
 		const orConditions: Record<string, unknown>[] = [];
 		// Lectura global: sólo proyectos públicos (no privados) de contexto global.
 		if (ctx.hasGlobalPMRead) orConditions.push({ orgId: null, visibility: { $ne: "private" } });
-		if (ctx.tokenOrgId) orConditions.push({ orgId: ctx.tokenOrgId });
+		// Dentro de una org: proyectos de la org (los privados por invariante no tienen orgId,
+		// el filtro es defensivo por si quedaran datos antiguos).
+		if (ctx.tokenOrgId) orConditions.push({ orgId: ctx.tokenOrgId, visibility: { $ne: "private" } });
 		// Membresía: el token debe estar en el mismo contexto org que el proyecto.
 		// Con token personal (tokenOrgId=null) sólo aplica a proyectos globales (orgId=null);
 		// con token de org aplica a proyectos globales o de esa org.

@@ -31,7 +31,7 @@ function initialForm(a?: Article | null): FormState {
 		videoUrl: a?.videoUrl || "",
 		description: a?.description || "",
 		listed: a?.listed === true,
-		blocksText: a?.blocks && a.blocks.length ? JSON.stringify(a.blocks, null, 2) : "",
+		blocksText: a?.blocks?.length ? JSON.stringify(a.blocks, null, 2) : "",
 		imageUrl: a?.image?.url || "",
 	};
 }

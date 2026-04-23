@@ -1,7 +1,7 @@
 import { type Model } from "mongoose";
 import { BaseService } from "../../BaseService.js";
-import type { IRedisProvider } from "../../../providers/queue/redis/index.ts";
-import type { IMongoProvider } from "../../../providers/object/mongo/index.ts";
+import type RedisProvider from "../../../providers/queue/redis/index.ts";
+import type MongoProvider from "../../../providers/object/mongo/index.ts";
 import { IdempotencyError } from "@common/types/custom-errors/IdempotencyError.ts";
 import { isSagaStep, type Step, type StepperDocument, type StepperResult } from "./types.js";
 import { stepperSchema } from "./domain/stepperSchema.js";
@@ -18,7 +18,7 @@ export default class OperationsService extends BaseService {
 	/** Per-operation circuit breaker - used by consumers only */
 	public readonly circuitBreaker: CircuitBreaker;
 
-	#redis: IRedisProvider | null = null;
+	#redis: RedisProvider | null = null;
 	#stepperModel: Model<StepperDocument> | null = null;
 
 	constructor(kernel?: any, options?: any) {
@@ -28,8 +28,8 @@ export default class OperationsService extends BaseService {
 
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
-		this.#redis = this.getMyProvider<IRedisProvider>("queue/redis");
-		const mongo = this.getMyProvider<IMongoProvider>("object/mongo");
+		this.#redis = this.getMyProvider<RedisProvider>("queue/redis");
+		const mongo = this.getMyProvider<MongoProvider>("object/mongo");
 		await mongo.connect();
 		this.#stepperModel = mongo.createModel<StepperDocument>("OperationStep", stepperSchema);
 		this.logger.logOk("OperationsService iniciado");

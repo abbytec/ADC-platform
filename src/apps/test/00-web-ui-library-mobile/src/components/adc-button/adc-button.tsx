@@ -12,10 +12,8 @@ export class AdcButton {
 
 	@Event() adcClick: EventEmitter<MouseEvent> | undefined;
 
-	private handleClick = (event: MouseEventHandler<HTMLButtonElement>) => {
-		if (!this.disabled) {
-			this.adcClick?.emit(event as unknown as MouseEvent);
-		}
+	private readonly handleClick = (event: MouseEventHandler<HTMLButtonElement>) => {
+		if (!this.disabled) this.adcClick?.emit(event as unknown as MouseEvent);
 	};
 
 	render() {
@@ -65,4 +63,3 @@ export class AdcButton {
 		);
 	}
 }
-

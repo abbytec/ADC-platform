@@ -1,4 +1,4 @@
-import type { IMongoProvider } from "../../../providers/object/mongo/index.js";
+import type MongoProvider from "../../../providers/object/mongo/index.js";
 import { BaseService } from "../../BaseService.js";
 import { projectSchema, sprintSchema, milestoneSchema, issueSchema } from "./domain/index.js";
 import { ProjectManager, SprintManager, MilestoneManager, IssueManager } from "./dao/index.js";
@@ -33,7 +33,7 @@ export default class ProjectManagerService extends BaseService {
 	#identity: IdentityManagerService | null = null;
 	#internalRoles: ReturnType<IdentityManagerService["_internal"]>["roles"] | null = null;
 
-	private mongoProvider!: IMongoProvider;
+	private mongoProvider!: MongoProvider;
 	readonly #kernelRef: Kernel;
 
 	constructor(kernel: Kernel, options?: any) {
@@ -49,7 +49,7 @@ export default class ProjectManagerService extends BaseService {
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
 
-		this.mongoProvider = this.getMyProvider<IMongoProvider>("object/mongo");
+		this.mongoProvider = this.getMyProvider<MongoProvider>("object/mongo");
 		await this.waitForMongo();
 
 		this.#identity = this.#kernelRef.registry.getService<IdentityManagerService>("IdentityManagerService");

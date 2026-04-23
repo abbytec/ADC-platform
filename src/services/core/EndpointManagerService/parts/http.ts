@@ -5,7 +5,7 @@ import { IdempotencyError } from "@common/types/custom-errors/IdempotencyError.t
 import type SessionManagerService from "../../../security/SessionManagerService/index.ts";
 import type OperationsService from "../../OperationsService/index.ts";
 import type RabbitMQProvider from "../../../../providers/queue/rabbitmq/index.ts";
-import type { IRedisProvider } from "../../../../providers/queue/redis/index.ts";
+import type RedisProvider from "../../../../providers/queue/redis/index.ts";
 import type { ILogger } from "../../../../interfaces/utils/ILogger.d.ts";
 import { createHash } from "node:crypto";
 
@@ -41,7 +41,7 @@ export function createHttpWrapper(
 	operationsService: OperationsService,
 	logger: ILogger,
 	rabbitmq: RabbitMQProvider | null = null,
-	redis: IRedisProvider | null = null
+	redis: RedisProvider | null = null
 ): (req: FastifyRequest<any>, reply: FastifyReply<any>) => Promise<void> {
 	const requiresIdempotency = MUTATIVE_METHODS.has(endpoint.method) && endpoint.options?.skipIdempotency !== true;
 	const shouldEnqueue = MUTATIVE_METHODS.has(endpoint.method) && endpoint.options?.enqueue === true && rabbitmq !== null;

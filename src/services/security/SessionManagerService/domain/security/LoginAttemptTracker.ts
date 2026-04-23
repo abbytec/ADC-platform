@@ -1,4 +1,4 @@
-import type { IRedisProvider } from "../../../../../providers/queue/redis/index.js";
+import type RedisProvider from "../../../../../providers/queue/redis/index.js";
 
 /** Prefijos de claves Redis */
 const REDIS_PREFIX = {
@@ -38,7 +38,7 @@ const NOT_BLOCKED: UserBlockStatus = { blocked: false, blockedUntil: null, perma
  * Sin Redis, funciona con almacenamiento en memoria.
  */
 export class LoginAttemptTracker {
-	#redis: IRedisProvider | null = null;
+	#redis: RedisProvider | null = null;
 	#updateBlockStatus: UpdateBlockStatusCallback | null = null;
 	#sendAlertEmail: SendAlertEmailCallback | null = null;
 
@@ -49,7 +49,7 @@ export class LoginAttemptTracker {
 	#temporarilyBlocked = new Set<string>();
 	#cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
-	constructor(redis?: IRedisProvider) {
+	constructor(redis?: RedisProvider) {
 		this.#redis = redis || null;
 
 		if (!this.#redis) {

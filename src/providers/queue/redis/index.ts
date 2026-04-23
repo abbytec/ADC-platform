@@ -4,7 +4,7 @@ import { BaseProvider, ProviderType } from "../../BaseProvider.js";
 /**
  * Configuración del RedisProvider
  */
-export interface RedisProviderConfig {
+interface RedisProviderConfig {
 	host?: string;
 	port?: number;
 	password?: string;
@@ -12,49 +12,42 @@ export interface RedisProviderConfig {
 	keyPrefix?: string;
 }
 
-/**
- * Interface del Redis Provider
- */
-export interface IRedisProvider {
-	/** Cliente Redis nativo de Bun */
-	readonly client: RedisClient;
-	// Operaciones básicas
-	get(key: string): Promise<string | null>;
-	set(key: string, value: string, ttlSeconds?: number): Promise<void>;
-	del(key: string): Promise<void>;
-	exists(key: string): Promise<boolean>;
-	// Operaciones con TTL
-	setex(key: string, ttlSeconds: number, value: string): Promise<void>;
-	ttl(key: string): Promise<number>;
-	expire(key: string, ttlSeconds: number): Promise<boolean>;
-	// Operaciones con hash
-	hget(key: string, field: string): Promise<string | null>;
-	hset(key: string, field: string, value: string): Promise<void>;
-	hdel(key: string, field: string): Promise<void>;
-	hgetall(key: string): Promise<Record<string, string>>;
-	// Operaciones con sets
-	sadd(key: string, ...members: string[]): Promise<number>;
-	srem(key: string, ...members: string[]): Promise<number>;
-	smembers(key: string): Promise<string[]>;
-	sismember(key: string, member: string): Promise<boolean>;
-	// Operaciones de incremento
-	incr(key: string): Promise<number>;
-	incrby(key: string, increment: number): Promise<number>;
-	// Operaciones de patrón
-	keys(pattern: string): Promise<string[]>;
-	scan(cursor: number, pattern: string, count?: number): Promise<[string, string[]]>;
+interface SharedRedisEntry {
+	client: RedisClient;
+	refCount: number;
+}
+
+// El kernel recarga este módulo con cache-busting (?v=timestamp) al crear cada
+// instancia, así que anclamos el pool compartido a globalThis para que dos
+// providers que apunten al mismo host+port+auth+db reutilicen el mismo socket.
+// El keyPrefix se mantiene por-instancia (es lógica de cliente, no de conexión).
+const GLOBAL_KEY = Symbol.for("adc.redis.sharedPools");
+const SHARED_POOLS: Map<string, SharedRedisEntry> = ((globalThis as any)[GLOBAL_KEY] ??= new Map<string, SharedRedisEntry>());
+
+function buildRedisUrl(cfg: RedisProviderConfig): { url: string; physicalKey: string } {
+	const { host, port, password, db } = cfg;
+	const auth = password ? `:${password}@` : "";
+	const dbSuffix = db ? `/${db}` : "";
+	const url = `redis://${auth}${host}:${port}${dbSuffix}`;
+	// La clave física es la misma URL; incluye credenciales por seguridad.
+	return { url, physicalKey: url };
 }
 
 /**
- * RedisProvider - Cliente Redis nativo para Bun
- * * Usa el cliente nativo de Bun (bun:redis).
+ * RedisProvider - Cliente Redis nativo para Bun.
+ *
+ * Pool físico COMPARTIDO entre instancias: dos providers con el mismo
+ * host+port+password+db reutilizan la misma conexión TCP. El `keyPrefix` sigue
+ * siendo por-instancia. Refcount cierra el socket sólo cuando la última
+ * instancia se detiene.
  */
-export default class RedisProvider extends BaseProvider implements IRedisProvider {
+export default class RedisProvider extends BaseProvider {
 	public readonly name = "redis";
 	public readonly type = ProviderType.QUEUE_PROVIDER;
 
 	#client: RedisClient | null = null;
-	#config: RedisProviderConfig;
+	#physicalKey: string | null = null;
+	readonly #config: RedisProviderConfig;
 
 	constructor(config?: RedisProviderConfig) {
 		super();
@@ -69,54 +62,78 @@ export default class RedisProvider extends BaseProvider implements IRedisProvide
 	}
 
 	get client(): RedisClient {
-		if (!this.#client) {
-			throw new Error("RedisProvider no está inicializado");
-		}
+		if (!this.#client) throw new Error("RedisProvider no está inicializado");
+
 		return this.#client;
+	}
+
+	async #acquire(physicalKey: string, url: string): Promise<RedisClient> {
+		let entry = SHARED_POOLS.get(physicalKey);
+
+		if (!entry) {
+			const client = new RedisClient(url, {});
+			client.onclose = (msg) => {
+				this.logger.logDebug(`${msg.message}`);
+			};
+			client.onconnect = () => {
+				this.logger.logDebug("Redis conectado");
+			};
+
+			try {
+				await client.ping();
+			} catch (err: any) {
+				this.logger.logError(`Error conectando a Redis: ${err.message}`);
+				try {
+					client.close();
+				} catch {
+					/* ignore */
+				}
+				throw err;
+			}
+
+			entry = { client, refCount: 0 };
+			SHARED_POOLS.set(physicalKey, entry);
+			this.logger.logOk(`RedisProvider pool abierto (${this.#config.host}:${this.#config.port})`);
+		}
+
+		entry.refCount++;
+		return entry.client;
+	}
+
+	async #release(physicalKey: string): Promise<void> {
+		const entry = SHARED_POOLS.get(physicalKey);
+		if (!entry) return;
+
+		entry.refCount--;
+		if (entry.refCount > 0) return;
+
+		try {
+			entry.client.close();
+		} catch (err: any) {
+			this.logger.logError(`Error cerrando cliente Redis: ${err.message}`);
+		} finally {
+			SHARED_POOLS.delete(physicalKey);
+			this.logger.logOk(`RedisProvider pool cerrado (${physicalKey})`);
+		}
 	}
 
 	async start(kernelKey: symbol): Promise<void> {
 		await super.start(kernelKey);
 
-		// Construcción de la URL de conexión para Bun RedisClient
-		const { host, port, password, db } = this.#config;
-		let url = `redis://${host}:${port}`;
-		if (password) {
-			url = `redis://:${password}@${host}:${port}`;
-		}
-		if (db) {
-			url += `/${db}`;
-		}
+		const { url, physicalKey } = buildRedisUrl(this.#config);
+		this.#physicalKey = physicalKey;
+		this.#client = await this.#acquire(physicalKey, url);
 
-		// Inicialización del cliente nativo
-		this.#client = new RedisClient(url, {
-			// Opciones adicionales si fueran necesarias
-		});
-
-		// Manejo de eventos (Bun RedisClient soporta una API similar a EventEmitter)
-		this.#client.onclose = (msg) => {
-			this.logger.logDebug(`${msg.message}`);
-		};
-
-		this.#client.onconnect = () => {
-			this.logger.logDebug("Redis conectado");
-		};
-
-		try {
-			await this.#client.ping();
-			this.logger.logOk(`RedisProvider iniciado (${this.#config.host}:${this.#config.port})`);
-		} catch (err: any) {
-			this.logger.logError(`Error conectando a Redis: ${err.message}`);
-			throw err;
-		}
+		this.logger.logOk(`RedisProvider iniciado (${this.#config.host}:${this.#config.port}, refCount compartido)`);
 	}
 
 	async stop(kernelKey: symbol): Promise<void> {
 		await super.stop(kernelKey);
-		if (this.#client) {
-			// El cliente nativo usa quit() o close()
-			this.#client.close();
+		if (this.#physicalKey) {
+			const key = this.#physicalKey;
+			this.#physicalKey = null;
 			this.#client = null;
+			await this.#release(key);
 		}
 	}
 
@@ -127,12 +144,10 @@ export default class RedisProvider extends BaseProvider implements IRedisProvide
 
 	async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
 		const finalKey = this._k(key);
-		if (ttlSeconds) {
+		if (ttlSeconds)
 			// Bun soporta argumentos estándar de Redis
 			await this.client.set(finalKey, value, "EX", ttlSeconds);
-		} else {
-			await this.client.set(finalKey, value);
-		}
+		else await this.client.set(finalKey, value);
 	}
 
 	async del(key: string): Promise<void> {

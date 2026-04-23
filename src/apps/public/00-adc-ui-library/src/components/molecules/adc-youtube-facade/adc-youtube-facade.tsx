@@ -35,9 +35,7 @@ export class AdcYoutubeFacade {
 		}
 
 		// Extraer de URLs de YouTube
-		const patterns = [
-			/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/,
-		];
+		const patterns = [/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/];
 		for (const pattern of patterns) {
 			const match = this.src.match(pattern);
 			if (match) return match[1];
@@ -49,14 +47,14 @@ export class AdcYoutubeFacade {
 	/**
 	 * Activa el iframe cuando el usuario hace click
 	 */
-	private activate = () => {
+	private readonly activate = () => {
 		this.activated = true;
 	};
 
 	/**
 	 * Maneja el evento de teclado para accesibilidad
 	 */
-	private handleKeyPress = (event: KeyboardEvent) => {
+	private readonly handleKeyPress = (event: KeyboardEvent) => {
 		if (event.key === "Enter" || event.key === " ") {
 			event.preventDefault();
 			this.activate();
@@ -67,12 +65,10 @@ export class AdcYoutubeFacade {
 		const id = this.videoId;
 
 		// Si no se pudo extraer el ID, no renderizar nada
-		if (!id) {
-			return null;
-		}
+		if (!id) return null;
 
-		if (this.activated) {
-			// Renderizar iframe cuando está activado
+		// Renderizar iframe cuando está activado
+		if (this.activated)
 			return (
 				<iframe
 					width="560"
@@ -85,7 +81,6 @@ export class AdcYoutubeFacade {
 					loading="lazy"
 				/>
 			);
-		}
 
 		// URL de la thumbnail de YouTube (calidad hqdefault para consistencia con temp-ui)
 		const thumbnailUrl = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;

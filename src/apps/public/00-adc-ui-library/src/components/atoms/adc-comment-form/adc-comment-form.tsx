@@ -14,12 +14,12 @@ export class AdcCommentForm {
 
 	@Event() adcSubmit!: EventEmitter<string>;
 
-	private handleInput = (ev: Event) => {
+	private readonly handleInput = (ev: Event) => {
 		const target = ev.target as HTMLTextAreaElement;
 		this.value = target.value.slice(0, MAX_LENGTH);
 	};
 
-	private handleSubmit = (ev: Event) => {
+	private readonly handleSubmit = (ev: Event) => {
 		ev.preventDefault();
 		const trimmed = this.value.trim();
 		if (!trimmed || this.submitting) return;

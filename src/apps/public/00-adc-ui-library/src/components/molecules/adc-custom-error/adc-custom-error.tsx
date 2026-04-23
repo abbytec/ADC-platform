@@ -37,9 +37,9 @@ export class AdcCustomError {
 
 	private parsedKeys: ErrorKeyConfig[] = [];
 	private errorIdCounter = 0;
-	private boundHandleError = this.handleError.bind(this);
+	private readonly boundHandleError = this.handleError.bind(this);
 	private boundHandleUnhandledRejection!: (e: PromiseRejectionEvent) => void;
-	private boundHandleClear = this.handleClear.bind(this);
+	private readonly boundHandleClear = this.handleClear.bind(this);
 
 	@Watch("keys")
 	parseKeys(newValue: string | undefined) {

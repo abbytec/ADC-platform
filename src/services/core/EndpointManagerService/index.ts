@@ -5,7 +5,7 @@ import { setPermissionValidator } from "./decorators.js";
 import SessionManagerService from "../../security/SessionManagerService/index.ts";
 import OperationsService from "../OperationsService/index.ts";
 import type RabbitMQProvider from "../../../providers/queue/rabbitmq/index.ts";
-import type { IRedisProvider } from "../../../providers/queue/redis/index.ts";
+import type RedisProvider from "../../../providers/queue/redis/index.ts";
 import { EndpointRegistry } from "./parts/EndpointRegistry.js";
 import { createPermissionValidator } from "./parts/validator.js";
 import { createHttpWrapper } from "./parts/http.js";
@@ -41,7 +41,7 @@ export default class EndpointManagerService extends BaseService {
 	// SessionManager se carga con lazy-load pattern en #getSessionManager()
 	#sessionManager: SessionManagerService | null = null;
 	#operationsService: OperationsService | null = null;
-	#registry = new EndpointRegistry(this.logger);
+	readonly #registry = new EndpointRegistry(this.logger);
 	#jobManager: JobManager | null = null;
 
 	static readonly JOB_TTL_SECONDS = JobManager.JOB_TTL_SECONDS;
@@ -52,7 +52,7 @@ export default class EndpointManagerService extends BaseService {
 		this.#operationsService = this.getMyService<OperationsService>("OperationsService");
 
 		const rabbitmq = this.getMyProvider<RabbitMQProvider>("queue/rabbitmq");
-		const redis = this.getMyProvider<IRedisProvider>("queue/redis");
+		const redis = this.getMyProvider<RedisProvider>("queue/redis");
 
 		this.#jobManager = new JobManager({
 			logger: this.logger,
@@ -116,7 +116,7 @@ export default class EndpointManagerService extends BaseService {
 			this.#operationsService!,
 			this.logger,
 			this.getMyProvider<RabbitMQProvider>("queue/rabbitmq"),
-			this.getMyProvider<IRedisProvider>("queue/redis")
+			this.getMyProvider<RedisProvider>("queue/redis")
 		);
 
 		// Registrar en Fastify

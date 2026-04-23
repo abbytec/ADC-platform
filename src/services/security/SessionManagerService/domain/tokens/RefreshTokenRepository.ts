@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { IRedisProvider } from "../../../../../providers/queue/redis/index.js";
+import type RedisProvider from "../../../../../providers/queue/redis/index.js";
 
 /** Prefijos de claves Redis */
 const REDIS_PREFIX = {
@@ -42,7 +42,7 @@ interface CreateRefreshTokenOptions {
  * Sin Redis, funciona con almacenamiento en memoria.
  */
 export class RefreshTokenRepository {
-	#redis: IRedisProvider | null = null;
+	#redis: RedisProvider | null = null;
 	#defaultTtl: number;
 
 	// Fallback en memoria
@@ -51,7 +51,7 @@ export class RefreshTokenRepository {
 	#deviceTokens = new Map<string, string>();
 	#cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
-	constructor(defaultTtlSeconds: number = 30 * 24 * 60 * 60, redis?: IRedisProvider) {
+	constructor(defaultTtlSeconds: number = 30 * 24 * 60 * 60, redis?: RedisProvider) {
 		this.#defaultTtl = defaultTtlSeconds;
 		this.#redis = redis || null;
 

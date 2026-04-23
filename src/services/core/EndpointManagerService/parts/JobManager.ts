@@ -3,7 +3,7 @@ import type { ILogger } from "../../../../interfaces/utils/ILogger.js";
 import type SessionManagerService from "../../../security/SessionManagerService/index.ts";
 import type OperationsService from "../../OperationsService/index.ts";
 import type RabbitMQProvider from "../../../../providers/queue/rabbitmq/index.ts";
-import type { IRedisProvider } from "../../../../providers/queue/redis/index.ts";
+import type RedisProvider from "../../../../providers/queue/redis/index.ts";
 import type { OperationMessage } from "../../../../providers/queue/rabbitmq/types.ts";
 import type { Consumer } from "rabbitmq-client";
 import { CircuitOpenError } from "@common/types/custom-errors/CircuitOpenError.ts";
@@ -28,7 +28,7 @@ interface JobManagerDeps {
 	getSessionManager: () => SessionManagerService | null;
 	operationsService: OperationsService;
 	rabbitmq: RabbitMQProvider | null;
-	redis: IRedisProvider | null;
+	redis: RedisProvider | null;
 	httpProvider: IHostBasedHttpProvider | null;
 }
 
@@ -40,7 +40,7 @@ export class JobManager {
 	readonly #getSessionManager: () => SessionManagerService | null;
 
 	#rabbitmq: RabbitMQProvider | null;
-	#redis: IRedisProvider | null;
+	#redis: RedisProvider | null;
 	readonly #consumers: Map<string, Consumer> = new Map();
 
 	constructor(deps: JobManagerDeps) {

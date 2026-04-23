@@ -18,7 +18,7 @@ export abstract class BaseService extends BaseModule implements IService {
 	/** Nombre único del service */
 	abstract readonly name: string;
 
-	#kernel: Kernel;
+	readonly #kernel: Kernel;
 
 	constructor(
 		kernel: Kernel,

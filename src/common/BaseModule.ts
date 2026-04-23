@@ -16,7 +16,7 @@ export abstract class BaseModule implements IModule {
 
 	protected readonly logger: ILogger = Logger.getLogger(this.constructor.name);
 	protected config: IModuleConfig;
-	#kernel: Kernel;
+	readonly #kernel: Kernel;
 
 	constructor(kernel: Kernel, config?: IModuleConfig) {
 		this.#kernel = kernel;

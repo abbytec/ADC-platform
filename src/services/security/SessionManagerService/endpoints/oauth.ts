@@ -4,7 +4,7 @@ import type { SessionManager } from "../domain/session/manager.js";
 import type { OAuthProviderRegistry } from "../domain/oauth/index.js";
 import type { DiscordOAuthProvider } from "../domain/oauth/discord.js";
 import type IdentityManagerService from "../../../core/IdentityManagerService/index.js";
-import type { IRedisProvider } from "../../../../providers/queue/redis/index.js";
+import type RedisProvider from "../../../../providers/queue/redis/index.js";
 import {
 	RegisterEndpoint,
 	UncommonResponse,
@@ -60,7 +60,7 @@ interface OAuthEndpointsDeps {
 	oauthRegistry: OAuthProviderRegistry;
 	identityService: IdentityManagerService | null;
 	internalIdentity: ReturnType<IdentityManagerService["_internal"]> | null;
-	redis: IRedisProvider | null;
+	redis: RedisProvider | null;
 	cookieDomain: string;
 	defaultRedirectUrl: string;
 	getProviderConfig: (provider: string) => OAuthProviderConfig | null;

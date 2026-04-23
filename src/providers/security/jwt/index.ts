@@ -17,7 +17,7 @@ export default class JWTProvider extends BaseProvider implements IJWTProviderMul
 	public readonly type = "security-token";
 
 	#secretKey: Uint8Array | null = null;
-	#config: JWTProviderConfig;
+	readonly #config: JWTProviderConfig;
 
 	constructor(options?: any) {
 		super();

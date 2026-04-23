@@ -5,7 +5,7 @@ Cliente Redis para caché, sesiones y colas usando ioredis.
 ## Uso
 
 ```typescript
-const redis = kernel.getProvider<IRedisProvider>("redis");
+const redis = kernel.getProvider<RedisProvider>("redis");
 await redis.set("key", "value", 3600); // TTL 1 hora
 const value = await redis.get("key");
 ```

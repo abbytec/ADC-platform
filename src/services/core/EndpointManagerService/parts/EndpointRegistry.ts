@@ -21,11 +21,9 @@ export class EndpointRegistry {
 	}
 
 	/** Endpoints registrados indexados por ID */
-	#endpoints: Map<string, RegisteredEndpoint> = new Map();
-
+	readonly #endpoints: Map<string, RegisteredEndpoint> = new Map();
 	/** Índice de endpoints por owner para cleanup rápido */
-	#endpointsByOwner: Map<string, Set<string>> = new Map();
-
+	readonly #endpointsByOwner: Map<string, Set<string>> = new Map();
 	/** Contador para generar IDs únicos */
 	#idCounter = 0;
 
@@ -51,9 +49,8 @@ export class EndpointRegistry {
 
 		this.#endpoints.set(id, endpoint);
 
-		if (!this.#endpointsByOwner.has(config.ownerName)) {
-			this.#endpointsByOwner.set(config.ownerName, new Set());
-		}
+		if (!this.#endpointsByOwner.has(config.ownerName)) this.#endpointsByOwner.set(config.ownerName, new Set());
+
 		this.#endpointsByOwner.get(config.ownerName)!.add(id);
 
 		return endpoint;
@@ -66,15 +63,11 @@ export class EndpointRegistry {
 	 */
 	public unregisterByOwner(ownerName: string): number {
 		const endpointIds = this.#endpointsByOwner.get(ownerName);
-		if (!endpointIds) {
-			return 0;
-		}
+		if (!endpointIds) return 0;
 
 		let count = 0;
 		for (const id of endpointIds) {
-			if (this.#endpoints.delete(id)) {
-				count++;
-			}
+			if (this.#endpoints.delete(id)) count++;
 		}
 
 		this.#endpointsByOwner.delete(ownerName);
@@ -121,11 +114,8 @@ export class EndpointRegistry {
 		}
 
 		for (const ep of this.#endpoints.values()) {
-			if (ep.permissions.length === 0) {
-				publicEndpoints++;
-			} else {
-				protectedEndpoints++;
-			}
+			if (ep.permissions.length === 0) publicEndpoints++;
+			else protectedEndpoints++;
 		}
 
 		return {

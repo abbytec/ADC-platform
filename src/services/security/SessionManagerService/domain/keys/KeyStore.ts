@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { IRedisProvider } from "../../../../../providers/queue/redis/index.js";
+import type RedisProvider from "../../../../../providers/queue/redis/index.js";
 
 /** Claves Redis para persistencia */
 const REDIS_KEYS = {
@@ -22,7 +22,7 @@ interface KeyStoreConfig {
 		previous?: string;
 	};
 	/** Redis provider para persistencia (opcional) */
-	redis?: IRedisProvider;
+	redis?: RedisProvider;
 }
 
 /**
@@ -57,7 +57,7 @@ export class KeyStore {
 	#keyLength: number;
 	#rotationTimer: ReturnType<typeof setInterval> | null = null;
 	#rotationCallbacks: KeyRotationCallback[] = [];
-	#redis: IRedisProvider | null = null;
+	#redis: RedisProvider | null = null;
 
 	constructor(config: KeyStoreConfig) {
 		this.#rotationInterval = config.rotationInterval;

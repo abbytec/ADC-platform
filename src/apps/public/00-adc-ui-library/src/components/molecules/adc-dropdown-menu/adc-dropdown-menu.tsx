@@ -61,11 +61,11 @@ export class AdcDropdownMenu {
 		}
 	}
 
-	private handleToggle = () => {
+	private readonly handleToggle = () => {
 		this.isOpen = !this.isOpen;
 	};
 
-	private handleItemClick = (item: DropdownMenuItem) => {
+	private readonly handleItemClick = (item: DropdownMenuItem) => {
 		this.adcItemClick.emit(item);
 		this.isOpen = false;
 	};
