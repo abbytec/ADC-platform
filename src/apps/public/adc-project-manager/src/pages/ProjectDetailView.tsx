@@ -64,7 +64,7 @@ export function ProjectDetailView({ project, orgSlug, perms, caller, activeTab, 
 		switch (activeTab) {
 			case "board":
 				return <BoardView project={currentProject} perms={perms} caller={caller} />;
-			case "issues":
+			case "backlog":
 				return <BacklogView project={currentProject} perms={perms} caller={caller} />;
 			case "calendar":
 				return <CalendarView project={currentProject} perms={perms} />;
@@ -82,10 +82,10 @@ export function ProjectDetailView({ project, orgSlug, perms, caller, activeTab, 
 	const breadcrumbItems = JSON.stringify([{ label: t("common.title"), href: "/" }, { label: currentProject.name }]);
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-6">
 			<adc-top-breadcrumb ref={breadcrumbRef} items={breadcrumbItems} back-label={t("common.back")} />
 			{visibleTabs.length > 1 && <adc-tabs ref={tabsRef} tabs={JSON.stringify(tabItems)} activeTab={activeTab} variant="underline" />}
-			<div className="mt-4">{renderTab()}</div>
+			<div className={activeTab === "settings" ? "" : "mt-4"}>{renderTab()}</div>
 		</div>
 	);
 }

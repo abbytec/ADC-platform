@@ -78,7 +78,7 @@ async function registerCircuitBreakerFailure(status?: number): Promise<boolean> 
 
 	circuitBreakerTriggeredSecond = currentSecond;
 	failingBurstCount = 0;
-	await forceLogoutAndRefresh();
+	if (!IS_DEV) await forceLogoutAndRefresh();
 	return true;
 }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import type { Permission } from "@common/types/identity/Permission.ts";
 import type { Project } from "@common/types/project-manager/Project.ts";
@@ -38,24 +38,25 @@ export function ProjectSettingsView({ project, perms, caller, onChanged }: Props
 		{ id: "wip", label: t("settings.wipTab"), enabled: canEditSettings },
 	];
 
+	const tabItems = tabs.map((x) => ({ id: x.id, label: x.label, disabled: !x.enabled }));
+
+	const tabsRef = useRef<HTMLElement>(null);
+	const handleTabChange = useCallback((tabId: string) => {
+		setTab(tabId as SettingsTab);
+	}, []);
+
+	useEffect(() => {
+		const el = tabsRef.current;
+		if (!el) return;
+		const handler = (e: Event) => handleTabChange((e as CustomEvent<string>).detail);
+		el.addEventListener("adcTabChange", handler);
+		return () => el.removeEventListener("adcTabChange", handler);
+	}, [handleTabChange]);
+
 	return (
-		<div className="space-y-4">
-			<div className="flex flex-wrap gap-1 border-b border-border">
-				{tabs.map((x) => (
-					<button
-						key={x.id}
-						type="button"
-						disabled={!x.enabled}
-						onClick={() => setTab(x.id)}
-						className={`px-3 py-1.5 text-sm rounded-t-md transition-colors ${
-							tab === x.id ? "bg-surface border border-b-transparent border-border text-text" : "text-muted hover:text-text"
-						} ${!x.enabled ? "opacity-40 cursor-not-allowed" : ""}`}
-					>
-						{x.label}
-					</button>
-				))}
-			</div>
-			<div className="pt-2">
+		<div className="space-y-6">
+			<adc-tabs ref={tabsRef} tabs={JSON.stringify(tabItems)} activeTab={tab} variant="underline" />
+			<div>
 				{tab === "general" && <GeneralSection project={project} canEdit={canEditProject} onSaved={onChanged} />}
 				{tab === "members" && <MembersSection project={project} canEdit={canEditProject} onSaved={onChanged} />}
 				{tab === "columns" && <ColumnsSection project={project} canEdit={canEditSettings} onSaved={onChanged} />}

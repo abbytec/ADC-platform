@@ -98,15 +98,6 @@ export function BacklogView({ project, perms, caller }: Props) {
 
 	return (
 		<div className="space-y-4">
-			<div className="flex items-center justify-between gap-3">
-				<h3 className="font-heading text-lg font-semibold text-text">{t("issues.backlog")}</h3>
-				{canWriteProjectResource(perms, Scope.ISSUES, project, caller) && (
-					<adc-button variant="primary" onClick={() => setCreating(true)}>
-						{t("issues.newIssue")}
-					</adc-button>
-				)}
-			</div>
-
 			<BacklogFilters
 				q={q}
 				onQChange={setQ}
@@ -114,6 +105,13 @@ export function BacklogView({ project, perms, caller }: Props) {
 				onOrderByChange={setOrderBy}
 				groupBy={groupBy}
 				onGroupByChange={updateGroupBy}
+				trailing={
+					canWriteProjectResource(perms, Scope.ISSUES, project, caller) ? (
+						<adc-button variant="primary" onClick={() => setCreating(true)}>
+							{t("issues.newIssue")}
+						</adc-button>
+					) : undefined
+				}
 			/>
 
 			{loading || !prefsLoaded ? (

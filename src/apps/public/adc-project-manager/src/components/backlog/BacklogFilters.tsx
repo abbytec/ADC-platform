@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import type { IssueListParams } from "../../utils/pm-api.ts";
 
@@ -10,9 +11,10 @@ interface Props {
 	onOrderByChange: (value: IssueListParams["orderBy"]) => void;
 	groupBy: GroupBy;
 	onGroupByChange: (value: GroupBy) => void;
+	trailing?: ReactNode;
 }
 
-export function BacklogFilters({ q, onQChange, orderBy, onOrderByChange, groupBy, onGroupByChange }: Props) {
+export function BacklogFilters({ q, onQChange, orderBy, onOrderByChange, groupBy, onGroupByChange, trailing }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 	return (
 		<div className="flex gap-3 items-end flex-wrap">
@@ -46,6 +48,7 @@ export function BacklogFilters({ q, onQChange, orderBy, onOrderByChange, groupBy
 					onadcChange={(e: any) => onGroupByChange(e.detail as GroupBy)}
 				/>
 			</div>
+			{trailing && <div className="ml-auto">{trailing}</div>}
 		</div>
 	);
 }

@@ -61,7 +61,7 @@ export default {
 	tabs: {
 		projects: "Projects",
 		board: "Board",
-		issues: "Issues",
+		backlog: "Backlog",
 		calendar: "Calendar",
 		sprints: "Sprints",
 		milestones: "Milestones",

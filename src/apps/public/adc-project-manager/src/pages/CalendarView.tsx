@@ -48,10 +48,6 @@ export function CalendarView({ project, perms }: Props) {
 
 	return (
 		<div className="space-y-4">
-			<div className="flex items-center justify-between gap-3">
-				<h3 className="font-heading text-lg font-semibold text-text">{t("calendar.title")}</h3>
-			</div>
-
 			<div className="flex flex-wrap items-end gap-3">
 				<div>
 					<label className="block text-xs font-medium mb-1 text-muted">{t("calendar.rangeType")}</label>

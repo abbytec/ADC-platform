@@ -76,16 +76,21 @@ export function BoardView({ project, perms, caller }: Props) {
 
 	return (
 		<div className="space-y-4">
-			<div className="flex items-center justify-between gap-3">
-				<h3 className="font-heading text-lg font-semibold text-text">{t("board.title")}</h3>
-				{canWriteProjectResource(perms, Scope.ISSUES, project, caller) && (
-					<adc-button variant="primary" onClick={() => setCreating(true)}>
-						{t("issues.newIssue")}
-					</adc-button>
-				)}
-			</div>
-
-			<BoardFilters q={q} onQChange={setQ} filters={filters} onFiltersChange={setFilters} sprints={sprints} milestones={milestones} />
+			<BoardFilters
+				q={q}
+				onQChange={setQ}
+				filters={filters}
+				onFiltersChange={setFilters}
+				sprints={sprints}
+				milestones={milestones}
+				trailing={
+					canWriteProjectResource(perms, Scope.ISSUES, project, caller) ? (
+						<adc-button variant="primary" onClick={() => setCreating(true)}>
+							{t("issues.newIssue")}
+						</adc-button>
+					) : undefined
+				}
+			/>
 
 			{loading ? (
 				<adc-skeleton variant="rectangular" height="400px" />

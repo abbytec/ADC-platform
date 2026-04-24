@@ -20,7 +20,7 @@ import { getSession } from "@ui-library/utils/session";
  *   /:orgSlug/:projectSlug/:tab            → Issues | Sprints | Milestones
  *   orgSlug === "default" ⇒ proyecto global
  */
-const VALID_TABS = new Set(["board", "issues", "calendar", "sprints", "milestones", "settings"]);
+const VALID_TABS = new Set(["board", "backlog", "calendar", "sprints", "milestones", "settings"]);
 
 function parseRoute(path: string): { orgSlug?: string; projectSlug?: string; tab?: string } {
 	const parts = path.replace(/^\/+/, "").split("/").filter(Boolean);
@@ -43,7 +43,7 @@ export default function App() {
 	const [ownOrgSlug, setOwnOrgSlug] = useState<string>("default");
 	const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 	const [selectedOrgSlug, setSelectedOrgSlug] = useState<string>("default");
-	const [activeTab, setActiveTab] = useState("issues");
+	const [activeTab, setActiveTab] = useState("board");
 
 	// Cache de orgId → orgSlug para no repetir lookups.
 	const orgSlugCache = useRef<Map<string, string>>(new Map());
@@ -143,8 +143,8 @@ export default function App() {
 		if (!ready || loading) {
 			return (
 				<div key="pm-loading" className="mx-auto px-4 py-8">
-					<div className="bg-surface-alt animate-pulse rounded mb-6" style={{ height: "48px" }} />
-					<div className="bg-surface-alt animate-pulse rounded" style={{ height: "400px" }} />
+					<adc-skeleton variant="rectangular" height="48px" class="mb-6" />
+					<adc-skeleton variant="rectangular" height="400px" />
 				</div>
 			);
 		}

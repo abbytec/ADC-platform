@@ -76,14 +76,13 @@ export function SprintsView({ project, perms, caller }: Props) {
 
 	return (
 		<div className="space-y-4">
-			<div className="flex justify-between items-center">
-				<h3 className="font-heading text-lg font-semibold text-text">{t("sprints.title")}</h3>
-				{canWriteProjectResource(perms, Scope.SPRINTS, project, caller) && (
+			{canWriteProjectResource(perms, Scope.SPRINTS, project, caller) && (
+				<div className="flex justify-end">
 					<adc-button variant="primary" onClick={() => setShowCreate(true)}>
 						{t("common.add")}
 					</adc-button>
-				)}
-			</div>
+				</div>
+			)}
 
 			{sprints.length === 0 ? (
 				<p className="text-muted text-center py-8">{t("common.noData")}</p>

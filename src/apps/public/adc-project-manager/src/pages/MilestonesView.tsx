@@ -66,14 +66,13 @@ export function MilestonesView({ project, perms, caller }: Props) {
 
 	return (
 		<div className="space-y-4">
-			<div className="flex justify-between items-center">
-				<h3 className="font-heading text-lg font-semibold text-text">{t("milestones.title")}</h3>
-				{canWriteProjectResource(perms, Scope.MILESTONES, project, caller) && (
+			{canWriteProjectResource(perms, Scope.MILESTONES, project, caller) && (
+				<div className="flex justify-end">
 					<adc-button variant="primary" onClick={() => setShowCreate(true)}>
 						{t("common.add")}
 					</adc-button>
-				)}
-			</div>
+				</div>
+			)}
 
 			{milestones.length === 0 ? (
 				<p className="text-muted text-center py-8">{t("common.noData")}</p>

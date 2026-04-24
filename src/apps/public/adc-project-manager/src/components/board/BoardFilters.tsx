@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import type { Sprint } from "@common/types/project-manager/Sprint.ts";
 import type { Milestone } from "@common/types/project-manager/Milestone.ts";
@@ -15,9 +16,10 @@ interface Props {
 	onFiltersChange: (v: BoardFilterState) => void;
 	sprints: Sprint[];
 	milestones: Milestone[];
+	trailing?: ReactNode;
 }
 
-export function BoardFilters({ q, onQChange, filters, onFiltersChange, sprints, milestones }: Props) {
+export function BoardFilters({ q, onQChange, filters, onFiltersChange, sprints, milestones, trailing }: Props) {
 	const { t } = useTranslation({ namespace: "adc-project-manager" });
 
 	const sprintOptions = JSON.stringify([
@@ -53,6 +55,7 @@ export function BoardFilters({ q, onQChange, filters, onFiltersChange, sprints, 
 					onadcChange={(e: any) => onFiltersChange({ ...filters, milestoneId: e.detail || undefined })}
 				/>
 			</div>
+			{trailing && <div className="ml-auto">{trailing}</div>}
 		</div>
 	);
 }
