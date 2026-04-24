@@ -7,6 +7,12 @@ const api = createAdcApi({
 	credentials: process.env.NODE_ENV === "development" ? "include" : "same-origin",
 });
 
+const authApi = createAdcApi({
+	basePath: "/api/auth",
+	devPort: 3000,
+	credentials: process.env.NODE_ENV === "development" ? "include" : "same-origin",
+});
+
 export interface UserProfileMetadata {
 	name?: string;
 	lastName?: string;
@@ -63,4 +69,6 @@ export const accountApi = {
 			idempotencyKey: crypto.randomUUID(),
 		});
 	},
+
+	logout: () => authApi.post("/logout", { silent: true }),
 };

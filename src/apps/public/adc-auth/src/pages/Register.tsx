@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { authApi } from "../utils/auth.ts";
+import { authApi } from "../utils/auth-api.ts";
+import { identityApi } from "../utils/identity-api.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { showError } from "@ui-library/utils/error-handler";
 import { getBaseUrl } from "@common/utils/url-utils.js";
+import { sanitizeReturnUrl } from "../utils/safe-url.ts";
+
+/** Pattern de username válido: alfanumérico + _ . - entre 3 y 32 caracteres. */
+const USERNAME_PATTERN = /^[a-zA-Z0-9._-]{3,32}$/;
 
 /** Errores específicos de formulario registro (se muestran inline como callout) */
 const REGISTER_SPECIFIC_ERROR_KEYS = [
@@ -39,24 +44,21 @@ export function Register({ onNavigateToLogin, returnUrl }: RegisterProps) {
 	const checkUsername = async (username: string) => {
 		controllerRef.current?.abort(); // cancelar request anterior
 
+		// Validación estricta inline antes de consultar disponibilidad.
+		if (!USERNAME_PATTERN.test(username)) {
+			setUsernameStatus("idle");
+			return;
+		}
+
 		const controller = new AbortController();
 		controllerRef.current = controller;
 
 		try {
 			setUsernameStatus("checking");
-
-			const res = await fetch(`${API_BASE}/api/identity/users/username/${encodeURIComponent(username)}`, {
-				method: "HEAD",
-				signal: controller.signal,
-			});
-
-			if (res.status === 200) {
-				setUsernameStatus("unavailable");
-			} else if (res.status === 404) {
-				setUsernameStatus("available");
-			} else {
-				setUsernameStatus("idle");
-			}
+			const res = await identityApi.checkUsernameExists(username, controller.signal);
+			if (res.status === 200) setUsernameStatus("unavailable");
+			else if (res.status === 404) setUsernameStatus("available");
+			else setUsernameStatus("idle");
 		} catch (err: any) {
 			if (err?.name !== "AbortError") {
 				setUsernameStatus("idle");
@@ -78,9 +80,9 @@ export function Register({ onNavigateToLogin, returnUrl }: RegisterProps) {
 	}, [username]);
 
 	/**
-	 * Construye la URL de redirección tras registro exitoso
+	 * Construye la URL de redirección tras registro exitoso (sanitizada inline).
 	 */
-	const getRedirectUrl = (): string => returnUrl;
+	const getRedirectUrl = (): string => sanitizeReturnUrl(returnUrl);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -102,6 +104,7 @@ export function Register({ onNavigateToLogin, returnUrl }: RegisterProps) {
 		const result = await authApi.register(username, email, password);
 
 		if (result.success && globalThis.location) {
+			// Sink de redirección: destino re-sanitizado inline.
 			globalThis.location.href = getRedirectUrl();
 		}
 
@@ -109,11 +112,11 @@ export function Register({ onNavigateToLogin, returnUrl }: RegisterProps) {
 	};
 
 	/**
-	 * Construye URL de OAuth preservando returnUrl para el callback
+	 * Construye URL de OAuth preservando returnUrl sanitizado.
+	 * `provider` es un literal pasado desde el JSX, no es input del usuario.
 	 */
 	const getOAuthUrl = (provider: string): string => {
-		const base = `${API_BASE}/api/auth/login/${provider}`;
-		return `${base}?returnUrl=${encodeURIComponent(returnUrl)}`;
+		return `${API_BASE}/api/auth/login/${provider}?returnUrl=${encodeURIComponent(sanitizeReturnUrl(returnUrl))}`;
 	};
 	// Skeleton mientras cargan las traducciones
 	if (!ready) {

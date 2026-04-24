@@ -3,49 +3,13 @@ import { useState, useEffect } from "react";
 import { Login } from "./pages/Login.tsx";
 import { Register } from "./pages/Register.tsx";
 import { AuthLayout } from "./components/AuthLayout.tsx";
-import { getUrl } from "@common/utils/url-utils.js";
+import { DEFAULT_RETURN_URL, sanitizeReturnUrl } from "./utils/safe-url.ts";
 
 type Page = "login" | "register";
 
-/** URL base del sitio principal según entorno */
-const DEFAULT_RETURN_URL = getUrl(3011, "community.adigitalcafe.com");
-
-/** Allowed hostnames for returnUrl redirection (same-origin + trusted subdomains) */
-const ALLOWED_HOSTS = new Set([globalThis.location?.hostname, "adigitalcafe.com"]);
-
-/** Validates that a returnUrl is safe (relative path or allowed origin) to prevent open redirect */
-function sanitizeReturnUrl(raw: string): string {
-	// Relative paths are always safe
-	if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
-
-	try {
-		const parsed = new URL(raw, globalThis.location?.origin);
-		const host = parsed.hostname;
-		if (ALLOWED_HOSTS.has(host) || host.endsWith(".adigitalcafe.com")) {
-			return parsed.href;
-		}
-	} catch {
-		// Invalid URL — fall through to default
-	}
-
-	return DEFAULT_RETURN_URL;
-}
-
 function getReturnUrl(): string {
 	const params = new URLSearchParams(globalThis.location?.search);
-	const raw = params.get("returnUrl");
-	return raw ? sanitizeReturnUrl(raw) : DEFAULT_RETURN_URL;
-}
-
-/**
- * Construye una URL preservando el returnUrl
- */
-function buildUrl(path: string, returnUrl: string): string {
-	const url = new URL(path, globalThis.location?.origin);
-	if (returnUrl && returnUrl !== DEFAULT_RETURN_URL) {
-		url.searchParams.set("returnUrl", returnUrl);
-	}
-	return url.pathname + url.search;
+	return sanitizeReturnUrl(params.get("returnUrl"));
 }
 
 export default function App() {
@@ -55,16 +19,10 @@ export default function App() {
 	useEffect(() => {
 		const path = globalThis.location?.pathname;
 		setReturnUrl(getReturnUrl());
-
-		if (path === "/register") {
-			setPage("register");
-		} else {
-			setPage("login");
-		}
+		setPage(path === "/register" ? "register" : "login");
 
 		const handlePopState = () => {
-			const newPath = globalThis.location?.pathname;
-			setPage(newPath === "/register" ? "register" : "login");
+			setPage(globalThis.location?.pathname === "/register" ? "register" : "login");
 			setReturnUrl(getReturnUrl());
 		};
 
@@ -72,9 +30,10 @@ export default function App() {
 		return () => globalThis.removeEventListener("popstate", handlePopState);
 	}, []);
 
+	// `to` es un literal del tipo `Page`, no viene de input → no es taint.
 	const navigate = (to: Page) => {
-		const newUrl = buildUrl(to === "register" ? "/register" : "/login", returnUrl);
-		globalThis.history.pushState({}, "", newUrl);
+		const search = returnUrl && returnUrl !== DEFAULT_RETURN_URL ? `?returnUrl=${encodeURIComponent(returnUrl)}` : "";
+		globalThis.history.pushState({}, "", `/${to}${search}`);
 		setPage(to);
 	};
 

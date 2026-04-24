@@ -19,6 +19,8 @@ export interface AdcFetchResult<T = undefined> {
 	success: boolean;
 	data?: T;
 	errorKey?: string;
+	/** HTTP status code (undefined on network errors) */
+	status?: number;
 }
 
 export interface AdcApiConfig {
@@ -36,7 +38,7 @@ export interface AdcApiConfig {
 	headers?: HeadersInit;
 }
 
-export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD";
 
 const MUTATIVE_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const CIRCUIT_BREAKER_THRESHOLD = 5;
@@ -101,6 +103,8 @@ export interface RequestOptions<TData = Record<string, unknown>> {
 	 */
 	idempotencyData?: unknown;
 	silent?: boolean; // If true, suppresses error toasts
+	/** AbortSignal to cancel the request */
+	signal?: AbortSignal;
 }
 
 /**
@@ -171,7 +175,7 @@ export function createAdcApi(config: AdcApiConfig) {
 		path: string,
 		options: RequestOptions<TData> = {}
 	): Promise<AdcFetchResult<T>> {
-		const { params, body, headers, translateParams, idempotencyKey, idempotencyData } = options;
+		const { params, body, headers, translateParams, idempotencyKey, idempotencyData, signal } = options;
 		const resolvedIdempotencyKey = idempotencyData !== undefined ? hashIdempotency(idempotencyData) : idempotencyKey;
 
 		const url = `${baseUrl}${path}${buildQueryString(params)}`;
@@ -186,6 +190,7 @@ export function createAdcApi(config: AdcApiConfig) {
 				...headers,
 			},
 			...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+			...(signal ? { signal } : {}),
 		};
 
 		try {
@@ -195,8 +200,16 @@ export function createAdcApi(config: AdcApiConfig) {
 				await parseErrorResponse(response);
 			}
 
+			// HEAD has no body; other non-OK silent responses are returned as success:false with status.
+			if (method === "HEAD") {
+				return { success: response.ok, status: response.status };
+			}
+			if (!response.ok) {
+				return { success: false, status: response.status };
+			}
+
 			const data = (await response.json()) as T;
-			return { success: true, data };
+			return { success: true, data, status: response.status };
 		} catch (err) {
 			// Detect network-level errors (connection refused, offline, etc.)
 
@@ -221,7 +234,7 @@ export function createAdcApi(config: AdcApiConfig) {
 			}
 
 			// Dispatch error to adc-custom-error components
-			if (!options.silent)
+			if (!(options.silent || method === "HEAD"))
 				showError({
 					errorKey,
 					message: (err as Error)?.message || "",
@@ -243,6 +256,8 @@ export function createAdcApi(config: AdcApiConfig) {
 		patch: <T, TData = Record<string, unknown>>(path: string, options?: RequestOptions<TData>) => request<T, TData>("PATCH", path, options),
 		delete: <T, TData = Record<string, unknown>>(path: string, options?: RequestOptions<TData>) =>
 			request<T, TData>("DELETE", path, options),
+		head: <TData = Record<string, unknown>>(path: string, options?: RequestOptions<TData>) =>
+			request<undefined, TData>("HEAD", path, options),
 		/** Raw request with full control */
 		request,
 		/** The resolved base URL */

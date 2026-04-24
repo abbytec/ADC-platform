@@ -9,12 +9,8 @@ export default function AdminView() {
 	const [deleting, setDeleting] = useState(false);
 
 	const handleLogout = async () => {
-		try {
-			await fetch("/api/auth/logout", {
-				method: "POST",
-				credentials: "include",
-			});
-		} catch {
+		const res = await accountApi.logout();
+		if (!res.success) {
 			toast.warning("Error cerrando sesión, redirigiendo igual...");
 		}
 

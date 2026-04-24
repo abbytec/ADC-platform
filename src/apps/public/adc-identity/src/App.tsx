@@ -56,14 +56,12 @@ export default function App() {
 			setVisibleTabs(tabs);
 
 			if (tabs.length > 0) {
-				// Resolve initial tab from URL path, fallback to first tab
+				// Resolve initial tab from URL path, fallback to first tab (allow-list inline).
 				const pathTab = getTabFromPath(router.getCurrentPath());
-				const matchedTab = tabs.find((tab) => tab.id === pathTab);
-				const initialTab = matchedTab ? matchedTab.id : tabs[0].id;
+				const initialTab = tabs.some((tab) => tab.id === pathTab) ? pathTab : tabs[0].id;
 				setActiveTab(initialTab);
 
-				// Sync URL if it doesn't match the resolved tab
-				if (!matchedTab) {
+				if (initialTab !== pathTab) {
 					router.navigate("/" + initialTab);
 				}
 			} else {
@@ -89,11 +87,16 @@ export default function App() {
 		}
 	}, [isAdmin, tokenOrgId]);
 
-	const handleTabChange = useCallback((tabId: string) => {
-		setActiveTab(tabId);
-		clearErrors();
-		router.navigate("/" + tabId);
-	}, []);
+	const handleTabChange = useCallback(
+		(tabId: string) => {
+			// Allow-list inline: solo navegamos si el tab está en `visibleTabs`.
+			if (!visibleTabs.some((tab) => tab.id === tabId)) return;
+			setActiveTab(tabId);
+			clearErrors();
+			router.navigate("/" + tabId);
+		},
+		[visibleTabs]
+	);
 
 	const handleOrgFilterChange = useCallback((value: string) => {
 		setSelectedOrgFilter(value || undefined);

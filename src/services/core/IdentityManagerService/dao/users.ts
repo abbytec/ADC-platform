@@ -110,6 +110,17 @@ export class UserManager {
 		}
 	}
 
+	/* Check if an username is already in use. No Permisson required */
+	async existUserByName(username: string): Promise<boolean> {
+		try {
+			const doc = await this.userModel.findOne({ username });
+			return !!doc;
+		} catch (error) {
+			this.logger.logError(`Error obteniendo usuario por username: ${error}`);
+			return false;
+		}
+	}
+
 	/**
 	 * Obtiene un usuario por email
 	 * @param token Token de autenticación (requerido para verificar permisos)

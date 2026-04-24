@@ -10,8 +10,10 @@ import { FormModalFooter } from "../components/FormModalFooter.tsx";
 import { RolePicker } from "../components/RolePicker.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { RowActions } from "../components/RowActions.tsx";
-import { getBaseUrl } from "@common/utils/url-utils.js";
 import { ClientUser } from "@common/types/identity/User.ts";
+
+/** Pattern de username válido: alfanumérico + _ . - entre 3 y 32 caracteres. */
+const USERNAME_PATTERN = /^[a-zA-Z0-9._-]{3,32}$/;
 
 interface UsersViewProps {
 	readonly perms: Permission[];
@@ -44,7 +46,6 @@ export function UsersView({ perms, orgId, isAdmin, isScopedOrgView = false, orga
 	const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
 
 	const controllerRef = useRef<AbortController | null>(null);
-	const API_BASE = getBaseUrl(3000);
 
 	const writable = canWrite(perms, Scope.USERS);
 	const updatable = canUpdate(perms, Scope.USERS);
@@ -60,18 +61,17 @@ export function UsersView({ perms, orgId, isAdmin, isScopedOrgView = false, orga
 
 	const checkUsername = async (username: string) => {
 		controllerRef.current?.abort();
+		if (!USERNAME_PATTERN.test(username)) {
+			setUsernameStatus("idle");
+			return;
+		}
 
 		const controller = new AbortController();
 		controllerRef.current = controller;
 
 		try {
 			setUsernameStatus("checking");
-
-			const res = await fetch(`${API_BASE}/api/identity/users/username/${encodeURIComponent(username)}`, {
-				method: "HEAD",
-				signal: controller.signal,
-			});
-
+			const res = await identityApi.checkUsernameExists(username, controller.signal);
 			if (res.status === 200) {
 				// Usuario existe
 				setUsernameStatus(editingUser?.username === username ? "available" : "unavailable");

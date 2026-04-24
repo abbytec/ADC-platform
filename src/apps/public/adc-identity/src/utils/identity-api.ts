@@ -23,6 +23,9 @@ export const identityApi = {
 	listUsers: (orgId?: string) => api.get<{ users: ClientUser[]; roles: Role[] }>("/users", orgId ? { params: { orgId } } : undefined),
 	searchUsers: (q: string, orgId?: string) => api.get<ClientUser[]>("/users/search", { params: { q, orgId } }),
 	getUser: (userId: string) => api.get<ClientUser>(`/users/${userId}`),
+	/** HEAD /users/username/:username → 200 si el username ya está tomado, 404 si está libre. */
+	checkUsernameExists: (username: string, signal?: AbortSignal) =>
+		api.head(`/users/username/${encodeURIComponent(username)}`, { signal, silent: true }),
 	createUser: (data: { username: string; password: string; roleIds?: string[]; orgId?: string }) =>
 		api.post<ClientUser>("/users", { body: data, idempotencyData: data }),
 	updateUser: (userId: string, data: Partial<ClientUser>, orgId?: string) =>

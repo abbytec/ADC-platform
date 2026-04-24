@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from "react";
-import { authApi, type BlockedErrorData, type OrgOption } from "../utils/auth.ts";
+import { authApi, type BlockedErrorData, type OrgOption } from "../utils/auth-api.ts";
 import { useTranslation } from "@ui-library/utils/i18n-react";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { getBaseUrl } from "@common/utils/url-utils.js";
+import { sanitizeReturnUrl } from "../utils/safe-url.ts";
 
 /** Base URL for API calls */
 const API_BASE = getBaseUrl(3000);
@@ -77,7 +78,7 @@ export function Login({ onNavigateToRegister, returnUrl }: LoginProps) {
 			}
 
 			if (globalThis.location) {
-				globalThis.location.href = returnUrl;
+				globalThis.location.href = sanitizeReturnUrl(returnUrl);
 			}
 		}
 
@@ -103,7 +104,7 @@ export function Login({ onNavigateToRegister, returnUrl }: LoginProps) {
 		);
 
 		if (result.success && result.data && !result.data.requiresOrgSelection && globalThis.location) {
-			globalThis.location.href = returnUrl;
+			globalThis.location.href = sanitizeReturnUrl(returnUrl);
 		}
 
 		setLoading(false);
@@ -111,11 +112,11 @@ export function Login({ onNavigateToRegister, returnUrl }: LoginProps) {
 	};
 
 	/**
-	 * Construye URL de OAuth preservando returnUrl para el callback
+	 * Construye URL de OAuth preservando returnUrl sanitizado.
+	 * `provider` es un literal pasado desde el JSX, no es input del usuario.
 	 */
 	const getOAuthUrl = (provider: string): string => {
-		const base = `${API_BASE}/api/auth/login/${provider}`;
-		return `${base}?returnUrl=${encodeURIComponent(returnUrl)}`;
+		return `${API_BASE}/api/auth/login/${provider}?returnUrl=${encodeURIComponent(sanitizeReturnUrl(returnUrl))}`;
 	};
 
 	// Skeleton mientras cargan las traducciones

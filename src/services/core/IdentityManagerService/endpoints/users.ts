@@ -175,9 +175,9 @@ export class UserEndpoints {
 	static async checkUsername(ctx: EndpointCtx<{ username: string }>) {
 		const { username } = ctx.params;
 
-		const user = await UserEndpoints.#identity.users.getUserByUsername(username);
+		const exists = await UserEndpoints.#identity.users.existUserByName(username);
 
-		if (!user) {
+		if (!exists) {
 			throw new IdentityError(404, "USER_NOT_FOUND", "Usuario no encontrado");
 		}
 
