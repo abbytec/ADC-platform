@@ -101,18 +101,13 @@ export function ArticleForm({ article }: Props) {
 			</label>
 			<label className="flex flex-col gap-1">
 				<span>Path asociado</span>
-				<select
+				<adc-combobox
+					class="[&_input]:rounded-xxl [&_input]:border-0 [&_input]:focus:ring-0"
 					value={form.pathSlug}
-					onChange={(e) => update("pathSlug", e.target.value)}
-					className="p-2 rounded-xxl border border-alt bg-surface"
-				>
-					<option value="">Ninguno</option>
-					{paths.map((p) => (
-						<option key={p.slug} value={p.slug}>
-							{p.title}
-						</option>
-					))}
-				</select>
+					placeholder="Ninguno"
+					options={JSON.stringify(paths.map((p) => ({ label: p.title, value: p.slug })))}
+					onadcChange={(e: any) => update("pathSlug", (e.detail ?? "") as string)}
+				/>
 			</label>
 			{form.pathSlug && (
 				<label className="flex flex-col gap-1">
