@@ -9,6 +9,7 @@ import type { Project } from "@common/types/project-manager/Project.ts";
 import { canAccessProjects } from "./utils/permissions.ts";
 import { ProjectListView } from "./pages/ProjectListView.tsx";
 import { ProjectDetailView } from "./pages/ProjectDetailView.tsx";
+import { LandingView } from "./pages/LandingView.tsx";
 import { clearErrors } from "@ui-library/utils/adc-fetch";
 import { getSession } from "@ui-library/utils/session";
 
@@ -148,12 +149,7 @@ export default function App() {
 	}
 
 	if (unauthorized) {
-		return (
-			<div className="max-w-6xl mx-auto px-4 py-16 text-center">
-				<h1 className="font-heading text-2xl font-bold text-text mb-4">{t("common.unauthorized")}</h1>
-				<p className="text-muted">{t("common.noPermissions")}</p>
-			</div>
-		);
+		return <LandingView />;
 	}
 
 	return (

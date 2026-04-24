@@ -1,4 +1,37 @@
 export default {
+	landing: {
+		heroTitle: "Tu gestor de proyectos, ágil y ordenado",
+		heroSubtitle:
+			"Organizá equipos, sprints y entregas en un solo lugar. Pensado para trabajar con claridad, sin planillas ni hilos sueltos.",
+		slogan: "Del caos de tareas al flujo que disfrutás.",
+		heroAria: "Introducción al gestor de proyectos",
+		featuresAria: "Qué podés hacer",
+		howAria: "Cómo empezar",
+		howTitle: "Cómo empezar",
+		signInHint: "Iniciá sesión desde el menú superior para acceder a tus proyectos.",
+		features: {
+			projects: {
+				title: "Proyectos a tu medida",
+				description:
+					"Creá espacios privados, compartidos con tu organización o públicos, cada uno con sus miembros y reglas."
+			},
+			board: {
+				title: "Tablero visual",
+				description:
+					"Kanban con columnas personalizables, límites WIP y filtros por asignado, sprint o milestone."
+			},
+			sprints: {
+				title: "Sprints y milestones",
+				description:
+					"Planificá iteraciones cortas y objetivos de largo plazo, con progreso y fechas bien claras."
+			},
+			calendar: {
+				title: "Issues y calendario",
+				description:
+					"Issues con prioridad, asignados, vínculos y campos personalizados, visualizados en un calendario por sprint o milestone."
+			}
+		}
+	},
 	common: {
 		title: "Gestor de Proyectos",
 		search: "Buscar",

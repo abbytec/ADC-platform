@@ -1,4 +1,37 @@
 export default {
+	landing: {
+		heroTitle: "Project management that stays out of your way",
+		heroSubtitle:
+			"Plan teams, sprints and releases in one place. Designed for clear work, without spreadsheets or loose ends.",
+		slogan: "From task chaos to a flow you enjoy.",
+		heroAria: "Introduction to the project manager",
+		featuresAria: "What you can do",
+		howAria: "How to get started",
+		howTitle: "How to get started",
+		signInHint: "Sign in from the top menu to access your projects.",
+		features: {
+			projects: {
+				title: "Projects your way",
+				description:
+					"Create private, organization-scoped or public spaces, each with its own members and rules."
+			},
+			board: {
+				title: "Visual board",
+				description:
+					"Kanban with customizable columns, WIP limits and filters by assignee, sprint or milestone."
+			},
+			sprints: {
+				title: "Sprints and milestones",
+				description:
+					"Plan short iterations and long-term goals, with progress tracking and clear dates."
+			},
+			calendar: {
+				title: "Issues and calendar",
+				description:
+					"Issues with priority, assignees, links and custom fields, visualized in a calendar by sprint or milestone."
+			}
+		},
+	},
 	common: {
 		title: "Project Manager",
 		search: "Search",
