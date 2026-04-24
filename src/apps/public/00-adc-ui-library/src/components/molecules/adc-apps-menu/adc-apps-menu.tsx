@@ -1,31 +1,20 @@
 import { Component, Prop, State, Element, h, Host, Listen } from "@stencil/core";
-import { IS_DEV } from "../../../utils/url.js";
 
+import { getSession, type SessionUser } from "../../../../utils/session.js";
+import { DEFAULT_APPS } from "./apps-config.js";
 export interface AppMenuItem {
 	id: string;
 	name: string;
 	url: string;
 	icon?: string;
-}
-
-const host = () => globalThis.location?.hostname ?? "localhost";
-const proto = () => globalThis.location?.protocol ?? "http:";
-
-function appUrl(devPort: number, prodHostname: string): string {
-	return IS_DEV ? `${proto()}//${host()}:${devPort}` : `${proto()}//${prodHostname}`;
+	/** Si se define, solo se muestra cuando el predicado retorna true con el usuario actual. */
+	requires?: (user: SessionUser | undefined) => boolean;
 }
 
 /** Icon tag name from app id: "community" → "adc-icon-app-community" */
 function iconTag(id: string): string {
 	return `adc-icon-app-${id}`;
 }
-
-/** Built-in app definitions */
-const DEFAULT_APPS: AppMenuItem[] = [
-	{ id: "community", name: "Community", url: appUrl(3010, "s-community.adigitalcafe.com") },
-	{ id: "identity", name: "Identity", url: appUrl(3014, "identity.adigitalcafe.com") },
-	{ id: "projects", name: "Projects", url: appUrl(3018, "projects.adigitalcafe.com") },
-];
 
 @Component({
 	tag: "adc-apps-menu",
@@ -39,16 +28,27 @@ export class AdcAppsMenu {
 	@Prop() apps?: string;
 
 	@State() open = false;
+	@State() sessionUser: SessionUser | undefined = undefined;
+
+	async componentWillLoad() {
+		try {
+			const session = await getSession(false, true);
+			this.sessionUser = session.authenticated ? session.user : undefined;
+		} catch {
+			this.sessionUser = undefined;
+		}
+	}
 
 	private get appList(): AppMenuItem[] {
+		let list: AppMenuItem[] = DEFAULT_APPS;
 		if (this.apps) {
 			try {
-				return JSON.parse(this.apps);
+				list = JSON.parse(this.apps);
 			} catch {
-				return DEFAULT_APPS;
+				list = DEFAULT_APPS;
 			}
 		}
-		return DEFAULT_APPS;
+		return list.filter((app) => (app.requires ? app.requires(this.sessionUser) : true));
 	}
 
 	@Listen("mousedown", { target: "document" })
@@ -73,17 +73,7 @@ export class AdcAppsMenu {
 		return (
 			<Host>
 				<button class="apps-trigger" onClick={this.toggle} aria-label="Apps" aria-expanded={String(this.open)} title="Apps">
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-						<circle cx="6" cy="6" r="1.8" />
-						<circle cx="12" cy="6" r="1.8" />
-						<circle cx="18" cy="6" r="1.8" />
-						<circle cx="6" cy="12" r="1.8" />
-						<circle cx="12" cy="12" r="1.8" />
-						<circle cx="18" cy="12" r="1.8" />
-						<circle cx="6" cy="18" r="1.8" />
-						<circle cx="12" cy="18" r="1.8" />
-						<circle cx="18" cy="18" r="1.8" />
-					</svg>
+					<adc-icon-apps></adc-icon-apps>
 				</button>
 
 				{this.open && (

@@ -100,6 +100,7 @@ export interface RequestOptions<TData = Record<string, unknown>> {
 	 * Takes precedence over `idempotencyKey` if both are provided.
 	 */
 	idempotencyData?: unknown;
+	silent?: boolean; // If true, suppresses error toasts
 }
 
 /**
@@ -190,7 +191,7 @@ export function createAdcApi(config: AdcApiConfig) {
 		try {
 			const response = await fetch(url, fetchOptions);
 
-			if (!response.ok) {
+			if (!response.ok && !options.silent) {
 				await parseErrorResponse(response);
 			}
 
@@ -198,6 +199,7 @@ export function createAdcApi(config: AdcApiConfig) {
 			return { success: true, data };
 		} catch (err) {
 			// Detect network-level errors (connection refused, offline, etc.)
+
 			const isNetworkError =
 				!(err instanceof ADCCustomError) &&
 				err instanceof TypeError &&
@@ -219,15 +221,16 @@ export function createAdcApi(config: AdcApiConfig) {
 			}
 
 			// Dispatch error to adc-custom-error components
-			showError({
-				errorKey,
-				message: (err as Error)?.message || "",
-				data: {
-					...(err as Record<string, unknown>),
-					httpStatus,
-					translationParams,
-				},
-			});
+			if (!options.silent)
+				showError({
+					errorKey,
+					message: (err as Error)?.message || "",
+					data: {
+						...(err as Record<string, unknown>),
+						httpStatus,
+						translationParams,
+					},
+				});
 
 			return { success: false, errorKey };
 		}

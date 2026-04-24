@@ -39,8 +39,8 @@ export const ORG_PREDEFINED_ROLES: Array<BaseRole> = [
 		name: SystemRole.SECURITY_MANAGER,
 		description: "Gestor de seguridad",
 		permissions: [
+			{ resource: "identity", action: CRUDXAction.CRUD, scope: IdentityScopes.ALL },
 			{ resource: "security", action: CRUDXAction.CRUD, scope: 0xff },
-			{ resource: "users", action: CRUDXAction.READ, scope: 0xff },
 			{ resource: "audit", action: CRUDXAction.READ, scope: 0xff },
 		],
 	},

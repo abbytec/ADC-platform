@@ -116,7 +116,7 @@ export const P = buildAllPermissions() as {
  * Fast path: exact string match (`includes`).
  * Slow path: bitwise AND on scope & action for same-resource permissions.
  */
-export function hasPermission(userPerms: readonly string[], required: string): boolean {
+export function hasPermissionString(userPerms: readonly string[], required: string): boolean {
 	if (!userPerms.length) return false;
 	if (userPerms.includes("*") || userPerms.includes(required)) return true;
 
