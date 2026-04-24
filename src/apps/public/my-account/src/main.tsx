@@ -6,15 +6,12 @@ import "@ui-library";
 import "@ui-library/styles";
 import "./styles/tailwind.css";
 
-
 const container = document.getElementById("root");
 if (container) {
 	const root = createRoot(container);
 	root.render(
 		<React.StrictMode>
-			<adc-layout>
-				<App />
-			</adc-layout>
+			<App />
 		</React.StrictMode>
 	);
 }

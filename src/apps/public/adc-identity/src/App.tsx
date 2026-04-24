@@ -134,20 +134,24 @@ export default function App() {
 	// Loading skeleton
 	if (!ready || loading) {
 		return (
-			<div className="max-w-6xl mx-auto px-4 py-8">
-				<adc-skeleton variant="rectangular" height="48px" class="mb-6" />
-				<adc-skeleton variant="rectangular" height="400px" />
-			</div>
+			<adc-layout>
+				<div className="max-w-6xl mx-auto px-4 py-8">
+					<adc-skeleton variant="rectangular" height="48px" class="mb-6" />
+					<adc-skeleton variant="rectangular" height="400px" />
+				</div>
+			</adc-layout>
 		);
 	}
 
 	// Unauthorized
 	if (unauthorized || visibleTabs.length === 0) {
 		return (
-			<div className="max-w-6xl mx-auto px-4 py-16 text-center">
-				<h1 className="font-heading text-2xl font-bold text-text mb-4">{t("common.unauthorized")}</h1>
-				<p className="text-muted">{t("common.noPermissions")}</p>
-			</div>
+			<adc-layout>
+				<div className="max-w-6xl mx-auto px-4 py-16 text-center">
+					<h1 className="font-heading text-2xl font-bold text-text mb-4">{t("common.unauthorized")}</h1>
+					<p className="text-muted">{t("common.noPermissions")}</p>
+				</div>
+			</adc-layout>
 		);
 	}
 
@@ -182,31 +186,33 @@ export default function App() {
 	};
 
 	return (
-		<div className="max-w-6xl mx-auto px-4 py-8">
-			<h1 className="font-heading text-2xl font-bold text-text mb-6">{t("common.title")}</h1>
+		<adc-layout>
+			<div className="max-w-6xl mx-auto px-4 py-8">
+				<h1 className="font-heading text-2xl font-bold text-text mb-6">{t("common.title")}</h1>
 
-			{/* Filtro de organización para admin global */}
-			{isAdmin && !tokenOrgId && organizations.length > 0 && (
-				<div className="mb-4 flex items-center gap-3">
-					<label className="text-sm font-medium text-text whitespace-nowrap">{t("common.orgFilter")}:</label>
-					<adc-combobox
-						ref={comboboxRef}
-						value={selectedOrgFilter || ""}
-						placeholder={t("common.globalView")}
-						options={JSON.stringify(organizations.map((org) => ({ label: org.slug, value: org.orgId })))}
-						class="min-w-50"
-					/>
-					{selectedOrgFilter && (
-						<adc-badge color="indigo" size="sm">
-							{organizations.find((o) => o.orgId === selectedOrgFilter)?.slug}
-						</adc-badge>
-					)}
-				</div>
-			)}
+				{/* Filtro de organización para admin global */}
+				{isAdmin && !tokenOrgId && organizations.length > 0 && (
+					<div className="mb-4 flex items-center gap-3">
+						<label className="text-sm font-medium text-text whitespace-nowrap">{t("common.orgFilter")}:</label>
+						<adc-combobox
+							ref={comboboxRef}
+							value={selectedOrgFilter || ""}
+							placeholder={t("common.globalView")}
+							options={JSON.stringify(organizations.map((org) => ({ label: org.slug, value: org.orgId })))}
+							class="min-w-50"
+						/>
+						{selectedOrgFilter && (
+							<adc-badge color="indigo" size="sm">
+								{organizations.find((o) => o.orgId === selectedOrgFilter)?.slug}
+							</adc-badge>
+						)}
+					</div>
+				)}
 
-			<adc-tabs ref={tabsRef} tabs={JSON.stringify(tabItems)} activeTab={activeTab} variant="underline" />
+				<adc-tabs ref={tabsRef} tabs={JSON.stringify(tabItems)} activeTab={activeTab} variant="underline" />
 
-			<div className="mt-6">{renderActiveView()}</div>
-		</div>
+				<div className="mt-6">{renderActiveView()}</div>
+			</div>
+		</adc-layout>
 	);
 }

@@ -139,44 +139,52 @@ export default function App() {
 		router.navigate("/");
 	}, []);
 
-	if (!ready || loading) {
+	const renderContent = () => {
+		if (!ready || loading) {
+			return (
+				<div key="pm-loading" className="mx-auto px-4 py-8">
+					<div className="bg-surface-alt animate-pulse rounded mb-6" style={{ height: "48px" }} />
+					<div className="bg-surface-alt animate-pulse rounded" style={{ height: "400px" }} />
+				</div>
+			);
+		}
+
+		if (unauthorized) {
+			return <LandingView key="pm-landing" />;
+		}
+
 		return (
-			<div className="mx-auto px-4 py-8">
-				<adc-skeleton variant="rectangular" height="48px" class="mb-6" />
-				<adc-skeleton variant="rectangular" height="400px" />
-			</div>
-		);
-	}
-
-	if (unauthorized) {
-		return <LandingView />;
-	}
-
-	return (
-		<div className="mx-auto px-4 py-8">
-			{selectedProject ? (
-				<ProjectDetailView
-					project={selectedProject}
-					orgSlug={selectedOrgSlug}
-					perms={perms}
-					caller={caller}
-					activeTab={activeTab}
-					onBack={backToProjects}
-				/>
-			) : (
-				<>
-					<h1 className="font-heading text-2xl font-bold text-text mb-6">{t("common.title")}</h1>
-					<ProjectListView
+			<div key="pm-main" className="mx-auto px-4 py-8">
+				{selectedProject ? (
+					<ProjectDetailView
+						project={selectedProject}
+						orgSlug={selectedOrgSlug}
 						perms={perms}
 						caller={caller}
-						isAdmin={isAdmin}
-						isOrgAdmin={isOrgAdmin}
-						orgId={orgId}
-						orgSlug={ownOrgSlug}
-						onOpen={openProject}
+						activeTab={activeTab}
+						onBack={backToProjects}
 					/>
-				</>
-			)}
-		</div>
+				) : (
+					<>
+						<h1 className="font-heading text-2xl font-bold text-text mb-6">{t("common.title")}</h1>
+						<ProjectListView
+							perms={perms}
+							caller={caller}
+							isAdmin={isAdmin}
+							isOrgAdmin={isOrgAdmin}
+							orgId={orgId}
+							orgSlug={ownOrgSlug}
+							onOpen={openProject}
+						/>
+					</>
+				)}
+			</div>
+		);
+	};
+
+	return (
+		<adc-layout>
+			<div>{renderContent()}</div>
+		</adc-layout>
 	);
 }

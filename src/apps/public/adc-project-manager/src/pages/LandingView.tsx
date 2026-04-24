@@ -9,10 +9,10 @@ export function LandingView() {
 	const { t } = useTranslation({ namespace: "adc-project-manager", autoLoad: true });
 
 	const features = [
-		{ key: "projects", icon: "📁" },
-		{ key: "board", icon: "🗂️" },
-		{ key: "sprints", icon: "🚀" },
-		{ key: "calendar", icon: "📅" },
+		{ key: "projects", icon: "📁", description: t("landing.features.projects.description") },
+		{ key: "board", icon: "🗂️", description: t("landing.features.board.description") },
+		{ key: "sprints", icon: "🚀", description: t("landing.features.sprints.description") },
+		{ key: "calendar", icon: "📅", description: t("landing.features.calendar.description") },
 	] as const;
 
 	return (
@@ -23,12 +23,12 @@ export function LandingView() {
 			</section>
 
 			<section className="grid gap-4 grid-cols-2 mt-12" aria-label={t("landing.featuresAria")}>
-				{features.map(({ key, icon }) => (
+				{features.map(({ key, icon, description }) => (
 					<adc-feature-card key={key} title={t(`landing.features.${key}.title`)}>
 						<span slot="icon" aria-hidden="true" className="text-3xl">
 							{icon}
 						</span>
-						<span>{t(`landing.features.${key}.description`)}</span>
+						<span>{description}</span>
 					</adc-feature-card>
 				))}
 			</section>

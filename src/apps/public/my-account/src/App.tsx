@@ -90,45 +90,47 @@ export default function App() {
 	}, [handleSidebarItemClick, handleExpandToggle]);
 
 	return (
-		<div className="flex min-h-screen bg-background">
-			{/* Expand button */}
-			<div
-				className={`
+		<adc-layout>
+			<div className="flex min-h-screen bg-background">
+				{/* Expand button */}
+				<div
+					className={`
 					fixed top-1/2 z-50 lg:hidden
 					-translate-y-1/2 transition-all duration-300
 					${sidebarExpanded ? "left-70" : "left-22"}
 				`}
-			>
-				<adc-button-expand ref={buttonRef} isExpanded={sidebarExpanded} />
-			</div>
+				>
+					<adc-button-expand ref={buttonRef} isExpanded={sidebarExpanded} />
+				</div>
 
-			{/* Sidebar */}
-			<adc-sidebar
-				ref={sidebarRef}
-				items={Object.entries(SECTIONS).map(([key, value]) => ({
-					label: value.label,
-					iconSvg: value.icon,
-					action: key,
-				}))}
-				collapsed={!sidebarExpanded}
-				activeItem={activeSection}
-				title="Mi cuenta"
-				subtitle="Gestiona tu configuración"
-			/>
+				{/* Sidebar */}
+				<adc-sidebar
+					ref={sidebarRef}
+					items={Object.entries(SECTIONS).map(([key, value]) => ({
+						label: value.label,
+						iconSvg: value.icon,
+						action: key,
+					}))}
+					collapsed={!sidebarExpanded}
+					activeItem={activeSection}
+					title="Mi cuenta"
+					subtitle="Gestiona tu configuración"
+				/>
 
-			{/* Main */}
-			<main
-				className={`
+				{/* Main */}
+				<main
+					className={`
 					flex-1 transition-all duration-300
 					${sidebarExpanded ? "lg:ml-74" : "lg:mx-20"}
 				`}
-			>
-				<div className="w-full p-adc-lg">
-					<div className="animate-fade-in">
-						<ActiveComponent />
+				>
+					<div className="w-full p-adc-lg">
+						<div className="animate-fade-in">
+							<ActiveComponent />
+						</div>
 					</div>
-				</div>
-			</main>
-		</div>
+				</main>
+			</div>
+		</adc-layout>
 	);
 }

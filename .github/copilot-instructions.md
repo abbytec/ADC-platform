@@ -4,10 +4,10 @@
 
 ADC Platform is a **modular kernel system** that dynamically loads four types of modules from the filesystem:
 
--   **Providers** (I/O layer): Storage, databases, HTTP servers - in `src/providers/`
--   **Utilities** (Logic layer): Serializers, validators, transformers - in `src/utilities/`
--   **Services** (Reusable logic): Stateful functionality without auto-execution - in `src/services/`
--   **Apps** (Business logic): Auto-executing applications consuming other modules - in `src/apps/`
+- **Providers** (I/O layer): Storage, databases, HTTP servers - in `src/providers/`
+- **Utilities** (Logic layer): Serializers, validators, transformers - in `src/utilities/`
+- **Services** (Reusable logic): Stateful functionality without auto-execution - in `src/services/`
+- **Apps** (Business logic): Auto-executing applications consuming other modules - in `src/apps/`
 
 The **Kernel** (`src/kernel.ts`) orchestrates everything via recursive filesystem loading, Symbol-based dependency injection through `ModuleRegistry`, and supports hot-reloading in development.
 
@@ -17,10 +17,10 @@ The **Kernel** (`src/kernel.ts`) orchestrates everything via recursive filesyste
 
 All modules extend base classes with required lifecycle hooks:
 
--   `BaseApp` → implements `start()` and `run()` (business logic goes in `run()`)
--   `BaseService` → inherits `start()`/`stop()` with initialization guards
--   `BaseProvider` → lightweight lifecycle, uses `@OnlyKernel()` decorator
--   `BaseUtility` → similar to `BaseProvider`
+- `BaseApp` → implements `start()` and `run()` (business logic goes in `run()`)
+- `BaseService` → inherits `start()`/`stop()` with initialization guards
+- `BaseProvider` → lightweight lifecycle, uses `@OnlyKernel()` decorator
+- `BaseUtility` → similar to `BaseProvider`
 
 ```typescript
 // Example App structure
@@ -36,9 +36,9 @@ export default class MyApp extends BaseApp {
 
 Every module directory follows npm workspace structure:
 
--   `package.json` - Declares dependencies (npm installs them separately per module)
--   `config.json` or `default.json` - Declares module dependencies (providers/utilities/services)
--   `README.md` - Brief documentation (max 15 lines, avoid redundancy)
+- `package.json` - Declares dependencies (npm installs them separately per module)
+- `config.json` or `default.json` - Declares module dependencies (providers/utilities/services)
+- `README.md` - Brief documentation (max 15 lines, avoid redundancy)
 
 **Apps support multiple instances**: Place `config-*.json` files in app root or `configs/` subdirectory. Each creates a separate instance with format `app-name:config-suffix`.
 
@@ -68,16 +68,16 @@ this.kernel.getProvider<FileStorage>("file-storage");
 
 UI apps use **UIFederationService** for micro-frontend architecture:
 
--   Configure via `uiModule` section in `config.json`
--   Framework support: Astro, React, Vue, Vanilla
--   Module Federation: `isHost` (consumes remotes) vs `isRemote` (exposes components)
--   `uiDependencies` ensures load order (e.g., UI libraries load first)
--   **Namespace isolation**: `uiNamespace` separates i18n translations and app contexts (`adc-platform`, `default`, `mobile`)
+- Configure via `uiModule` section in `config.json`
+- Framework support: Astro, React, Vue, Vanilla
+- Module Federation: `isHost` (consumes remotes) vs `isRemote` (exposes components)
+- `uiDependencies` ensures load order (e.g., UI libraries load first)
+- **Namespace isolation**: `uiNamespace` separates i18n translations and app contexts (`adc-platform`, `default`, `mobile`)
 
 **Deployment modes**:
 
--   `npm run dev`: Apps serve on individual ports via `devPort` in config
--   `npm run start`/`start:prodtests`: All apps serve via subdomain routing (`hosting.subdomains` in config)
+- `npm run dev`: Apps serve on individual ports via `devPort` in config
+- `npm run start`/`start:prodtests`: All apps serve via subdomain routing (`hosting.subdomains` in config)
 
 **Service Worker pattern**: Only enable `serviceWorker: true` in **layout apps** - it automatically works for all their child apps without re-enabling.
 
@@ -105,8 +105,8 @@ class HeavyService extends BaseService {
 
 Services with `kernelMode: true` in their `config.json` load during kernel startup (before apps). Examples:
 
--   **ExecutionManagerService**: Manages worker pool for distributed execution
--   **IdentityManagerService**: User/role/group management with PBKDF2 hashing, MongoDB persistence
+- **ExecutionManagerService**: Manages worker pool for distributed execution
+- **IdentityManagerService**: User/role/group management with PBKDF2 hashing, MongoDB persistence
 
 ### Docker Compose Auto-Provisioning
 
@@ -139,10 +139,10 @@ npm run create:utility -- my-utility   # Creates src/utilities/my-utility/
 
 ### Hot Reload Behavior
 
--   **Code changes**: Module reloads automatically
--   **Config changes**: Only affected app instance reloads
--   **New config file**: New app instance spawns
--   **Delete config**: Instance stops and removes
+- **Code changes**: Module reloads automatically
+- **Config changes**: Only affected app instance reloads
+- **New config file**: New app instance spawns
+- **Delete config**: Instance stops and removes
 
 ## Code Conventions
 
@@ -152,14 +152,14 @@ Follow **KISS, DRY, SOLID, YAGNI** - stated explicitly in `CLAUDE.md`.
 
 ### File Structure
 
--   TypeScript files use `.ts` extension (`.js` imports include `.js` extension due to ESM)
--   Each module is self-contained workspace (no shared dependencies)
--   Recursive loading means subdirectories work automatically
+- TypeScript files use `.ts` extension (`.js` imports include `.js` extension due to ESM)
+- Each module is self-contained workspace (no shared dependencies)
+- Recursive loading means subdirectories work automatically
 
 ### Decorators
 
--   `@OnlyKernel()`: Restricts method calls to kernel-provided Symbol (security)
--   `@Distributed`: Enables ExecutionManagerService worker routing
+- `@OnlyKernel()`: Restricts method calls to kernel-provided Symbol (security)
+- `@Distributed`: Enables ExecutionManagerService worker routing
 
 ### Logging
 
@@ -174,10 +174,10 @@ this.logger.logOk("Success");
 
 ### Documentation
 
--   Each module's `README.md`: **max 15 lines**, purpose + key features only
--   `config.json` is self-documenting for dependencies
--   Don't create redundant centralized docs
--   Update module's own README when modifying it
+- Each module's `README.md`: **max 15 lines**, purpose + key features only
+- `config.json` is self-documenting for dependencies
+- Don't create redundant centralized docs
+- Update module's own README when modifying it
 
 ## Key Integration Points
 
@@ -204,16 +204,17 @@ kernel.registerProvider("file-storage", instance, config);
 6. **Dev vs Prod Deployment**: Dev uses individual ports (`devPort`), production uses subdomain routing
 7. **Worker Assignment**: `@Distributed` doesn't guarantee worker execution - ExecutionManagerService decides based on load
 8. **Instance Names**: App instances follow `{appName}:{configSuffix}` format (e.g., `user-profile:main`)
+9. **Stencil `shadow: false` + React root swaps**: Stencil components with `shadow: false` (like `adc-layout`, `adc-feature-card`, `adc-skeleton`) physically reposition slotted children. Never render such a component in `main.tsx` wrapping `<App />`, and never return different top-level JSX nodes across renders inside them — React's reconciler will throw `NotFoundError: removeChild` on unmount. Put `<adc-layout>` inside `App.tsx` as a stable root, or wrap branches with distinct `key` props to force full remount.
 
 ## Reference Files
 
--   **Kernel orchestration**: `src/kernel.ts` (807 lines)
--   **App base class**: `src/apps/BaseApp.ts`
--   **Service base**: `src/services/BaseService.ts`
--   **Provider base**: `src/providers/BaseProvider.ts`
--   **Module config interface**: `src/interfaces/modules/IModule.d.ts`
--   **UI Federation**: `src/services/core/UIFederationService/`
--   **Identity system**: `src/services/core/IdentityManagerService/`
--   **Session management**: `src/services/security/SessionManagerService/`
--   **Main UI Library**: `src/apps/public/00-adc-ui-library/` (includes components for building public apps, and utils for Connect RPC, router, autogenerated React JSX, Tailwind preset)
--   **Architecture docs**: `ARCHITECTURE.md`, `README.md`, `CLAUDE.md`
+- **Kernel orchestration**: `src/kernel.ts` (807 lines)
+- **App base class**: `src/apps/BaseApp.ts`
+- **Service base**: `src/services/BaseService.ts`
+- **Provider base**: `src/providers/BaseProvider.ts`
+- **Module config interface**: `src/interfaces/modules/IModule.d.ts`
+- **UI Federation**: `src/services/core/UIFederationService/`
+- **Identity system**: `src/services/core/IdentityManagerService/`
+- **Session management**: `src/services/security/SessionManagerService/`
+- **Main UI Library**: `src/apps/public/00-adc-ui-library/` (includes components for building public apps, and utils for Connect RPC, router, autogenerated React JSX, Tailwind preset)
+- **Architecture docs**: `ARCHITECTURE.md`, `README.md`, `CLAUDE.md`
