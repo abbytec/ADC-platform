@@ -71,6 +71,7 @@ export default function PrivacySecurityView() {
 							<div className="relative">
 								<adc-input
 									inputId="current-password"
+									type={showCurrent ? "text" : "password"}
 									value={currentPassword}
 									class="w-full pr-12"
 									onInput={(e) => setCurrentPassword((e.target as HTMLInputElement).value)}
@@ -95,6 +96,7 @@ export default function PrivacySecurityView() {
 							<div className="relative">
 								<adc-input
 									inputId="new-password"
+									type={showNew ? "text" : "password"}
 									value={newPassword}
 									class="w-full pr-12"
 									onInput={(e) => setNewPassword((e.target as HTMLInputElement).value)}
@@ -119,6 +121,7 @@ export default function PrivacySecurityView() {
 							<div className="relative">
 								<adc-input
 									inputId="confirm-password"
+									type={showConfirm ? "text" : "password"}
 									value={confirmPassword}
 									class="w-full pr-12"
 									onInput={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
