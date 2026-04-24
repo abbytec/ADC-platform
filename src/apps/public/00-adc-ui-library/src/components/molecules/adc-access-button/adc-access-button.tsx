@@ -345,7 +345,7 @@ export class AdcAccessButton {
 
 				{this.dropdownOpen && (
 					<div
-						class="absolute right-0 top-full mt-2 w-64 rounded-lg shadow-lg z-50 bg-surface text-tsurface overflow-hidden"
+						class="absolute right-0 top-full mt-2 w-64 rounded-lg shadow-lg z-50 bg-surface text-tsurface overflow-hidden font-semibold"
 						role="menu"
 						aria-orientation="vertical"
 					>
@@ -356,7 +356,7 @@ export class AdcAccessButton {
 									<a
 										href={item.href}
 										key={`adc-access-button-item-${item.href}-${idx}`}
-										class="flex items-center gap-2 px-4 py-2 hover:bg-accent text-tprimary transition-colors"
+										class="flex items-center gap-2 px-4 py-2 hover:bg-accent text-text transition-colors"
 										role="menuitem"
 									>
 										{item.icon && <span class="w-5 h-5 flex items-center justify-center" innerHTML={item.icon}></span>}
@@ -371,7 +371,7 @@ export class AdcAccessButton {
 							{!this.orgSwitcherOpen ? (
 								<button
 									type="button"
-									class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/10 hover:cursor-pointer transition-colors"
+									class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/10 text-text hover:cursor-pointer transition-colors"
 									role="menuitem"
 									onClick={this.handleOpenOrgSwitcher}
 								>
@@ -451,7 +451,7 @@ export class AdcAccessButton {
 						<div class="border-t border-divider">
 							<a
 								href={this.accountUrl || this.getDefaultAccountUrl()}
-								class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/10 hover:cursor-pointer transition-colors"
+								class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/10 text-text hover:cursor-pointer transition-colors"
 								role="menuitem"
 							>
 								<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">

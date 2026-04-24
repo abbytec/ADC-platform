@@ -75,7 +75,7 @@ export function DataTable<T>({
 			{/* Toolbar */}
 			<div className="flex items-center justify-between gap-4 flex-wrap">
 				{onSearch && (
-					<div className="flex-1 min-w-[200px] max-w-sm">
+					<div className="flex-1 min-w-50 max-w-sm">
 						<adc-search-input ref={searchRef} value={searchQuery} placeholder={searchPlaceholder || t("common.search")} />
 					</div>
 				)}
@@ -87,10 +87,10 @@ export function DataTable<T>({
 			</div>
 
 			{/* Table */}
-			<div className="overflow-x-auto rounded-xxl border border-surface">
+			<div className="overflow-x-auto rounded-xxl border border-accent/20 shadow-cozy">
 				<table className="w-full text-sm">
 					<thead>
-						<tr className="bg-surface/50 border-b border-surface">
+						<tr className="bg-header border-b border-accent/20">
 							{columns.map((col) => (
 								<th key={col.key} className="px-4 py-3 text-left font-heading font-semibold text-text whitespace-nowrap">
 									{col.label}
@@ -108,7 +108,7 @@ export function DataTable<T>({
 							</tr>
 						) : (
 							paginatedData.map((item) => (
-								<tr key={keyExtractor(item)} className="border-b border-surface/50 hover:bg-surface/20 transition-colors">
+								<tr key={keyExtractor(item)} className="border-b border-accent/20 hover:bg-surface/20 transition-colors">
 									{columns.map((col) => (
 										<td key={col.key} className="px-4 py-3 text-text">
 											{col.render ? col.render(item) : (item as any)[col.key]}

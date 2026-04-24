@@ -16,7 +16,7 @@
         --palette-tone-1: var(--custom-tone-1);
         --palette-tone-2: var(--custom-tone-2);
 
-        --c-text: #111111;
+        --c-text: #1b1b1b;
         --c-muted: oklch(52% 0.015 var(--palette-tone-1));
         --c-negative-text: #fefefe;
 

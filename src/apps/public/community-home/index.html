@@ -18,9 +18,15 @@
   </style>
   <script>
     (function () {
-      const savedTheme = localStorage.getItem('theme');
-      if ((!savedTheme && globalThis.matchMedia('(prefers-color-scheme: dark)').matches)
-        || savedTheme?.includes("dark")) {
+      function getCookie(name) {
+        var m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return m ? m[2] : null;
+      }
+      var saved = getCookie('theme') || localStorage.getItem('theme');
+      var isDark = saved
+        ? saved.indexOf('dark') !== -1
+        : globalThis.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (isDark) {
         document.documentElement.setAttribute('dark-mode', '');
       } else {
         document.documentElement.removeAttribute('dark-mode');

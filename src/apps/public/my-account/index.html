@@ -1,49 +1,37 @@
 <!doctype html>
 <html lang="es" crystal-theme>
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>My Account</title>
-		<script>
-			(function () {
-				const saved = localStorage.getItem("theme_mode");
 
-				const prefersDark = globalThis.matchMedia("(prefers-color-scheme: dark)").matches;
-
-				const isDark = saved === "dark" || (!saved && prefersDark);
-
-				if (isDark) {
-					document.documentElement.setAttribute("dark-mode", "");
-				} else {
-					document.documentElement.removeAttribute("dark-mode");
-				}
-
-				// aseguramos theme base
-				if (!document.documentElement.hasAttribute("crystal-theme") && !document.documentElement.hasAttribute("coffee-theme")) {
-					document.documentElement.setAttribute("coffee-theme", "");
-				}
-			})();
-		</script>
-		<style>
-			:root {
-				--custom-tone-1: 200;
-				--custom-tone-2: 220;
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>My Account</title>
+	<style>
+		:root {
+			--custom-tone-1: 200;
+			--custom-tone-2: 220;
+		}
+	</style>
+	<script>
+		(function () {
+			function getCookie(name) {
+				var m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+				return m ? m[2] : null;
 			}
-
-			body {
-				margin: 0;
-				font-family: system-ui, sans-serif;
+			var saved = getCookie("theme") || localStorage.getItem("theme");
+			var isDark = saved
+				? saved.indexOf("dark") !== -1
+				: globalThis.matchMedia("(prefers-color-scheme: dark)").matches;
+			if (isDark) {
+				document.documentElement.setAttribute("dark-mode", "");
+			} else {
+				document.documentElement.removeAttribute("dark-mode");
 			}
-		</style>
-		<style>
-			body {
-				margin: 0;
-				font-family: system-ui, sans-serif;
-			}
-		</style>
-	</head>
+		})();
+	</script>
+</head>
 
-	<body>
-		<div id="root"></div>
-	</body>
+<body>
+	<div id="root"></div>
+</body>
+
 </html>

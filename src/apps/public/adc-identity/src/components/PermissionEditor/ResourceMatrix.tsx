@@ -35,11 +35,11 @@ export function ResourceMatrix({ resource, scopes, permMap, onToggle, onToggleRo
 	};
 
 	return (
-		<div className="border border-surface rounded-xl overflow-hidden">
+		<div className="border border-accent/50 rounded-xl overflow-hidden">
 			<ResourceHeader resource={resource} onRemove={onRemove} disabled={disabled} t={t} />
 			<table className="w-full text-xs">
 				<thead>
-					<tr className="bg-surface/50 border-b border-surface">
+					<tr className="bg-accent/20 border-b border-surface">
 						<th className="px-3 py-2 text-left font-heading font-semibold text-text">{t("permissions.scope")}</th>
 						{ACTIONS.map((action) => (
 							<th key={action.key} className="px-3 py-2 text-center font-heading font-semibold text-text">
@@ -62,7 +62,7 @@ export function ResourceMatrix({ resource, scopes, permMap, onToggle, onToggleRo
 						const rowActions = permMap.get(key) ?? 0;
 						const allChecked = rowActions === allActions;
 						return (
-							<tr key={scope.key} className="border-b border-surface/50 hover:bg-surface/20 transition-colors">
+							<tr key={scope.key} className="border-b border-accent/20 hover:bg-surface/20 transition-colors">
 								<td className="px-3 py-2 font-medium text-text">
 									<button
 										type="button"

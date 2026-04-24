@@ -12,7 +12,7 @@ interface SimpleResourceCardProps {
 
 export function SimpleResourceCard({ resource, activeActions, onToggle, onRemove, disabled, t }: SimpleResourceCardProps) {
 	return (
-		<div className="border border-surface rounded-xl overflow-hidden">
+		<div className="border border-accent/20 rounded-xl overflow-hidden">
 			<ResourceHeader resource={resource} onRemove={onRemove} disabled={disabled} t={t} />
 			<div className="flex flex-wrap gap-4 px-4 py-3">
 				{ACTIONS.map((action) => (
