@@ -287,6 +287,7 @@ export class UserEndpoints {
 	@RegisterEndpoint({
 		method: "POST",
 		url: "/api/identity/users/change-password",
+		options: { rateLimit: { max: 3, timeWindow: 300_000 } },
 	})
 	static async changePassword(ctx: EndpointCtx<Record<string, string>, { currentPassword: string; newPassword: string }>) {
 		if (!ctx.user) {

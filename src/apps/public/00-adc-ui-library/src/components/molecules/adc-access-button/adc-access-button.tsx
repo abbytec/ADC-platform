@@ -1,6 +1,7 @@
 import { Component, Prop, State, h, Event, EventEmitter, Listen, Element } from "@stencil/core";
 import { isPrivateHost } from "../../../utils/url.js";
 import { broadcastAuthChange, forceLogoutAndRefresh, getStoredAuthUser, setStoredAuthUser, setupAuthSync } from "../../../../utils/auth-sync.js";
+import { appendCsrfHeader } from "../../../../utils/csrf.js";
 import type { SessionUser, SessionResponse } from "@common/types/identity/Session.js";
 
 interface OrgOption {
@@ -242,10 +243,12 @@ export class AdcAccessButton {
 
 	private readonly handleSwitchOrg = async (orgId?: string) => {
 		try {
-			const response = await fetch(this.getApiUrl("/api/auth/switch-org"), {
+			const url = this.getApiUrl("/api/auth/switch-org");
+			const headers = await appendCsrfHeader("POST", url, { "Content-Type": "application/json" }, "include");
+			const response = await fetch(url, {
 				method: "POST",
 				credentials: "include",
-				headers: { "Content-Type": "application/json" },
+				headers,
 				body: JSON.stringify({ orgId }),
 			});
 

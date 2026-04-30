@@ -10,6 +10,7 @@
 
 import { showError } from "./error-handler.js";
 import { forceLogoutAndRefresh } from "./auth-sync.js";
+import { appendCsrfHeader } from "./csrf.js";
 import ADCCustomError, { HttpError } from "@common/types/ADCCustomError.js";
 import { IS_DEV, getDevUrl } from "@common/utils/url-utils.js";
 
@@ -105,6 +106,8 @@ export interface RequestOptions<TData = Record<string, unknown>> {
 	silent?: boolean; // If true, suppresses error toasts
 	/** AbortSignal to cancel the request */
 	signal?: AbortSignal;
+	/** If true, do not attach a CSRF header to this request */
+	skipCsrf?: boolean;
 }
 
 /**
@@ -175,20 +178,21 @@ export function createAdcApi(config: AdcApiConfig) {
 		path: string,
 		options: RequestOptions<TData> = {}
 	): Promise<AdcFetchResult<T>> {
-		const { params, body, headers, translateParams, idempotencyKey, idempotencyData, signal } = options;
+		const { params, body, headers, translateParams, idempotencyKey, idempotencyData, signal, skipCsrf } = options;
 		const resolvedIdempotencyKey = idempotencyData !== undefined ? hashIdempotency(idempotencyData) : idempotencyKey;
 
 		const url = `${baseUrl}${path}${buildQueryString(params)}`;
+		const requestHeaders = {
+			...defaultHeaders,
+			...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+			...(MUTATIVE_METHODS.has(method) && resolvedIdempotencyKey ? { "Idempotency-Key": resolvedIdempotencyKey } : {}),
+			...headers,
+		};
 
 		const fetchOptions: RequestInit = {
 			method,
 			credentials,
-			headers: {
-				...defaultHeaders,
-				...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-				...(MUTATIVE_METHODS.has(method) && resolvedIdempotencyKey ? { "Idempotency-Key": resolvedIdempotencyKey } : {}),
-				...headers,
-			},
+			headers: skipCsrf ? requestHeaders : await appendCsrfHeader(method, url, requestHeaders, credentials, signal),
 			...(body !== undefined ? { body: JSON.stringify(body) } : {}),
 			...(signal ? { signal } : {}),
 		};

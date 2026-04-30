@@ -67,7 +67,7 @@ export class AuthEndpoints {
 		method: "POST",
 		url: "/api/auth/login",
 		permissions: [],
-		options: { skipIdempotency: true },
+		options: { skipIdempotency: true, rateLimit: { max: 4, timeWindow: 300_000 } },
 	})
 	static async handleNativeLogin(ctx: EndpointCtx<Record<string, string>, LoginBody>): Promise<unknown> {
 		const { username, password, orgId } = ctx.data || {};
@@ -146,6 +146,7 @@ export class AuthEndpoints {
 		method: "POST",
 		url: "/api/auth/register",
 		permissions: [],
+		options: { rateLimit: { max: 2, timeWindow: 3_600_000 } },
 	})
 	static async handleRegister(ctx: EndpointCtx<Record<string, string>, RegisterBody>): Promise<unknown> {
 		const { username, email, password } = ctx.data || {};
@@ -297,7 +298,7 @@ export class AuthEndpoints {
 		method: "POST",
 		url: "/api/auth/refresh",
 		permissions: [],
-		options: { skipIdempotency: true },
+		options: { skipIdempotency: true, rateLimit: { max: 20, timeWindow: 60_000 } },
 	})
 	static async handleRefresh(ctx: EndpointCtx): Promise<never> {
 		const refreshToken = ctx.cookies?.[REFRESH_COOKIE_NAME];
@@ -368,7 +369,7 @@ export class AuthEndpoints {
 		method: "POST",
 		url: "/api/auth/switch-org",
 		permissions: [],
-		options: { skipIdempotency: true },
+		options: { skipIdempotency: true, rateLimit: { max: 20, timeWindow: 60_000 } },
 	})
 	static async handleSwitchOrg(ctx: EndpointCtx<Record<string, string>, { orgId?: string }>): Promise<never> {
 		const token = ctx.cookies?.[ACCESS_COOKIE_NAME];
@@ -462,7 +463,7 @@ export class AuthEndpoints {
 		method: "POST",
 		url: "/api/auth/logout",
 		permissions: [],
-		options: { skipIdempotency: true },
+		options: { skipIdempotency: true, rateLimit: { max: 3, timeWindow: 60_000 } },
 	})
 	static async handleLogout(ctx: EndpointCtx): Promise<never> {
 		const refreshToken = ctx.cookies?.[REFRESH_COOKIE_NAME];
