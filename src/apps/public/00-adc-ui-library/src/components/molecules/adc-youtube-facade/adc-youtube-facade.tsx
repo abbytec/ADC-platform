@@ -91,6 +91,7 @@ export class AdcYoutubeFacade {
 
 		return (
 			<div
+				// ui-check-ignore: telón neutro detrás de la miniatura de video; seguir el tema lo haría ver mal.
 				class="relative overflow-hidden cursor-pointer group mx-auto rounded-xxl shadow-cozy bg-linear-to-br from-slate-700 to-slate-900 w-full max-w-[480px]"
 				style={{ aspectRatio: "3 / 2" }}
 				onClick={this.activate}

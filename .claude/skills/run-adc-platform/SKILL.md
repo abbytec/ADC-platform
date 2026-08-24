@@ -111,6 +111,30 @@ node .claude/skills/run-adc-platform/driver.mjs drive http://localhost:3040/ edi
   --login admin --mobile --wait "canvas, adc-modal" --wait-timeout 30000
 ```
 
+**`ui-check` — defectos de layout, sin mirar la captura.** Toma los mismos flags que
+`drive`, pero antes de la captura corre una sonda DOM y **sale 1 si encuentra algo**.
+Es el paso "¿esto anda en móvil?": una captura sólo sirve si alguien la mira y sabe
+qué buscar.
+
+```bash
+node .claude/skills/run-adc-platform/driver.mjs ui-check http://localhost:3024/ home-mobile --mobile
+node .claude/skills/run-adc-platform/driver.mjs ui-check http://localhost:3032/devices drive-mobile \
+  --login admin --mobile --wait "adc-page-shell"
+```
+
+Qué detecta (cada uno es la firma de un bug que ya se escapó a producción):
+
+| Detector | Qué busca |
+| --- | --- |
+| overflow | algo se pasa del ancho del viewport (barra horizontal) |
+| fragment | caja `display:inline` con borde/fondo partida en dos renglones — media píldora arriba y media abajo |
+| overlap | un `absolute`/`fixed` encima de texto o de un enlace (los velos con `pointer-events:none` se ignoran) |
+| touch | control interactivo por debajo de 44×44 (los enlaces en línea dentro de una oración quedan exceptuados, como en WCAG 2.5.5) |
+| clipped | texto recortado — informativo, se lista aparte porque también aparece en scrolls legítimos |
+
+Complementa a `bun run check:ui`, que es el equivalente estático (clases que no
+generan CSS, colores crudos, enlaces cross-app a subdominios que no existen).
+
 **Logged-in testing** — dev seeds two users every boot (idempotent): `admin`
 (global `devadmin`) and `orgadmin` (`devorgadmin`, org `dev-org`). The driver
 POSTs to `/api/auth/login` from inside the page; the `localhost` cookie then
@@ -145,6 +169,7 @@ node .claude/skills/run-adc-platform/driver.mjs drive http://localhost:3024/ hom
 | `shot <url> [name]` | one-shot screenshot → `/tmp/adc-shots/<name>.png`. Accepts `--mobile`/`--device d`/`--viewport WxH` |
 | `login <who> [url] [name]` | log in (`admin`\|`orgadmin`\|`'user::pass[::orgId]'`), navigate, screenshot. Accepts viewport flags. Dev only |
 | `drive <url> [name]` | CDP session: `--login who`, `--wait sel`, `--wait-timeout ms`, `--click sel`, `--type "sel::text"`, `--eval expr`, `--settle ms`, `--mobile`/`--device d`/`--viewport WxH`. Ends in a screenshot + prints `document.title` and the real text of any console errors / exceptions |
+| `ui-check <url> [name]` | igual que `drive` (mismos flags) + sonda de layout: overflow horizontal, cajas inline partidas, solapamientos y touch targets chicos. **Exit 1 si hay hallazgos** |
 | `status` | qué hay levantado, quién tiene el lock y cuál fue la última actividad. No se encola: se puede correr siempre |
 | `stop [--force]` | kill kernel + all rspack dev servers, free every port in ports.csv (leaves Docker S3 on :3900). **Rechaza (exit 1) si otra sesión trabajó hace poco**; `--force` lo ignora |
 

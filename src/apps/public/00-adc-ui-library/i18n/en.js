@@ -75,6 +75,10 @@ export default {
 		ARCHIVE_NOT_FOUND: "That zip download doesn't exist.",
 		LINK_UNAVAILABLE: "This link isn't available right now. Try again later."
 	},
+	input: {
+		showPassword: "Show password",
+		hidePassword: "Hide password"
+	},
 	footer: {
 		aria: "Help links",
 		privacy: "Privacy",

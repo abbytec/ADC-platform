@@ -639,7 +639,7 @@ export class AdcAccessButton {
 						<div class="border-t border-divider">
 							<button
 								type="button"
-								class="flex w-full items-center gap-2 px-4 py-3 text-left bg-neutral-900 hover:bg-primary hover:text-tprimary hover:cursor-pointer text-red-600 transition-colors"
+								class="flex w-full items-center gap-2 px-4 py-3 text-left text-tdanger hover:bg-primary hover:text-tprimary hover:cursor-pointer transition-colors"
 								role="menuitem"
 								onClick={this.handleLogout}
 							>

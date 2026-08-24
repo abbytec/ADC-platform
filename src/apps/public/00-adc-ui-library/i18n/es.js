@@ -76,6 +76,10 @@ export default {
 		ARCHIVE_NOT_FOUND: "Esa descarga comprimida no existe.",
 		LINK_UNAVAILABLE: "El enlace no está disponible en este momento. Probá más tarde."
 	},
+	input: {
+		showPassword: "Mostrar contraseña",
+		hidePassword: "Ocultar contraseña"
+	},
 	footer: {
 		aria: "Enlaces de ayuda",
 		privacy: "Privacidad",

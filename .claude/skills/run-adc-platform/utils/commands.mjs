@@ -10,6 +10,7 @@ import { portEntries, loadPorts, shotEntries } from "./ports.mjs";
 import { captureScreenshot, chromeArgs, connectCDP, launchChromeChecked, printPageErrors, waitForSelector } from "./cdp.mjs";
 import { resolveViewport, applyViewport } from "./viewport.mjs";
 import { loginSession } from "./auth.mjs";
+import { UI_PROBE, reportUiFindings } from "./ui-probe.mjs";
 import { foreignActivity, lastActivity, lockHolder, sessionId } from "./lock.mjs";
 
 async function curlStatus(port) {
@@ -391,6 +392,46 @@ export async function drive(url, name, opts) {
 		await captureScreenshot(cdp, `${SHOTS}/${name}.png`);
 		printPageErrors(cdp);
 		console.log(`title -> ${JSON.stringify(await cdp.eval("document.title"))}`);
+	} finally {
+		try { cdp?.ws.close(); } catch {}
+		chrome.kill("SIGKILL");
+	}
+}
+
+// ---- ui-check: drive + sonda de layout ---------------------------------
+// Mismos flags que `drive`, pero antes de la captura corre la sonda de
+// ui-probe.mjs y sale != 0 si encuentra algo. Pensado para el paso "¿esto anda
+// en móvil?": `ui-check <url> --mobile` reemplaza mirar la captura a ojo.
+export async function uiCheck(url, name, opts) {
+	const chrome = await launchChromeChecked();
+	let cdp;
+	try {
+		cdp = await connectCDP();
+		await applyViewport(cdp, resolveViewport(opts));
+		if (opts.login) await loginSession(cdp, opts.login);
+		await cdp.send("Page.navigate", { url });
+		await sleep(1500);
+		if (opts.wait) await waitForSelector(cdp, opts.wait, opts.waitTimeout);
+
+		for (const action of opts.actions) {
+			if (action.kind === "click") {
+				const ok = await cdp.eval(`(()=>{const el=document.querySelector(${JSON.stringify(action.sel)}); if(!el) return false; el.click(); return true;})()`);
+				if (!ok) throw new Error(`click: selector not found: ${action.sel}`);
+			} else if (action.kind === "type") {
+				await cdp.eval(`(()=>{const el=document.querySelector(${JSON.stringify(action.sel)}); if(!el) throw new Error('type: not found'); el.focus();})()`);
+				await cdp.send("Input.insertText", { text: action.text });
+			} else if (action.kind === "eval") {
+				console.log("eval ->", JSON.stringify(await cdp.eval(action.expr)));
+			}
+			await sleep(400);
+		}
+
+		await sleep(opts.settle);
+		const findings = reportUiFindings(await cdp.eval(UI_PROBE));
+		await captureScreenshot(cdp, `${SHOTS}/${name}.png`);
+		printPageErrors(cdp);
+		console.log(`title -> ${JSON.stringify(await cdp.eval("document.title"))}`);
+		if (findings > 0) process.exitCode = 1;
 	} finally {
 		try { cdp?.ws.close(); } catch {}
 		chrome.kill("SIGKILL");

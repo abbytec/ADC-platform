@@ -41,7 +41,7 @@ export class AdcTextarea {
 	private renderMessage(messageId: string | undefined) {
 		if (this.error) {
 			return (
-				<span id={messageId} role="alert" class="mt-1 block font-text text-[11px] text-danger">
+				<span id={messageId} role="alert" class="mt-1 block font-text text-[11px] text-tdanger">
 					{this.error}
 				</span>
 			);

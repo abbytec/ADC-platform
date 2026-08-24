@@ -246,6 +246,7 @@ Estandarizar los campos con los átomos de la UI library en vez de elementos nat
 Casos fuera del flujo estándar. **Cargá solo el doc que aplique a tu tarea** (no inflar el contexto con los otros):
 
 - **¿App instalable como app de inicio?** (Drive, Mail, editor…) → [frontend-pwa.md](frontend-pwa.md) — `manifest.webmanifest` + tags PWA + `serviceWorker: true` + iconos propios.
+- **¿Estás editando una vista que ya existe, o algo tiene que andar en móvil?** → [frontend-responsive.md](frontend-responsive.md) — breakpoints, la escala de spacing real, clases que no generan CSS, y cómo verificarlo.
 - **¿Host aparte para móvil?** (no responsive en el mismo host) → [frontend-mobile-variant.md](frontend-mobile-variant.md) — bloque `responsive` (`variant` + `counterpart`) en ambos hosts.
 - **¿Consumís un componente federado de otra app en runtime y sus estilos Tailwind no aplican?** → [frontend-federated-css.md](frontend-federated-css.md) — las utilidades de Tailwind son por host.
 - **¿La app publica tutoriales para la app help?** → [frontend-tutorials.md](frontend-tutorials.md) — estáticos en `public/tutorials/`.
@@ -261,6 +262,9 @@ Casos fuera del flujo estándar. **Cargá solo el doc que aplique a tu tarea** (
 - [ ] Diálogos/modales con `<adc-modal>` (no `inset-0` + backdrop a mano); sin `window.alert/confirm/prompt`.
 - [ ] Campos con átomos (`adc-input`/`adc-textarea`/`adc-checkbox`/`adc-select`), no `<input>`/`<textarea>`/`<select>` nativos (salvo las [excepciones documentadas](frontend-native-controls.md)).
 - [ ] Estilos con design tokens del preset (`text-text`/`bg-surface`/`font-heading`/…), no hex ni colores crudos.
+- [ ] Valores arbitrarios entre corchetes (`max-w-[70vw]`): sin corchetes la clase no genera CSS y falla en silencio.
+- [ ] Verificado a 390px — ver [frontend-responsive.md](frontend-responsive.md).
+- [ ] `bun run check:ui` en verde (clases muertas, colores crudos, enlaces cross-app inexistentes).
 - [ ] App registrada en `adc-home`, `adc-apps-menu` y con icono propio.
 - [ ] `serviceWorker` solo si la app es layout.
 - [ ] (Si instalable) `manifest.webmanifest` + tags PWA en el `<head>` + `serviceWorker: true` + iconos propios en `public/icons/` — ver [frontend-pwa.md](frontend-pwa.md).

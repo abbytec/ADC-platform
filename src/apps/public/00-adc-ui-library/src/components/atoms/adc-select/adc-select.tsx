@@ -209,7 +209,7 @@ export class AdcSelect {
 					</div>
 				)}
 				{this.error && (
-					<span role="alert" class="mt-1 block font-text text-[11px] text-danger">
+					<span role="alert" class="mt-1 block font-text text-[11px] text-tdanger">
 						{this.error}
 					</span>
 				)}

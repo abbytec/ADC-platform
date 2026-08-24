@@ -17,6 +17,7 @@
 //   node driver.mjs shot <url> [name]      # one-shot screenshot
 //   node driver.mjs login <who> [url] [name]
 //   node driver.mjs drive <url> [name]     # CDP session (flags below)
+//   node driver.mjs ui-check <url> [name]  # drive + layout probe; exit 1 on findings
 //   node driver.mjs status                 # what's up + who is using the environment
 //   node driver.mjs stop [--force]         # kill kernel + rspack servers, free ports
 //
@@ -34,7 +35,7 @@
 // ADC_DRIVER_SESSION=<id> para que además `stop` respete a las otras sesiones.
 import { BASE } from "./utils/config.mjs";
 import { resolveViewport } from "./utils/viewport.mjs";
-import { bootCheck, ready, smoke, shot, login, drive, stop, port, logs, up, status } from "./utils/commands.mjs";
+import { bootCheck, ready, smoke, shot, login, drive, uiCheck, stop, port, logs, up, status } from "./utils/commands.mjs";
 import { withLock } from "./utils/lock.mjs";
 
 function parseDrive(argv) {
@@ -94,9 +95,12 @@ try {
 	} else if (cmd === "drive") {
 		const { opts, rest } = parseDrive(args);
 		await drive(rest[0] || BASE, rest[1] || "drive", opts);
+	} else if (cmd === "ui-check") {
+		const { opts, rest } = parseDrive(args);
+		await uiCheck(rest[0] || BASE, rest[1] || "ui-check", opts);
 	} else {
 		console.log(
-			"usage: node driver.mjs <status | boot-check [s] [--with-ui] | up [s] | ready [app|port] [s] | port <app> | logs <app> [n] | smoke | shot <url> [name] | login <who> [url] [name] | drive <url> [name] [flags] | stop [--force]>"
+			"usage: node driver.mjs <status | boot-check [s] [--with-ui] | up [s] | ready [app|port] [s] | port <app> | logs <app> [n] | smoke | shot <url> [name] | login <who> [url] [name] | drive <url> [name] [flags] | ui-check <url> [name] [flags] | stop [--force]>"
 		);
 		console.log("  flags: --login <who> --wait <sel> --wait-timeout <ms> --click <sel> --type <sel::text> --eval <expr> --settle <ms> --mobile --device <d> --viewport <WxH>");
 		console.log("  globales: --lock-timeout <s> (cuánto esperar el turno) · --force (stop: ignorar la actividad de otra sesión)");

@@ -1,0 +1,9 @@
+{
+	"_comment": [
+		"Colores crudos que ya existian cuando se agrego `bun run check:ui`. NO agregar entradas nuevas:",
+		"un color crudo nuevo tiene que fallar. Esta lista existe para ir vaciandola, no para crecer.",
+		"Clave: `<ruta>::<clase>`. Para una excepcion legitima y permanente (marca de un tercero) va",
+		"`ui-check-ignore` con el motivo al lado del codigo, no una entrada aca."
+	],
+	"rawColors": []
+}

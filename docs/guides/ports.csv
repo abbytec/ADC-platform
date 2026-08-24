@@ -7,6 +7,8 @@ port,app,notes
 3004,test/web-layout,
 3005,test/web-layout-mobile,
 3006,test/home-mobile,
+3007,test/web-vite-react,probe de bundler (vite + react)
+3008,test/web-astro,probe de bundler (astro)
 3010,public/community-home,smoke-shot
 3012,public/adc-auth,smoke-shot
 3014,public/adc-identity,

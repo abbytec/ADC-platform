@@ -196,7 +196,7 @@ export class AdcNotificationBell {
 						/>
 					</svg>
 					{this.unread > 0 && (
-						<span class="absolute -top-0.5 -right-0.5 min-w-4.5 h-4.5 px-1 flex items-center justify-center text-[10px] font-bold leading-none text-white bg-red-600 rounded-full">
+						<span class="absolute -top-0.5 -right-0.5 min-w-4.5 h-4.5 px-1 flex items-center justify-center text-[10px] font-bold leading-none text-negativeText bg-accentred rounded-full">
 							{badge}
 						</span>
 					)}

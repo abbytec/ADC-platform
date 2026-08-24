@@ -155,7 +155,7 @@ export class AdcLegalGate {
 						)}
 
 						{this.error && (
-							<p class="text-sm text-danger" role="alert">
+							<p class="text-sm text-tdanger" role="alert">
 								{this.error}
 							</p>
 						)}

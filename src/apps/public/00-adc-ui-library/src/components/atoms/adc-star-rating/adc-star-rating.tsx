@@ -43,7 +43,8 @@ export class AdcStarRating {
 			</span>
 		);
 
-		const star = (i: number) => <span class={displayRating >= i ? "text-yellow-400" : "text-gray-300"}>★</span>;
+		// ui-check-ignore: dorado de estrellas, ver arriba.
+		const star = (i: number) => <span class={displayRating >= i ? "text-yellow-400" : "text-muted"}>★</span>;
 
 		// Nota: `<input type="radio">` es un void element y NO puede tener hijos; el navegador
 		// descarta cualquier contenido interno, por eso antes se veía como puntos de radio nativos

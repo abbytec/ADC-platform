@@ -149,7 +149,14 @@ export class AdcSiteFooter {
 	 * justo lo que la política de cookies dice que no pasa. El enlace sí es a ARCA, pero sólo se
 	 * sigue si alguien lo aprieta.
 	 *
-	 * Va fuera del flujo (`absolute`) para no correr ni un píxel el contenido centrado del footer.
+	 * De `sm:` para arriba va fuera del flujo (`absolute`) para no correr ni un píxel el contenido
+	 * centrado, y el nav le reserva el carril con `sm:px-[60px]`. Ese 60 son los 13px del `right-4`
+	 * más los 44px que `accessibility.css` le impone al `<a>` por debajo de 768px, más margen: en
+	 * px y no en la escala de spacing porque el `--spacing` de la plataforma es 3.25px, así que
+	 * `px-16` daba 52 y el QR se comía 5px del carril.
+	 *
+	 * Abajo de `sm:` vuelve al flujo: con el nav ocupando el ancho entero, superponerlo era peor
+	 * que correrlo.
 	 *
 	 * **El `http://` del enlace no es un descuido: `qr.afip.gob.ar` no atiende en 443.** Es el
 	 * enlace que ARCA entrega y redirige solo a `https://servicioscf.afip.gob.ar`. Pasarlo a
@@ -164,7 +171,7 @@ export class AdcSiteFooter {
 				href={`http://qr.afip.gob.ar/?qr=${DATA_FISCAL_QR}`}
 				target="_F960AFIPInfo"
 				rel="noopener noreferrer"
-				class="absolute right-4 top-1/2 -translate-y-1/2"
+				class="mt-3 inline-block sm:absolute sm:right-4 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2"
 			>
 				<img src="/data-fiscal.jpg" alt="Formulario 960/D — Data Fiscal (ARCA)" width="36" height="49" loading="lazy" />
 			</a>
@@ -173,7 +180,7 @@ export class AdcSiteFooter {
 
 	private helpLinksComponent() {
 		return (
-			<nav class="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-sm max-w-70vw m-auto" aria-label={this.translateFooter("aria")}>
+			<nav class="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 px-4 text-sm sm:px-[60px]" aria-label={this.translateFooter("aria")}>
 				{FOOTER_LINKS.map((link) => (
 					<a key={link.key} href={footerUrl(link.path, link.target)} class="underline hover:no-underline">
 						{this.translateFooter(link.key)}
@@ -195,7 +202,7 @@ export class AdcSiteFooter {
 	render() {
 		if (this.lowerSign) {
 			return (
-				<footer class="relative py-4 text-center opacity-80 border-t border-gray-200 shrink-0 min-h-24 cv-auto">
+				<footer class="relative py-4 text-center opacity-80 border-t border-divider shrink-0 min-h-24 cv-auto">
 					<slot></slot>
 					{this.helpLinksComponent()}
 					{this.signComponent()}
@@ -204,7 +211,7 @@ export class AdcSiteFooter {
 			);
 		}
 		return (
-			<footer class="relative py-4 text-center opacity-80 border-t border-gray-200 shrink-0 min-h-24 cv-auto">
+			<footer class="relative py-4 text-center opacity-80 border-t border-divider shrink-0 min-h-24 cv-auto">
 				{this.signComponent()}
 				{this.helpLinksComponent()}
 				<slot></slot>
