@@ -92,11 +92,18 @@ export class UncommonResponse {
 		});
 	}
 
-	/** Redirect response with optional cookies */
+	/**
+	 * Redirect response with optional cookies/headers.
+	 *
+	 * `headers` es la única vía para que una redirección sea cacheable: el `options.cache`
+	 * declarativo de `@RegisterEndpoint` se aplica sobre el camino de respuesta normal, y una
+	 * `UncommonResponse` sale por el de excepción, así que nunca lo toca.
+	 */
 	static redirect(
 		url: string,
 		options?: {
 			status?: 301 | 302 | 303 | 307 | 308;
+			headers?: Record<string, string>;
 			cookies?: SetCookie[];
 			clearCookies?: ClearCookie[];
 		}
@@ -105,6 +112,7 @@ export class UncommonResponse {
 			type: "redirect",
 			status: options?.status || 302,
 			redirectUrl: url,
+			headers: options?.headers,
 			cookies: options?.cookies,
 			clearCookies: options?.clearCookies,
 		});
