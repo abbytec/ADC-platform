@@ -569,7 +569,14 @@ export class AdcAccessButton {
 									class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/10 text-text hover:cursor-pointer transition-colors"
 									role="menuitem"
 								>
-									<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+										viewBox="0 0 24 24"
+										aria-hidden="true"
+									>
 										<path
 											stroke-linecap="round"
 											stroke-linejoin="round"
@@ -588,7 +595,14 @@ export class AdcAccessButton {
 									class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/10 text-text hover:cursor-pointer transition-colors"
 									role="menuitem"
 								>
-									<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+										viewBox="0 0 24 24"
+										aria-hidden="true"
+									>
 										<path
 											stroke-linecap="round"
 											stroke-linejoin="round"
@@ -607,7 +621,14 @@ export class AdcAccessButton {
 									class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/10 text-text hover:cursor-pointer transition-colors"
 									role="menuitem"
 								>
-									<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+										viewBox="0 0 24 24"
+										aria-hidden="true"
+									>
 										<path
 											stroke-linecap="round"
 											stroke-linejoin="round"
@@ -639,7 +660,7 @@ export class AdcAccessButton {
 						<div class="border-t border-divider">
 							<button
 								type="button"
-								class="flex w-full items-center gap-2 px-4 py-3 text-left text-tdanger hover:bg-primary hover:text-tprimary hover:cursor-pointer transition-colors"
+								class="flex w-full items-center gap-2 px-4 py-3 text-left bg-danger text-tdanger hover:bg-danger/50 hover:cursor-pointer transition-colors"
 								role="menuitem"
 								onClick={this.handleLogout}
 							>
