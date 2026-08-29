@@ -1,5 +1,5 @@
 import { generateCompleteImportMap } from "../../utils/bundler/import-map.js";
-import { buildResponsiveRedirectScript } from "../../utils/codegen/html-templates.js";
+import { buildResponsiveRedirectScript, buildPwaInstallCaptureScript } from "../../utils/codegen/html-templates.js";
 import { getServerHost } from "../../utils/fs/path-resolver.js";
 import type { IBuildContext } from "../types.js";
 
@@ -7,8 +7,9 @@ const HOST_DEV_PORT = 3000; // Puerto del servidor principal
 
 /**
  * Plugin Vite (solo dev) que inyecta antes de `</head>` el `<script type="importmap">`
- * con todos los módulos federados y, si el módulo declara `responsive`, el
- * auto-redirect entre variantes desktop/mobile (mismo helper que el path rspack).
+ * con todos los módulos federados y, según lo que declare el módulo, la captura del prompt
+ * de instalación (`serviceWorker`) y el auto-redirect desktop/mobile (`responsive`).
+ * Los scripts salen de los mismos helpers que usa el path rspack.
  */
 export function createImportMapPlugin(context: IBuildContext): any {
 	const { registeredModules } = context;
@@ -21,9 +22,11 @@ export function createImportMapPlugin(context: IBuildContext): any {
 				const importMap = generateCompleteImportMap(registeredModules, HOST_DEV_PORT);
 				const serialized = JSON.stringify({ imports: importMap }, null, 6).replaceAll("\n", "\n    ");
 				const importMapScript = `    <script type="importmap">\n${serialized}\n    </script>`;
+				const install = buildPwaInstallCaptureScript(context.module.uiConfig.serviceWorker);
+				const installBlock = install ? `    ${install}\n` : "";
 				const redirect = buildResponsiveRedirectScript(context.module.uiConfig.responsive);
 				const redirectBlock = redirect ? `    ${redirect}\n` : "";
-				const headBlock = `${importMapScript}\n${redirectBlock}  </head>`;
+				const headBlock = `${importMapScript}\n${installBlock}${redirectBlock}  </head>`;
 
 				if (html.includes("</head>")) {
 					return html.replaceAll("</head>", headBlock);

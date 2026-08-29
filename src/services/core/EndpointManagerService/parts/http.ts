@@ -12,7 +12,16 @@ import type { Readable } from "node:stream";
 import { pipeStreamToRaw } from "@common/utils/http-stream.ts";
 import { validateCsrf, type TokenSource } from "./csrf.js";
 import type { CsrfRuntimeConfig } from "./csrf-config.js";
-import { consumeRateLimit, resolveRateLimit, shouldWarnDegraded, type ResolvedRateLimits } from "./rate-limit.js";
+import {
+	clientRateKey,
+	consumeRateLimit,
+	DEVICE_COOKIE_NAME,
+	mintDeviceId,
+	readDeviceId,
+	resolveRateLimit,
+	shouldWarnDegraded,
+	type ResolvedRateLimits,
+} from "./rate-limit.js";
 import { assertNoOperatorKeys, compileEndpointSchemas, validateEndpointInput } from "./schema.js";
 import { sealJobToken } from "./job-token.js";
 import { isRecording, record } from "./metrics.js";
@@ -103,6 +112,33 @@ function requireIdempotencyKey(req: FastifyRequest<any>): string {
 	return key;
 }
 
+/** Espera en palabras: `Retry-After` sale en segundos y "3600s" no le dice nada a nadie. */
+function humanizeWait(seconds: number): string {
+	if (seconds < 60) return `${seconds} segundos`;
+	const minutes = Math.ceil(seconds / 60);
+	if (minutes < 60) return minutes === 1 ? "un minuto" : `${minutes} minutos`;
+	const hours = Math.ceil(minutes / 60);
+	return hours === 1 ? "una hora" : `${hours} horas`;
+}
+
+/**
+ * 429 con la forma que el cliente ya sabe leer (`errorKey` + `retryAfter`, igual que
+ * `ADCCustomError.toJSON`). Antes salía como `{ error }`, que `parseErrorResponse` no mira: el
+ * toast mostraba el texto crudo del servidor en vez de la traducción.
+ *
+ * El `scope` no es cosmético: "esperá" y "esperá, y además esto lo comparte toda tu red" son
+ * mensajes distintos, y confundirlos es lo que hace que un 429 se lea como un sitio roto.
+ */
+function sendRateLimited(reply: FastifyReply<any>, retryAfter: number, scope: "network" | "device"): void {
+	const wait = humanizeWait(retryAfter);
+	const message =
+		scope === "network"
+			? `Demasiados intentos desde esta conexión. Probá de nuevo en ${wait}. El límite es por red, así que puede alcanzarte si alguien más la comparte.`
+			: `Demasiados intentos desde este navegador. Probá de nuevo en ${wait}.`;
+	reply.header("Retry-After", retryAfter);
+	reply.status(429).send({ name: "HttpError", status: 429, errorKey: "RATE_LIMIT_EXCEEDED", message, retryAfter, scope });
+}
+
 export function createHttpWrapper(
 	endpoint: RegisteredEndpoint,
 	getSessionManager: () => ISessionVerifier | null,
@@ -124,6 +160,7 @@ export function createHttpWrapper(
 	const rl = resolveRateLimit(endpoint, rateLimits);
 	const rlTtlSeconds = rl ? Math.max(1, Math.ceil(rl.timeWindow / 1000)) : 0;
 	const rlKeyPrefix = rl ? `rl:${endpoint.method}:${endpoint.url}:` : "";
+	const rlDeviceTtlSeconds = rl?.perDevice ? Math.max(1, Math.ceil(rl.perDevice.timeWindow / 1000)) : 0;
 	// Clave de métricas estable: el patrón de ruta, NO `endpoint.id` (se regenera en cada hot-reload).
 	const metricKey = `${endpoint.method} ${endpoint.url}`;
 	/** `cmd` del guard de idempotencia y etiqueta del job encolado: constante por endpoint. */
@@ -148,16 +185,16 @@ export function createHttpWrapper(
 			}
 
 			// ── Rate limiting (Redis: INCR + TTL en una operación atómica) ──
-			// La clave es `req.ip`, que no es falsificable por un header en ninguno de los dos
-			// modos: sin `TRUSTED_PROXIES` es la IP del socket, y con la lista fastify la resuelve
-			// desde `X-Forwarded-For` descartando los saltos confiables. Detrás de un edge sin la
-			// lista declarada, en cambio, todos los usuarios comparten bucket.
+			// El eje duro es la red (`req.ip`, agregada a /64 en IPv6), que no es falsificable por un
+			// header en ninguno de los dos modos: sin `TRUSTED_PROXIES` es la IP del socket, y con la
+			// lista fastify la resuelve desde `X-Forwarded-For` descartando los saltos confiables.
+			// Detrás de un edge sin la lista declarada, en cambio, todos los usuarios comparten bucket.
 			//
 			// Sin Redis (caído o no declarado) el contador cae a memoria del proceso: el límite no
 			// puede evaporarse, que es justo lo que hacía falta para las superficies públicas.
 			if (rl) {
-				const key = rlKeyPrefix + req.ip;
-				const { count, degraded } = await consumeRateLimit(redis, key, rlTtlSeconds);
+				const networkKey = clientRateKey(req.ip);
+				const { count, degraded } = await consumeRateLimit(redis, rlKeyPrefix + networkKey, rlTtlSeconds);
 				if (degraded && shouldWarnDegraded()) {
 					logger.logWarn("[rate-limit] Redis no disponible: contando en memoria (límite por proceso, no global)");
 				}
@@ -166,12 +203,33 @@ export function createHttpWrapper(
 				reply.header("X-RateLimit-Remaining", Math.max(0, rl.max - count));
 
 				if (count > rl.max) {
-					reply.header("Retry-After", rlTtlSeconds);
-					reply.status(429).send({
-						error: "RATE_LIMIT_EXCEEDED",
-						message: `Too many requests. Limit: ${rl.max} per ${rlTtlSeconds}s`,
-					});
+					sendRateLimited(reply, rlTtlSeconds, "network");
 					return;
+				}
+
+				// Segundo eje, más estrecho, dentro del de red: separa navegadores de una misma casa
+				// para que el error de una persona no deje sin cupo a quien comparte el router.
+				//
+				// La cookie se puede borrar, así que NUNCA amplía: si no viene, este eje simplemente no
+				// se aplica y el techo real sigue siendo el de red, idéntico al de antes. Por eso el
+				// cupo por red tiene que quedar en un valor que se banque solo lo que llegue sin cookie.
+				if (rl.perDevice) {
+					const deviceId = readDeviceId((req as any).cookies);
+					if (deviceId) {
+						const consumed = await consumeRateLimit(redis, `${rlKeyPrefix}d:${deviceId}`, rlDeviceTtlSeconds);
+						if (consumed.count > rl.perDevice.max) {
+							sendRateLimited(reply, rlDeviceTtlSeconds, "device");
+							return;
+						}
+					} else {
+						(reply as any).setCookie(DEVICE_COOKIE_NAME, mintDeviceId(), {
+							httpOnly: true,
+							sameSite: "lax",
+							secure: csrfConfig.secureCookie,
+							path: "/",
+							maxAge: 30 * 24 * 60 * 60,
+						});
+					}
 				}
 			}
 

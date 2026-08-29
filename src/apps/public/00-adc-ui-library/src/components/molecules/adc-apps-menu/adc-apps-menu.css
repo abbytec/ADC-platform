@@ -66,3 +66,38 @@
     font-size: 0.75rem;
     font-weight: 500;
 }
+
+/* Instalar app: fila entera al pie de la grilla, separada de los accesos a las apps.
+ * Reemplaza a la infobar nativa de Chrome, que se dibujaba sobre el header. */
+.install-link {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    padding: 0.625rem 0.75rem;
+    border: none;
+    border-top: 1px solid oklch(from currentColor l c h / 0.1);
+    border-radius: var(--r-xxl);
+    background: transparent;
+    color: var(--c-text);
+    cursor: pointer;
+    font-family: var(--font-text, system-ui, sans-serif);
+    transition: background-color 0.15s;
+}
+
+.install-link:hover {
+    background: oklch(from currentColor l c h / 0.05);
+}
+
+.install-hint {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 0 0.75rem 0.5rem;
+    font-family: var(--font-text, system-ui, sans-serif);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    text-align: center;
+    opacity: 0.75;
+}

@@ -69,6 +69,8 @@ export default {
 		EGRESS_QUOTA_EXCEEDED: "You've reached your plan's monthly download allowance. It resets at the start of the month.",
 		TUNNEL_QUOTA_EXCEEDED: "You've reached your monthly device-transfer allowance. It resets at the start of the month.",
 		DEVICE_LIMIT: "You've reached your plan's linked-device limit. Unlink one to add another.",
+		DEVICE_ONLINE: "That device is connected: unmount the folder from there.",
+		DEVICE_OFFLINE: "That device is offline. This needs it to be connected.",
 		REMOTE_UNIT_LIMIT: "You've reached your plan's remote-unit limit.",
 		TRANSFER_LIMIT: "You already have as many transfers running as your plan allows. Wait for one to finish.",
 		ARCHIVE_EXPIRED: "That zip download expired. Generate it again from your selection.",
@@ -78,6 +80,10 @@ export default {
 	input: {
 		showPassword: "Show password",
 		hidePassword: "Hide password"
+	},
+	install: {
+		action: "Install app",
+		iosHint: "Tap “Share”, then choose “Add to Home Screen”."
 	},
 	footer: {
 		aria: "Help links",

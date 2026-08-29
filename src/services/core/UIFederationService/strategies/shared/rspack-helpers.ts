@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import type { IBuildContext } from "../types.js";
 import { normalizeForConfig, getCommonPublicDir } from "../../utils/fs/path-resolver.js";
-import { buildResponsiveRedirectScript } from "../../utils/codegen/html-templates.js";
+import { buildResponsiveRedirectScript, buildPwaInstallCaptureScript } from "../../utils/codegen/html-templates.js";
 import { exposeChunkName } from "@common/utils/federation-exposes.ts";
 
 /**
@@ -63,7 +63,8 @@ ${exposesEntries}
 /**
  * Configura el template HTML del `HtmlRspackPlugin` para un host. Lee el
  * `index.html` del módulo e inyecta antes de `</head>` los scripts que apliquen:
- * el loader de i18n (si `i18n`) y el auto-redirect responsive (si `responsive`).
+ * el loader de i18n (si `i18n`), la captura del prompt de instalación (si
+ * `serviceWorker`) y el auto-redirect responsive (si `responsive`).
  * Si no hay nada que inyectar, usa `template: './index.html'` sin transformar.
  */
 export function getHostTemplateConfig(context: IBuildContext): string {
@@ -71,6 +72,8 @@ export function getHostTemplateConfig(context: IBuildContext): string {
 	const injections: string[] = [];
 	// Ruta namespaceada (ver `utils/i18n-paths.ts`).
 	if (uiConfig.i18n) injections.push(`<script src="/${context.namespace}/adc-i18n.js"></script>`);
+	const install = buildPwaInstallCaptureScript(uiConfig.serviceWorker);
+	if (install) injections.push(install);
 	const redirect = buildResponsiveRedirectScript(uiConfig.responsive);
 	if (redirect) injections.push(redirect);
 

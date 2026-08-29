@@ -423,4 +423,31 @@
             var(--adc-label-lightness-text) var(--adc-label-chroma-text) var(--adc-label-hue, 245) / 35%
         );
     }
+
+    /*
+     * Chrome pinta el autofill con un fondo celeste propio (`-internal-light-dark`) que ninguna
+     * `background-color` sobreescribe: sólo lo tapa un `box-shadow` inset. Van dos capas porque
+     * `--c-surface` es translúcido en algunos temas y con una sola el celeste se filtraría. Las
+     * variantes `:hover`/`:focus`/`:active` son obligatorias — sin ellas Chrome reaplica su fondo al
+     * pasar el mouse (p. ej. sobre el ojo de revelar contraseña, que queda encima del campo).
+     */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+        box-shadow:
+            inset 0 0 0 100vmax var(--c-background),
+            inset 0 0 0 100vmax var(--c-surface);
+        -webkit-text-fill-color: var(--c-text);
+        caret-color: var(--c-text);
+    }
+
+    /* La regla de arriba le gana por especificidad al `input:focus` de accessibility.css: se repone
+       acá la sombra de foco junto a las capas que tapan el autofill. */
+    input:-webkit-autofill:focus {
+        box-shadow:
+            inset 0 0 0 100vmax var(--c-background),
+            inset 0 0 0 100vmax var(--c-surface),
+            var(--shadow);
+    }
 }

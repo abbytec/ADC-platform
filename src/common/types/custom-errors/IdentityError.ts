@@ -18,6 +18,8 @@ type IdentityErrorTypes =
 	| "PERMISSION_ESCALATION"
 	// Planes / asientos
 	| "SEAT_LIMIT_REACHED"
+	// La política de nombres rechaza el username (reservado, bloqueado o formato inválido)
+	| "FORBIDDEN_USERNAME"
 	| "USER_NOT_FOUND"
 	| "ROLE_NOT_FOUND"
 	| "GROUP_NOT_FOUND"

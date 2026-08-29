@@ -23,6 +23,8 @@ type ExpectedDriveErrorTypes =
 	// Tamaño por archivo del plan (413; distinto de STORAGE_FULL, que es la cuota total)
 	| "FILE_TOO_LARGE"
 	| "NO_PENDING_REVISION"
+	// El contenido guardado ya no es el que el cliente creía: su parche no aplica (autoguardado)
+	| "CONTENT_STALE"
 	| "LINK_EXPIRED"
 	// El enlace existe pero no se puede servir ahora (cupo del dueño agotado)
 	| "LINK_UNAVAILABLE"
@@ -43,6 +45,7 @@ type ExpectedDriveErrorTypes =
 	| "DEVICE_NOT_FOUND"
 	| "DEVICE_LIMIT"
 	| "DEVICE_OFFLINE"
+	| "DEVICE_ONLINE"
 	| "PAIRING_INVALID"
 	| "MOUNT_UNAVAILABLE"
 	| "TUNNEL_RPC_TIMEOUT"

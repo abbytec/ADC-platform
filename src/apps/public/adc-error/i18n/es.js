@@ -28,6 +28,7 @@ export default {
 		unavailable: "El sistema de cuentas no está disponible en este momento, así que no podemos verificar tu acceso.",
 		login: "Iniciar sesión",
 		hint: "Si creés que deberías tener acceso, pedíselo a un administrador de la plataforma.",
+		retryHint: "Si ya iniciaste sesión o te habilitaron el acceso, actualizá esta página para volver a intentarlo.",
 	},
 	generic: {
 		title: "Algo salió mal",

@@ -41,6 +41,10 @@ export {
 	type JobStatus,
 } from "./types.js";
 
+// Los endpoints que llevan su propia cuota (p.ej. altas efectivas por red) tienen que contar por la
+// MISMA identidad que el limitador del borde, o el /64 de IPv6 se aplicaría sólo en una de las dos.
+export { clientRateKey } from "./parts/rate-limit.js";
+
 /**
  * EndpointManagerService - Gestión centralizada de endpoints HTTP
  */

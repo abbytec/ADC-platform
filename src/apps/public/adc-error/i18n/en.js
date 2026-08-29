@@ -28,6 +28,7 @@ export default {
 		unavailable: "The accounts system is unavailable right now, so we can't verify your access.",
 		login: "Sign in",
 		hint: "If you think you should have access, ask a platform administrator.",
+		retryHint: "If you already signed in or were granted access, refresh this page to try again.",
 	},
 	generic: {
 		title: "Something went wrong",

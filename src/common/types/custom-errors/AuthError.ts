@@ -1,5 +1,5 @@
 import ADCCustomError, { type ADCCustomErrorJSON } from "../ADCCustomError.ts";
-type AuthErrorData = { blockedUntil?: number; permanent?: boolean; requireRelogin?: boolean };
+type AuthErrorData = { blockedUntil?: number; permanent?: boolean; requireRelogin?: boolean; retryAfter?: number };
 
 type AuthGenericErrors =
 	| "NO_SESSION"
@@ -27,6 +27,8 @@ type ExcpectedAuthErrorTypes =
 	| "INVALID_EMAIL"
 	| "USERNAME_EXISTS"
 	| "EMAIL_EXISTS"
+	// Cuota de altas efectivas por red (distinta del rate limit del borde, que cuenta intentos)
+	| "REGISTER_QUOTA_EXCEEDED"
 	| "NOT_ORG_MEMBER"
 	| "USER_NOT_FOUND"
 	// ACEPTACIÓN LEGAL EN EL ALTA

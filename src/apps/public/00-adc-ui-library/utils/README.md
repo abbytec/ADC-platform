@@ -46,6 +46,10 @@ const dispose = registerBlocksClipboard(el, {
 });
 ```
 
+## pwa-install.ts
+
+Instalación PWA con UI propia. Un script inline del `<head>`, inyectado por el build de toda app con `serviceWorker` (`buildPwaInstallCaptureScript`), captura el `beforeinstallprompt` y le hace `preventDefault()`: eso suprime la infobar nativa de Chrome Android, que se dibujaba sobre el header sticky y tapaba el botón de acceso. `promptInstall()` dispara el prompt guardado (`getDeferredPrompt()`), `isStandalone()`/`isIos()` deciden si ofrecerlo. El ítem «Instalar app» vive en `adc-apps-menu`.
+
 ## connect-rpc.ts
 
 Cliente Connect RPC tipado usando Protocol Buffers.

@@ -5,7 +5,8 @@ usa un subdominio del dominio raíz de correo.
 
 - Dominio raíz de correo: `adigitalcafe.com` (`MAIL_ROOT_DOMAIN`).
 - Hostname del MTA: `mail.adigitalcafe.com` (`MAIL_HOSTNAME`).
-- Direcciones de usuario: `usuario@<orgSlug>.adigitalcafe.com`.
+- Direcciones de usuario: `usuario@adigitalcafe.com` (buzón personal) y
+  `usuario@<orgSlug>.adigitalcafe.com` (buzón de organización).
 
 Sustituye dominio, IPs y selector por los tuyos si despliegas otra instancia.
 

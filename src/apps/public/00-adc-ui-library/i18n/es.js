@@ -70,6 +70,8 @@ export default {
 		EGRESS_QUOTA_EXCEEDED: "Alcanzaste el cupo de descarga mensual de tu plan. Se renueva al empezar el mes.",
 		TUNNEL_QUOTA_EXCEEDED: "Alcanzaste el cupo mensual de transferencia entre dispositivos. Se renueva al empezar el mes.",
 		DEVICE_LIMIT: "Llegaste al máximo de dispositivos vinculados de tu plan. Desvinculá uno para agregar otro.",
+		DEVICE_ONLINE: "El dispositivo está conectado: desmontá la carpeta desde ahí.",
+		DEVICE_OFFLINE: "El dispositivo no está conectado. La operación necesita que esté en línea.",
 		REMOTE_UNIT_LIMIT: "Llegaste al máximo de unidades remotas de tu plan.",
 		TRANSFER_LIMIT: "Ya tenés en curso todas las transferencias simultáneas que permite tu plan. Esperá a que termine una.",
 		ARCHIVE_EXPIRED: "Esa descarga comprimida expiró. Volvé a generarla desde la selección.",
@@ -79,6 +81,10 @@ export default {
 	input: {
 		showPassword: "Mostrar contraseña",
 		hidePassword: "Ocultar contraseña"
+	},
+	install: {
+		action: "Instalar app",
+		iosHint: "Tocá «Compartir» y elegí «Agregar a inicio»."
 	},
 	footer: {
 		aria: "Enlaces de ayuda",

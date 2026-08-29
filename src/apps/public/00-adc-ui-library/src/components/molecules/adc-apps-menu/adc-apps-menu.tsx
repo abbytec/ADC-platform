@@ -2,6 +2,7 @@ import { Component, Prop, State, Element, Host, Listen } from "@stencil/core";
 
 import { getUnavailableApps } from "@common/utils/module-availability.js";
 import { getSession, type SessionUser } from "../../../../utils/session.js";
+import { INSTALLABLE_EVENT, INSTALLED_EVENT, getDeferredPrompt, isIos, isStandalone, promptInstall } from "../../../../utils/pwa-install.js";
 import { DEFAULT_APPS } from "./apps-config.js";
 export interface AppMenuItem {
 	id: string;
@@ -16,6 +17,27 @@ export interface AppMenuItem {
 	 * el item se muestra siempre.
 	 */
 	moduleName?: string;
+}
+
+interface ADCGlobal {
+	t?: (key: string, params?: Record<string, string> | null, namespace?: string) => string;
+	loadTranslations?: (namespaces: string[], locale?: string) => Promise<void>;
+	getLocale?: () => string;
+}
+
+const I18N_NAMESPACE = "adc-ui-library";
+const adcI18n = globalThis as typeof globalThis & ADCGlobal;
+
+type InstallKey = "action" | "iosHint";
+
+const INSTALL_FALLBACKS: Record<"es" | "en", Record<InstallKey, string>> = {
+	es: { action: "Instalar app", iosHint: "Tocá «Compartir» y elegí «Agregar a inicio»." },
+	en: { action: "Install app", iosHint: "Tap “Share”, then choose “Add to Home Screen”." },
+};
+
+function fallbackLocale(): "es" | "en" {
+	const language = (adcI18n.getLocale?.() || globalThis.document?.documentElement?.lang || globalThis.navigator?.language || "").toLowerCase();
+	return language.startsWith("en") ? "en" : "es";
 }
 
 /** Icon tag name from app id: "community" → "adc-icon-app-community" */
@@ -36,6 +58,10 @@ export class AdcAppsMenu {
 
 	@State() open = false;
 	@State() sessionUser: SessionUser | undefined = undefined;
+	/** Hay prompt de instalación diferido (Chromium) o corresponde el instructivo de iOS. */
+	@State() installable = false;
+	@State() showIosHint = false;
+	@State() private i18nVersion = 0;
 
 	/** Apps caídas/deshabilitadas (nombres base): sus botones no se muestran. */
 	#unavailable: ReadonlySet<string> = new Set();
@@ -50,6 +76,46 @@ export class AdcAppsMenu {
 		this.sessionUser = session?.authenticated ? session.user : undefined;
 		this.#unavailable = unavailable;
 	}
+
+	connectedCallback() {
+		this.refreshInstallable();
+		globalThis.addEventListener(INSTALLABLE_EVENT, this.refreshInstallable);
+		globalThis.addEventListener(INSTALLED_EVENT, this.refreshInstallable);
+		globalThis.addEventListener("adc:i18n:loaded", this.handleI18nLoaded);
+		adcI18n.loadTranslations?.([I18N_NAMESPACE]).catch(() => undefined);
+	}
+
+	disconnectedCallback() {
+		globalThis.removeEventListener(INSTALLABLE_EVENT, this.refreshInstallable);
+		globalThis.removeEventListener(INSTALLED_EVENT, this.refreshInstallable);
+		globalThis.removeEventListener("adc:i18n:loaded", this.handleI18nLoaded);
+	}
+
+	private readonly handleI18nLoaded = () => {
+		this.i18nVersion += 1;
+	};
+
+	private readonly refreshInstallable = () => {
+		this.installable = !isStandalone() && (getDeferredPrompt() !== null || isIos());
+	};
+
+	private translateInstall(key: InstallKey): string {
+		const translationKey = `install.${key}`;
+		const translated = adcI18n.t?.(translationKey, null, I18N_NAMESPACE);
+		if (translated && translated !== translationKey) return translated;
+		return INSTALL_FALLBACKS[fallbackLocale()][key];
+	}
+
+	/** En iOS no hay prompt que disparar: el ítem despliega el instructivo del share sheet. */
+	private readonly handleInstallClick = async () => {
+		if (getDeferredPrompt()) {
+			await promptInstall();
+			this.refreshInstallable();
+			this.open = false;
+			return;
+		}
+		this.showIosHint = !this.showIosHint;
+	};
 
 	private get appList(): AppMenuItem[] {
 		let list: AppMenuItem[] = DEFAULT_APPS;
@@ -74,12 +140,27 @@ export class AdcAppsMenu {
 
 	private readonly toggle = () => {
 		this.open = !this.open;
+		if (!this.open) this.showIosHint = false;
 	};
 
 	private readonly isCurrent = (url: string): boolean => {
 		const origin = globalThis.location?.origin;
 		return origin === url || origin + "/" === url + "/";
 	};
+
+	private renderInstall() {
+		return [
+			<button key="install" type="button" class="install-link" onClick={this.handleInstallClick} aria-expanded={isIos() ? String(this.showIosHint) : undefined}>
+				<adc-icon-download size="1.25rem"></adc-icon-download>
+				<span class="app-label">{this.translateInstall("action")}</span>
+			</button>,
+			this.showIosHint && (
+				<p key="install-hint" class="install-hint">
+					{this.translateInstall("iosHint")}
+				</p>
+			),
+		];
+	}
 
 	render() {
 		const apps = this.appList;
@@ -101,6 +182,8 @@ export class AdcAppsMenu {
 								</a>
 							);
 						})}
+
+						{this.installable && this.renderInstall()}
 					</div>
 				)}
 			</Host>

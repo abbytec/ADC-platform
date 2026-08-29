@@ -22,7 +22,8 @@ interpreta en el dominio raíz (`MAIL_ROOT_DOMAIN`):
 ```
 
 - `support@adigitalcafe.com` entrega en el buzón de `abbytec`, aunque esa
-  dirección no sea un buzón real (los buzones son `usuario@<orgSlug>.<raíz>`).
+  dirección no sea un buzón real (el buzón personal es `usuario@<raíz>` y el de
+  organización `usuario@<orgSlug>.<raíz>`; un alias no es ninguno de los dos).
 - Funciona igual con subaddressing: `support+ventas@…` sigue siendo `support`.
 - Los alias sin dominio **no** aplican a subdominios de organización; para eso hay
   que poner la dirección completa como clave.
@@ -58,7 +59,8 @@ login sería peor que renombrarla; el vocabulario del nombre generado sale de
 `randomUsername` en el mismo archivo.
 
 Bloquear un username bloquea también su dirección de correo, porque el buzón se
-deriva del username (`<username>@<orgSlug>.<raíz>`).
+deriva del username (`<username>@<raíz>` el personal, `<username>@<orgSlug>.<raíz>`
+el de organización).
 
 > Los usuarios que ya existían **no** se revalidan: la política sólo actúa al
 > crear o renombrar. Si hace falta, revisar los existentes es un paso aparte.

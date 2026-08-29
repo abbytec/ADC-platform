@@ -41,3 +41,20 @@ export function createClientId(): string {
 export function shortId(): string {
 	return createClientId().replaceAll("-", "").slice(0, 12);
 }
+
+/**
+ * SHA-256 hexadecimal de un texto UTF-8 o de un binario, o `null` sin
+ * `crypto.subtle` (contexto no seguro: LAN por http plano, WebViews). Quien
+ * llama degrada — acá no hay fallback que siga siendo un SHA-256.
+ */
+export async function sha256Hex(input: string | Blob): Promise<string | null> {
+	const subtle = webCrypto()?.subtle;
+	if (!subtle) return null;
+	try {
+		const bytes = typeof input === "string" ? new TextEncoder().encode(input) : await input.arrayBuffer();
+		const digest = await subtle.digest("SHA-256", bytes);
+		return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+	} catch {
+		return null;
+	}
+}

@@ -24,8 +24,15 @@ export interface EndpointConfig {
 
 /** Optional endpoint configuration */
 interface EndpointOptions {
-	/** Rate limit per IP. timeWindow is in milliseconds. */
-	rateLimit?: { max: number; timeWindow: number };
+	/**
+	 * Límite por red (`timeWindow` en ms). La clave es la IP, agregada a /64 en IPv6.
+	 *
+	 * `perDevice` agrega un segundo eje MÁS ESTRECHO dentro del de red, por navegador (cookie
+	 * técnica emitida por el servidor). Sirve para que un error repetido de una persona no consuma
+	 * el cupo de quien comparte el router; como la cookie se puede borrar, nunca amplía la cuota:
+	 * el techo real lo sigue poniendo `max`, que hay que dimensionar para el tráfico sin cookie.
+	 */
+	rateLimit?: { max: number; timeWindow: number; perDevice?: { max: number; timeWindow: number } };
 	/**
 	 * Schemas de validación de entrada. Usar `Type` de `@sinclair/typebox`:
 	 * se validan en cada request (400 con detalles) y alimentan el doc OpenAPI

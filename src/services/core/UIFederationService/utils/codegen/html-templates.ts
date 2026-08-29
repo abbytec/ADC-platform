@@ -67,6 +67,35 @@ export function buildResponsiveRedirectScript(responsive: UIModuleConfig["respon
 }
 
 /**
+ * Genera el `<script>` que difiere el prompt de instalación PWA. El `preventDefault()` suprime
+ * la mini-infobar nativa de Chrome Android, que se dibuja encima del header sticky y tapa el
+ * botón de acceso; la oferta pasa a salir del ítem «Instalar app» de `adc-apps-menu`, que
+ * dispara este evento guardado (ver `utils/pwa-install.ts` de la UI library).
+ *
+ * Va inline en el `<head>` porque el evento llega antes de que monte Stencil. Sólo se inyecta
+ * con `serviceWorker`: sin SW con handler de `fetch` el navegador nunca considera instalable la
+ * app y el listener no tendría nada que capturar.
+ */
+export function buildPwaInstallCaptureScript(serviceWorker: UIModuleConfig["serviceWorker"]): string {
+	if (!serviceWorker) return "";
+
+	return `<script>
+      (function () {
+        globalThis.__ADC_INSTALL_CAPTURED__ = true;
+        globalThis.addEventListener('beforeinstallprompt', function (event) {
+          event.preventDefault();
+          globalThis.__ADC_INSTALL_PROMPT__ = event;
+          globalThis.dispatchEvent(new CustomEvent('adc:installable'));
+        });
+        globalThis.addEventListener('appinstalled', function () {
+          globalThis.__ADC_INSTALL_PROMPT__ = null;
+          globalThis.dispatchEvent(new CustomEvent('adc:installed'));
+        });
+      })();
+    </script>`;
+}
+
+/**
  * Script inline para detección de dark mode basado en preferencias del usuario.
  * Compartido entre templates HTML generados por rspack y archivos standalone.
  */
