@@ -3,6 +3,7 @@ import { Component, Prop, State, Element, Host, Listen } from "@stencil/core";
 import { getUnavailableApps } from "@common/utils/module-availability.js";
 import { getSession, type SessionUser } from "../../../../utils/session.js";
 import { INSTALLABLE_EVENT, INSTALLED_EVENT, getDeferredPrompt, isIos, isStandalone, promptInstall } from "../../../../utils/pwa-install.js";
+import { trackPanelClamp } from "../../../utils/clamp-panel";
 import { DEFAULT_APPS } from "./apps-config.js";
 export interface AppMenuItem {
 	id: string;
@@ -66,6 +67,9 @@ export class AdcAppsMenu {
 	/** Apps caídas/deshabilitadas (nombres base): sus botones no se muestran. */
 	#unavailable: ReadonlySet<string> = new Set();
 
+	#dropdownEl?: HTMLElement;
+	#untrackClamp: (() => void) | null = null;
+
 	async componentWillLoad() {
 		// En paralelo: la sesión (predicados `requires`) y el estado de plataforma
 		// (`__ADC_PLATFORM__`: 0 fetch en prod, 1 fetch cacheado en dev). Ambos degradan.
@@ -85,7 +89,20 @@ export class AdcAppsMenu {
 		adcI18n.loadTranslations?.([I18N_NAMESPACE]).catch(() => undefined);
 	}
 
+	componentDidRender() {
+		// El botón de apps vive en el medio del header: en mobile el panel anclado a su borde
+		// derecho se sale por la izquierda.
+		if (this.open && this.#dropdownEl && !this.#untrackClamp) {
+			this.#untrackClamp = trackPanelClamp(this.el, this.#dropdownEl);
+		} else if (!this.open && this.#untrackClamp) {
+			this.#untrackClamp();
+			this.#untrackClamp = null;
+		}
+	}
+
 	disconnectedCallback() {
+		this.#untrackClamp?.();
+		this.#untrackClamp = null;
 		globalThis.removeEventListener(INSTALLABLE_EVENT, this.refreshInstallable);
 		globalThis.removeEventListener(INSTALLED_EVENT, this.refreshInstallable);
 		globalThis.removeEventListener("adc:i18n:loaded", this.handleI18nLoaded);
@@ -172,7 +189,7 @@ export class AdcAppsMenu {
 				</button>
 
 				{this.open && (
-					<div class="apps-dropdown">
+					<div class="apps-dropdown" ref={(el) => (this.#dropdownEl = el)}>
 						{apps.map((app) => {
 							const IconTag = iconTag(app.id);
 							return (
