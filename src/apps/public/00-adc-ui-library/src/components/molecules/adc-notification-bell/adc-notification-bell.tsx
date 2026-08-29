@@ -23,6 +23,7 @@ import { getSession } from "../../../../utils/session.js";
 import { toast } from "../../../../utils/toast.js";
 import { createAdcApi } from "../../../../utils/adc-fetch.js";
 import { getPlatformApp, loadPlatformRemoteModule } from "../../../../utils/platform-links.js";
+import { trackPanelClamp } from "../../../utils/clamp-panel";
 
 type StreamEvent =
 	| { type: "ready"; unread: number }
@@ -57,6 +58,7 @@ export class AdcNotificationBell {
 	#menuMount: NotificationsMenuMount | null = null;
 	#unmountMenu: (() => void) | null = null;
 	#menuContainer: HTMLElement | null = null;
+	#untrackClamp: (() => void) | null = null;
 
 	async componentWillLoad(): Promise<void> {
 		const session = await getSession(false);
@@ -91,6 +93,9 @@ export class AdcNotificationBell {
 					this.#broadcast();
 				},
 			});
+			// La campana no es el último botón del header, así que en mobile el panel anclado a
+			// su borde derecho se sale por la izquierda.
+			this.#untrackClamp = trackPanelClamp(this.el, this.#menuContainer);
 		}
 	}
 
@@ -170,6 +175,8 @@ export class AdcNotificationBell {
 	}
 
 	#closeMenu(): void {
+		this.#untrackClamp?.();
+		this.#untrackClamp = null;
 		this.#unmountMenu?.();
 		this.#unmountMenu = null;
 		this.#menuContainer = null;
