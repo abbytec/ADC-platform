@@ -40,12 +40,29 @@ Los presets registrados viven en `presets/.presets.txt` con el formato:
 El script `scripts/sync-presets.mjs` (se ejecuta automáticamente en el `postinstall` de `bun install`):
 
 - Clona los presets que falten.
+- Instala en cada uno el pre-commit hook compartido (`scripts/git-hooks/pre-commit` → `.git/hooks/pre-commit`).
 - Omite silenciosamente los que no tengas permiso para clonar.
 - NO toca los que ya estén clonados (usá `git -C presets/<nombre> pull` para actualizar).
 
 ```bash
 # Ejecución manual
 node scripts/sync-presets.mjs
+```
+
+### Pre-commit hook compartido
+
+`scripts/git-hooks/pre-commit` es la fuente única de un hook que bloquea (con `error: horario
+laboral`) los commits hechos con `gpsmurfs@gmail.com` de lunes a viernes de 9 a 18 (hora local de la
+máquina). `sync-presets.mjs` lo copia a cada preset recién clonado; los `.git/hooks/` no se
+versionan, así que no llega solo con un `git pull` en un preset ya existente.
+
+Repos que NO pasan por `sync-presets.mjs` (el monorepo raíz, `private/`, o un preset creado con
+`git init` — paso 1 de la sección siguiente — antes de registrarse en `.presets.txt`) necesitan la
+copia manual:
+
+```bash
+cp scripts/git-hooks/pre-commit <repo>/.git/hooks/pre-commit
+chmod +x <repo>/.git/hooks/pre-commit
 ```
 
 ## Crear y extraer un preset nuevo

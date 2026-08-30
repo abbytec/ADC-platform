@@ -1,9 +1,24 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { delimiter, isAbsolute, join, resolve, sep } from 'node:path';
 
 const PRESETS_FILE = 'presets/.presets.txt';
 const PRESETS_DIR = 'presets';
+const PRE_COMMIT_HOOK_SRC = 'scripts/git-hooks/pre-commit';
+
+/**
+ * Copia el pre-commit compartido (ver docs/multirepo.md) a un preset recién clonado. No falla el
+ * postinstall si algo sale mal: un preset sin el hook sigue siendo un preset usable.
+ */
+function installPreCommitHook(dir) {
+  try {
+    const dest = join(dir, '.git', 'hooks', 'pre-commit');
+    copyFileSync(PRE_COMMIT_HOOK_SRC, dest);
+    chmodSync(dest, 0o755);
+  } catch (e) {
+    console.error(`  ⚠ no se pudo instalar el pre-commit hook: ${e?.message ?? e}`);
+  }
+}
 
 // `--update-all` (script `bun run update-all`): además de clonar los que falten, corre
 // `git pull --ff-only` en los presets YA clonados. Sólo fast-forward a propósito: un pull
@@ -420,6 +435,7 @@ for (const rawLine of readFileSync(PRESETS_FILE, 'utf8').split('\n')) {
   console.log(`  ↓ clonando ${name}${ref ? ' @ ' + ref : ''}`);
 
   if (git(['clone', '--quiet', '--', repo, dir]).status === 0) {
+    installPreCommitHook(dir);
     if (ref && git(['-C', dir, 'checkout', '--quiet', ref, '--']).status !== 0) {
       console.error(`    ⚠ no se pudo hacer checkout de ${ref} en ${name}`);
     } else if (SHA_RE.test(ref)) {

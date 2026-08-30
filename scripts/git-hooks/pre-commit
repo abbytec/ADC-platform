@@ -1,0 +1,29 @@
+#!/usr/bin/env node
+// Bloquea commits de gpsmurfs@gmail.com de lunes a viernes de 9 a 18 (hora local de la máquina).
+// Fuente única: `sync-presets.mjs` copia este archivo a `.git/hooks/pre-commit` en cada preset
+// clonado; ver docs/multirepo.md. Node (no bash) para no depender de flags GNU-only de `date`
+// que no existen en el `date` de macOS/BSD.
+import { execSync } from "node:child_process";
+
+const NON_WORK_EMAIL = "gpsmurfs@gmail.com";
+
+function currentEmail() {
+	try {
+		return execSync("git config --get user.email", { encoding: "utf8" }).trim();
+	} catch {
+		return "";
+	}
+}
+
+if (currentEmail() === NON_WORK_EMAIL) {
+	const now = new Date();
+	const day = now.getDay(); // 0=domingo .. 6=sábado
+	const hour = now.getHours();
+	const isWorkday = day >= 1 && day <= 5;
+	const isWorkHour = hour >= 9 && hour < 18;
+
+	if (isWorkday && isWorkHour) {
+		console.error("error: horario laboral");
+		process.exit(1);
+	}
+}
