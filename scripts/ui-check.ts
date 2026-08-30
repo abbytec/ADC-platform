@@ -37,7 +37,7 @@ const WITH_CSS = process.argv.includes("--with-css");
 interface Finding {
 	file: string;
 	line: number;
-	rule: "A" | "B" | "C" | "D";
+	rule: "A" | "B" | "C" | "D" | "E";
 	message: string;
 }
 
@@ -258,6 +258,49 @@ function checkSemanticTextTokens(file: string, src: string) {
 					`Como color de texto queda en ~1.0 de contraste en los dos temas. Va \`text-t${semantic}\`, ` +
 					`salvo que el mismo elemento pinte \`bg-t${semantic}\` (ahí la inversión es correcta).`,
 			});
+		}
+	}
+}
+
+/* ------------------------------------------------ Regla E: alias de color que no existe */
+
+/**
+ * Nombres que suenan a token de la paleta y no lo son. La regla A no los ve: sólo juzga clases con
+ * valor numérico, porque un nombre suelto puede ser una clase propia de `@layer components`. Estos
+ * están enumerados justamente porque no lo son — el build no emite nada y el elemento hereda el
+ * color de arriba, que es un fallo mudo.
+ */
+const DEAD_ALIASES: Record<string, string> = {
+	warning: "warn (fondo) / twarn (texto)",
+	twarning: "twarn",
+	error: "danger (fondo) / tdanger (texto)",
+	terror: "tdanger",
+	"surface-2": "surface",
+	"surface-hover": "surface (o `hover:bg-text/5`)",
+};
+
+const COLOR_PREFIXES = ["text", "bg", "border", "ring", "fill", "stroke", "decoration", "outline", "shadow", "from", "via", "to"];
+
+function checkDeadAliases(file: string, src: string) {
+	for (const literal of classLiterals(src)) {
+		if (ignored(src, literal.index)) continue;
+		for (const token of tokensOf(literal.value)) {
+			const base = baseUtility(token);
+			for (const prefix of COLOR_PREFIXES) {
+				if (!base.startsWith(`${prefix}-`)) continue;
+				// El `/opacity` de Tailwind no cambia si el color existe.
+				const alias = base.slice(prefix.length + 1).split("/")[0];
+				const replacement = DEAD_ALIASES[alias];
+				if (!replacement) continue;
+				findings.push({
+					file,
+					line: lineOf(src, literal.index),
+					rule: "E",
+					message:
+						`\`${token}\`: \`${alias}\` no existe en la paleta, así que el build no emite ninguna regla y ` +
+						`el elemento hereda el color de su contenedor sin avisar. Va \`${replacement}\`.`,
+				});
+			}
 		}
 	}
 }
@@ -567,6 +610,7 @@ for (const file of styledFiles) {
 	checkArbitraryValues(file, src);
 	checkRawColors(file, src);
 	checkSemanticTextTokens(file, src);
+	checkDeadAliases(file, src);
 }
 checkCrossAppLinks();
 if (WITH_CSS) checkAgainstEmittedCss();
@@ -586,7 +630,7 @@ if (known.length > 0) {
 }
 
 if (blocking.length === 0) {
-	console.log("\n✅ Sin clases muertas, enlaces cross-app rotos, tokens invisibles ni colores crudos nuevos.");
+	console.log("\n✅ Sin clases muertas, alias inexistentes, enlaces cross-app rotos, tokens invisibles ni colores crudos nuevos.");
 	process.exit(0);
 }
 
@@ -595,10 +639,11 @@ const RULE_TITLES: Record<Finding["rule"], string> = {
 	B: "Colores crudos en vez de tokens",
 	C: "Enlaces cross-app rotos",
 	D: "Token de fondo usado como color de texto (invisible)",
+	E: "Alias de color inexistente (el build no emite nada)",
 };
 
 console.error("");
-for (const rule of ["C", "D", "A", "B"] as const) {
+for (const rule of ["C", "D", "E", "A", "B"] as const) {
 	const group = blocking.filter((f) => f.rule === rule);
 	if (group.length === 0) continue;
 	console.error(`❌ ${RULE_TITLES[rule]} (${group.length}):\n`);

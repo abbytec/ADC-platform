@@ -126,18 +126,20 @@ export default class RedisProvider extends BaseProvider {
 
 	constructor(config?: RedisProviderConfig) {
 		super();
-		// Usamos Bun.env para acceso nativo y rápido a variables de entorno
+		// `process.env` y no `Bun.env`: son la misma tabla, pero el auditor de variables sólo reconoce
+		// `process.env.X`, así que con `Bun.env` estas cinco eran invisibles para él — y dos de ellas
+		// llegaron a no estar declaradas en el manifiesto por eso mismo.
 		this.#config = {
-			host: config?.host || Bun.env.REDIS_HOST || "localhost",
-			port: config?.port || Number.parseInt(Bun.env.REDIS_PORT || "6380", 10),
-			password: config?.password || Bun.env.REDIS_PASSWORD || undefined,
-			db: config?.db || Number.parseInt(Bun.env.REDIS_DB || "0", 10),
+			host: config?.host || process.env.REDIS_HOST || "localhost",
+			port: config?.port || Number.parseInt(process.env.REDIS_PORT || "6380", 10),
+			password: config?.password || process.env.REDIS_PASSWORD || undefined,
+			db: config?.db || Number.parseInt(process.env.REDIS_DB || "0", 10),
 			keyPrefix: config?.keyPrefix || "adc:",
 			commandTimeoutMs: config?.commandTimeoutMs,
 		};
 		// La cadena vacía se descarta antes de convertir: `Number("")` es 0, y un
 		// `${REDIS_COMMAND_TIMEOUT_MS:-}` sin valor apagaría el deadline sin que nadie lo pidiera.
-		const raw = this.#config.commandTimeoutMs ?? Bun.env.REDIS_COMMAND_TIMEOUT_MS;
+		const raw = this.#config.commandTimeoutMs ?? process.env.REDIS_COMMAND_TIMEOUT_MS;
 		const declared = raw === "" || raw === undefined ? Number.NaN : Number(raw);
 		this.#commandTimeoutMs = Number.isFinite(declared) && declared >= 0 ? declared : DEFAULT_COMMAND_TIMEOUT_MS;
 	}

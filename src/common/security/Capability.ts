@@ -63,6 +63,24 @@ export enum Scope {
 	/** Anunciar a TODOS los usuarios (`NotificationService.broadcast`). Amplifica ×N: opt-in explícito. */
 	NotificationsBroadcast = "notifications:broadcast",
 	/**
+	 * Escribir o borrar en la configuración administrada (`ConfigStoreService.setConfigMap`,
+	 * `setSecret`, `deleteConfigMap`, `deleteSecret`).
+	 *
+	 * Opt-in porque estos valores se interpolan dentro de los `config.json` de **todos** los módulos:
+	 * quien pueda escribir acá le cambia la configuración a cualquier otro, incluidas las
+	 * credenciales con las que se conecta.
+	 */
+	ConfigWrite = "config:write",
+	/**
+	 * Leer el valor en claro de un secreto (`ConfigStoreService.revealSecret`).
+	 *
+	 * El scope más caro del árbol: es la bóveda entera. Va separado de {@link ConfigWrite} porque
+	 * administrar credenciales —rotarlas, cargarlas— no exige poder leerlas, y quien las escribe ya
+	 * las conoce. Sólo el panel de configuración debería declararlo, y el ledger de privilegios deja
+	 * rastro de la concesión.
+	 */
+	ConfigReveal = "config:reveal",
+	/**
 	 * Control de infraestructura de plataforma invocado por el kernel/orquestador:
 	 * refrescar import maps, recompilar módulos UI, togglear disponibilidad (503) de
 	 * endpoints. La mintea SÓLO el kernel para sí mismo (no es declarable por un módulo);

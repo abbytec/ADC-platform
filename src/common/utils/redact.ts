@@ -18,6 +18,34 @@
 /** Marcador único: hace obvio en la lectura que ahí había algo y que se sacó. */
 const MARK = "[REDACTED]";
 
+/**
+ * Valores secretos concretos, registrados por la bóveda al cargarlos.
+ *
+ * Las reglas de abajo son por patrón y sólo tapan lo que *parece* un secreto: un valor suelto en
+ * medio de un mensaje («no pude conectar con hunter2@host») no cae en ninguna. Con la bóveda el
+ * proceso conoce los valores exactos, así que se pueden tapar donde sea que aparezcan.
+ *
+ * Ordenados de más largo a más corto: si un secreto contiene a otro, tapar primero el largo evita
+ * dejar la cola del que lo contenía a la vista.
+ */
+let secretValues: string[] = [];
+
+/** Descarta lo demasiado corto para ser distinguible: un valor de 4 caracteres aparece en cualquier texto. */
+const MIN_REDACTABLE_LENGTH = 8;
+
+/**
+ * Reemplaza la lista de valores a tapar. La llama **sólo** el servicio de configuración al cargar o
+ * cambiar la bóveda.
+ */
+export function registerSecretValues(values: readonly string[]): void {
+	secretValues = [...new Set(values.filter((v) => v && v.length >= MIN_REDACTABLE_LENGTH))].sort((a, b) => b.length - a.length);
+}
+
+/** Cuántos valores exactos se están tapando. Para poder decirlo en un diagnóstico sin revelarlos. */
+export function registeredSecretCount(): number {
+	return secretValues.length;
+}
+
 const RULES: ReadonlyArray<readonly [RegExp, string]> = [
 	// Credenciales embebidas en URLs (amqp://, mongodb+srv://, redis://, http(s)://...): se
 	// conservan esquema y host, se tira el par usuario:password.
@@ -68,6 +96,9 @@ function isIpv4(candidate: string): boolean {
 export function redact(text: string): string {
 	if (!text) return text;
 	let out = text;
+	// Los valores exactos van PRIMERO: si un secreto ya se reemplazó por el marcador, las reglas por
+	// patrón no tienen nada que hacer con él, y al revés una regla podría partirlo y dejar media cola.
+	for (const value of secretValues) out = out.replaceAll(value, MARK);
 	for (const [pattern, replacement] of RULES) out = out.replace(pattern, replacement);
 	return out.replace(IPV4, (match) => (isIpv4(match) && !NON_IDENTIFYING_IPV4.test(match) ? MARK : match));
 }

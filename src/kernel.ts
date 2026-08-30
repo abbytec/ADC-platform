@@ -31,6 +31,7 @@ import { ModuleDetector } from "./core/runtime/ModuleDetector.js";
 import { shutdownKernel } from "./core/runtime/KernelShutdown.js";
 import { bootstrapNodeIfPending } from "./core/bootstrap/NodeBootstrap.js";
 import { applyNodeRoleFromState, assertNodeStateReadable, powerMode } from "./common/utils/node-state.js";
+import { assertBootSecrets } from "./common/utils/boot-secrets.js";
 import { loadLayerRecursive, type LayerLoadOptions } from "./core/apps/LayerLoader.js";
 import { LoadSemaphore } from "./utils/system/LoadSemaphore.ts";
 import { MemoryProbe } from "./utils/system/MemoryProbe.ts";
@@ -444,6 +445,11 @@ export class Kernel {
 		// decide qué motores levanta la máquina, y adivinarlo es cómo un nodo vuelve de un corte con
 		// una base de datos en paralelo a la del clúster.
 		assertNodeStateReadable();
+
+		// Y antes de conectarse a nada: que la master key se pueda usar y que ninguna credencial haya
+		// quedado en su valor de desarrollo. Va acá y no en cada provider porque acá el throw **aborta
+		// el proceso**; dentro de un servicio kernel lo atraparía el cargador.
+		assertBootSecrets();
 
 		// Alta de un nodo virgen, ANTES de levantar infraestructura y de cargar un solo módulo: es
 		// el único punto donde el proceso ya sabe quién es y todavía no dejó nada a medias. Sin

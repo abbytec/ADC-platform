@@ -20,12 +20,13 @@
  * los documentos de la tanda anterior, así que lo detecta y se niega.
  */
 
-import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { MongoClient } from "mongodb";
+import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 
 const DEK_LENGTH = 32;
 const IV_LENGTH = 12;
@@ -261,16 +262,165 @@ async function rewrapStore(store, { from, to }, oldKey, newKey, dryRun) {
 	return { converted, failed };
 }
 
+// ── Bóveda de configuración ──────────────────────────────────────────────────
+//
+// Los secretos del clúster se sellan con una sub-clave derivada de la master key y un AAD que ata
+// cada valor a su alcance y a su nombre. No son DEK: no hay nada envuelto que reenvolver, así que
+// hay que **abrir y volver a sellar el valor mismo**. Si esto no se rota junto con las DEK, cambiar
+// la master key deja el clúster sin ninguna credencial administrada — y el respaldo local, sellado
+// con la misma clave, tampoco sirve para recuperarlas.
+
+const VAULT_KEY_LABEL = "adc-config-secret";
+const VAULT_ENVELOPE_V1 = "v1";
+
+/** Igual que `deriveAtRestKey`: sha256(masterKey ‖ label). */
+function deriveSubkey(masterKey, label) {
+	return createHash("sha256").update(masterKey).update(label, "utf8").digest();
+}
+
+function vaultAad(scope, name) {
+	return `secret:${scope}:${name}`;
+}
+
+/** Mismo envelope que `encryptAtRest`: `v1.b64(iv).b64(tag).b64(ct)`. */
+function sealValue(plaintext, key, aad) {
+	const iv = randomBytes(IV_LENGTH);
+	const cipher = createCipheriv(SCHEME, key, iv);
+	cipher.setAAD(Buffer.from(aad, "utf8"));
+	const sealed = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+	return `${VAULT_ENVELOPE_V1}.${iv.toString("base64")}.${cipher.getAuthTag().toString("base64")}.${sealed.toString("base64")}`;
+}
+
+function openValue(envelope, key, aad) {
+	const parts = envelope.split(".");
+	const versioned = parts.length === 4 && parts[0] === VAULT_ENVELOPE_V1;
+	if (!versioned && parts.length !== 3) throw new Error("envelope inválido");
+	const [iv, authTag, sealed] = versioned ? parts.slice(1) : parts;
+	const decipher = createDecipheriv(SCHEME, key, Buffer.from(iv, "base64"));
+	if (versioned) decipher.setAAD(Buffer.from(aad, "utf8"));
+	decipher.setAuthTag(Buffer.from(authTag, "base64"));
+	return Buffer.concat([decipher.update(Buffer.from(sealed, "base64")), decipher.final()]).toString("utf8");
+}
+
+function vaultClient() {
+	const accessKeyId = process.env.S3_ACCESS_KEY;
+	const secretAccessKey = process.env.S3_SECRET_KEY;
+	if (!accessKeyId || !secretAccessKey) return null;
+	return new S3Client({
+		endpoint: process.env.S3_ENDPOINT || "http://localhost:3900",
+		region: process.env.S3_REGION || "sa-central-1",
+		credentials: { accessKeyId, secretAccessKey },
+		forcePathStyle: true,
+	});
+}
+
+/**
+ * Reescribe cada secreto de la bóveda con la clave nueva.
+ *
+ * El índice de Mongo dice qué existe; el objeto vive en el almacén. Se abre con la vieja, se comprueba
+ * la ida y vuelta con la nueva **antes** de escribir, y recién ahí se reemplaza — un objeto a medio
+ * escribir acá es una credencial perdida.
+ *
+ * Un secreto que ya abre con la clave nueva se saltea, así que la corrida es reanudable.
+ */
+async function rotateVault(client, oldKey, newKey, dryRun) {
+	const index = await client.db(process.env.CONFIG_DB || "adc-platform").collection("config_secrets").find({}).toArray();
+	if (index.length === 0) return { total: 0, converted: 0, skipped: 0, failed: 0, absent: 0 };
+
+	const s3 = vaultClient();
+	const bucket = process.env.CONFIG_S3_BUCKET || "adc-config";
+	if (!s3) {
+		return fail(
+			`Hay ${index.length} secreto(s) en la bóveda y no hay credenciales del almacén de objetos (\`S3_ACCESS_KEY\`/\`S3_SECRET_KEY\`). ` +
+			"Rotar las DEK sin rotar la bóveda dejaría al clúster sin credenciales. No se tocó nada."
+		);
+	}
+
+	const oldSub = deriveSubkey(oldKey, VAULT_KEY_LABEL);
+	const newSub = deriveSubkey(newKey, VAULT_KEY_LABEL);
+	const totals = { total: index.length, converted: 0, skipped: 0, failed: 0, absent: 0 };
+
+	for (const doc of index) {
+		const { scope, name } = doc;
+		const key = `secrets/${scope}/${name}`;
+		const aad = vaultAad(scope, name);
+		let raw;
+		try {
+			const got = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+			raw = await got.Body.transformToString();
+		} catch {
+			totals.absent++;
+			console.log(`    ${c.yellow}!${c.reset} ${scope}/${name}: está en el índice y no en la bóveda.`);
+			continue;
+		}
+
+		let plain;
+		try {
+			plain = openValue(raw, oldSub, aad);
+		} catch {
+			// Puede ser que ya esté rotado: se prueba con la nueva antes de darlo por perdido.
+			try {
+				openValue(raw, newSub, aad);
+				totals.skipped++;
+				continue;
+			} catch {
+				totals.failed++;
+				console.log(`    ${c.red}✗${c.reset} ${scope}/${name}: no abre con ninguna de las dos claves.`);
+				continue;
+			}
+		}
+
+		const resealed = sealValue(plain, newSub, aad);
+		let verified = false;
+		try {
+			verified = openValue(resealed, newSub, aad) === plain;
+		} catch {
+			verified = false;
+		}
+		if (!verified) {
+			totals.failed++;
+			console.log(`    ${c.red}✗${c.reset} ${scope}/${name}: la comprobación de ida y vuelta falló. No se escribió.`);
+			continue;
+		}
+		if (!dryRun) await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: Buffer.from(resealed, "utf8") }));
+		totals.converted++;
+	}
+	return totals;
+}
+
+/** La rotación de la bóveda con su encabezado, para no repetirlo en los tres caminos. */
+async function rotateVaultStep(client, oldKey, newKey, dryRun) {
+	console.log(`\n${c.bold}Bóveda de configuración${c.reset}`);
+	const totals = await rotateVault(client, oldKey, newKey, dryRun);
+	if (totals.total === 0) console.log(`  ${c.dim}Sin secretos administrados: no hay nada que rotar.${c.reset}`);
+	return totals;
+}
+
 const NOT_COVERED = `${c.bold}Lo que esta rotación NO arregla${c.reset}
   ${c.dim}Todo lo demás que deriva de la master key usa sub-claves determinísticas, así que cambiarla
   los invalida — pero ninguno es una pérdida de datos:${c.reset}
   · Los sobres del Redis compartido (sesión, rate limit) dejan de abrir y se tratan como "no está":
     se recalculan solos. No hay nada que hacer.
   · La credencial guardada del plano de control de la red privada deja de abrir. Hay que emitir otra
-    desde el panel, tab Red privada. El panel lo dice al abrirse, no falla en silencio.`;
+    desde el panel, tab Red privada. El panel lo dice al abrirse, no falla en silencio.
 
-function report({ converted, failed }, dryRun) {
+  ${c.bold}El respaldo local de cada nodo${c.reset} ${c.dim}(env/.cache/config.sealed.json) queda con la clave vieja.
+  Se regenera solo en el primer arranque en que la base y la bóveda respondan enteras. Hasta
+  entonces ese nodo no puede arrancar sin red: si vas a rotar, hacelo con el clúster alcanzable.${c.reset}`;
+
+function report({ converted, failed }, dryRun, vault = { total: 0, converted: 0, skipped: 0, failed: 0, absent: 0 }) {
 	console.log("");
+	if (vault.total > 0) {
+		const verb = dryRun ? "se pueden reescribir" : "reescritos";
+		console.log(
+			`${c.bold}Bóveda:${c.reset} ${vault.converted} secreto(s) ${verb}` +
+			(vault.skipped > 0 ? `, ${vault.skipped} ya estaban con la clave nueva` : "") +
+			(vault.absent > 0 ? `, ${c.yellow}${vault.absent} en el índice pero ausentes del almacén${c.reset}` : "") +
+			(vault.failed > 0 ? `, ${c.red}${vault.failed} sin poder abrir${c.reset}` : "")
+		);
+	}
+	// Un secreto de la bóveda que no abre es una credencial perdida: pesa igual que una DEK.
+	failed += vault.failed;
 	if (failed > 0) {
 		const done = dryRun ? "quedaron sin tocar (dry-run)" : "ya están en la versión nueva";
 		console.log(
@@ -325,18 +475,24 @@ async function run(args) {
 		}
 		if (stores.length === 0) {
 			console.log(`${c.yellow}No se encontró ninguna colección de DEK.${c.reset} Si esperabas encontrarlas, revisá la URI y las credenciales antes de cambiar la master key.`);
+			report({ converted: 0, failed: 0 }, args.dryRun, await rotateVaultStep(client, oldKey, newKey, args.dryRun));
 			return;
 		}
 		console.log(`${c.bold}Almacenes de DEK${c.reset} ${c.dim}(${stores.length})${c.reset}`);
 		for (const store of stores) console.log(`  · ${store.db}.${store.name}`);
 		const plan = await planRotation(stores, oldKey, newKey);
 		if (plan.done) {
-			console.log(`\n${c.green}${c.bold}No hay nada que hacer.${c.reset} ${plan.reason}\n`);
-			console.log(NOT_COVERED);
+			console.log(`\n${c.green}${c.bold}No hay DEK que rotar.${c.reset} ${plan.reason}`);
+			// La bóveda se rota igual: no tiene versiones ni depende del plan de las DEK.
+			report({ converted: 0, failed: 0 }, args.dryRun, await rotateVaultStep(client, oldKey, newKey, args.dryRun));
 			return;
 		}
 		console.log(`\n${c.bold}Versión${c.reset} ${plan.from} → ${plan.to}\n`);
-		report(await rewrapAll(stores, plan, oldKey, newKey, args.dryRun), args.dryRun);
+		const dekTotals = await rewrapAll(stores, plan, oldKey, newKey, args.dryRun);
+		// La bóveda va DESPUÉS de las DEK y en la misma corrida: son las dos mitades de la misma
+		// rotación, y dejarla para un segundo comando es garantizar que alguna vez no se corra.
+		const vaultTotals = await rotateVaultStep(client, oldKey, newKey, args.dryRun);
+		report(dekTotals, args.dryRun, vaultTotals);
 	} finally {
 		await client.close().catch(() => undefined);
 	}

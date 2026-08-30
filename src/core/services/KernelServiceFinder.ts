@@ -8,10 +8,16 @@ export interface KernelServiceInfo {
 	name: string;
 	configPath: string;
 	priority: number;
+	/**
+	 * El servicio declara que sus dependencias son esenciales. Se lee acá y no al cargarlo porque el
+	 * cargador lo necesita **también cuando la carga falló**, que es justo cuando no hay config.
+	 */
+	failOnError: boolean;
 }
 
 interface ServiceConfig {
 	kernelMode?: boolean | number;
+	failOnError?: boolean;
 	[key: string]: unknown;
 }
 
@@ -52,7 +58,7 @@ async function inspectDir(fullPath: string, name: string): Promise<KernelService
 	if (priority === null) return null;
 	const indexPath = await resolveIndexPath(fullPath);
 	if (!indexPath) return null;
-	return { path: indexPath, name, configPath, priority };
+	return { path: indexPath, name, configPath, priority, failOnError: config.failOnError === true };
 }
 
 async function traverse(currentDir: string, acc: KernelServiceInfo[]): Promise<void> {

@@ -10,7 +10,7 @@ import { moduleKeyConfig, type ModuleRegistry } from "../registry/ModuleRegistry
 import { Logger } from "../logger/Logger.js";
 import { VersionResolver } from "../VersionResolver.js";
 import { safeParseJson, parseJsonOrThrow } from "@common/utils/json-schema.ts";
-import { platformSetting } from "@common/utils/platform-settings.ts";
+import { managedConfig } from "@common/utils/managed-config.ts";
 import { moduleConfigCheck } from "@common/schemas/module-config.ts";
 import { isInsideAnyBase } from "@common/utils/path-containment.ts";
 import { runDevCleanup } from "@common/utils/dev-cleanup.ts";
@@ -134,8 +134,8 @@ export class ModuleLoader {
 		if (typeof obj === "string") {
 			return obj.replaceAll(/\$\{([^}]+)\}/g, (_, varSpec) => {
 				const [varName, defaultValue] = String(varSpec).split(":-");
-				// Priorizar variables del módulo, luego la configuración de plataforma, luego process.env
-				return envVars?.[varName] || platformSetting(varName) || process.env[varName] || defaultValue || "";
+				// Primero el módulo, después el clúster, después el entorno de esta máquina.
+				return envVars?.[varName] || managedConfig(varName) || process.env[varName] || defaultValue || "";
 			});
 		}
 

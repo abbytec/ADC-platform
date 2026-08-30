@@ -39,11 +39,15 @@ export interface EnvVarDef {
 	 */
 	indirect?: "public-env" | "cluster-env" | "compose-only";
 	/**
-	 * Su valor vive en `platform_settings` (ver `PlatformSettingsService`) y **ya no va en ningún
-	 * `env/*.env`**; queda declarada para que la auditoría no la reporte como desconocida. Si además
-	 * está en el entorno, la base le gana y el arranque lo avisa por log.
+	 * Su valor vive en un almacén administrado y **ya no va en ningún `env/*.env`**; queda declarada
+	 * para que la auditoría no la reporte como desconocida. Si además está en el entorno, gana el
+	 * almacén y el arranque lo avisa por log.
+	 *
+	 * - `platform-settings`: perilla declarada por el código (`PlatformSettingsService`).
+	 * - `configmap`: configuración del despliegue, en la colección `config_maps`.
+	 * - `secret`: valor sellado en la bóveda. **Nunca** va en un archivo en claro.
 	 */
-	source?: "platform-settings";
+	source?: "platform-settings" | "configmap" | "secret";
 }
 
 const IDENTITY_VARS: readonly string[] = [
@@ -192,6 +196,8 @@ export const ENV_VARS: readonly EnvVarDef[] = [
 	{ name: "DASHBOARD_MONGO_OPTIONS", group: "storage" },
 	{ name: "REDIS_HOST", group: "storage" },
 	{ name: "REDIS_PORT", group: "storage" },
+	{ name: "REDIS_DB", group: "storage" },
+	{ name: "REDIS_COMMAND_TIMEOUT_MS", group: "storage" },
 	{ name: "RABBITMQ_MANAGEMENT_URL", group: "storage" },
 	{ name: "RABBITMQ_QUEUE_TYPE", group: "storage" },
 	{ name: "S3_ENDPOINT", group: "storage" },
@@ -253,6 +259,9 @@ export const ENV_VARS: readonly EnvVarDef[] = [
 	{ name: "IDLE_BATCH_BUDGET_MS", group: "optionals", source: "platform-settings" },
 	{ name: "IDLE_MAX_BACKOFF_MINUTES", group: "optionals", source: "platform-settings" },
 	{ name: "IDLE_MAX_CONSECUTIVE_FAILURES", group: "optionals", source: "platform-settings" },
+	{ name: "ADC_CLUSTER_HEARTBEAT_SECONDS", group: "optionals" },
+	{ name: "ADC_CLUSTER_NODE_TTL_SECONDS", group: "optionals" },
+	{ name: "LEGAL_RUNS_RETENTION_DAYS", group: "optionals", source: "platform-settings" },
 	{ name: "ADC_DRAIN_MS", group: "optionals" },
 	{ name: "ADC_SHUTDOWN_INFRA_TIMEOUT_MS", group: "optionals" },
 	{ name: "ADC_SHUTDOWN_BUDGET_MS", group: "optionals" },
@@ -344,6 +353,10 @@ export const ENV_VARS: readonly EnvVarDef[] = [
 
 	// ── identity: la identidad pública del operador, horneada en los bundles del navegador. ─────
 	...IDENTITY_VARS.map((name): EnvVarDef => ({ name, group: "identity", indirect: "public-env" })),
+	// Va con los `ADC_PUBLIC_*` porque comparte archivo, pero NO es una de ellas: la lee el servidor
+	// al armar el QR de TOTP, no el navegador. Sin declararla, `groupOf()` devolvía `null` y el
+	// migrador la habría mandado a `optionals`, separándola del resto de la identidad del operador.
+	{ name: "TWO_FACTOR_ISSUER", group: "identity" },
 ];
 
 /** Búsqueda por nombre. Cada variable tiene UN nombre: el código no acepta alternativas. */
@@ -379,3 +392,12 @@ export const INDIRECT_VARS: ReadonlySet<string> = new Set(ENV_VARS.filter((v) =>
  * `PlatformSettingsService`.
  */
 export const SETTINGS_VARS: ReadonlySet<string> = new Set(ENV_VARS.filter((v) => v.source === "platform-settings").map((v) => v.name));
+
+/**
+ * Todas las que viven en un almacén administrado, sea cual sea: la auditoría las trata igual, porque
+ * lo que le importa es que su ausencia del archivo es correcta y no un olvido.
+ *
+ * {@link SETTINGS_VARS} sigue existiendo para distinguir las de `platform_settings` de las que se
+ * mudaron a un configmap o a la bóveda, que es una diferencia que el panel sí muestra.
+ */
+export const MANAGED_VARS: ReadonlySet<string> = new Set(ENV_VARS.filter((v) => v.source).map((v) => v.name));

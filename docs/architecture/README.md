@@ -10,6 +10,7 @@ carga y las responsabilidades; los temas más profundos viven en docs hermanos:
 | UI framework-agnostic, Module Federation, namespaces, i18n, SW | [ui-federation.md](ui-federation.md) |
 | Arranque: concurrencia acotada, readiness, caché de bundler, flags | [boot-performance.md](boot-performance.md) |
 | Códigos HTTP: cuándo `204` vs `404`, etc  (back y front) | [http-status.md](http-status.md) |
+| Configuración administrada: values, configmaps y la bóveda de secretos | [managed-config.md](managed-config.md) |
 | Presets (módulos opcionales en repos git) | [../multirepo.md](../multirepo.md) |
 
 ## Componentes

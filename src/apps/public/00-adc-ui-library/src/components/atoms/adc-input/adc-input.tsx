@@ -45,6 +45,8 @@ export class AdcInput {
 	@Prop() disabled?: boolean = false;
 	/** Cantidad máxima de caracteres. */
 	@Prop() maxLength?: number;
+	/** Cantidad mínima de caracteres. Sólo valida al enviar el formulario, como el atributo nativo. */
+	@Prop() minLength?: number;
 	/** Mínimo / máximo / paso (para `type="number"`). */
 	@Prop() min?: number | string;
 	@Prop() max?: number | string;
@@ -172,6 +174,7 @@ export class AdcInput {
 						autocomplete={this.autocomplete}
 						disabled={this.disabled}
 						maxlength={this.maxLength}
+						minlength={this.minLength}
 						min={this.min}
 						max={this.max}
 						step={this.step}

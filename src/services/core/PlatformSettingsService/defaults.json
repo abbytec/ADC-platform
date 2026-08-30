@@ -329,5 +329,10 @@
 		"value": "10",
 		"group": "capacidad",
 		"help": "Por debajo de este porcentaje de disco libre REAL no se vende nada más, aunque la sobreventa diera lugar. Es el freno de mano: la sobreventa es una apuesta sobre el uso futuro, no una excusa para vender con el disco al borde."
+	},
+	"AUTH_REQUIRE_BAN_ENFORCEMENT": {
+		"value": "true",
+		"group": "limites",
+		"help": "Rechazar los logins cuando el servicio de moderación no está cargado. En `false` se inicia sesión sin comprobar bans: sólo para un despliegue que deliberadamente no tiene moderación."
 	}
 }

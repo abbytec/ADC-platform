@@ -9,8 +9,11 @@ export interface SegmentedItem {
 
 /**
  * Switch segmentado (toggle de una sola selección): todas las opciones dentro de
- * un borde primary global; la activa va con fondo primary. Pensado para mostrar
- * herramientas/modos como iconos. Emite `adcChange` con el `value` elegido.
+ * un borde primary global; la activa va con fondo primary. Emite `adcChange` con el `value` elegido.
+ *
+ * Un item con `icon` ocupa un cuadrado; uno sin icono se ancha con su rótulo. Los segmentos eran
+ * cuadrados siempre, y eso recortaba cualquier texto que no fueran dos letras — tres paneles
+ * terminaron usando `adc-select` para un grupo de tres opciones por ese motivo.
  */
 @Component({
 	tag: "adc-segmented",
@@ -38,7 +41,11 @@ export class AdcSegmented {
 	}
 
 	render() {
-		const seg = this.size === "small" ? "h-9 w-9" : "h-11 w-11";
+		const height = this.size === "small" ? "h-9" : "h-11";
+		// Cuadrado para iconos; para texto, el ancho lo pone el rótulo y el mínimo evita que una
+		// opción de una sola letra quede más angosta que sus vecinas.
+		const square = this.size === "small" ? "w-9" : "w-11";
+		const text = this.size === "small" ? "min-w-9 px-3" : "min-w-11 px-4";
 		const iconSize = this.size === "small" ? "1.2rem" : "1.4rem";
 		return (
 			<div class="inline-flex items-center gap-0.5 rounded-full border-2 border-primary p-0.5" role="group">
@@ -51,12 +58,12 @@ export class AdcSegmented {
 							title={it.label}
 							aria-label={it.label}
 							aria-pressed={active ? "true" : "false"}
-							class={`inline-flex ${seg} cursor-pointer items-center justify-center rounded-full transition-colors ${
+							class={`inline-flex ${height} ${it.icon ? square : text} cursor-pointer items-center justify-center rounded-full transition-colors ${
 								active ? "bg-primary text-tprimary" : "text-text hover:bg-primary/10"
 							}`}
 							onClick={() => this.adcChange.emit(it.value)}
 						>
-							{it.icon ? <Icon size={iconSize} /> : <span class="text-xs font-semibold">{it.label}</span>}
+							{it.icon ? <Icon size={iconSize} /> : <span class="font-text text-xs font-semibold whitespace-nowrap">{it.label}</span>}
 						</button>
 					);
 				})}

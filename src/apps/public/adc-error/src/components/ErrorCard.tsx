@@ -15,8 +15,8 @@ interface ErrorCardProps {
 }
 
 const TONE_STYLES: Record<NonNullable<ErrorCardProps["tone"]>, string> = {
-	danger: "text-error",
-	warning: "text-warning",
+	danger: "text-tdanger",
+	warning: "text-twarn",
 	info: "text-accent",
 };
 

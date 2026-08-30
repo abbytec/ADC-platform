@@ -1,0 +1,11 @@
+{
+	"name": "config-store-service",
+	"license": "ISC",
+	"author": "abbytec",
+	"version": "1.0.0",
+	"description": "Configmaps en Mongo y secretos sellados en la bóveda, con respaldo local cifrado",
+	"private": true,
+	"type": "module",
+	"main": "index.ts",
+	"dependencies": {}
+}

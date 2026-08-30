@@ -469,11 +469,20 @@ import "react";
 
 	out += `// ─── Web component base props ───
 
+/**
+ * Props de un web component en JSX de React.
+ *
+ * **Sin \`Record<string, any>\` al final**, que es lo que tenía y anulaba la verificación entera: con
+ * ese comodín cualquier prop compilaba, incluidas las que el componente no declara. Y una prop que
+ * un web component no declara no falla — se ignora —, así que el campo queda mudo en pantalla y el
+ * síntoma aparece lejos de la causa (\`multiline\` en un \`adc-input\` que renderiza una sola línea,
+ * \`minlength\` que no valida nada, \`inputmode\` que no llega porque Stencil espera \`inputMode\`).
+ */
 /** eslint-disable-next-line @typescript-eslint/no-empty-object-type */
 type WCProps<T = {}> = T & React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
 	class?: string;
 	key?: React.Key;
-} & Record<string, any>;
+};
 
 // ─── Component prop interfaces ───
 `;

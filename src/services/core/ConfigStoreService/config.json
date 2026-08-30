@@ -1,0 +1,48 @@
+{
+	"kernelMode": 4,
+	"name": "ConfigStoreService",
+	"uiName": "Core",
+	"version": "1.0.0",
+	"failOnError": false,
+	"private": {
+		"bucket": "${CONFIG_S3_BUCKET:-adc-config}"
+	},
+	"providers": [
+		{
+			"name": "object/mongo",
+			"version": "latest",
+			"language": "typescript",
+			"custom": {
+				"host": "${MONGO_HOST:-localhost:27017}",
+				"user": "${MONGO_USER:-admin}",
+				"password": "${MONGO_PASSWORD:-password}",
+				"options": "${MONGO_OPTIONS:-replicaSet=rs0&authSource=admin}",
+				"db": "adc-platform",
+				"maxRetries": 5,
+				"retryDelay": 5000
+			}
+		},
+		{
+			"name": "object/internal-s3-provider",
+			"version": "latest",
+			"language": "typescript",
+			"custom": {
+				"endpoint": "${S3_ENDPOINT:-http://localhost:3900}",
+				"region": "${S3_REGION:-sa-central-1}",
+				"accessKey": "${S3_ACCESS_KEY:-}",
+				"secretKey": "${S3_SECRET_KEY:-}",
+				"defaultBucket": "${CONFIG_S3_BUCKET:-adc-config}"
+			}
+		}
+	],
+	"privileges": [
+		"audit:write"
+	],
+	"services": [
+		{
+			"name": "AuditLogService",
+			"version": "latest",
+			"optional": true
+		}
+	]
+}

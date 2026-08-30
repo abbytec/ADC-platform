@@ -20,6 +20,30 @@ el cargador, el migrador, el configurador y el runbook de alta de nodo.
 
 ## Lo que ya NO vive acá
 
+Además de `platform_settings` (abajo), hay dos almacenes administrados más, que lee
+`ConfigStoreService` (`kernelMode 4`, antes que todo lo demás):
+
+| Almacén | Dónde | Qué va |
+| ------- | ----- | ------ |
+| **configmaps** | Mongo, `config_maps` | configuración del despliegue: hosts, puertos, límites de un motor |
+| **secretos** | bóveda sellada en el almacén de objetos (`adc-config`), índice en `config_secrets` | credenciales. El valor **nunca** sale por API sin revelarlo explícitamente |
+
+Tienen alcance: `global` → `site:<sitio>` → `node:<id>`, y gana el más específico. Los valores
+resueltos se inyectan en `process.env` con `??=`, así que los composes de Docker y `bun run infra`
+los reciben sin cambios y lo exportado en el shell sigue ganando.
+
+**Un nombre vive en un solo almacén.** Si aparece en dos, el arranque falla con el nombre y los dos
+almacenes: inventar una precedencia sería inventar una regla que nadie recuerda a los seis meses.
+
+Hay un respaldo local en `env/.cache/config.sealed.json` (`0600`) que permite arrancar con Mongo o
+la bóveda caídos. Los secretos van **sellados** ahí, así que —a diferencia de `env/secrets.env`— el
+archivo por sí solo no sirve sin `ADC_STORAGE_MASTER_KEY`.
+
+Lo que **no** puede administrarse: `ADC_STORAGE_MASTER_KEY`, las credenciales de Mongo y las del
+almacén de objetos. Se leen para llegar al store, así que se quedan acá. Es la frontera.
+
+## `platform_settings`
+
 Retenciones, ventanas de los barridos, límites de cuerpo y de caudal, URLs de confirmación y la
 configuración de despliegue desde GitHub se mudaron a **`platform_settings`**, una colección de
 Mongo que lee `PlatformSettingsService` al arrancar (`kernelMode 5`). El motivo es que no describen

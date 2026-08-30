@@ -46,7 +46,7 @@ export class AdcQrCode {
 		if (this.error) {
 			return (
 				<Host class="inline-block">
-					<p class="text-sm text-terror">{this.error}</p>
+					<p class="text-sm text-tdanger">{this.error}</p>
 				</Host>
 			);
 		}

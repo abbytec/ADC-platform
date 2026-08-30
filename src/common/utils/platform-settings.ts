@@ -7,39 +7,39 @@
  * y el broker, identidad del nodo, qué motores levanta, la clave maestra— ni los `ADC_PUBLIC_*`,
  * que se hornean en los bundles del navegador antes de que el kernel arranque.
  *
- * Este módulo **no lee la base**: recibe el mapa ya resuelto y lo entrega de forma síncrona, porque
- * quien lo consulta es `ModuleLoader.interpolateEnvVars` y volverlo asíncrono obligaría a reescribir
- * la carga de módulos entera. Lo instala `PlatformSettingsService` en su `start()` (`kernelMode 5`).
+ * Desde que existen los configmaps y la bóveda, esto es la fachada del almacén **values** de
+ * `@common/utils/managed-config.ts`: mismos nombres de siempre para no tocar a sus consumidores, y
+ * un solo registro abajo que es el que detecta un nombre definido en dos almacenes.
  */
 
-/** Instalado una vez por `PlatformSettingsService`. `null` = todavía no se leyó la base. */
-let snapshot: ReadonlyMap<string, string> | null = null;
+import { installManagedValues, managedConfig, updateManagedEntry } from "./managed-config.ts";
 
 /**
- * Instala el mapa resuelto. Lo llama **sólo** el servicio de configuración, y una vez por arranque:
- * un segundo reemplazo a mitad de la carga dejaría dos módulos configurados con valores distintos
- * sin que nada lo indique.
+ * Instala el mapa resuelto. Lo llama **sólo** `PlatformSettingsService`, y una vez por arranque: un
+ * segundo reemplazo a mitad de la carga dejaría dos módulos configurados con valores distintos sin
+ * que nada lo indique.
  */
 export function installPlatformSettings(values: Record<string, string>): void {
-	snapshot = new Map(Object.entries(values));
+	installManagedValues(values);
 }
 
-/** `undefined` si el nombre no es una opción de plataforma o si todavía no se leyó la base. */
+/**
+ * `undefined` si el nombre no es una opción de plataforma o si todavía no se leyó la base.
+ *
+ * Resuelve contra los tres almacenes: para quien interpola un `config.json` es indistinto de cuál
+ * salga el valor, y era esta función la que ya consultaba.
+ */
 export function platformSetting(name: string): string | undefined {
-	return snapshot?.get(name);
+	return managedConfig(name);
 }
 
 /**
  * Refleja en memoria una opción que se acaba de guardar, para que el resto del proceso no relea la
  * base. La llama **sólo** `PlatformSettingsService`.
  *
- * No contradice el «una vez por arranque» de {@link installPlatformSettings}, que prohíbe reemplazar
- * el mapa entero: cambiar una clave desde el panel es una decisión explícita. Aplicar en caliente
- * queda de parte de cada consumidor, como hace el caudal de subida.
+ * Cambiar una clave desde el panel es una decisión explícita, a diferencia de reemplazar el mapa
+ * entero. Aplicarlo en caliente queda de parte de cada consumidor, como hace el caudal de subida.
  */
 export function updatePlatformSetting(name: string, value: string): void {
-	if (!snapshot) return;
-	const next = new Map(snapshot);
-	next.set(name, value);
-	snapshot = next;
+	updateManagedEntry("value", name, value);
 }
